@@ -739,11 +739,11 @@ function DefaultComposition({
     <>
       {!describeReviewActive ? (
         <>
-      {/* Search row — primary input. Right-edge icons (scan / voice /
-          photo) ride along when the host wires the corresponding
-          callbacks. In inline mode the row is a real `<Input>` (focused
-          on first appearance); in legacy tap-to-open mode it's a
-          `<button>` that fires `search.onOpen`. */}
+      {/* Search row — primary input. ENG-1532: the right-edge scan icon
+          renders only while `component_grammar_dedup` is OFF (ON = the
+          loud CTA is the single scanner entry; OFF = today's render,
+          byte-intact — keep in sync with mobile). Inline mode = real
+          `<Input>`; legacy mode = `<button>` firing `search.onOpen`. */}
       <div className="px-3 pt-3">
         {inlineMode ? (
           <div
@@ -777,7 +777,7 @@ function DefaultComposition({
                 "placeholder:text-muted-foreground",
               )}
             />
-            {barcode?.onOpen ? (
+            {barcode?.onOpen && !isFeatureEnabled("component_grammar_dedup") ? (
               <button
                 type="button"
                 aria-label="Scan barcode"
@@ -806,7 +806,7 @@ function DefaultComposition({
               className="text-muted-foreground"
             />
             <span className="flex-1 truncate">Search foods or scan</span>
-            {barcode?.onOpen ? (
+            {barcode?.onOpen && !isFeatureEnabled("component_grammar_dedup") ? (
               <ScanBarcode width={18} height={18} className="shrink-0 text-muted-foreground" aria-hidden />
             ) : null}
           </button>

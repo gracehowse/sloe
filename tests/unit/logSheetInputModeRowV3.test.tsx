@@ -9,6 +9,9 @@
  *     text pill on the locked AI method, no Describe tile, no lock-badge testid.
  *   - the header copy swaps "Log a meal" → "Add to today" with the flag.
  *   - the Describe tile is present only when the host wires `describe`.
+ *   - ENG-1532 (`component_grammar_dedup`, default-ON) — the Scan tile/chip is
+ *     dropped from BOTH renders (the loud CTA is the single scanner entry);
+ *     the dedup kill switch (OFF) restores the Scan tile, byte-intact.
  *
  * Mirror of `apps/mobile/tests/unit/logSheetInputModeRowV3.test.tsx`.
  */
@@ -52,6 +55,16 @@ function forceLogFlag(value: boolean | undefined) {
   }
 }
 
+// ENG-1532 — the dedup kill switch is a separate force so tests can pin the
+// scan tile's presence/absence independently of the v3 grammar flag.
+function forceDedupFlag(value: boolean) {
+  const w = window as { __SUPPR_FORCE_FLAGS__?: Record<string, unknown> };
+  w.__SUPPR_FORCE_FLAGS__ = {
+    ...(w.__SUPPR_FORCE_FLAGS__ ?? {}),
+    component_grammar_dedup: value,
+  };
+}
+
 function open(props?: Partial<LogSheetProps>) {
   return render(
     <LogSheet
@@ -73,13 +86,26 @@ function open(props?: Partial<LogSheetProps>) {
 describe("LogSheet input-method row — v3 tile grammar (web)", () => {
   it("renders the method-grid tile grammar when the flag is ON (default)", () => {
     forceLogFlag(true);
+    forceDedupFlag(true);
     open();
     const row = screen.getByTestId("log-sheet-input-mode-row");
     expect(row.getAttribute("data-variant")).toBe("v3-grid");
-    // The five tiles render (Scan / Photo / Voice / Describe / Quick add).
-    for (const key of ["scan", "photo", "voice", "describe", "quick"]) {
+    // The four tiles render (Photo / Voice / Describe / Quick add) — ENG-1532
+    // drops the Scan tile (the loud CTA is the single scanner entry).
+    for (const key of ["photo", "voice", "describe", "quick"]) {
       expect(screen.getByTestId(`log-sheet-method-${key}`)).toBeTruthy();
     }
+    expect(screen.queryByTestId("log-sheet-method-scan")).toBeNull();
+  });
+
+  it("ENG-1532 kill switch — `component_grammar_dedup` OFF restores the Scan tile, byte-intact", () => {
+    forceLogFlag(true);
+    forceDedupFlag(false);
+    const onScanOpen = vi.fn();
+    open({ barcode: { onOpen: onScanOpen } });
+    const scanTile = screen.getByTestId("log-sheet-method-scan");
+    fireEvent.click(scanTile);
+    expect(onScanOpen).toHaveBeenCalledTimes(1);
   });
 
   it("shows the frost lock badge (not a PRO text pill) on the locked AI method when flag ON", () => {

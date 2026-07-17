@@ -22,6 +22,8 @@ vi.mock("@/hooks/use-theme-colors", () => ({
     text: "#111",
     textSecondary: "#666",
     inputBg: "#f4f4f6",
+    border: "#eee",
+    primaryForeground: "#fdfdfd",
   }),
 }));
 
@@ -92,6 +94,55 @@ describe("SegmentedTrack (mobile)", () => {
     const { getByTestId, onChange } = renderTrack("a");
     fireEvent.press(getByTestId("seg-a"));
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  // ENG-1532 amendment — optional per-option count badge (SubTabPill's badge
+  // treatment: hidden at 0, "999+" cap, ink pill on the active segment).
+  describe("count badge", () => {
+    const badgeOptions = (badge: number) =>
+      [
+        { value: "a", label: "Alpha", testID: "seg-a" },
+        { value: "b", label: "Beta", testID: "seg-b", badge },
+      ] as unknown as { value: string; label: React.ReactNode }[];
+
+    it("renders the count when badge > 0", () => {
+      const onChange = vi.fn();
+      const { getByText } = render(
+        <SegmentedTrack
+          accessibilityLabel="Example"
+          options={badgeOptions(5)}
+          value="a"
+          onChange={onChange}
+        />,
+      );
+      expect(getByText("5")).toBeTruthy();
+    });
+
+    it("hides the badge at 0", () => {
+      const onChange = vi.fn();
+      const { queryByText } = render(
+        <SegmentedTrack
+          accessibilityLabel="Example"
+          options={badgeOptions(0)}
+          value="a"
+          onChange={onChange}
+        />,
+      );
+      expect(queryByText("0")).toBeNull();
+    });
+
+    it("caps the count at 999+", () => {
+      const onChange = vi.fn();
+      const { getByText } = render(
+        <SegmentedTrack
+          accessibilityLabel="Example"
+          options={badgeOptions(1234)}
+          value="a"
+          onChange={onChange}
+        />,
+      );
+      expect(getByText("999+")).toBeTruthy();
+    });
   });
 
   it("§8 treatment — card-white thumb on the inputBg rail, primary-solid active label", () => {

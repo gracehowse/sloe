@@ -266,3 +266,69 @@ describe("FoodSearchPanel results redesign (mobile, ENG-814)", () => {
     expect(queryByText("Low confidence")).toBeNull();
   });
 });
+
+// ── ENG-1532 — component grammar dedup: ONE search-row grammar ─────────
+//
+// Fable ruling 2026-07-16: with `component_grammar_dedup` ON, best-match
+// results render as PLAIN ROWS with the Past-logged skeleton — hairline
+// separators instead of the grouped card, the unified
+// kcal-leads-basis-trails sub-line (shared `formatFoodSearchRowSubline`),
+// and NO big right-aligned KCAL display numeral (it invited misreading
+// per-100g values as per-serving). The tier chip stays inline; section
+// overlines stay. Flag OFF → today's carded render, byte-intact (the
+// PostHog kill switch). Web sibling coverage:
+// `tests/unit/foodSearchPanelRedesign.test.tsx`.
+describe("ENG-1532 — unified search-row grammar (component_grammar_dedup)", () => {
+  it("flag ON: best matches render as plain rows — unified sub-line, no KCAL numeral, chips + overlines stay", async () => {
+    flagOn("redesign_search_results", "component_grammar_dedup");
+    const { findByTestId, findByText, findAllByTestId, queryByText } = render(
+      <FoodSearchPanel
+        query="chicken"
+        onSelect={() => {}}
+        supabase={SUPABASE_STUB}
+        userId="u1"
+        mode="full"
+      />,
+    );
+    await drainDebounce();
+
+    // Plain rows carry the `search-row-` testID prefix.
+    await findByTestId("search-row-usda-1");
+    await findByTestId("search-row-off-1");
+    // Unified sub-line: kcal LEADS, basis TRAILS, source name last.
+    await findByText("165 kcal · 31g P · 0g C · 4g F · per 100g · USDA");
+    await findByText("280 kcal · 14g P · 18g C · 17g F · per 100g · Open Food Facts");
+    // The big right-aligned KCAL display numeral is gone.
+    expect(queryByText("KCAL")).toBeNull();
+    // Section overlines survive the dedup.
+    await findByTestId("food-search-section-best");
+    await findByTestId("food-search-section-more");
+    // The tier chip stays inline in the row (current labels — ENG-1567
+    // renames are a separate ticket).
+    const chips = await findAllByTestId("confidence-chip");
+    expect(chips.length).toBe(2);
+    await findByText("Structured");
+    await findByText("Estimated");
+  });
+
+  it("flag OFF (kill switch): the carded render stays byte-intact — KCAL numeral, no plain rows", async () => {
+    flagOn("redesign_search_results"); // component_grammar_dedup OFF
+    const { findAllByText, queryByTestId } = render(
+      <FoodSearchPanel
+        query="chicken"
+        onSelect={() => {}}
+        supabase={SUPABASE_STUB}
+        userId="u1"
+        mode="full"
+      />,
+    );
+    await drainDebounce();
+
+    // The right-rail KCAL display numeral still renders per card row.
+    const kcalLabels = await findAllByText("KCAL");
+    expect(kcalLabels.length).toBe(2);
+    // No plain-row grammar leaks into the OFF path.
+    expect(queryByTestId("search-row-usda-1")).toBeNull();
+    expect(queryByTestId("search-row-off-1")).toBeNull();
+  });
+});

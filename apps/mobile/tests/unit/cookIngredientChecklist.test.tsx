@@ -29,4 +29,19 @@ describe("ENG-946 ingredient checklist wiring", () => {
     expect(cook).toContain("CookMiseEnPlace");
     expect(detail).not.toContain("<CookIngredientChecklist");
   });
+
+  it("ENG-1532 — both platforms build checklist rows from the CLEANED ingredient name", () => {
+    // Web CookMode has always cleaned the display name; the mobile cook screen
+    // echoed the raw stored name ("2 rashers …" title over a "2 rasher"
+    // amount). Pin the identical expression on both so neither regresses.
+    const mobileCook = readFileSync(join(REPO, "apps/mobile/app/cook.tsx"), "utf8");
+    const webCook = readFileSync(join(REPO, "src/app/components/CookMode.tsx"), "utf8");
+    for (const src of [mobileCook, webCook]) {
+      expect(src).toContain("cleanIngredientDisplayName(ing.name) || ing.name");
+    }
+    // And the mobile import resolves to the shared helper (single source).
+    expect(mobileCook).toContain(
+      'import { cleanIngredientDisplayName } from "@suppr/shared/recipe/cleanIngredientDisplayName"',
+    );
+  });
 });

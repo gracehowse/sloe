@@ -121,7 +121,8 @@ import {
   type SearchRowConfidenceTier,
   type SectionedSearchRows,
 } from "@/lib/nutrition/foodSearchRanking";
-import { foodSearchSourceLabel, mergeFoodSearchRows } from "@/lib/nutrition/foodSearchMerge";
+import { mergeFoodSearchRows } from "@/lib/nutrition/foodSearchMerge";
+import { FoodSearchResultRow } from "./FoodSearchResultRow";
 import { foodSearchPreviewPlausibilityWarning } from "@/lib/nutrition/portionPicker";
 import {
   isFavoriteRow,
@@ -161,7 +162,7 @@ export type FoodPortion = {
   servingFraction?: number;
 };
 
-type SearchResult = {
+export type SearchResult = {
   key: string;
   name: string;
   /** Restaurant / brand byline shown beneath the title — set for Edamam restaurant + branded hits. */
@@ -841,6 +842,11 @@ export function FoodSearchPanel({
   // alive in the `else` (the old `divide-y` block below). Pixel + behaviour
   // parity with the mobile sibling lane (same flag, same prototype).
   const searchResultsRedesign = isFeatureEnabled("redesign_search_results");
+  // ENG-1532 — component grammar dedup. ON → best-match results render as
+  // plain rows with the Past-logged skeleton (hairline `divide-y`, no card
+  // wrapper — see `<FoodSearchResultRow>`); OFF → today's grouped-card
+  // render, byte-intact (the PostHog kill switch).
+  const grammarDedup = isFeatureEnabled("component_grammar_dedup");
   // ENG P5 parity (gap #5/#9). Two-flag relationship on this surface:
   //   `redesign_search_results` = STRUCTURE (segmented control + grouped cards)
   //   `design_system_elevation` = DEPTH — historically the soft
@@ -1876,180 +1882,6 @@ export function FoodSearchPanel({
     return false;
   }, [preview, results, autocomplete, query]);
 
-  // ENG-815 — render one redesigned (elevated, chip-bearing) result row.
-  // Shares all behaviour with the legacy row (same `onPickResult`, same
-  // custom-food edit/delete menu, same headline data) — only the chrome
-  // changes: card seam instead of hairline, legible confidence chip instead
-  // of the 14px green tick, "per 100g · source" byline. Defined as a closure
-  // so it reuses the component's handlers + state without prop drilling.
-  const renderRedesignedRow = (item: SearchResult) => {
-    const isCustom = item._source === "CUSTOM";
-    const customFood = isCustom ? item._custom : null;
-    const headline = resolveFoodSearchHeadline(item);
-    // Custom rows keep their own "Custom" badge (not a confidence chip). For
-    // every other row, render the honest tier the data layer stamped. We never
-    // invent a chip the model didn't back — fall back to "estimated" only when
-    // the tier is genuinely absent (defensive; `mergeAndDedup` always stamps).
-    const tier: SearchRowConfidenceTier = item.confidenceTier ?? "estimated";
-    const sourceLabel = foodSearchSourceLabel(item._source);
-    return (
-      <div
-        key={item.key}
-        className="flex items-center gap-2 px-4 py-3.5 transition-colors hover:bg-muted/50 [&+&]:shadow-[inset_0_1px_0_var(--border)] relative"
-      >
-        <button
-          type="button"
-          onClick={() => onPickResult(item)}
-          disabled={loadingKey === item.key}
-          className="flex-1 min-w-0 flex items-center gap-3 text-left"
-        >
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[15px] font-semibold text-foreground truncate">{item.name}</span>
-              {isCustom ? (
-                <Badge variant="custom">Custom</Badge>
-              ) : (
-                <span
-                  data-testid={`food-search-confidence-${tier}`}
-                  className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10.5px] font-extrabold tracking-wide ${
-                    tier === "verified" ? "bg-primary/10 text-primary-solid" : ""
-                  }`}
-                  // ENG P5 parity (gap #11): the Estimated chip must NOT reuse
-                  // the over-budget `--warning` orange — that exact token paints
-                  // the over-budget fat macro in this same row, so one colour
-                  // would mean both "estimated data" and "over-budget". Use the
-                  // dedicated warm-amber `--chip-estimated` (#BF8324) token,
-                  // mirroring the mobile chip
-                  // (apps/mobile/components/ui/SearchResultConfidenceChip.tsx:60)
-                  // exactly. Verified branch unchanged.
-                  style={
-                    tier === "verified"
-                      ? undefined
-                      : {
-                          color: "var(--chip-estimated)",
-                          backgroundColor: "var(--chip-estimated-soft)",
-                        }
-                  }
-                >
-                  {tier === "verified" ? (
-                    <Icons.check className="h-2.5 w-2.5" aria-hidden />
-                  ) : (
-                    <Icons.info className="h-2.5 w-2.5" aria-hidden />
-                  )}
-                  {tier === "verified" ? "Structured" : "Estimated"}
-                </span>
-              )}
-            </div>
-            {headline.mode === "per-serving" ? (
-              <>
-                <div className="flex gap-2 mt-1 text-[11px] font-semibold text-muted-foreground">
-                  <span className="text-destructive">P {headline.macros.protein}g</span>
-                  <span className="text-[var(--macro-carbs)]">C {headline.macros.carbs}g</span>
-                  <span className="text-warning-solid">F {headline.macros.fat}g</span>
-                </div>
-                <span className="block mt-0.5 text-[11px] text-muted-foreground/80">
-                  {headline.servingLabel}
-                  {headline.per100gReference ? ` · ${headline.per100gReference}` : ""} · {sourceLabel}
-                </span>
-              </>
-            ) : headline.mode === "per-100g" && headline.macros ? (
-              <>
-                <div className="flex gap-2 mt-1 text-[11px] font-semibold text-muted-foreground">
-                  <span className="text-destructive">P {headline.macros.protein}g</span>
-                  <span className="text-[var(--macro-carbs)]">C {headline.macros.carbs}g</span>
-                  <span className="text-warning-solid">F {headline.macros.fat}g</span>
-                </div>
-                <span className="block mt-0.5 text-[11px] text-muted-foreground/80">
-                  {FOOD_SEARCH_PER_100G_BADGE} · {sourceLabel}
-                </span>
-              </>
-            ) : headline.mode === "per-100g" ? (
-              <span className="block mt-1 text-[11px] text-muted-foreground/80">
-                {FOOD_SEARCH_PER_100G_BADGE} · {sourceLabel}
-              </span>
-            ) : (
-              <span className="block mt-1 text-xs text-muted-foreground">Tap for nutrition info</span>
-            )}
-            {customFood && isLearnedCustomFoodSource(customFood.source) ? (
-              <span
-                className="block mt-0.5 text-[11px] italic text-muted-foreground/90"
-                data-testid="learned-custom-food-cue"
-              >
-                {LEARNED_CUSTOM_FOOD_REUSE_CUE}
-              </span>
-            ) : null}
-          </div>
-          {headline.mode !== "placeholder" && loadingKey !== item.key ? (
-            <div className="flex flex-col items-end shrink-0">
-              <span className="text-[18px] font-extrabold text-foreground tabular-nums leading-none">{headline.headlineKcal}</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 mt-0.5">kcal</span>
-            </div>
-          ) : null}
-          {loadingKey === item.key ? (
-            <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
-          ) : isCustom ? (
-            <Icons.forward className="h-4 w-4 text-muted-foreground shrink-0" />
-          ) : null}
-        </button>
-        {!isCustom && loadingKey !== item.key ? (
-          <button
-            type="button"
-            onClick={() => void onQuickLogResult(item)}
-            aria-label={`Quick log ${item.name} at default serving`}
-            data-testid={`food-search-quick-log-${item.key}`}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-primary hover:bg-muted/60"
-          >
-            <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-          </button>
-        ) : null}
-        {isCustom && customFood && (
-          <div className="relative shrink-0">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuOpenFor((cur) => (cur === customFood.id ? null : customFood.id));
-              }}
-              aria-label={`More options for ${customFood.name}`}
-              aria-haspopup="menu"
-              aria-expanded={menuOpenFor === customFood.id}
-              className="h-8 w-8 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <span aria-hidden="true" className="text-lg leading-none">⋯</span>
-            </button>
-            {menuOpenFor === customFood.id && (
-              <div
-                role="menu"
-                className="absolute right-0 top-9 z-10 min-w-[9rem] rounded-md border border-border bg-card shadow-lg py-1"
-              >
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => {
-                    setMenuOpenFor(null);
-                    setEditingFood(customFood);
-                    setCreateOpen(true);
-                  }}
-                  className="w-full text-left px-3 py-1.5 text-sm text-foreground hover:bg-muted/60"
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={() => handleDeleteCustomFood(customFood)}
-                  className="w-full text-left px-3 py-1.5 text-sm text-destructive hover:bg-muted/60"
-                >
-                  Delete
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   // Preview takes over when set. ENG-1445: `min-h-0 flex-1`, not `h-full` (which lost to min-height:auto and pushed "Use this" off-screen).
   if (preview && scaled) {
     return (
@@ -2479,17 +2311,42 @@ export function FoodSearchPanel({
                     <p className="mt-2.5 mb-2 px-0.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
                       {section.label}
                     </p>
-                    {/* Flat-card surfaces (2026-06-12): the grouped result
-                        card is FLAT now — the `elevated` ON path stays
-                        borderless (the Withings quiet-fill grammar) but the
-                        retired `--elev-card-soft` lift is dropped; the card
-                        fill on the cream ground is the separation. */}
+                    {/* ENG-1532 grammar dedup ON: plain rows with the
+                        Past-logged group's hairline `divide-y` — no card
+                        wrapper. OFF: the flat-card surface (2026-06-12) —
+                        the grouped result card is FLAT; the `elevated` ON
+                        path stays borderless (the Withings quiet-fill
+                        grammar) but the retired `--elev-card-soft` lift is
+                        dropped; the card fill on the cream ground is the
+                        separation. */}
                     <div
-                      className={`mb-3.5 overflow-hidden rounded-2xl bg-card ${
-                        elevated ? "border-0" : "border border-border"
-                      }`}
+                      className={
+                        grammarDedup
+                          ? "mb-3.5 divide-y divide-border"
+                          : `mb-3.5 overflow-hidden rounded-2xl bg-card ${
+                              elevated ? "border-0" : "border border-border"
+                            }`
+                      }
                     >
-                      {section.rows.map((item) => renderRedesignedRow(item))}
+                      {section.rows.map((item) => (
+                        <FoodSearchResultRow
+                          key={item.key}
+                          item={item}
+                          loadingKey={loadingKey}
+                          menuOpenFor={menuOpenFor}
+                          onPick={onPickResult}
+                          onQuickLog={(row) => void onQuickLogResult(row)}
+                          onToggleMenu={(id) =>
+                            setMenuOpenFor((cur) => (cur === id ? null : id))
+                          }
+                          onEditCustom={(food) => {
+                            setMenuOpenFor(null);
+                            setEditingFood(food);
+                            setCreateOpen(true);
+                          }}
+                          onDeleteCustom={handleDeleteCustomFood}
+                        />
+                      ))}
                     </div>
                   </div>
                 ))

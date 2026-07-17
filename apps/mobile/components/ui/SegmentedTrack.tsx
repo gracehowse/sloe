@@ -45,6 +45,11 @@ export interface SegmentedTrackOption<T extends string = string> {
   label: React.ReactNode;
   /** Spoken label when the visual one is terse (e.g. "W" → "Weekly"). */
   accessibilityLabel?: string;
+  /** Optional count badge after the label (ENG-1532 amendment — the Plan
+   *  Shopping unchecked count). Hidden at 0; caps at "999+". Treatment
+   *  copied from SubTabPill's badge (ink pill on the active segment,
+   *  border-grey on inactive). */
+  badge?: number;
   testID?: string;
 }
 
@@ -119,6 +124,23 @@ export function SegmentedTrack<T extends string = string>({
             >
               {opt.label}
             </Text>
+            {opt.badge !== undefined && opt.badge > 0 ? (
+              <View
+                style={[
+                  styles.badge,
+                  { backgroundColor: active ? colors.text : colors.border },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.badgeText,
+                    { color: active ? colors.primaryForeground : colors.textSecondary },
+                  ]}
+                >
+                  {opt.badge > 999 ? "999+" : opt.badge}
+                </Text>
+              </View>
+            ) : null}
           </PressableScale>
         );
       })}
@@ -138,6 +160,8 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
+    flexDirection: "row",
+    gap: Spacing.sm,
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: Spacing.xs,
@@ -165,5 +189,19 @@ const styles = StyleSheet.create({
   },
   labelActive: {
     fontWeight: "600",
+  },
+  // Count badge — treatment copied verbatim from SubTabPill's badge pill
+  // (ENG-1532 amendment) so the flag swap keeps the Shopping count familiar.
+  badge: {
+    minWidth: 20,
+    height: 18,
+    paddingHorizontal: Spacing.xs,
+    borderRadius: Radius.full,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "700",
   },
 });

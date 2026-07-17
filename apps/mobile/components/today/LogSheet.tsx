@@ -731,11 +731,11 @@ function DefaultComposition({
     <View style={{ flex: 1 }}>
       {!describeReviewActive ? (
         <>
-      {/* Search row — primary input. Right-edge icons (scan / voice
-          / photo) ride along when the host wires the corresponding
-          callbacks. In inline mode the row is a real `<TextInput>`
-          (focused on first appearance); in legacy tap-to-open mode
-          it's a `Pressable` that fires `search.onOpen`. */}
+      {/* Search row — primary input. ENG-1532: the right-edge scan icon
+          renders only while `component_grammar_dedup` is OFF (ON = the
+          loud CTA is the single scanner entry; OFF = today's render,
+          byte-intact — keep in sync with web). Inline mode = real
+          `<TextInput>`; legacy mode = `Pressable` firing `search.onOpen`. */}
       <View style={{ paddingHorizontal: Spacing.md, paddingTop: Spacing.md }}>
         {inlineMode ? (
           <View
@@ -767,7 +767,7 @@ function DefaultComposition({
                 paddingVertical: 0,
               }}
             />
-            {barcode?.onOpen ? (
+            {barcode?.onOpen && !isFeatureEnabled("component_grammar_dedup") ? (
               <Pressable
                 onPress={() => barcode.onOpen?.()}
                 accessibilityRole="button"
@@ -802,7 +802,7 @@ function DefaultComposition({
             >
               Search foods or scan
             </Text>
-            {barcode?.onOpen ? (
+            {barcode?.onOpen && !isFeatureEnabled("component_grammar_dedup") ? (
               <ScanBarcode size={18} color={colors.textTertiary} strokeWidth={2} />
             ) : null}
           </Pressable>

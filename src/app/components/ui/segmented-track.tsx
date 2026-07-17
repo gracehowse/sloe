@@ -34,6 +34,11 @@ export type SegmentedTrackOption<T extends string = string> = {
   label: React.ReactNode;
   /** Spoken label when the visual one is terse (e.g. "W" → "Weekly"). */
   ariaLabel?: string;
+  /** Optional count badge after the label (ENG-1532 amendment — the Plan
+   *  Shopping unchecked count). Hidden at 0; caps at "999+" (the ratified
+   *  cross-platform cap; mobile SegmentedTrack matches). Pill treatment
+   *  copied from SubTabPill's badge. */
+  badge?: number;
   testId?: string;
 };
 
@@ -107,7 +112,7 @@ export function SegmentedTrack<T extends string = string>({
               if (!active) onChange(opt.value);
             }}
             className={cn(
-              "rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+              "inline-flex items-center justify-center gap-1.5 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
               fit === "stretch" && "flex-1",
               size === "sm" ? "px-3 py-1 text-[11px]" : "py-1.5 text-[13px]",
               size === "md" && fit === "hug" && "px-4",
@@ -118,7 +123,22 @@ export function SegmentedTrack<T extends string = string>({
                 : "font-medium text-muted-foreground hover:text-foreground",
             )}
           >
-            {opt.label}
+            <span>{opt.label}</span>
+            {opt.badge !== undefined && opt.badge > 0 ? (
+              // Count badge — pill treatment copied from SubTabPill's badge
+              // (ENG-1532 amendment); count caps at 999+ per the ratified
+              // cross-platform badge behaviour (mobile SegmentedTrack matches).
+              <span
+                className={cn(
+                  "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
+                  active
+                    ? "bg-foreground text-background"
+                    : "bg-border text-muted-foreground",
+                )}
+              >
+                {opt.badge > 999 ? "999+" : opt.badge}
+              </span>
+            ) : null}
           </button>
         );
       })}

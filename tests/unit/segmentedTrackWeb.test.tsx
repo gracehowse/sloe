@@ -109,4 +109,40 @@ describe("SegmentedTrack (web)", () => {
     expect(track.className).toContain("bg-muted");
     expect(track.className).toContain("p-0.5");
   });
+
+  // ENG-1532 amendment — optional per-option count badge (SubTabPill's badge
+  // pill treatment: hidden at 0, "999+" cap).
+  describe("count badge", () => {
+    const renderBadge = (badge: number) => {
+      const onChange = vi.fn();
+      render(
+        <SegmentedTrack
+          ariaLabel="Example"
+          options={
+            [
+              { value: "a", label: "Alpha", testId: "seg-a" },
+              { value: "b", label: "Beta", testId: "seg-b", badge },
+            ] as unknown as { value: string; label: React.ReactNode }[]
+          }
+          value="a"
+          onChange={onChange}
+        />,
+      );
+    };
+
+    it("renders the count when badge > 0", () => {
+      renderBadge(5);
+      expect(screen.getByText("5")).toBeTruthy();
+    });
+
+    it("hides the badge at 0", () => {
+      renderBadge(0);
+      expect(screen.queryByText("0")).toBeNull();
+    });
+
+    it("caps the count at 999+", () => {
+      renderBadge(1234);
+      expect(screen.getByText("999+")).toBeTruthy();
+    });
+  });
 });

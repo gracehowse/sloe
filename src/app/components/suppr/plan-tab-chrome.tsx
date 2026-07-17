@@ -1,7 +1,9 @@
 "use client";
 
 import { ScreenChrome } from "./screen-chrome";
+import { SegmentedTrack } from "../ui/segmented-track";
 import { SubTabPill } from "../ui/sub-tab-pill";
+import { isFeatureEnabled } from "@/lib/analytics/track";
 
 export type PlanTab = "plan" | "shopping";
 
@@ -35,17 +37,35 @@ export function PlanTabChrome({
       className={className}
       testID="plan-tab-chrome"
     >
-      <SubTabPill
-        embedded
-        items={[
-          { id: "plan", label: "This week" },
-          { id: "shopping", label: "Shopping", badge: shoppingUncheckedCount },
-        ]}
-        activeId={activeId}
-        onSelect={onSelect}
-        accessibilityLabel="Plan sections"
-        className="pt-0 pb-3"
-      />
+      {/* ENG-1532 component-grammar dedup — sub-tab switchers are the §8
+          SegmentedTrack pill; the Shopping unchecked-count badge rides the
+          track's per-option `badge`. Flag-off renders the legacy SubTabPill
+          underline tabs byte-intact (kill switch). */}
+      {isFeatureEnabled("component_grammar_dedup") ? (
+        <div className="px-6 pb-3">
+          <SegmentedTrack<PlanTab>
+            options={[
+              { value: "plan", label: "This week" },
+              { value: "shopping", label: "Shopping", badge: shoppingUncheckedCount },
+            ]}
+            value={activeId}
+            onChange={onSelect}
+            ariaLabel="Plan sections"
+          />
+        </div>
+      ) : (
+        <SubTabPill
+          embedded
+          items={[
+            { id: "plan", label: "This week" },
+            { id: "shopping", label: "Shopping", badge: shoppingUncheckedCount },
+          ]}
+          activeId={activeId}
+          onSelect={onSelect}
+          accessibilityLabel="Plan sections"
+          className="pt-0 pb-3"
+        />
+      )}
     </ScreenChrome>
   );
 }

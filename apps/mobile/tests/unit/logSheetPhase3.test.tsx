@@ -215,18 +215,37 @@ describe("LogSheet (mobile) — inline-search mode (2026-04-30, customer-lens ne
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
-  it("input-mode Scan still tap-to-open in inline mode (preserved behaviour)", () => {
-    const onScanOpen = vi.fn();
-    const { getByLabelText } = render(
-      <LogSheet
-        visible
-        onClose={() => {}}
-        search={{ onSelect: () => {} }}
-        barcode={{ onOpen: onScanOpen }}
-      />,
-    );
-    fireEvent.press(getByLabelText("Scan"));
-    expect(onScanOpen).toHaveBeenCalledTimes(1);
+  it("ENG-1532 — the loud barcode CTA is the single scanner entry in inline mode (dedup ON)", () => {
+    // `component_grammar_dedup` drops the Scan tile + the search-field scanner
+    // affordance; barcode opening routes through `log-sheet-loud-barcode-cta`.
+    // Forced ON so the pin is deterministic regardless of flag-registration
+    // timing (same spy pattern as the ENG-1484 test below).
+    const original = analytics.isFeatureEnabled;
+    const spy = vi
+      .spyOn(analytics, "isFeatureEnabled")
+      .mockImplementation((flag: string) =>
+        flag === "component_grammar_dedup" ? true : original(flag),
+      );
+    try {
+      const onScanOpen = vi.fn();
+      const { getByTestId, getAllByLabelText, queryByLabelText } = render(
+        <LogSheet
+          visible
+          onClose={() => {}}
+          search={{ onSelect: () => {} }}
+          barcode={{ onOpen: onScanOpen }}
+          showBarcodeFreePromise
+        />,
+      );
+      // The Scan tile is gone, and exactly ONE "Scan barcode" affordance
+      // remains — the loud CTA (the search-field icon is gone too).
+      expect(queryByLabelText("Scan")).toBeNull();
+      expect(getAllByLabelText("Scan barcode")).toHaveLength(1);
+      fireEvent.press(getByTestId("log-sheet-loud-barcode-cta"));
+      expect(onScanOpen).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("clears the query state when the sheet is closed and re-opened", () => {
@@ -325,11 +344,25 @@ describe("LogSheet (mobile) — search row + input mode row (Figma 336:2)", () =
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
 
-  it("scan icon tap fires barcode.onOpen", () => {
-    const onScanOpen = vi.fn();
-    const { getByLabelText } = open({ barcode: { onOpen: onScanOpen } });
-    fireEvent.press(getByLabelText("Scan"));
-    expect(onScanOpen).toHaveBeenCalledTimes(1);
+  it("ENG-1532 — loud barcode CTA tap fires barcode.onOpen (Scan tile removed under dedup)", () => {
+    const original = analytics.isFeatureEnabled;
+    const spy = vi
+      .spyOn(analytics, "isFeatureEnabled")
+      .mockImplementation((flag: string) =>
+        flag === "component_grammar_dedup" ? true : original(flag),
+      );
+    try {
+      const onScanOpen = vi.fn();
+      const { getByTestId, queryByLabelText } = open({
+        barcode: { onOpen: onScanOpen },
+        showBarcodeFreePromise: true,
+      });
+      expect(queryByLabelText("Scan")).toBeNull();
+      fireEvent.press(getByTestId("log-sheet-loud-barcode-cta"));
+      expect(onScanOpen).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("voice icon tap fires voice.onStart", () => {

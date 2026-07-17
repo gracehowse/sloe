@@ -8,11 +8,17 @@
  *
  * Two renders, gated on `sloe_v3_log` (ENG-1303, default-ON):
  *   - FLAG ON  → the v3 method-grid TILE grammar: equal-width rounded tiles on
- *     the secondary surface (Scan / Photo / Voice / Describe / Quick add), a
+ *     the secondary surface (Photo / Voice / Describe / Quick add), a
  *     frost lock badge in place of the "PRO" text pill on locked AI methods.
- *   - FLAG OFF → the legacy circular input chips (Scan / Voice / Photo /
- *     Quick add) with the "PRO" text pill — the kill-switch path, byte-for-byte
+ *   - FLAG OFF → the legacy circular input chips (Voice / Photo / Quick add)
+ *     with the "PRO" text pill — the kill-switch path, byte-for-byte
  *     the pre-ENG-1303 render.
+ *
+ * ENG-1532 (`component_grammar_dedup`, default-ON) — one barcode entry point:
+ * the flag drops the Scan tile/chip from BOTH renders so the loud
+ * "Scan barcode" CTA (`log-sheet-loud-barcode-cta`) is the single scanner
+ * entry. OFF = today's render with the Scan tile leading each set,
+ * byte-intact. Keep in sync with the mobile `LogSheetInputModeRow.tsx`.
  *
  * AI methods (Voice / Photo) are Pro-gated and render a lock badge (or the
  * legacy PRO pill) when `locked`. ENG-1252 adds an optional one-line
@@ -63,6 +69,10 @@ export function InputModeRow({
   onDescribe?: () => void;
 }) {
   const v3 = isFeatureEnabled("sloe_v3_log");
+  // ENG-1532 — one barcode entry point (`component_grammar_dedup`): ON drops
+  // the Scan tile/chip (the loud CTA is the single scanner entry); OFF renders
+  // today's sets with Scan leading, byte-intact. Keep in sync with mobile.
+  const dedup = isFeatureEnabled("component_grammar_dedup");
 
   // Order differs by render: the v3 grid follows the prototype LogHub
   // method-grid (Scan / Photo / Voice / Describe / Quick add); the legacy
@@ -95,8 +105,12 @@ export function InputModeRow({
   const quick: Mode = { key: "quick", label: "Quick add", Icon: PencilLine, onClick: onQuickAdd };
 
   const modes: Mode[] = v3
-    ? [scan, photoMode, voiceMode, describeMode, quick]
-    : [scan, voiceMode, photoMode, quick];
+    ? dedup
+      ? [photoMode, voiceMode, describeMode, quick]
+      : [scan, photoMode, voiceMode, describeMode, quick]
+    : dedup
+      ? [voiceMode, photoMode, quick]
+      : [scan, voiceMode, photoMode, quick];
 
   // ENG-1252 — anchor the tooltip under the FIRST rendered + locked AI method
   // so it never renders twice; host owns whether it shows at all.
