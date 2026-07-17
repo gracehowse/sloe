@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sloe — Interactive Prototype</title>
+<title>Sloe — Interactive Prototype · build S7</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..600,0..100,0..1&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..500&family=Inter:wght@400..700&display=swap">
@@ -3124,9 +3124,6 @@ function RingHero({eaten, goal, value, over, label, sums, mg, variant}){
         <svg width={SZ} height={SZ} aria-hidden="true">
           <defs>
             <linearGradient id={gid} x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor={cb}/><stop offset="100%" stopColor={ca}/></linearGradient>
-            <filter id={gid+'-glow'} x="-160%" y="-160%" width="420%" height="420%"><feGaussianBlur stdDeviation="3.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-            <radialGradient id={gid+'-core'} cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor={cb} stopOpacity="0.22"/><stop offset="42%" stopColor={cb} stopOpacity="0.07"/><stop offset="72%" stopColor={cb} stopOpacity="0"/></radialGradient>
-            <radialGradient id={gid+'-rim'} cx="50%" cy="50%" r="50%"><stop offset="62%" stopColor={cb} stopOpacity="0"/><stop offset="88%" stopColor={cb} stopOpacity="0.10"/><stop offset="100%" stopColor={cb} stopOpacity="0"/></radialGradient>
           </defs>
           {track}{lit}
         </svg>
@@ -3341,17 +3338,15 @@ function RingHero({eaten, goal, value, over, label, sums, mg, variant}){
         <circle cx={cx} cy={cy} r={R} fill="none" stroke="var(--ring-bg)" strokeWidth={ST}/>
         <circle cx={cx} cy={cy} r={R-ST/2} fill="none" stroke="var(--ring-channel)" strokeWidth={1}/>
         {/* inner radial glow behind the numeral */}
-        <circle cx={cx} cy={cy} r={R-ST/2} fill={`url(#${gid}-core)`}/>
         {/* the lustrous progress arc */}
         <circle cx={cx} cy={cy} r={R} fill="none" stroke={`url(#${gid})`} strokeWidth={ST} strokeLinecap="round"
-          strokeDasharray={C} strokeDashoffset={C*(1-drawn)} transform={`rotate(-90 ${cx} ${cy})`} filter={`url(#${gid}-glow)`} style={SPRING}/>
+          strokeDasharray={C} strokeDashoffset={C*(1-drawn)} transform={`rotate(-90 ${cx} ${cy})`} style={SPRING}/>
         {/* specular conic sheen riding the arc centreline */}
         <circle cx={cx} cy={cy} r={R} fill="none" stroke={`url(#${gid}-sheen)`} strokeWidth={ST*0.46} strokeLinecap="round"
           strokeDasharray={C} strokeDashoffset={C*(1-drawn)} transform={`rotate(-90 ${cx} ${cy})`} style={SPRING}/>
         {/* luminous leading gem at the arc head */}
         {drawn>0.015 && (
           <g style={{transition:'all 1.15s var(--spring)'}}>
-            <circle cx={tipX} cy={tipY} r={ST/2+4} fill={cb} opacity="0.30" filter={`url(#${gid}-glow)`}/>
             <circle cx={tipX} cy={tipY} r={ST/2} fill={cb}/>
             <circle cx={tipX} cy={tipY} r={ST/2-4.5} fill="var(--ring-cap-core)" opacity="0.92"/>
           </g>
@@ -3401,7 +3396,6 @@ function MacroSection({sums, mg, variant, netCarbs, onMacro}){
             <svg width={SZ} height={SZ}>
               <defs>
                 <linearGradient id={gid} x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor={cl}/><stop offset="100%" stopColor={cc}/></linearGradient>
-                <filter id={gid+'-g'} x="-180%" y="-180%" width="460%" height="460%"><feGaussianBlur stdDeviation="1.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
               </defs>
               {premium && <circle cx={cx} cy={cy} r={SZ/2-9} fill={`var(--macro-${c}-soft)`} opacity="0.55"/>}
               {track}{lit}
@@ -5131,7 +5125,6 @@ function Progress(){
             <defs>
               <linearGradient id="ph-line" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="var(--primary-active)"/><stop offset="100%" stopColor="var(--primary)"/></linearGradient>
               <linearGradient id="ph-area" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="var(--primary)" stopOpacity="0.15"/><stop offset="100%" stopColor="var(--primary)" stopOpacity="0"/></linearGradient>
-              <filter id="ph-glow" x="-140%" y="-140%" width="380%" height="380%"><feGaussianBlur stdDeviation="2.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             </defs>
             <rect x="0" y="82" width="300" height="13" rx="4" fill="var(--success-soft)" opacity=".5"/>
             <line x1="0" y1="88" x2="300" y2="88" stroke="var(--success)" strokeWidth="1" strokeDasharray="3 5" opacity=".6"/>
@@ -7910,7 +7903,6 @@ function WebProgress({open}){
               <defs>
                 <linearGradient id="wph-line" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stopColor="var(--primary-active)"/><stop offset="100%" stopColor="var(--primary)"/></linearGradient>
                 <linearGradient id="wph-area" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="var(--primary)" stopOpacity="0.14"/><stop offset="100%" stopColor="var(--primary)" stopOpacity="0"/></linearGradient>
-                <filter id="wph-glow" x="-140%" y="-140%" width="380%" height="380%"><feGaussianBlur stdDeviation="3.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
               </defs>
               <rect x="40" y="158" width="516" height="18" rx="5" fill="var(--success-soft)" opacity=".5"/>
               <line x1="40" y1="167" x2="556" y2="167" stroke="var(--success)" strokeWidth="1" strokeDasharray="4 5" opacity=".6"/>
@@ -9054,9 +9046,9 @@ function TweaksModal({state, set, nav}){
   return (
     <div className="tw-modal">
       <div className="tw-mhead">
-        <span className="tw-mtitle">Tweaks</span>
+        <span className="tw-mtitle">Tweaks</span><span style={{fontSize:10,fontWeight:600,color:'var(--fg-tertiary)',marginLeft:8,letterSpacing:'.06em'}}>BUILD S7</span>
         <div style={{display:'flex',gap:6}}>
-          <button className="tw-x" onClick={()=>set({device:'mobile',theme:'light',accent:'plum',fontSans:'inter',fontSerif:'newsreader',fontBrand:'fraunces',ring:'segflat',mac:'rings',density:'standard',surface:'white',premium:false,calm:false,netCarbs:false,ingTiles:false,provenance:'honest'})} title="Reset" style={{fontSize:11,width:'auto',padding:'0 8px'}}>Reset</button>
+          <button className="tw-x" onClick={()=>set({device:'mobile',theme:'light',accent:'plum',fontSans:'inter',fontSerif:'newsreader',fontBrand:'fraunces',ring:'segflat',mac:'rings',density:'standard',surface:'white',premium:true,calm:false,netCarbs:false,ingTiles:false,provenance:'honest'})} title="Reset" style={{fontSize:11,width:'auto',padding:'0 8px'}}>Reset</button>
           <button className="tw-x" onClick={()=>setOpen(false)} aria-label="Minimise"><I4 n="x" s={16}/></button>
         </div>
       </div>
@@ -9099,7 +9091,7 @@ function TweaksModal({state, set, nav}){
 }
 
 function App(){
-  const [tw,setTw]=RS({device:'mobile', theme:'light', accent:'plum', fontSans:'inter', fontSerif:'newsreader', fontBrand:'fraunces', ring:'segflat', mac:'rings', scenario:'breakfast', density:'standard', surface:'white', premium:false, calm:false, netCarbs:false, ingTiles:false, provenance:'honest', webView:'today', webModal:null});
+  const [tw,setTw]=RS({device:'mobile', theme:'light', accent:'plum', fontSans:'inter', fontSerif:'newsreader', fontBrand:'fraunces', ring:'segflat', mac:'rings', scenario:'breakfast', density:'standard', surface:'white', premium:true, calm:false, netCarbs:false, ingTiles:false, provenance:'honest', webView:'today', webModal:null});
   const set=(patch)=>setTw(s=>Object.assign({},s,patch));
   const [tab,setTab]=RS('today');
   const [onboarded,setOnboarded]=RS(false);
