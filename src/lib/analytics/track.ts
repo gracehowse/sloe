@@ -494,6 +494,14 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // scan tile + search-row scanner icons (kill switch: remove here /
   // PostHog). Web + mobile — keep in sync with apps/mobile/lib/analytics.ts.
   "component_grammar_dedup",
+  // ENG-1438 (2026-07-05 deep audit, MP-06/LEGAL-006) — condensed one-line
+  // auto-renewal disclosure directly under the always-visible sticky/hero
+  // purchase CTA (`buildStickyRenewalLine` in `src/lib/landing/paywallTrust.ts`).
+  // Pre-fix the full disclosure sat below the fold while the CTA was visible
+  // from frame one, so a user could tap purchase without ever reading it.
+  // Legal-reviewed copy; shared web + mobile. Off → the pre-fix caption
+  // (kill switch).
+  "paywall_sticky_renewal_line_v1",
 ]);
 
 /**

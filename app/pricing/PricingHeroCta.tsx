@@ -4,6 +4,7 @@ import { useState } from "react";
 import { computeAnnualSavingsBadge, type PricingTier } from "../../src/lib/landing/content.ts";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../src/lib/analytics/track.ts";
+import { buildStickyRenewalLine } from "../../src/lib/landing/paywallTrust.ts";
 import { CheckoutButton } from "./CheckoutButton.tsx";
 
 /**
@@ -48,6 +49,8 @@ export function PricingHeroCta({
 }) {
   const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
   const conversionPairEnabled = isFeatureEnabled("pricing_conversion_pair_v1");
+  // ENG-1438 — condensed sticky-bar renewal disclosure (below the CTA).
+  const stickyRenewalLineEnabled = isFeatureEnabled("paywall_sticky_renewal_line_v1");
   const isAnnual = billing === "annual";
   const price = isAnnual && proTier.annualPrice ? proTier.annualPrice : proTier.price;
   const period = isAnnual && proTier.annualPrice ? proTier.annualPeriod ?? "" : proTier.period;
@@ -147,9 +150,16 @@ export function PricingHeroCta({
           {/* Honesty-note character: only annual carries the 7-day trial
               (matches `BillingDisclosure`'s leadClause below) — the caption
               must track the selected period, not imply monthly has one too. */}
-          {isAnnual
-            ? "7-day free trial · cancel anytime"
-            : "Charged today · cancel anytime"}
+          {stickyRenewalLineEnabled
+            ? buildStickyRenewalLine({
+                trialApplies: isAnnual,
+                price,
+                period,
+                cancelSurface: "account settings",
+              })
+            : isAnnual
+              ? "7-day free trial · cancel anytime"
+              : "Charged today · cancel anytime"}
         </p>
       </div>
     </div>

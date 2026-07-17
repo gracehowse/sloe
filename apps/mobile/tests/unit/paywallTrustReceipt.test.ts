@@ -15,6 +15,7 @@ import { describe, expect, it } from "vitest";
 import {
   PAYWALL_TRUST_CHIPS,
   buildReceiptTrustCopy,
+  buildStickyRenewalLine,
 } from "@suppr/shared/landing/paywallTrust";
 
 describe("mobile — PAYWALL_TRUST_CHIPS shape", () => {
@@ -68,5 +69,29 @@ describe("mobile — buildReceiptTrustCopy (post-purchase Alert)", () => {
     });
     expect(copy.toLowerCase()).not.toMatch(/email.*to cancel/);
     expect(copy.toLowerCase()).not.toMatch(/contact support to cancel/);
+  });
+});
+
+describe("mobile — buildStickyRenewalLine (ENG-1438 sticky-bar disclosure)", () => {
+  it("imports cleanly via the shared alias (no @/... alias drift)", () => {
+    const line = buildStickyRenewalLine({
+      trialApplies: true,
+      price: "£7.99",
+      period: "/year",
+      cancelSurface: "Settings",
+    });
+    expect(line).toContain("7-day free trial");
+    expect(line).toContain("£7.99/year");
+  });
+
+  it("non-trial branch names the mobile Settings cancel path", () => {
+    const line = buildStickyRenewalLine({
+      trialApplies: false,
+      price: "£7.99",
+      period: "/month",
+      cancelSurface: "Settings",
+    });
+    expect(line).toContain("cancel anytime in Settings");
+    expect(line).not.toContain("free trial");
   });
 });
