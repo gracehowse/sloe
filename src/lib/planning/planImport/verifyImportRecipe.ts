@@ -1,5 +1,5 @@
-import { verifyIngredients } from "../../nutrition/verifyIngredients";
-import { recipeConfidenceTier } from "../../nutrition/verifyConfidencePolicy";
+import { acceptedLineCount, verifyIngredients } from "../../nutrition/verifyIngredients";
+import { recipeConfidenceTierWithExclusions } from "../../nutrition/verifyConfidencePolicy";
 import { ingredientRowsFromRecipe } from "./compilePlanImport";
 import type {
   PlanImportParsedRecipe,
@@ -25,6 +25,7 @@ export async function verifyImportRecipe(
       confidence: "low",
       confidenceTier: "low",
       ingredientCount: 0,
+      excludedLineCount: 0,
     };
   }
   const result = await verifyIngredients({
@@ -32,7 +33,13 @@ export async function verifyImportRecipe(
     servings: recipe.serves,
     provider: "auto",
   });
-  const tier = recipeConfidenceTier(result.avgIngredientConfidence);
+  // ENG-1422 — cap the displayed tier on excluded lines so a more incomplete
+  // recipe can't read at a higher confidence than a fully-matched one.
+  const tier = recipeConfidenceTierWithExclusions(
+    result.avgIngredientConfidence,
+    result.belowAcceptFloorCount,
+    acceptedLineCount(result),
+  );
   const ingredientMacros = result.verified.map((v) => ({
     name: v.input.name,
     amount: v.input.amount,
@@ -57,6 +64,7 @@ export async function verifyImportRecipe(
     confidence: tier,
     confidenceTier: tier,
     ingredientCount: rows.length,
+    excludedLineCount: result.belowAcceptFloorCount,
     ingredientMacros,
   };
 }

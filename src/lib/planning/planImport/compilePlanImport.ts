@@ -155,12 +155,23 @@ export function compilePlanImportSlots(input: {
   return out;
 }
 
-export function planImportStats(slots: readonly PlanImportCompiledSlot[]): {
+export function planImportStats(
+  slots: readonly PlanImportCompiledSlot[],
+  /**
+   * ENG-1422 — the verified recipes behind the slots. Passed so `excludedLineCount`
+   * (lines dropped below the accept floor) can be summed ONCE per recipe rather
+   * than per-slot (a recipe referenced by several slots must count once). Optional
+   * for legacy callers that only need the slot-derived counts; excluded count is 0
+   * when omitted.
+   */
+  recipes: readonly PlanImportVerifiedRecipe[] = [],
+): {
   recipeCount: number;
   slotCount: number;
   linkedCount: number;
   blockedCount: number;
   avgKcalPerDay: number;
+  excludedLineCount: number;
 } {
   const slotCount = slots.length;
   const linkedCount = slots.filter((s) => s.linkStatus === "linked" || s.linkStatus === "kcal_only").length;
@@ -178,12 +189,14 @@ export function planImportStats(slots: readonly PlanImportCompiledSlot[]): {
   for (const s of slots) {
     for (const k of s.recipeKeys) recipeKeys.add(k);
   }
+  const excludedLineCount = recipes.reduce((sum, r) => sum + (r.excludedLineCount ?? 0), 0);
   return {
     recipeCount: recipeKeys.size,
     slotCount,
     linkedCount,
     blockedCount,
     avgKcalPerDay,
+    excludedLineCount,
   };
 }
 

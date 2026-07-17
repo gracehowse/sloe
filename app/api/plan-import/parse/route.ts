@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { AiBudgetExceededError, callAiText } from "@/lib/server/aiProvider";
 import { rateLimit } from "@/lib/server/rateLimit";
-import { verifyIngredients } from "@/lib/nutrition/verifyIngredients";
-import { recipeConfidenceTier } from "@/lib/nutrition/verifyConfidencePolicy";
+import { acceptedLineCount, verifyIngredients } from "@/lib/nutrition/verifyIngredients";
+import { recipeConfidenceTierWithExclusions } from "@/lib/nutrition/verifyConfidencePolicy";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
@@ -47,6 +47,7 @@ async function verifyRecipe(recipe: PlanImportParsedRecipe): Promise<PlanImportV
       confidence: "low",
       confidenceTier: "low",
       ingredientCount: 0,
+      excludedLineCount: 0,
     };
   }
   const result = await verifyIngredients({
@@ -54,7 +55,13 @@ async function verifyRecipe(recipe: PlanImportParsedRecipe): Promise<PlanImportV
     servings: recipe.serves,
     provider: "auto",
   });
-  const tier = recipeConfidenceTier(result.avgIngredientConfidence);
+  // ENG-1422 — cap the displayed tier on excluded lines so a more incomplete
+  // recipe can't read at a higher confidence than a fully-matched one.
+  const tier = recipeConfidenceTierWithExclusions(
+    result.avgIngredientConfidence,
+    result.belowAcceptFloorCount,
+    acceptedLineCount(result),
+  );
   const ingredientMacros = result.verified.map((v) => ({
     name: v.input.name,
     amount: v.input.amount,
@@ -82,6 +89,7 @@ async function verifyRecipe(recipe: PlanImportParsedRecipe): Promise<PlanImportV
     confidence: confidenceFromTier(tier),
     confidenceTier: confidenceFromTier(tier),
     ingredientCount: rows.length,
+    excludedLineCount: result.belowAcceptFloorCount,
     ingredientMacros,
   };
 }
@@ -216,6 +224,7 @@ export async function POST(req: Request) {
         confidence: "low",
         confidenceTier: "low",
         ingredientCount: r.ingredients.length,
+        excludedLineCount: 0,
       });
     }
   }
@@ -224,7 +233,7 @@ export async function POST(req: Request) {
     schedule: normalized.schedule,
     recipes: verified,
   });
-  const stats = planImportStats(slots);
+  const stats = planImportStats(slots, verified);
 
   return NextResponse.json({
     ok: true,

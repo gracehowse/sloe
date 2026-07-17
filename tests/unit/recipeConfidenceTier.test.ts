@@ -11,6 +11,7 @@ import {
   RECIPE_CONFIDENCE_TIER_HIGH,
   RECIPE_INGREDIENT_REVIEW_CONFIDENCE,
   recipeConfidenceTier,
+  recipeConfidenceTierWithExclusions,
 } from "../../src/lib/nutrition/verifyConfidencePolicy";
 
 describe("recipeConfidenceTier — boundary behaviour", () => {
@@ -42,5 +43,54 @@ describe("recipeConfidenceTier — boundary behaviour", () => {
   it("boundaries derive from the exported constants (no drift)", () => {
     expect(recipeConfidenceTier(RECIPE_CONFIDENCE_TIER_HIGH)).toBe("high");
     expect(recipeConfidenceTier(RECIPE_INGREDIENT_REVIEW_CONFIDENCE)).toBe("medium");
+  });
+});
+
+describe("recipeConfidenceTierWithExclusions — ENG-1422 excluded-line cap", () => {
+  it("no excluded lines → identical to the raw tier (may be high)", () => {
+    expect(recipeConfidenceTierWithExclusions(0.9, 0, 5)).toBe("high");
+    expect(recipeConfidenceTierWithExclusions(0.6, 0, 5)).toBe("medium");
+    expect(recipeConfidenceTierWithExclusions(0.3, 0, 5)).toBe("low");
+  });
+
+  it("any excluded line caps a high accepted-average down to medium", () => {
+    // 4 accepted at 0.9 + 1 excluded → raw tier would be high; capped to medium.
+    expect(recipeConfidenceTierWithExclusions(0.9, 1, 4)).toBe("medium");
+  });
+
+  it("MORE excluded lines never read HIGHER than fewer at the same average", () => {
+    // Same accepted-average (0.9) and accepted count (5); increasing exclusions
+    // must be monotonically non-increasing across the tier ladder.
+    const order = { low: 0, medium: 1, high: 2 } as const;
+    const tiers = [0, 1, 2, 3, 4, 5, 8].map((excluded) =>
+      recipeConfidenceTierWithExclusions(0.9, excluded, 5),
+    );
+    for (let i = 1; i < tiers.length; i++) {
+      expect(order[tiers[i]!]).toBeLessThanOrEqual(order[tiers[i - 1]!]);
+    }
+    // And the inversion is gone: 0 excluded is strictly higher than 1 excluded.
+    expect(order[tiers[0]!]).toBeGreaterThan(order[tiers[1]!]);
+  });
+
+  it("half or more of the recipe excluded → low, even with a pristine average", () => {
+    // 3 accepted at 0.95, 3 excluded (half) → low.
+    expect(recipeConfidenceTierWithExclusions(0.95, 3, 3)).toBe("low");
+    // Excluded strictly exceeds accepted → low.
+    expect(recipeConfidenceTierWithExclusions(0.95, 4, 3)).toBe("low");
+    // Under half stays at the medium cap.
+    expect(recipeConfidenceTierWithExclusions(0.95, 2, 5)).toBe("medium");
+  });
+
+  it("a low accepted-average with exclusions stays low (never bumped up)", () => {
+    expect(recipeConfidenceTierWithExclusions(0.3, 1, 4)).toBe("low");
+  });
+
+  it("zero accepted lines with any exclusion → low (nothing cleared the floor)", () => {
+    expect(recipeConfidenceTierWithExclusions(0, 2, 0)).toBe("low");
+  });
+
+  it("non-finite / negative counts are treated as zero excluded", () => {
+    expect(recipeConfidenceTierWithExclusions(0.9, Number.NaN, 5)).toBe("high");
+    expect(recipeConfidenceTierWithExclusions(0.9, -1, 5)).toBe("high");
   });
 });

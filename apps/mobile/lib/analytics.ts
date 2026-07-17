@@ -372,6 +372,13 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // "USDA verified" over-promise. Default-ON (N=1 tester); flag-off keeps the
   // legacy "USDA verified" copy (kill switch). Keep in sync with web.
   "trust_source_name_v1",
+  // ENG-1422 — Plan Import review surfaces the count of ingredient lines left
+  // out of the Sloe-calc totals ("N low-confidence lines left out — review
+  // before importing"). Trust/safety fix (the old tier was an inverted signal),
+  // so it ships DEFAULT-ON at N=1 with the PostHog row as the kill switch; flag
+  // off hides the count line (the tier cap itself is unflagged server logic).
+  // Keep in sync with web.
+  "plan_import_excluded_lines_v1",
   // ENG-1527 — the shopping-list "Update from plan" re-sync affordance
   // (mobile + web). Default-ON so the dead-end fix ships everywhere; the
   // PostHog gate is the kill switch for the non-destructive DB write path.

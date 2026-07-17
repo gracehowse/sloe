@@ -23,7 +23,7 @@
   "apps/mobile/app/login.tsx": 466,
   "apps/mobile/app/meal-nutrition.tsx": 699,
   "apps/mobile/app/paywall.tsx": 1337,
-  "apps/mobile/app/plan-import.tsx": 659,
+  "apps/mobile/app/plan-import.tsx": 658,
   "apps/mobile/app/profile.tsx": 954,
   "apps/mobile/app/progress-metric.tsx": 505,
   "apps/mobile/app/recipe/[id].tsx": 2518,

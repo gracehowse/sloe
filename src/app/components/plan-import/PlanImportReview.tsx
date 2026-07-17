@@ -28,6 +28,8 @@ interface PlanImportReviewProps {
   displaySlots: PlanImportCompiledSlot[];
   avgKcal: number;
   targetKcal: number;
+  /** ENG-1422 — flag gate for the excluded-line advisory (default-ON). */
+  showExcludedLines: boolean;
   planName: string;
   setPlanName: (v: string) => void;
   nutritionMode: PlanImportNutritionMode;
@@ -48,6 +50,7 @@ export function PlanImportReview({
   displaySlots,
   avgKcal,
   targetKcal,
+  showExcludedLines,
   planName,
   setPlanName,
   nutritionMode,
@@ -62,6 +65,7 @@ export function PlanImportReview({
   onBack,
   onCommit,
 }: PlanImportReviewProps) {
+  const excludedCount = parseResult.stats.excludedLineCount ?? 0;
   return (
     <div data-testid="plan-import-review" className="product-shell py-pm-6 space-y-5">
       <div className="flex items-center gap-3">
@@ -91,6 +95,18 @@ export function PlanImportReview({
           {parseResult.stats.recipeCount} recipes · {parseResult.stats.slotCount} slots ·{" "}
           {parseResult.stats.blockedCount} blocked
         </p>
+        {/* ENG-1422 — the tier alone hid how incomplete the totals are (excluded
+            lines RAISED the accepted-average). Surface the count so the user sees
+            what's missing before importing. */}
+        {showExcludedLines && excludedCount > 0 ? (
+          <p
+            data-testid="plan-import-excluded-note"
+            className="text-[13px] text-warning-solid mt-2 font-medium"
+          >
+            {excludedCount} low-confidence {excludedCount === 1 ? "line" : "lines"} left out of these
+            totals — review before importing.
+          </p>
+        ) : null}
       </div>
 
       {/* Nutrition handling — author's numbers vs match & verify. */}
