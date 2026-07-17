@@ -4,7 +4,7 @@ import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   ActivityIndicator,
   Alert,
-  Keyboard,
+  Keyboard, Linking,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -1122,8 +1122,8 @@ export default function BarcodeScannerModal({
           <View style={styles.centered}>
             <Camera size={48} color={colors.textSecondary} strokeWidth={1.75} />
             <Text style={styles.permText}>Camera access needed to scan barcodes</Text>
-            <Pressable style={styles.permBtn} onPress={() => requestPermission()}>
-              <Text style={styles.permBtnText}>Grant Permission</Text>
+            <Pressable style={styles.permBtn} onPress={() => (permission?.canAskAgain === false ? void Linking.openSettings() : requestPermission())}>
+              <Text style={styles.permBtnText}>{permission?.canAskAgain === false ? "Open Settings" : "Grant Permission"}</Text>
             </Pressable>
           </View>
         ) : (

@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Keyboard,
+  Keyboard, Linking,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -784,8 +784,8 @@ export default function BarcodeScreen() {
         <Text style={styles.permText}>
           Sloe needs your camera to scan product barcodes and look up nutrition info.
         </Text>
-        <Pressable style={styles.permBtn} onPress={() => void requestPermission()} accessibilityLabel="Grant camera permission">
-          <Text style={styles.permBtnText}>Grant Permission</Text>
+        <Pressable style={styles.permBtn} onPress={() => (permission.canAskAgain === false ? void Linking.openSettings() : void requestPermission())} accessibilityLabel={permission.canAskAgain === false ? "Open Settings" : "Grant camera permission"}>
+          <Text style={styles.permBtnText}>{permission.canAskAgain === false ? "Open Settings" : "Grant Permission"}</Text>
         </Pressable>
       </View>
     );
