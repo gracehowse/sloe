@@ -145,7 +145,12 @@ for (const check of checks) {
 
     for (const re of forbidden) {
       re.lastIndex = 0;
-      const matches = [...new Set(text.match(re) ?? [])].filter((m) => !vendorStrings.has(m));
+      // The vendor allow-list exists to tolerate SDK-internal literals inside
+      // BUNDLED vendor code only. Committed source can't contain vendor code,
+      // so suppression there would let the official PostHog host through the
+      // gate (PR #909 review finding) — every match in a source check is ours.
+      const vendorSuppressed = check.label === "web production client bundle";
+      const matches = [...new Set(text.match(re) ?? [])].filter((m) => !(vendorSuppressed && vendorStrings.has(m)));
       if (matches.length) findings.push(`${rel}: ${matches.join(", ")}`);
     }
   }
