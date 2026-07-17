@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { AiBudgetExceededError, callAiText } from "@/lib/server/aiProvider";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { verifyIngredients } from "@/lib/nutrition/verifyIngredients";
+import { recipeConfidenceTier } from "@/lib/nutrition/verifyConfidencePolicy";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
@@ -53,12 +54,7 @@ async function verifyRecipe(recipe: PlanImportParsedRecipe): Promise<PlanImportV
     servings: recipe.serves,
     provider: "auto",
   });
-  const tier =
-    result.avgIngredientConfidence >= 0.75
-      ? "high"
-      : result.avgIngredientConfidence >= 0.5
-        ? "medium"
-        : "low";
+  const tier = recipeConfidenceTier(result.avgIngredientConfidence);
   const ingredientMacros = result.verified.map((v) => ({
     name: v.input.name,
     amount: v.input.amount,

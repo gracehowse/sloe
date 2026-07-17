@@ -1,16 +1,10 @@
 import { verifyIngredients } from "../../nutrition/verifyIngredients";
+import { recipeConfidenceTier } from "../../nutrition/verifyConfidencePolicy";
 import { ingredientRowsFromRecipe } from "./compilePlanImport";
 import type {
-  PlanImportConfidence,
   PlanImportParsedRecipe,
   PlanImportVerifiedRecipe,
 } from "./types";
-
-function confidenceFromTier(tier: string): PlanImportConfidence {
-  if (tier === "high") return "high";
-  if (tier === "medium") return "medium";
-  return "low";
-}
 
 /** Verify one parsed import recipe against Suppr foods (shared by plan + cookbook import). */
 export async function verifyImportRecipe(
@@ -38,12 +32,7 @@ export async function verifyImportRecipe(
     servings: recipe.serves,
     provider: "auto",
   });
-  const tier =
-    result.avgIngredientConfidence >= 0.75
-      ? "high"
-      : result.avgIngredientConfidence >= 0.5
-        ? "medium"
-        : "low";
+  const tier = recipeConfidenceTier(result.avgIngredientConfidence);
   const ingredientMacros = result.verified.map((v) => ({
     name: v.input.name,
     amount: v.input.amount,
@@ -65,8 +54,8 @@ export async function verifyImportRecipe(
       fat: Math.round(result.perServing.fat * 10) / 10,
       fiberG: Math.round((result.perServing.fiberG ?? 0) * 10) / 10,
     },
-    confidence: confidenceFromTier(tier),
-    confidenceTier: confidenceFromTier(tier),
+    confidence: tier,
+    confidenceTier: tier,
     ingredientCount: rows.length,
     ingredientMacros,
   };

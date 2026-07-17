@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { verifyIngredients, type IngredientOverride } from "@/lib/nutrition/verifyIngredients";
+import { recipeConfidenceTier } from "@/lib/nutrition/verifyConfidencePolicy";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
@@ -72,12 +73,7 @@ export async function POST(req: Request) {
   const verifyStartedAt = Date.now();
   try {
     const result = await verifyIngredients({ ingredients, servings, provider, overrides });
-    const confidenceTier =
-      result.avgIngredientConfidence >= 0.75
-        ? "high"
-        : result.avgIngredientConfidence >= 0.5
-          ? "medium"
-          : "low";
+    const confidenceTier = recipeConfidenceTier(result.avgIngredientConfidence);
     return NextResponse.json({
       ok: true,
       confidenceTier,

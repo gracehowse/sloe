@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
 import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
 import { verifyIngredients } from "@/lib/nutrition/verifyIngredients";
+import { recipeConfidenceTier } from "@/lib/nutrition/verifyConfidencePolicy";
 import {
   buildPhotoRefinePrompt,
   buildVoiceRefinePrompt,
@@ -427,12 +428,7 @@ async function handleVoiceRefine(ctx: {
     const totalCarbs = outItems.reduce((a, i) => a + i.carbs, 0);
     const totalFat = outItems.reduce((a, i) => a + i.fat, 0);
 
-    const confidenceTier =
-      result.avgIngredientConfidence >= 0.75
-        ? "high"
-        : result.avgIngredientConfidence >= 0.5
-          ? "medium"
-          : "low";
+    const confidenceTier = recipeConfidenceTier(result.avgIngredientConfidence);
 
     void serverTrack(AnalyticsEvents.ai_log_refine_completed, userId, {
       source: "voice",
