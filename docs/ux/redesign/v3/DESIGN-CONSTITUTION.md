@@ -84,7 +84,9 @@ One screen should read near-monochrome plum-ink until the *data* speaks.
 ## Rule 5 — The numeric instrument scale
 
 Serif, tabular. **Hero numeral 44–46** (one per screen) · **section numeral 28** ·
-row numeral 15–17 · caption 11–12. No other numeric sizes exist.
+row numeral 15–17 · caption 11–12. **Story tier (recap scenes ONLY, ratified with
+Rule 8's ≥8:1 law): display numeral 84 · statement 40 — one per scene.** No other
+numeric sizes exist.
 
 ## Rule 6 — Ground & depth
 
@@ -105,17 +107,30 @@ The app exists to run one loop: **where do I stand → what do I eat next → lo
 the week is handled → did it work.** Each screen's hero (Rule 1) IS its loop moment,
 and each moment obeys a researched composition law (Mobbin refs in the census):
 
-| Moment | Screen · hero | Composition law |
+| Moment | Screen · hero | Composition law (Mobbin-verified) |
 |---|---|---|
-| Where do I stand | Today · the ring | One numeral, state-coloured; tap flips remaining↔eaten (MacroFactor reframe) |
-| What do I eat next | Today · decision module | Editorial photo + serif name, target chips as the numerals, ONE verdict line, ONE action ("Log this"); tap opens the recipe. Never three prompts (Copilot/Flighty: one number leads, one action clears) |
+| Where do I stand | Today · the ring | One numeral, state-coloured; tap flips remaining↔eaten (MacroFactor reframe; the category convention is remaining-led — [Lifesum's diary hero](https://mobbin.com/screens/ee72c05c-3ec9-4373-86e8-3548b579dd73)) |
+| What do I eat next | Today · decision module | Editorial photo + serif name, target chips as the numerals, ONE verdict line, ONE action ("Log this"); tap opens the recipe. The range convention exists ([Lifesum: "Add lunch · Recommended 461–615 kcal"](https://mobbin.com/screens/ee72c05c-3ec9-4373-86e8-3548b579dd73)) but nobody renders it editorially — our lane. Its "Day rating" smiley card is the judgment register we ban |
 | Log it | FAB · log hub | Recents = one-tap re-log (Lose It); post-log reward = the watched element completes + one honesty line — never confetti (MacroFactor state-flip, Cal AI verdict) |
 | Week is handled | Plan · day verdict hero | Calm verdict sentence + **one-tap fix** that re-derives downstream (open lane — none of Mealime/eMeals render the verdict; we do) |
-| Did it work | Progress · trajectory hero | Smoothed line + raw dots + goal line **co-visible** (Withings' hard lesson) + rate + hedged projection; coaching only on drift |
+| Did it work | Progress · trajectory hero | Smoothed line + raw dots + goal line **co-visible** ([Withings' dots-on-line grammar](https://mobbin.com/screens/dd9eb17c-bee7-4559-a530-31c0fd240231)) + labelled goal band + dotted projection ([Noom's weight graph](https://mobbin.com/screens/dc3979bd-856a-44a5-b52a-3e2061f4a69f)) + rate with the period control ([MacroFactor's average/difference + W–Y pills](https://mobbin.com/screens/e4730836-8f0f-421a-bf91-1585fc7d8f4d)); projection stays hedged — [Noom's "we predict you'll reach your goal" promise](https://mobbin.com/screens/a617cbce-d0e0-4f6f-a2e1-3c74a6065931) is the anti-pattern our "estimate, not a promise" counters |
 
-Next tranche of this rule: the weekly recap as full-bleed single-stat story scenes,
-descriptively framed, ending on an identity beat, each scene saveable
-(Gentler Streak / Duolingo / Strava grammar) — the §5 Share action's real payload.
+**Delivered 2026-07-17 — the recap story** (§5 Full recap / Share in Elevated): seven
+full-bleed scenes on Sloe Deep following the researched 7-scene law — *arrival →
+headline win (the cooked-from-your-cookbook stat, photo-backed) → the rhythm (week
+strip, baselined "vs your usual", honest amber day) → the quiet win → identity
+(adjective, not badge) → the honest note → forward carry + share*. One stat per
+scene at ≥8:1 numeral:label; per-scene quiet "Share scene" (Strava grammar); no
+percentiles, no confetti; scene reveals 380ms house-ease with 70/140ms stagger
+(NN/g + Emil Kowalski ranges); privacy line: shared scenes carry numbers, never
+goals. The close renders a **bounded white summary-card artifact** (dates overline,
+2×2 stat grid, wordmark) — verified against the Mobbin library: every leader shares
+a designed card, not the raw screen ([Duolingo YIR ends on a summary card +
+share](https://mobbin.com/flows/8571a01f-da27-4bd6-a43b-e6b59ebadcd6); [Beli's
+recap: dots-top story of card artifacts](https://mobbin.com/flows/6520099e-59a7-44a2-8336-a80d9feb47ce);
+[Strava month-in-sport: pick your card style, then share](https://mobbin.com/flows/38aaf14f-cd60-4348-bc6c-4caddcb33ac8)).
+Secondary written refs: Manual's Strava YIS storyboard, Duolingo YIR
+behind-the-scenes, Gentler Streak weekly recap coverage, Whoop WPA baselining.
 
 ## Rule 9 — Motion is confirmation
 
@@ -136,7 +151,12 @@ user thinking. So fit is **ambient**, everywhere a recipe appears:
 - **Capture ends in a trust card** — every import resolves to per-serving macros +
   "Weighed from N ingredients · confidence" + the fit tag + one action. The
   industry-leading calculation is *shown* (provenance, confidence, tap-to-correct),
-  because in nutrition, trust that isn't visible doesn't exist.
+  because in nutrition, trust that isn't visible doesn't exist. Mobbin-verified as
+  open lane: the best import reviews stop at ingredient confirmation —
+  [MFP quotes the source text under each match](https://mobbin.com/screens/8b313dbe-0360-45ae-8219-6f260f49d83b),
+  [Cherrypick's "edit any that look wrong → This looks correct"](https://mobbin.com/screens/6c4b1066-ebe7-49b2-afa1-b8838ab32660),
+  [SideChef's per-ingredient check-off](https://mobbin.com/screens/e7894e84-781b-4c59-b779-8fbd575094e3) —
+  **none surface per-serving macros + confidence + plan-fit at the capture moment.**
 - Fit language is one calm register everywhere: "Fits" — never scores, grades, or
   percentages on food itself.
 
@@ -157,6 +177,27 @@ user thinking. So fit is **ambient**, everywhere a recipe appears:
 | Cuisine letter monograms | 7 | Duotone texture tiles |
 | Pure-white clinical ground | 6 | Warm oat ground |
 
-Remaining, tracked for the next tranche: web dashboard de-templating (sidebar ink
-treatment, hero numerals), motion demos in-prototype, full decorative-colour sweep of
-sheets/pushed screens, onboarding steps against Rule 1.
+**Delivered 2026-07-17 (tranche 2):** the recap story (Rule 8, above) · web shell
+de-templated — ink Sloe-Deep sidebar with frosted nav + white Log-food CTA + clay
+Upgrade (Linear's dimmed-shell + Arc's sidebar-as-brand-surface + Stripe's sparse
+header, per the web-shell dossier), web cards to constitution grammar (radius 24,
+hairline, no shadow — was radius-22 + shadow) · motion demos live in the story
+scenes (380ms house-ease, 70/140ms stagger, reduced-motion honoured) · trajectory
+raw dots + goal line co-visible (Withings), decision-module one-CTA law, Plan
+one-tap fix (open-lane), ambient fit + provenance + import trust card (Rule 10).
+
+**Adversarial panel round (2026-07-17, 19 findings → 16 confirmed → all fixed):**
+a cross-script crash in the web modal registry (RecapStory now window-exported);
+the recap now serves a numbers-light Calm variant (no ranges/weight for
+body-neutral users); the import trust line no longer claims "high confidence"
+beside "quick check needed" (now "2 to confirm below", sage reserved for
+verified); "Fits Thursday dinner" → "Fits a dinner this week"; the protein target
+chip dropped its macro tint (Rule 4); web page-header primaries demote to outline
+so the ink sidebar owns the one filled CTA (Rule 3); story close button to the
+40px spec; Current's goal-label position restored (an ungated change had leaked);
+post-log toast de-certaintied; Rule 5 amended with the story numeral tier.
+
+Still open for the next tranche: decorative-colour sweep of sheets/pushed screens,
+onboarding steps against Rule 1, mobile-web breakpoint against the ink shell, live
+count-up numerals in story scenes, a real fit-derivation note for the demo
+threshold on shelf cards.

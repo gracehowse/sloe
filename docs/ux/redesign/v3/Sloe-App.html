@@ -1759,11 +1759,56 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 .ip-trust{ margin-top:8px; font-size:13.5px; color:var(--fg-secondary); }
 .ip-trust b{ color:var(--fg); font-size:15px; }
 .ip-trust-per{ color:var(--fg-tertiary); font-size:11.5px; }
-.ip-trust-sub{ margin-top:4px; }
+.ip-trust-sub{ margin-top:4px; font-size:12px; color:var(--fg-secondary); }
+/* ── Recap story — the payoff. One stat per scene; descriptive, never judgmental; per-scene save ── */
+.recap-story{ position:absolute; inset:0; z-index:70; background:var(--primary-deep); color:#fff; display:flex; flex-direction:column; cursor:pointer; overflow:hidden; }
+.recap-story::after{ content:""; position:absolute; inset:-40%; background:radial-gradient(circle at 30% 18%, rgba(148,116,168,.30), transparent 55%); pointer-events:none; }
+.rs-photo{ position:absolute; inset:0; background-size:cover; background-position:center; opacity:.38; }
+.rs-photo::after{ content:""; position:absolute; inset:0; background:linear-gradient(180deg, rgba(36,23,51,.55) 0%, rgba(36,23,51,.94) 80%); }
+.rs-dots{ position:relative; z-index:2; display:flex; gap:5px; padding:16px 18px 0; }
+.rs-dot{ flex:1; height:3px; border-radius:2px; background:rgba(255,255,255,.22); transition:background .3s var(--ease); }
+.rs-dot.on{ background:rgba(255,255,255,.9); }
+.rs-top{ position:relative; z-index:2; display:flex; justify-content:space-between; align-items:center; padding:16px 18px 0; }
+.rs-kicker{ font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--accent-frost); }
+.rs-x{ background:rgba(255,255,255,.14); border:none; color:#fff; width:40px; height:40px; border-radius:9999px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none; }
+.rs-scene{ position:relative; z-index:2; flex:1; display:flex; flex-direction:column; justify-content:center; padding:0 30px 40px; }
+.rs-stat{ font-family:var(--font-serif); font-size:84px; font-weight:var(--fw-medium); line-height:1; letter-spacing:-.02em; animation:rsUp .38s var(--ease) both; }
+.rs-big{ font-family:var(--font-serif); font-size:40px; font-weight:var(--fw-medium); line-height:1.14; letter-spacing:-.015em; animation:rsUp .38s var(--ease) both; }
+.rs-mark{ font-family:var(--font-brand); font-size:22px; color:rgba(255,255,255,.85); }
+.rs-line{ font-family:var(--font-serif); font-size:22px; margin-top:10px; color:rgba(255,255,255,.92); animation:rsUp .38s .07s var(--ease) both; }
+.rs-sub{ font-size:14.5px; line-height:1.55; margin-top:14px; color:rgba(255,255,255,.66); max-width:30ch; animation:rsUp .38s .14s var(--ease) both; }
+.rs-card{ background:#fff; color:var(--primary-deep); border-radius:16px; padding:16px 18px 12px; margin-top:20px; max-width:280px; box-shadow:0 18px 44px rgba(0,0,0,.35); animation:rsUp .38s .1s var(--ease) both; }
+.rs-card-k{ font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--primary-active); }
+.rs-card-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; margin-top:12px; }
+.rs-card-grid b{ display:block; font-family:var(--font-serif); font-size:20px; font-weight:var(--fw-medium); line-height:1; }
+.rs-card-grid span{ display:block; font-size:10.5px; color:var(--fg-secondary); margin-top:3px; }
+.rs-card-mark{ font-family:var(--font-brand); font-size:15px; text-align:right; margin-top:10px; color:var(--primary); }
+.rs-foot{ position:relative; z-index:2; display:flex; align-items:center; justify-content:space-between; padding:0 22px 30px; min-height:66px; }
+.rs-save{ background:none; border:none; color:rgba(255,255,255,.75); font-family:var(--font-sans); font-size:13px; font-weight:600; cursor:pointer; padding:8px 0; }
+.rs-hint{ font-size:12px; color:rgba(255,255,255,.4); }
+@keyframes rsUp{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:none; } }
+.rs-bars{ display:flex; align-items:flex-end; gap:7px; height:72px; margin-top:22px; max-width:230px; animation:rsUp .38s .1s var(--ease) both; }
+.rs-bars span{ flex:1; border-radius:5px 5px 3px 3px; }
+@media (prefers-reduced-motion: reduce){ .rs-stat,.rs-big,.rs-line,.rs-sub,.rs-bars{ animation:none; } }
+
+/* ── Web premium shell — ink sidebar (Linear/Stripe grammar), constitution card grammar on the canvas ── */
+[data-premium="1"][data-theme="light"] .w-side{ background:var(--primary-deep); border-right:none; }
+[data-premium="1"][data-theme="light"] .w-side .wordmark{ color:#fff; }
+[data-premium="1"][data-theme="light"] .w-navlbl{ color:rgba(255,255,255,.38); }
+[data-premium="1"][data-theme="light"] .w-nav{ color:rgba(255,255,255,.66); }
+[data-premium="1"][data-theme="light"] .w-nav:hover{ background:rgba(255,255,255,.08); color:#fff; }
+[data-premium="1"][data-theme="light"] .w-nav.on{ background:rgba(255,255,255,.13); color:#fff; box-shadow:none; }
+[data-premium="1"][data-theme="light"] .w-side .w-logbtn{ background:#fff; color:var(--primary-deep); }
+[data-premium="1"][data-theme="light"] .w-side .w-icon-btn{ color:rgba(255,255,255,.66); }
+[data-premium="1"][data-theme="light"] .w-pro{ background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12); color:#fff; }
+[data-premium="1"][data-theme="light"] .w-pro span{ color:rgba(255,255,255,.6); }
+[data-premium="1"][data-theme="light"] .w-pro .btn--primary{ background:var(--clay); color:#fff; }
+[data-premium="1"] .w-card{ border-radius:var(--radius-card-lg); border-color:var(--border); box-shadow:none; }
+/* Rule 3 filled budget: the ink sidebar's Log food is THE filled CTA; page-header primaries demote to outline */
+[data-premium="1"] .w-head .btn--primary{ background:transparent; color:var(--primary); border:1px solid var(--border-strong); }
 /* Loop · the decision module — instrument target band + actions inside the editorial card */
 .rh-loop{ display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap; }
 .rh-loop-chip{ display:inline-flex; align-items:center; background:var(--muted); color:var(--fg); font-size:12.5px; font-weight:var(--fw-semibold); padding:5px 10px; border-radius:9999px; }
-.rh-loop-chip.is-protein{ background:var(--macro-protein-soft); color:var(--macro-protein); }
 .rh-acts{ display:flex; align-items:center; gap:14px; margin-top:12px; }
 [data-theme="light"][data-surface="paper"] .w-scroll{ background:var(--bg-marketing); }
 
@@ -3667,10 +3712,10 @@ function Today(){
                     leading numerals (target chips) + ONE verdict line (the eyebrow) + ONE action; tap-card opens the recipe. */}
                 <span className="rh-loop tnum">
                   <span className="rh-loop-chip">{lo.toLocaleString()}–{hi.toLocaleString()} kcal</span>
-                  {proteinLed && <span className="rh-loop-chip is-protein">~{proteinThisMeal}g protein</span>}
+                  {proteinLed && <span className="rh-loop-chip">~{proteinThisMeal}g protein</span>}
                 </span>
                 <span className="rh-acts">
-                  <span className="btn btn--secondary btn--sm" role="button" onClick={(e)=>{e.stopPropagation(); toast('Logged to '+nextSlot+' · it fits.',{sub:'~'+slotBudget.toLocaleString()+' kcal · your day stays on track.'});}}><Ic n="plus" s={15}/>Log this</span>
+                  <span className="btn btn--secondary btn--sm" role="button" onClick={(e)=>{e.stopPropagation(); toast('Logged to '+nextSlot+'.',{sub:'~'+slotBudget.toLocaleString()+' kcal · inside your target range.'});}}><Ic n="plus" s={15}/>Log this</span>
                 </span>
               </>)}
             </span>
@@ -4246,7 +4291,7 @@ function Cook(){
         {r.imported && <span className="rcard-src">{r.imported}</span>}
       </div>
       <div className="rcard-name">{r.name}</div>
-      <div className="rcard-meta tnum">{premium && r.kcal && r.kcal<=620 && (r.p||0)>=25 ? <span className="fit-tag is-fit">✓ Fits your day</span> : null}{r.kcal? r.kcal+' kcal · '+r.p+'g P' : 'Nutrition pending'} · {r.time}m</div>
+      <div className="rcard-meta tnum">{/* demo threshold — the spec (Constitution Rule 10) derives fit from LIVE targets in the app build */}{premium && r.kcal && r.kcal<=620 && (r.p||0)>=25 ? <span className="fit-tag is-fit">✓ Fits your day</span> : null}{r.kcal? r.kcal+' kcal · '+r.p+'g P' : 'Nutrition pending'} · {r.time}m</div>
     </button>
   );
   return (
@@ -4638,8 +4683,8 @@ function ImportFlow(){
               {premium && (<>
                 {/* The bridge, at the capture moment: weighed macros + confidence + fit — trust shown, not claimed */}
                 <div className="ip-trust tnum"><b>612 kcal</b> · 41g P · 18g C · 38g F <span className="ip-trust-per">per serving</span></div>
-                <div className="ip-trust-sub"><span className="prog-conf">Weighed from 8 ingredients · high confidence</span></div>
-                <div className="rh-loop" style={{marginTop:8}}><span className="fit-tag is-fit">✓ Fits Thursday dinner</span></div>
+                <div className="ip-trust-sub">Weighed from 8 ingredients · 2 to confirm below</div>
+                <div className="rh-loop" style={{marginTop:8}}><span className="fit-tag is-fit">✓ Fits a dinner this week</span></div>
               </>)}</div>
           </div>
           <div className="card review-banner" style={{marginTop:14}}>
@@ -5179,13 +5224,13 @@ function Progress(){
         </div>
 
         {/* §5 · YOUR WEEK — one slimmed recap: serif verdict + one texture line + ghost Share (delta 7) */}
-        {premium && <div className="section-head" style={{margin:'22px 2px 10px'}}><h2 style={{fontSize:18,margin:0}}>Your week</h2><button className="link" onClick={()=>open('recap')}>Full recap</button></div>}
+        {premium && <div className="section-head" style={{margin:'22px 2px 10px'}}><h2 style={{fontSize:18,margin:0}}>Your week</h2><button className="link" onClick={()=>open('recapstory')}>Full recap</button></div>}
         <div className="card animate-up" style={{marginTop:premium?0:14}}>
           {!premium && <div className="spread"><span className="overline"><I3 n="sparkles" s={13} st={{verticalAlign:'-2px',marginRight:5,color:'var(--primary)'}}/>Your week</span><button className="link" onClick={()=>open('recap')}>Full recap</button></div>}
           <div className="prog-verdict">A steady, consistent week — your routine is doing the work.</div>
           <div style={{fontSize:13,color:'var(--fg-secondary)',marginTop:8}}>Your most consistent week this month — Thursday was your best day.</div>
           <div className="prog-wactions" style={{marginTop:14}}>
-            <button className="btn btn--outline btn--sm" onClick={()=>toast('Your week card is ready to share.')}><I3 n="share" s={14}/>Share your week</button>
+            <button className="btn btn--outline btn--sm" onClick={()=>premium?open('recapstory'):toast('Your week card is ready to share.')}><I3 n="share" s={14}/>Share your week</button>
           </div>
         </div>
         <p className="prog-disclaimer">Nutrition data are estimates. Not medical or dietetic advice.</p>
@@ -7903,7 +7948,7 @@ function WebProgress({open}){
             <line x1="40" y1={baseY} x2="556" y2={baseY} stroke="var(--border-strong)"/>
             {P.dayK.map(([d,v],i)=>{const h=(v/maxK)*plotH;const overBar=!bodyNeutral&&v>hi;return <rect key={i} x={cx(i)-20} y={baseY-h} width="40" height={h} rx="6" fill={premium?(overBar?'url(#wkb-over)':'url(#wkb-in)'):(overBar?'var(--warning)':'var(--success)')} stroke={i===6?'var(--fg-secondary)':'none'} strokeWidth={i===6?1.5:0}/>;})}
             {!bodyNeutral && <line x1="40" y1={tY} x2="556" y2={tY} stroke="var(--fg-secondary)" strokeWidth="1.5" strokeDasharray="5 4" opacity=".55"/>}
-            {!bodyNeutral && <text x="44" y={tY-6} textAnchor="start" fontSize="10.5" fontWeight="600" fill="var(--fg-tertiary)" fontFamily="var(--font-sans)">{P.goal.toLocaleString()} target</text>}
+            {!bodyNeutral && <text x={premium?340:556} y={tY-(premium?6:5)} textAnchor={premium?"middle":"end"} fontSize="10.5" fontWeight="600" fill="var(--fg-tertiary)" fontFamily="var(--font-sans)">{P.goal.toLocaleString()} target</text>}
             {!bodyNeutral && P.dayK.map(([d,v],i)=><text key={'v'+i} x={cx(i)} y={baseY-(v/maxK)*plotH-6} textAnchor="middle" fontSize="10" fontWeight="600" fill="var(--fg-tertiary)" fontFamily="var(--font-sans)">{(v/1000).toFixed(2)}k</text>)}
             {days.map((d,i)=><text key={'d'+i} x={cx(i)} y={baseY+22} textAnchor="middle" fontSize="11" fontWeight={i===6?700:400} fill={i===6?'var(--fg)':'var(--fg-tertiary)'} fontFamily="var(--font-sans)">{d}</text>)}
           </svg>);})()}
@@ -7953,10 +7998,10 @@ function WebProgress({open}){
 
         {/* §5 · YOUR WEEK — one slimmed recap: serif verdict + one texture line + ghost Share (delta 7) */}
         <div className="w-col"><div className="w-card" style={{display:'flex',flexDirection:'column'}}>
-          <div className="w-ch"><h2>Your week</h2><button className="w-ch-more" onClick={()=>open&&open('recap')}>View full recap</button></div>
+          <div className="w-ch"><h2>Your week</h2><button className="w-ch-more" onClick={()=>open&&open(premium?'recapstory':'recap')}>View full recap</button></div>
           <div className="prog-verdict">A steady, consistent week — your routine is doing the work.</div>
           <div style={{fontSize:13.5,color:'var(--fg-secondary)',marginTop:8}}>Your most consistent week this month — Thursday was your best day.</div>
-          <div style={{marginTop:'auto',paddingTop:16}}><button className="btn btn--outline btn--sm" onClick={()=>toast&&toast('Your week card is ready to share.')}><Ic n="share" s={14}/>Share your week</button></div>
+          <div style={{marginTop:'auto',paddingTop:16}}><button className="btn btn--outline btn--sm" onClick={()=>premium&&open?open('recapstory'):(toast&&toast('Your week card is ready to share.'))}><Ic n="share" s={14}/>Share your week</button></div>
         </div></div>
       </div>
       <p className="prog-disclaimer">Nutrition data are estimates. Not medical or dietetic advice.</p>
@@ -8114,7 +8159,7 @@ function WebApp({view, setView, modal, setModal}){
       {mn==='fasting' && <WebFasting onClose={closeModal}/>}
       {mn==='verify' && <WebVerify r={recipeById(modal.id)||RECIPES[0]} onClose={closeModal}/>}
       {mn==='billing' && <WebBilling onClose={closeModal} open={open}/>}
-      {['coach','digest','recap','adaptive','report','mfpimport','scanlabel','whynumber','provenance','burndetail','nutrients','hydration','completeday','winmoment','voicelog','plantemplates','creator','gopublic','changelog','eraseeverything','household','export','deleteacct','resetplan','targets','healthsync','grocery','barcode','search','confirm','mealedit','macrodetail','mealdetail','entrydetail','weighttrends','adjustconstraints','calendar','notfound'].includes(mn) && <WebFrame name={mn} onClose={closeModal}/>}
+      {['coach','digest','recap','recapstory','adaptive','report','mfpimport','scanlabel','whynumber','provenance','burndetail','nutrients','hydration','completeday','winmoment','voicelog','plantemplates','creator','gopublic','changelog','eraseeverything','household','export','deleteacct','resetplan','targets','healthsync','grocery','barcode','search','confirm','mealedit','macrodetail','mealdetail','entrydetail','weighttrends','adjustconstraints','calendar','notfound'].includes(mn) && <WebFrame name={mn} onClose={closeModal}/>}
     </div>
   );
 }
@@ -8123,7 +8168,7 @@ function WebApp({view, setView, modal, setModal}){
 function WebFrame({name,onClose}){
   const SX=window.SloeExtra, SC=window.SloeScreens, S2=window.SloeScreens2, SN=window.SloeNew;
   const map={
-    coach:SX&&SX.Coach, digest:SX&&SX.Digest, recap:SX&&SX.WeeklyRecap, adaptive:SX&&SX.AdaptiveTDEE, report:SX&&SX.ReportRecipe, mfpimport:SX&&SX.MfpImport, scanlabel:SC&&SC.ScanLabel, billing:S2&&S2.Billing,
+    coach:SX&&SX.Coach, digest:SX&&SX.Digest, recap:SX&&SX.WeeklyRecap, recapstory:window.RecapStory, adaptive:SX&&SX.AdaptiveTDEE, report:SX&&SX.ReportRecipe, mfpimport:SX&&SX.MfpImport, scanlabel:SC&&SC.ScanLabel, billing:S2&&S2.Billing,
     whynumber:SX&&SX.WhyNumber, provenance:SX&&SX.Provenance, burndetail:SX&&SX.BurnDetail, nutrients:SX&&SX.Nutrients, hydration:SX&&SX.Hydration, completeday:SX&&SX.CompleteDay, winmoment:SX&&SX.WinMoment, voicelog:SX&&SX.VoiceLog,
     plantemplates:SX&&SX.PlanTemplates, creator:SX&&SX.CreatorProfile, gopublic:SX&&SX.GoPublic, changelog:SX&&SX.Changelog, eraseeverything:SX&&SX.EraseEverything, household:SX&&SX.Household, export:SX&&SX.DataExport, deleteacct:SX&&SX.DeleteAccount, resetplan:SX&&SX.ResetPlan,
     targets:S2&&S2.Targets, healthsync:S2&&S2.HealthSync, grocery:S2&&S2.Grocery, barcode:SC&&SC.Barcode, search:SC&&SC.SearchView, confirm:SC&&SC.ConfirmFood, mealedit:SC&&SC.MealEdit,
@@ -8930,6 +8975,73 @@ function applyTheme(theme, accent, fonts){
     ':root,[data-theme="light"],[data-theme="dark"],.dark{--font-sans:"'+sans+'",system-ui,sans-serif!important;--font-serif:"'+serif+'",Georgia,serif!important;--font-brand:"'+brand+'",Georgia,serif!important;}';
 }
 
+/* ════ Recap story (Elevated §5 payoff) — one stat per scene, descriptive, saveable.
+   Grammar: Gentler Streak (no-red descriptive framing) × Duolingo (escalate → identity beat) × Strava (per-scene save). ════ */
+function RecapStory(){
+  const { close, toast, bodyNeutral } = useApp();
+  const [i,setI]=RS(0);
+  /* Calm mode serves a numbers-light story: no ranges, no weight, no aim-tinged stats (the mode's whole point) */
+  const scenes= bodyNeutral ? [
+    {k:'arrive', kick:'Your week', big:'10\u201316 June', sub:'A steady one \u2014 the kind that adds up.'},
+    {k:'headline', kick:'The headline', stat:'4', line:'saved recipes on the table', sub:'Cooked from your cookbook \u2014 the harissa stew carried three of the meals.', photo:true},
+    {k:'texture', kick:'The rhythm', big:'A steady rhythm.', sub:'Consistent days, gentle gaps \u2014 trends only while Calm is on.', bars:true},
+    {k:'id', kick:'Your style this week', big:'Planned, then home-cooked.', sub:'Batch once, cruise three nights \u2014 it suits you.'},
+    {k:'honest', kick:'The honest note', big:'One lunch out midweek.', sub:'It didn\u2019t move the week \u2014 that\u2019s what the plan is for.'},
+    {k:'forward', kick:'Carried into next week', big:'The stew\u2019s back for two nights \u2014 Thursday\u2019s already handled.', sub:'Share exactly what you see \u2014 nothing more leaves the app.', end:true},
+  ] : [
+    {k:'arrive', kick:'Your week', big:'10\u201316 June', sub:'A steady one \u2014 the kind that adds up.'},
+    {k:'headline', kick:'The headline', stat:'4', line:'saved recipes on the table', sub:'Cooked from your cookbook \u2014 the harissa stew carried three of the meals.', photo:true},
+    {k:'texture', kick:'The rhythm', stat:'5 of 7', line:'days in your range', sub:'One more than your usual week. Wednesday ran big \u2014 the week held.', bars:true},
+    {k:'quiet', kick:'The quiet win', stat:'6 of 7', line:'dinners landed protein', sub:'The gap you were closing \u2014 closed where it matters.'},
+    {k:'id', kick:'Your style this week', big:'Planned, then home-cooked.', sub:'Batch once, cruise three nights \u2014 it suits you.'},
+    {k:'honest', kick:'The honest note', big:'Wednesday ran 290 over.', sub:'One lunch out. It didn\u2019t move the week \u2014 that\u2019s what the plan is for.'},
+    {k:'forward', kick:'Carried into next week', big:'The stew\u2019s back for two nights \u2014 Thursday\u2019s already handled.', sub:'Share exactly what you see \u2014 nothing more leaves the app.', end:true},
+  ];
+  const s=scenes[i];
+  const next=()=> i<scenes.length-1 ? setI(i+1) : close();
+  const prev=()=> { if(i>0) setI(i-1); };
+  return (
+    <div className="recap-story" onClick={(e)=>{ const r=e.currentTarget.getBoundingClientRect(); (e.clientX-r.left) < r.width*0.3 ? prev() : next(); }}>
+      {s.photo && <div className="rs-photo" style={{backgroundImage:`url(${window.HERO_IMG})`}}></div>}
+      <div className="rs-dots">{scenes.map((_,d)=><span key={d} className={'rs-dot'+(d<=i?' on':'')}></span>)}</div>
+      <div className="rs-top"><span className="rs-kicker">{s.kick}</span><button className="rs-x" onClick={(e)=>{e.stopPropagation(); close();}} aria-label="Close"><I4 n="x" s={17}/></button></div>
+      <div className="rs-scene" key={s.k}>
+        {s.stat ? <div className="rs-stat tnum">{s.stat}</div> : <div className="rs-big">{s.big}</div>}
+        {s.end && (
+          <div className="rs-card tnum">
+            <div className="rs-card-k">Week of 10\u201316 June</div>
+            <div className="rs-card-grid">
+              {bodyNeutral ? (<>
+                <div><b>4</b><span>recipes cooked</span></div>
+                <div><b>7</b><span>days showed up</span></div>
+                <div><b>1</b><span>batch, 3 meals</span></div>
+                <div><b>Steady</b><span>the week\u2019s word</span></div>
+              </>) : (<>
+                <div><b>5 of 7</b><span>days in range</span></div>
+                <div><b>4</b><span>recipes cooked</span></div>
+                <div><b>\u2193 0.4 kg</b><span>this week</span></div>
+                <div><b>79%</b><span>adherence</span></div>
+              </>)}
+            </div>
+            <div className="rs-card-mark">sloe</div>
+          </div>
+        )}
+        {s.line && <div className="rs-line">{s.line}</div>}
+        {s.bars && <div className="rs-bars">{[62,74,96,58,70,44,66].map((h,d)=><span key={d} style={{height:h+'%',background:d===2?'rgba(224,146,78,.85)':'rgba(255,255,255,'+(d===6?'.9':'.55')+')'}}></span>)}</div>}
+        {s.sub && <div className="rs-sub">{s.sub}</div>}
+      </div>
+      <div className="rs-foot">
+        {s.end
+          ? <button className="btn btn--onbrand" onClick={(e)=>{e.stopPropagation(); toast('Your week story is ready to share.'); close();}}>Share your week</button>
+          : <button className="rs-save" onClick={(e)=>{e.stopPropagation(); toast('Scene ready to share.');}}>Share scene</button>}
+        {s.end ? <span className="rs-mark">sloe</span> : <span className="rs-hint">Tap to continue</span>}
+      </div>
+    </div>
+  );
+}
+
+window.RecapStory = RecapStory;
+
 /* ════ Floating Tweaks modal (bottom-right) ════ */
 function TweaksModal({state, set, nav}){
   const [open,setOpen]=RS(true);
@@ -9059,14 +9171,14 @@ function App(){
     grocery:<S2.Grocery/>, settings:<S2.Settings/>, targets:<S2.Targets/>, billing:<S2.Billing/>,
     healthsync:<S2.HealthSync/>, verify:<S2.Verify/>, paywall:<S2.Paywall/>,
     create:<SX.CreateRecipe/>, profile:<SX.Profile/>, notifications:<SX.Notifications/>, fasting:<SX.Fasting/>, planimport:<SX.PlanImport/>, household:<SX.Household/>, batch:<SX.BatchCook/>,
-    coach:<SX.Coach/>, mfpimport:<SX.MfpImport/>, adaptive:<SX.AdaptiveTDEE/>, export:<SX.DataExport/>, deleteacct:<SX.DeleteAccount/>, recap:<SX.WeeklyRecap/>, digest:<SX.Digest/>, report:<SX.ReportRecipe/>, resetplan:<SX.ResetPlan/>,
+    coach:<SX.Coach/>, mfpimport:<SX.MfpImport/>, adaptive:<SX.AdaptiveTDEE/>, export:<SX.DataExport/>, deleteacct:<SX.DeleteAccount/>, recap:<SX.WeeklyRecap/>, recapstory:<RecapStory/>, digest:<SX.Digest/>, report:<SX.ReportRecipe/>, resetplan:<SX.ResetPlan/>,
     whynumber:<SX.WhyNumber/>, provenance:<SX.Provenance/>,
     burndetail:<SX.BurnDetail/>, nutrients:<SX.Nutrients/>, hydration:<SX.Hydration/>, completeday:<SX.CompleteDay/>, winmoment:<SX.WinMoment/>, voicelog:<SX.VoiceLog/>,
     plantemplates:<SX.PlanTemplates/>, creator:<SX.CreatorProfile/>, gopublic:<SX.GoPublic/>, changelog:<SX.Changelog/>, eraseeverything:<SX.EraseEverything/>,
     macrodetail:<SN.MacroDetail/>, entrydetail:<SN.EntryDetail/>, weighttrends:<SN.WeightTrends/>, calendar:<SN.CalendarPicker/>, notfound:<SN.NotFound/>, adjustconstraints:<SN.AdjustConstraints/>, mealdetail:<SN.MealDetail/>,
   })[top.name];
-  const darkStatus = tw.theme==='dark' || (top && ['barcode','scanlabel','cookmode','paywall'].includes(top.name));
-  const fullOverlay = top && ['settings','recipe','paywall','barcode','scanlabel','cookmode','photolock','voicelock','search','confirm','targets','billing','healthsync','verify','create','profile','notifications','fasting','household','batch','coach','adaptive','recap','digest','whynumber','provenance','burndetail','nutrients','voicelog','winmoment','creator','changelog','macrodetail','entrydetail','weighttrends','notfound','mealdetail'].includes(top.name);
+  const darkStatus = tw.theme==='dark' || (top && ['barcode','scanlabel','cookmode','paywall','recapstory'].includes(top.name));
+  const fullOverlay = top && ['settings','recipe','paywall','barcode','scanlabel','cookmode','photolock','voicelock','search','confirm','targets','billing','healthsync','verify','create','profile','notifications','fasting','household','batch','coach','adaptive','recap','digest','whynumber','provenance','burndetail','nutrients','voicelog','winmoment','creator','changelog','macrodetail','entrydetail','weighttrends','notfound','mealdetail','recapstory'].includes(top.name);
 
   return (
     <AppCtx.Provider value={api}>
