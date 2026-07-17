@@ -118,11 +118,12 @@ export const INGREDIENT_VERIFY_REVIEW_MIN_THRESHOLD = 0.2;
 /**
  * Display tier for a recipe/ingredient-import confidence average —
  * high / medium / low. ENG-1424: this exact 0.75/0.50 ternary was
- * independently hardcoded in five places (`app/recipe/[id]/page.tsx`,
+ * independently hardcoded in six places (`app/recipe/[id]/page.tsx`,
  * `app/api/plan-import/parse/route.ts`, `app/api/nutrition/refine-log/route.ts`,
- * `app/api/nutrition/verify-recipe/route.ts`, `app/api/nutrition/voice-log/route.ts`)
+ * `app/api/nutrition/verify-recipe/route.ts`, `app/api/nutrition/voice-log/route.ts`,
+ * `src/lib/planning/planImport/verifyImportRecipe.ts`)
  * — a silent-drift risk (a value tuned in one copy would leave the other
- * four stale). Centralised here since 0.50 is already this file's
+ * five stale). Centralised here since 0.50 is already this file's
  * {@link RECIPE_INGREDIENT_REVIEW_CONFIDENCE}; only the "high" boundary
  * (0.75) was net-new.
  *
