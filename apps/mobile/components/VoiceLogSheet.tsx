@@ -176,14 +176,14 @@ export default function VoiceLogSheet({
           setErrorMsg(
             typeof data?.message === "string"
               ? data.message
-              : "Could not parse your description. Try again.",
+              : "Couldn't make sense of your description. Try again.",
           );
           setStage("error");
           return;
         }
         const cleaned = sanitiseAiItems(data.items, "voice");
         if (cleaned.length === 0) {
-          setErrorMsg("No food items could be parsed. Try describing portions too.");
+          setErrorMsg("No foods found in your description. Try describing portions too.");
           setStage("error");
           return;
         }
@@ -274,7 +274,7 @@ export default function VoiceLogSheet({
             </View>
             <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.md }}>
               {stage === "review"
-                ? `Review the ${items.length} item${items.length === 1 ? "" : "s"} we parsed. Edit or remove before logging.`
+                ? `Review the ${items.length} item${items.length === 1 ? "" : "s"} we found. Edit or remove before logging.`
                 : "Describe what you ate — we'll estimate macros using verified nutrition data."}
             </Text>
 

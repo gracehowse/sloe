@@ -149,7 +149,7 @@ export function LogSheetDescribeFlow({
     return (
       <div className="flex min-h-0 flex-1 flex-col px-3 pt-2" data-testid="log-sheet-describe-review">
         <p className="mb-2 text-[11px] text-muted-foreground">
-          Review parsed items — edit or remove before logging.
+          Review the items we found — edit or remove before logging.
         </p>
         <div className="mb-2 rounded-[var(--radius-card-lg)] border border-border bg-card p-3 text-sm">
           <div className="font-medium">{items.length} item{items.length === 1 ? "" : "s"}</div>
