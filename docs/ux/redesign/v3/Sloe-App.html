@@ -1015,7 +1015,7 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 .disc-card-chips{ position:absolute; top:12px; left:12px; display:flex; gap:7px; }
 .disc-chip{ background:rgba(255,255,255,.92); backdrop-filter:blur(6px); color:#1c1620; font-size:11px; font-weight:var(--fw-semibold); padding:5px 11px; border-radius:9999px; box-shadow:0 1px 4px rgba(20,12,26,.12); }
 .disc-like{ position:absolute; bottom:12px; right:12px; display:inline-flex; align-items:center; gap:5px; background:rgba(255,255,255,.94); backdrop-filter:blur(6px); color:#1c1620; font-size:12px; font-weight:var(--fw-semibold); padding:6px 12px; border-radius:9999px; box-shadow:0 1px 4px rgba(20,12,26,.12); }
-.disc-like svg{ color:var(--clay); }
+.disc-like svg{ color:var(--primary-active); }
 .disc-card-t{ display:block; font-family:var(--font-serif); font-size:19px; font-weight:var(--fw-medium); line-height:1.18; margin:13px 0 9px; color:var(--fg); }
 .disc-card-by{ display:inline-flex; align-items:center; gap:8px; cursor:pointer; }
 .disc-by-av{ width:27px; height:27px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-family:var(--font-serif); font-size:13px; flex:none; }
@@ -1217,7 +1217,7 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 .ob-choicerow{ display:flex; align-items:center; gap:11px; padding:13px 14px; border-radius:14px; border:1px solid var(--border); background:var(--card); cursor:pointer; }
 .ob-choicerow.on{ border-color:var(--primary); background:var(--accent-frost-mist); }
 .ob-social{ text-align:center; margin-top:18px; padding-top:16px; border-top:1px solid var(--border); }
-.ob-social-stars{ color:var(--clay); letter-spacing:2px; font-size:14px; }
+.ob-social-stars{ color:var(--primary-active); letter-spacing:2px; font-size:14px; }
 .ob-social p{ font-family:var(--font-serif); font-style:italic; font-size:15px; color:var(--fg); line-height:1.5; margin:8px 14px 6px; text-wrap:pretty; }
 .ob-social-by{ font-size:12px; color:var(--fg-tertiary); }
 .ob-invite{ display:flex; align-items:center; gap:10px; justify-content:center; margin-top:18px; background:var(--bg-secondary); border:1px dashed var(--border-strong); border-radius:12px; padding:12px 14px; }
@@ -1376,7 +1376,7 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 [data-density="compact"] .mtile{ padding:11px 6px 10px; }
 [data-density="compact"] .section-head{ margin-top:18px; }
 [data-density="compact"] .w-main{ padding:24px 32px 48px; }
-[data-density="compact"] .w-card{ padding:18px; }
+[data-density="compact"] .w-card{ padding:16px; }
 [data-density="compact"] .w-grid{ gap:18px; } [data-density="compact"] .w-col{ gap:18px; }
 
 /* ── phone frame ── */
@@ -1725,10 +1725,10 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 [data-premium="1"] .screen-scroll .recipe-hero{ margin-left:-20px; margin-right:-20px; width:calc(100% + 40px); border-radius:0; border-color:transparent; box-shadow:none; }
 [data-premium="1"] .screen-scroll .recipe-hero:hover{ transform:none; box-shadow:none; }
 [data-premium="1"] .screen-scroll .rh-photo{ height:224px; }
-[data-premium="1"] .screen-scroll .rh-body{ padding:16px 20px 18px; }
+[data-premium="1"] .screen-scroll .rh-body{ padding:16px 20px 20px; }
 [data-premium="1"] .screen-scroll .rh-title{ font-size:24px; }
 /* 3 · Plan's day verdict takes the one-tinted-hero treatment (one per screen) */
-[data-premium="1"] .plan-day{ background:var(--hero-tint); border-color:var(--hero-tint-border); border-radius:var(--radius-card-lg); box-shadow:none; }
+[data-premium="1"] .plan-day{ background:var(--hero-tint); border-color:var(--hero-tint-border); border-radius:var(--radius-card-lg); box-shadow:none; padding:16px; margin-top:16px; }
 /* 4 · placeholder kill — creator monograms get a quiet frost ring while real photos are pending */
 [data-premium="1"] .creator-rail-av{ box-shadow:0 0 0 2px var(--card), 0 0 0 3.5px var(--accent-frost); }
 
@@ -1765,29 +1765,29 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 .recap-story::after{ content:""; position:absolute; inset:-40%; background:radial-gradient(circle at 30% 18%, rgba(148,116,168,.30), transparent 55%); pointer-events:none; }
 .rs-photo{ position:absolute; inset:0; background-size:cover; background-position:center; opacity:.38; }
 .rs-photo::after{ content:""; position:absolute; inset:0; background:linear-gradient(180deg, rgba(36,23,51,.55) 0%, rgba(36,23,51,.94) 80%); }
-.rs-dots{ position:relative; z-index:2; display:flex; gap:5px; padding:16px 18px 0; }
+.rs-dots{ position:relative; z-index:2; display:flex; gap:5px; padding:16px 20px 0; }
 .rs-dot{ flex:1; height:3px; border-radius:2px; background:rgba(255,255,255,.22); transition:background .3s var(--ease); }
 .rs-dot.on{ background:rgba(255,255,255,.9); }
-.rs-top{ position:relative; z-index:2; display:flex; justify-content:space-between; align-items:center; padding:16px 18px 0; }
+.rs-top{ position:relative; z-index:2; display:flex; justify-content:space-between; align-items:center; padding:16px 20px 0; }
 .rs-kicker{ font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--accent-frost); }
 .rs-x{ background:rgba(255,255,255,.14); border:none; color:#fff; width:40px; height:40px; border-radius:9999px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none; }
-.rs-scene{ position:relative; z-index:2; flex:1; display:flex; flex-direction:column; justify-content:center; padding:0 30px 40px; }
+.rs-scene{ position:relative; z-index:2; flex:1; display:flex; flex-direction:column; justify-content:center; padding:0 32px 40px; }
 .rs-stat{ font-family:var(--font-serif); font-size:84px; font-weight:var(--fw-medium); line-height:1; letter-spacing:-.02em; animation:rsUp .38s var(--ease) both; }
 .rs-big{ font-family:var(--font-serif); font-size:40px; font-weight:var(--fw-medium); line-height:1.14; letter-spacing:-.015em; animation:rsUp .38s var(--ease) both; }
 .rs-mark{ font-family:var(--font-brand); font-size:22px; color:rgba(255,255,255,.85); }
 .rs-line{ font-family:var(--font-serif); font-size:22px; margin-top:10px; color:rgba(255,255,255,.92); animation:rsUp .38s .07s var(--ease) both; }
 .rs-sub{ font-size:14.5px; line-height:1.55; margin-top:14px; color:rgba(255,255,255,.66); max-width:30ch; animation:rsUp .38s .14s var(--ease) both; }
-.rs-card{ background:#fff; color:var(--primary-deep); border-radius:16px; padding:16px 18px 12px; margin-top:20px; max-width:280px; box-shadow:0 18px 44px rgba(0,0,0,.35); animation:rsUp .38s .1s var(--ease) both; }
+.rs-card{ background:#fff; color:var(--primary-deep); border-radius:16px; padding:16px 20px 12px; margin-top:20px; max-width:280px; box-shadow:0 18px 44px rgba(0,0,0,.35); animation:rsUp .38s .1s var(--ease) both; }
 .rs-card-k{ font-size:10px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--primary-active); }
 .rs-card-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px 16px; margin-top:12px; }
 .rs-card-grid b{ display:block; font-family:var(--font-serif); font-size:20px; font-weight:var(--fw-medium); line-height:1; }
 .rs-card-grid span{ display:block; font-size:10.5px; color:var(--fg-secondary); margin-top:3px; }
 .rs-card-mark{ font-family:var(--font-brand); font-size:15px; text-align:right; margin-top:10px; color:var(--primary); }
-.rs-foot{ position:relative; z-index:2; display:flex; align-items:center; justify-content:space-between; padding:0 22px 30px; min-height:66px; }
+.rs-foot{ position:relative; z-index:2; display:flex; align-items:center; justify-content:space-between; padding:0 24px 32px; min-height:64px; }
 .rs-save{ background:none; border:none; color:rgba(255,255,255,.75); font-family:var(--font-sans); font-size:13px; font-weight:600; cursor:pointer; padding:8px 0; }
 .rs-hint{ font-size:12px; color:rgba(255,255,255,.4); }
 @keyframes rsUp{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:none; } }
-.rs-bars{ display:flex; align-items:flex-end; gap:7px; height:72px; margin-top:22px; max-width:230px; animation:rsUp .38s .1s var(--ease) both; }
+.rs-bars{ display:flex; align-items:flex-end; gap:8px; height:72px; margin-top:24px; max-width:230px; animation:rsUp .38s .1s var(--ease) both; }
 .rs-bars span{ flex:1; border-radius:5px 5px 3px 3px; }
 @media (prefers-reduced-motion: reduce){ .rs-stat,.rs-big,.rs-line,.rs-sub,.rs-bars{ animation:none; } }
 
@@ -1799,20 +1799,19 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 [data-premium="1"][data-theme="light"] .w-nav.on{ background:var(--muted); color:var(--primary); box-shadow:none; }
 [data-premium="1"][data-theme="light"] .w-pro{ background:var(--card); border:1px solid var(--border); box-shadow:none; }
 [data-premium="1"] .w-pro b{ font-family:var(--font-sans); font-size:13.5px; font-weight:600; letter-spacing:.01em; }
-/* Grace 2026-07-17: clay/orange RETIRED — monetisation wears plum; amber survives ONLY as the data over-state (pending ratification) */
-[data-premium="1"] .rd-pro{ background:var(--primary); }
+/* Grace 2026-07-17: clay/orange RETIRED globally — monetisation wears plum; amber survives ONLY as the data over-state (pending ratification) */
 /* One structural-label grammar (Grace: the NET ENERGY register wins) — section labels are quiet tracked caps;
    serif is reserved for page titles, hero numerals, content nouns and verdict sentences. !important beats legacy inline sizes. */
 [data-premium="1"] .section-head h2{ font-family:var(--font-sans) !important; font-size:11px !important; font-weight:700 !important; letter-spacing:.1em; text-transform:uppercase; color:var(--fg-muted); }
-[data-premium="1"] .section-head{ margin:28px 2px 10px !important; align-items:center; }
+[data-premium="1"] .section-head{ margin:24px 2px 12px !important; align-items:center; }
 [data-premium="1"] .w-ch h2{ font-family:var(--font-sans); font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--fg-muted); }
 [data-premium="1"] .w-card{ border-radius:var(--radius-card-lg); border-color:var(--border); box-shadow:none; }
 /* Rule 3 filled budget: the ink sidebar's Log food is THE filled CTA; page-header primaries demote to outline */
 [data-premium="1"] .w-head .btn--primary{ background:transparent; color:var(--primary); border:1px solid var(--border-strong); }
 /* Loop · the decision module — instrument target band + actions inside the editorial card */
-.rh-loop{ display:flex; align-items:center; gap:8px; margin-top:10px; flex-wrap:wrap; }
+.rh-loop{ display:flex; align-items:center; gap:8px; margin-top:12px; flex-wrap:wrap; }
 .rh-loop-chip{ display:inline-flex; align-items:center; background:var(--muted); color:var(--fg); font-size:12.5px; font-weight:var(--fw-semibold); padding:5px 10px; border-radius:9999px; }
-.rh-acts{ display:flex; align-items:center; gap:14px; margin-top:12px; }
+.rh-acts{ display:flex; align-items:center; gap:16px; margin-top:12px; }
 [data-theme="light"][data-surface="paper"] .w-scroll{ background:var(--bg-marketing); }
 
 /* ── Net energy (deficit / surplus bar) ── */
@@ -2347,7 +2346,7 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 .prog-wactions{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; }
 .prog-how{ display:inline-flex; align-items:center; gap:5px; margin-top:16px; background:none; border:none; padding:0; font-family:var(--font-sans); font-size:13px; font-weight:var(--fw-semibold); color:var(--primary-active); cursor:pointer; }
 .prog-how-body{ margin-top:12px; padding-top:14px; border-top:1px solid var(--border); }
-.prog-adh-row{ margin-top:13px; }
+.prog-adh-row{ margin-top:12px; }
 .prog-adh-l{ font-size:13.5px; color:var(--fg); }
 .prog-adh-v{ font-size:13px; font-weight:var(--fw-semibold); color:var(--fg-secondary); }
 .prog-adh-track{ height:7px; border-radius:9999px; background:var(--muted); overflow:hidden; }
@@ -2367,18 +2366,18 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 .prog-conf{ font-size:11px; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--success); } /* confidence = bare sage overline, not a pill */
 .prog-eq{ display:flex; align-items:baseline; gap:6px; font-size:13px; color:var(--fg-secondary); margin-top:8px; flex-wrap:wrap; }
 .prog-eq b{ color:var(--fg); font-weight:var(--fw-semibold); }
-.prog-streak{ display:flex; align-items:center; gap:9px; margin-top:14px; padding-top:13px; border-top:1px solid var(--border); font-size:12.5px; color:var(--fg-secondary); }
+.prog-streak{ display:flex; align-items:center; gap:8px; margin-top:16px; padding-top:12px; border-top:1px solid var(--border); font-size:12.5px; color:var(--fg-secondary); }
 .prog-streak b{ color:var(--fg); }
 .prog-verdict{ font-family:var(--font-serif); font-size:19px; line-height:1.4; color:var(--fg); margin-top:8px; text-wrap:pretty; }
-.prog-bc-tiles{ display:flex; gap:10px; margin-top:12px; }
-.prog-bc-tile{ flex:1; background:var(--bg-secondary); border-radius:var(--radius-card); padding:12px 14px; }
+.prog-bc-tiles{ display:flex; gap:12px; margin-top:12px; }
+.prog-bc-tile{ flex:1; background:var(--bg-secondary); border-radius:var(--radius-card); padding:12px 16px; }
 .prog-bc-v{ font-family:var(--font-serif); font-size:21px; font-weight:var(--fw-semibold); }
 .prog-bc-l{ font-size:11px; color:var(--fg-tertiary); margin-top:2px; }
 .prog-bc-teaser{ position:relative; margin-top:12px; border-radius:var(--radius-card); overflow:hidden; border:1px solid var(--border); }
 .prog-bc-teaser svg{ display:block; filter:blur(3px) saturate(.6); opacity:.7; }
 .prog-bc-veil{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; background:color-mix(in srgb, var(--card) 45%, transparent); color:var(--fg-secondary); font-size:12.5px; font-weight:var(--fw-semibold); }
 .creator-rail-cur{ font-size:10px; color:var(--fg-tertiary); letter-spacing:.02em; margin-top:-3px; } /* ENG-1535 — seeded profiles labelled as house-curated */
-.rd-pro{ font-size:9px; font-weight:700; letter-spacing:.08em; background:var(--clay); color:#fff; border-radius:5px; padding:2px 5px; margin-left:6px; vertical-align:1px; } /* ENG-1274 — est. cost per serving (Pro) */
+.rd-pro{ font-size:9px; font-weight:700; letter-spacing:.08em; background:var(--primary); color:#fff; border-radius:5px; padding:2px 5px; margin-left:6px; vertical-align:1px; } /* ENG-1274 — est. cost per serving (Pro) */
 .scan-manual{ margin:14px auto 0; display:flex; align-items:center; gap:7px; background:rgba(255,255,255,.14); color:#fff; border:none; border-radius:9999px; padding:10px 18px; font-size:13.5px; font-weight:600; font-family:var(--font-sans); cursor:pointer; } /* ENG-1518 — pre-scan manual path */
 .trend-key .tnum{ margin-left:auto; color:var(--success); font-weight:var(--fw-semibold); }
 .prog-subhead{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:18px 0 12px; padding-top:14px; border-top:1px solid var(--border); }
@@ -2931,17 +2930,17 @@ const I = {
   wine:'<path d="M7 3h10l-1 6a4 4 0 0 1-8 0z"/><path d="M12 13v6M8 21h8"/>',
   droplet:'<path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/>',
   steps:'<path d="M8 4c1.5 0 2.5 1.2 2.5 3 0 1.4-.3 2.6-.3 4 0 1.3 1 2 1 3.5S10 20 8.5 20 6 18.5 6 17s.5-2 .5-3.5S6 11 6 9c0-3 .8-5 2-5z"/><path d="M16.5 8c1.2 0 2 1 2 2.5 0 1.2-.3 2-.3 3 0 1 .8 1.6.8 2.8S18.2 19 17 19s-1.8-.8-1.8-2 .4-1.6.4-2.7-.4-1.8-.4-3.3S15.5 8 16.5 8z"/>',
-  heart:'<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
+  heart:'<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.51 4.04 3 5.5l7 7Z"/>',
   bookmark:'<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>',
   cart:'<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2.2l2 12.4a1 1 0 0 0 1 .8h9.4a1 1 0 0 0 1-.8L21 7H5.2"/>',
   wifi_off:'<path d="M5 12.5a10 10 0 0 1 14 0M8 15.5a6 6 0 0 1 8 0M2 2l20 20"/><circle cx="12" cy="18.5" r="1"/>',
   alert:'<path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/>',
-  alertTri:'<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17v.5"/>',
-  heartPulse:'<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/><path d="M6 11h3l1.5-2.5L13 14l1.5-3H18"/>',
+  alertTri:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 20h16a2 2 0 0 0 1.73-2"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  heartPulse:'<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.51 4.04 3 5.5l7 7Z"/><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27"/>',
   sparkles:'<path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z"/>',
   shuffle:'<path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/>',
   link:'<path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/>',
-  user:'<circle cx="12" cy="8" r="4"/><path d="M5 21c0-3.9 3.1-7 7-7s7 3.1 7 7"/>',
+  user:'<circle cx="12" cy="7" r="4"/><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>',
   settings:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
   bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/>',
@@ -2951,10 +2950,10 @@ const I = {
   download:'<path d="M12 4v11M8 11l4 4 4-4M5 20h14"/>',
   trash:'<path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/>',
   apple:'<path d="M12 7c-2-2-6-1.5-6 3 0 4 2.5 8 4 8 .8 0 1.2-.4 2-.4s1.2.4 2 .4c1.5 0 4-4 4-8 0-4.5-4-5-6-3z"/><path d="M12 7c0-2 1-3.5 3-4"/>',
-  utensils:'<path d="M5 2v20M3 2v7a2 2 0 0 0 4 0V2"/><path d="M19 2c-1.7 0-3 1.8-3 4v6h3"/><path d="M19 2v20"/>',
+  utensils:'<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
   timer:'<circle cx="12" cy="13" r="8"/><path d="M12 13V9M9 2h6M18 6l1.5-1.5"/>',
   refresh:'<path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/>',
-  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.5"/>',
+  info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
   health:'<path d="M3.5 12h4l2-5 3 9 2-5h6"/>',
   egg:'<path d="M12 3c3.5 0 6 5 6 9a6 6 0 0 1-12 0c0-4 2.5-9 6-9z"/>',
   dumbbell:'<path d="M4 8v8M7 6v12M17 6v12M20 8v8M7 12h10"/>',
@@ -4450,7 +4449,7 @@ function RecipeDetail(){
         {(r.photo||r.img) && <img src={r.photo||HIMG} alt={r.name}/>}
         <div className="rd-veil"></div>
         <button className="icon-btn rd-back" onClick={close} aria-label="Back"><Ic2 n="chevL" s={19}/></button>
-        <button className="icon-btn rd-fav" onClick={()=>setFav(v=>!v)} aria-label="Save" style={{color:fav?'var(--clay)':'var(--fg)'}}><Ic2 n="heart" s={19}/></button>
+        <button className="icon-btn rd-fav" onClick={()=>setFav(v=>!v)} aria-label="Save" style={{color:fav?'var(--primary-active)':'var(--fg)'}}><Ic2 n="heart" s={19}/></button>
         <div className="rd-title">
           <span className="rd-kicker">{kicker}</span>
           {official && <span className="rd-official"><Ic2 n="check" s={12}/>Official</span>}
@@ -5080,7 +5079,7 @@ function Progress(){
   const toward=(P.weight.rate*(P.weight.goalW-P.weight.current))>0;  // direction-aware, never raw-sign
   const axis=P.axis[period]||P.axis.W;
   const StreakRow=()=>(
-    <div className="prog-streak"><I3 n="flame" s={15} st={{color:premium?'var(--primary-active)':'var(--clay)'}}/><span><b>{P.streak.days}-day</b> logging streak · <button className="link" style={{fontSize:12.5}} onClick={()=>open('recap')}>{P.streak.freezes} freezes</button> available</span></div>
+    <div className="prog-streak"><I3 n="flame" s={15} st={{color:'var(--primary-active)'}}/><span><b>{P.streak.days}-day</b> logging streak · <button className="link" style={{fontSize:12.5}} onClick={()=>open('recap')}>{P.streak.freezes} freezes</button> available</span></div>
   );
   const WeekBars=()=>(
     <div style={{marginTop:14}}>
@@ -5255,7 +5254,7 @@ function Settings(){
           <span className="pglow"></span>
           <span className="overline" style={{color:'var(--accent-frost)',position:'relative'}}>Sloe Pro</span>
           <span className="pro-h">Plan the whole week</span>
-          <span className="pro-p">Unlimited saves, photo &amp; voice logging, adaptive targets and body-composition trends.</span>
+          <span className="pro-p">Unlimited imports, photo &amp; voice logging, adaptive targets and body-composition trends.</span>
         </button>
 
         <div className="overline" style={{margin:'22px 4px 8px'}}>Account</div>
@@ -5430,7 +5429,7 @@ function Paywall(){
     au:{cur:'A$',mo:'13.99',yr:'104.99',yrmo:'8.75',tax:'incl. GST',flag:'🇦🇺',label:'AU'},
   };
   const p=PRICE[region];
-  const feats=[['plan','Plan your whole week','Map every meal, then cook through a week that’s handled.'],['camera','Photo & voice logging','Snap or speak a meal; Sloe estimates the macros.'],['link','Unlimited saves','Keep every recipe you love.'],['progress','Adaptive targets & trends','Targets that learn, plus body-composition insights.']];
+  const feats=[['plan','Plan your whole week','Map every meal, then cook through a week that’s handled.'],['camera','Photo & voice logging','Snap or speak a meal; Sloe estimates the macros.'],['link','Unlimited imports','Any recipe from the web, read for you.'],['progress','Adaptive targets & trends','Targets that learn, plus body-composition insights.']];
   return (
     <div className="pushed full">
       <div className="pw-hero"><span className="pglow"></span>
@@ -6557,7 +6556,7 @@ function Onboarding({onDone,startStep}){
   if(step===15) return (
     <div className="ob"><div className="ob-body" style={{textAlign:'center'}}>
       <div style={{height:8}}></div>
-      <div className="ob-firstwin" style={{background:'var(--clay-soft)',color:'var(--clay)'}}><Ic n="heart" s={30}/></div>
+      <div className="ob-firstwin" style={{background:'var(--accent-frost-mist)',color:'var(--primary)'}}><Ic n="heart" s={30}/></div>
       <div className="ob-h" style={{marginTop:16}}>Cooking’s better together</div>
       <div className="ob-sub">Plans and lists scale to whoever you cook for. Invite someone and you both get a free month of Pro.</div>
       <div className="ob-invite">
@@ -6698,7 +6697,7 @@ function CreatorProfile(){
           ))}
         </div>
         <div className="card" style={{marginTop:16,display:'flex',gap:12,alignItems:'flex-start'}}>
-          <span className="set-ic" style={{background:'var(--clay-soft)',color:'var(--clay)',flex:'none'}}><Ic n="sparkles" s={17}/></span>
+          <span className="set-ic" style={{background:'var(--accent-frost-mist)',color:'var(--primary)',flex:'none'}}><Ic n="sparkles" s={17}/></span>
           <div style={{flex:1}}><div className="meal-name" style={{fontSize:14,marginBottom:2}}>Share your own recipes</div><p className="meal-sub" style={{lineHeight:1.5,marginBottom:8}}>Make a recipe public and it shows up here for your followers.</p><button className="btn btn--outline btn--sm" onClick={()=>open('gopublic')}><Ic n="sparkles" s={15}/>Go public</button></div>
         </div>
         <div className="safe-bottom"></div>
@@ -6895,7 +6894,7 @@ function Hydration(){
         </div>
         <div className="water-dots" style={{margin:'2px 0 4px 46px'}}>{Array.from({length:8}).map((_,i)=><i key={i} className={i<water?'on':''}/>)}</div>
         <div className="hyd-row">
-          <span className="set-ic" style={{color:'var(--clay)'}}><Ic n="coffee" s={18}/></span>
+          <span className="set-ic" style={{color:'var(--fg-secondary)'}}><Ic n="coffee" s={18}/></span>
           <span style={{flex:1}}><span className="meal-name" style={{fontSize:14}}>Caffeine</span><span className="meal-sub" style={caf>400?{color:'var(--destructive)'}:null}>{caf} mg{caf>400?' · over 400 mg limit':' of 400 mg'}</span></span>
           <Step onMinus={()=>setCaf(v=>Math.max(0,v-90))} onPlus={()=>setCaf(v=>v+90)}>{caf}</Step>
         </div>
@@ -6951,7 +6950,7 @@ function WinMoment(){
   const [grow,setGrow]=RS(0);
   RE(()=>{ const id=requestAnimationFrame(()=>requestAnimationFrame(()=>setGrow(1))); return ()=>cancelAnimationFrame(id); },[]);
   const SZ=180, ST=14, R=(SZ-ST)/2, C=2*Math.PI*R;
-  const cols=['var(--primary)','var(--accent-frost)','var(--clay)','var(--success)'];
+  const cols=['var(--primary)','var(--accent-frost)','var(--primary-active)','var(--success)'];
   return (
     <div className="win-overlay">
       <div className="win-confetti" aria-hidden="true">{Array.from({length:18}).map((_,i)=>(<span key={i} style={{left:(6+i*5.2)+'%',background:cols[i%4],animationDelay:(i*0.08)+'s',transform:`rotate(${i*40}deg)`}}/>))}</div>
@@ -7049,9 +7048,9 @@ function WhyNumber(){
           <div className="set-row whyn-sum"><span className="set-ic" style={{background:'var(--accent-frost-mist)',color:'var(--primary)'}}><Ic n="sparkles" s={17}/></span>
             <span style={{flex:1}}><span className="meal-name" style={{fontSize:14}}>Maintenance (TDEE)</span><span className="meal-sub">What holds your weight steady</span></span>
             <span className="tnum whyn-v" style={{color:'var(--fg)'}}>2,100</span></div>
-          <div className="set-row"><span className="set-ic" style={{background:'var(--clay-soft)',color:'var(--clay)'}}><Ic n="progress" s={17}/></span>
+          <div className="set-row"><span className="set-ic" style={{background:'var(--accent-frost-mist)',color:'var(--primary)'}}><Ic n="progress" s={17}/></span>
             <span style={{flex:1}}><span className="meal-name" style={{fontSize:14}}>Your pace — 0.4 kg / week</span><span className="meal-sub">A gentle, sustainable deficit</span></span>
-            <span className="tnum whyn-v" style={{color:'var(--clay)'}}>−270</span></div>
+            <span className="tnum whyn-v" style={{color:'var(--primary-active)'}}>−270</span></div>
         </div>
 
         <div className="whyn-result">
@@ -7958,7 +7957,7 @@ function WebProgress({open}){
           <div style={{marginTop:10}}>{P.adherence.map(([l,pct,c])=>(
             <div key={l} className="prog-adh-row"><div className="spread" style={{marginBottom:5}}><span className="prog-adh-l">{l}</span>{!bodyNeutral && <span className="tnum prog-adh-v">{pct}%</span>}</div><div className="prog-adh-track"><div className="prog-adh-fill" style={{width:(bodyNeutral?60:pct)+'%',background:c}}></div></div></div>
           ))}</div>
-          <div className="prog-streak"><Ic n="flame" s={15} st={{color:premium?'var(--primary-active)':'var(--clay)'}}/><span><b>{P.streak.days}-day</b> logging streak · <button className="link" style={{fontSize:12.5}} onClick={()=>open&&open('recap')}>{P.streak.freezes} freezes</button> available</span></div>
+          <div className="prog-streak"><Ic n="flame" s={15} st={{color:'var(--primary-active)'}}/><span><b>{P.streak.days}-day</b> logging streak · <button className="link" style={{fontSize:12.5}} onClick={()=>open&&open('recap')}>{P.streak.freezes} freezes</button> available</span></div>
         </div></div>
 
         {/* §3 · ENERGY — deficit-led; equation as support (maintenance − intake = deficit) */}
@@ -8609,7 +8608,7 @@ function WebPaywall({onClose}){
         <p className="w-pay-sub">Plan the whole week, log by photo or voice, and watch targets adapt to you.</p>
         <div className="w-pay-tiers">
           <div className="w-pay-tier"><div className="w-pay-tn">Free</div><div className="w-pay-price"><b>£0</b></div><ul>{['Tracking & macros','Recipe library','Barcode & search','One weekly plan'].map(f=><li key={f}><Ic n="check" s={15}/>{f}</li>)}</ul><button className="btn btn--outline btn--block" disabled style={{opacity:.6}}>Current plan</button></div>
-          <div className="w-pay-tier pro"><span className="w-pay-badge">Most popular</span><div className="w-pay-tn">Pro</div><div className="w-pay-price"><b>£5</b><span>/mo</span></div><ul>{['Everything in Free','Photo & voice logging','Adaptive targets','Trends & recaps','Unlimited saves'].map(f=><li key={f}><Ic n="check" s={15}/>{f}</li>)}</ul><button className="btn btn--primary btn--block" onClick={onClose}>Start 7 days free</button></div>
+          <div className="w-pay-tier pro"><span className="w-pay-badge">Most popular</span><div className="w-pay-tn">Pro</div><div className="w-pay-price"><b>£5</b><span>/mo</span></div><ul>{['Everything in Free','Photo & voice logging','Adaptive targets','Trends & recaps','Unlimited imports'].map(f=><li key={f}><Ic n="check" s={15}/>{f}</li>)}</ul><button className="btn btn--primary btn--block" onClick={onClose}>Start 7 days free</button></div>
         </div>
         <p className="w-pay-clar tnum">Billed £59.99/year · cancel anytime</p>
       </div>
@@ -8983,6 +8982,10 @@ function applyTheme(theme, accent, fonts){
 function RecapStory(){
   const { close, toast, bodyNeutral } = useApp();
   const [i,setI]=RS(0);
+  /* Stat count-up: 450ms ease-out (motion spec: 300-500ms cap, ease-out for count-ups); reduced-motion renders instantly */
+  const reduceMotion = typeof window!=='undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const Count=({to})=>{ const [v,setV]=RS(reduceMotion?to:0); RE(()=>{ if(reduceMotion){ setV(to); return; } let raf; const t0=performance.now(); const dur=450; const step=(t)=>{ const p=Math.min(1,(t-t0)/dur); setV(Math.round(to*(1-Math.pow(1-p,3)))); if(p<1) raf=requestAnimationFrame(step); }; raf=requestAnimationFrame(step); const snap=setTimeout(()=>setV(to), dur+120); /* rAF throttles in occluded tabs — always settle */ return ()=>{ cancelAnimationFrame(raf); clearTimeout(snap); }; },[to]); return v; };
+  const StatText=({text})=>{ const m=/^(\d+)(.*)$/.exec(text||''); if(!m) return text; return <React.Fragment><Count to={+m[1]}/>{m[2]}</React.Fragment>; };
   /* Calm mode serves a numbers-light story: no ranges, no weight, no aim-tinged stats (the mode's whole point) */
   const scenes= bodyNeutral ? [
     {k:'arrive', kick:'Your week', big:'10\u201316 June', sub:'A steady one \u2014 the kind that adds up.'},
@@ -9009,7 +9012,7 @@ function RecapStory(){
       <div className="rs-dots">{scenes.map((_,d)=><span key={d} className={'rs-dot'+(d<=i?' on':'')}></span>)}</div>
       <div className="rs-top"><span className="rs-kicker">{s.kick}</span><button className="rs-x" onClick={(e)=>{e.stopPropagation(); close();}} aria-label="Close"><I4 n="x" s={17}/></button></div>
       <div className="rs-scene" key={s.k}>
-        {s.stat ? <div className="rs-stat tnum">{s.stat}</div> : <div className="rs-big">{s.big}</div>}
+        {s.stat ? <div className="rs-stat tnum"><StatText text={s.stat}/></div> : <div className="rs-big">{s.big}</div>}
         {s.end && (
           <div className="rs-card tnum">
             <div className="rs-card-k">Week of 10\u201316 June</div>

@@ -214,9 +214,18 @@ breaking case); the ink sidebar reverted to the light refined shell; chrome icon
 replaced with true Lucide geometry (the fork was two-pronged with a stray stem —
 "malformed and cheap" was accurate); section rhythm normalised to 28/10.
 
-Still open for the next tranche: full spacing audit against the 4px grid (Grace:
-"still massive spacing issues" — the 28/10 label rhythm is a first cut, not the
-audit), decorative-colour sweep of sheets/pushed screens,
+**Fix round (2026-07-17, sign-off build):** clay eliminated from all 11 remaining
+use-sites globally (discover like, onboarding stars/first-win, recipe PRO pill,
+favourite heart, streak flames, settings plates, household avatar tints,
+why-number figures — all rebound to plum/frost); structural spacing snapped to
+the ratified scale across 16 rhythm specs (section labels 24/12, story scenes
+32/40, card/tile paddings 16/20, hero-tinted plan-day 16); six more
+hand-modified icons replaced with official Lucide geometry (the malformed fork
+survived under a second name on meal rows — utensils, user, heart, heart-pulse,
+triangle-alert, info); story stat numerals now count up (450ms ease-out,
+reduced-motion safe).
+
+Still open for the next tranche: decorative-colour sweep of sheets/pushed screens,
 onboarding steps against Rule 1, mobile-web breakpoint against the ink shell, live
 count-up numerals in story scenes, a real fit-derivation note for the demo
 threshold on shelf cards.
