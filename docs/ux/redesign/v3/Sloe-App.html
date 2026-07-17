@@ -1731,6 +1731,26 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 [data-premium="1"] .plan-day{ background:var(--hero-tint); border-color:var(--hero-tint-border); border-radius:var(--radius-card-lg); box-shadow:none; }
 /* 4 · placeholder kill — creator monograms get a quiet frost ring while real photos are pending */
 [data-premium="1"] .creator-rail-av{ box-shadow:0 0 0 2px var(--card), 0 0 0 3.5px var(--accent-frost); }
+
+/* ── CONSTITUTION KIT (Elevated v2, 2026-07-17) — see DESIGN-CONSTITUTION.md.
+   One title grammar · one icon button · one chip · one rail tile · numeric scale ·
+   colour governance. Inline sizes on legacy h1s force the !important overrides. ── */
+/* Rule 1 · one title grammar — every tab title is 33px serif (matches .tg-day) */
+[data-premium="1"] .t-head h1{ font-size:33px !important; line-height:1.05 !important; letter-spacing:-.015em; }
+/* Rule 3 · one icon button — the 40px muted circle; the white-square variant is abolished */
+[data-premium="1"] .planx-act{ width:40px; height:40px; border-radius:var(--radius-full); border:none; background:var(--muted); color:var(--fg); box-shadow:none; }
+[data-premium="1"] .planx-act:hover{ background:var(--accent-frost); color:var(--fg); }
+/* Rule 3 · one chip spec — status chips align to .chip metrics */
+[data-premium="1"] .prog-chip{ padding:8px 13px; font-size:13px; }
+[data-premium="1"] .plan-reset-btn{ padding:9px 14px; background:var(--muted); }
+/* Rule 3 · one rail tile — creators and cuisines share 64px */
+[data-premium="1"] .creator-rail-av{ width:64px; height:64px; font-size:24px; }
+[data-premium="1"] .w-creator-rail .creator-rail-av{ width:64px; height:64px; font-size:24px; }
+[data-premium="1"] .cuisine-chip-ph{ width:64px; height:64px; }
+[data-premium="1"] .cuisine-chip{ width:66px; }
+[data-premium="1"] .creator-chip{ width:72px; }
+/* Rule 5 · numeric instrument scale — hero numerals 44 */
+[data-premium="1"] .prog-hero-kg{ font-size:44px; }
 [data-theme="light"][data-surface="paper"] .w-scroll{ background:var(--bg-marketing); }
 
 /* ── Net energy (deficit / surplus bar) ── */
@@ -4977,7 +4997,7 @@ function Progress(){
   const toward=(P.weight.rate*(P.weight.goalW-P.weight.current))>0;  // direction-aware, never raw-sign
   const axis=P.axis[period]||P.axis.W;
   const StreakRow=()=>(
-    <div className="prog-streak"><I3 n="flame" s={15} st={{color:'var(--clay)'}}/><span><b>{P.streak.days}-day</b> logging streak · <button className="link" style={{fontSize:12.5}} onClick={()=>open('recap')}>{P.streak.freezes} freezes</button> available</span></div>
+    <div className="prog-streak"><I3 n="flame" s={15} st={{color:premium?'var(--primary-active)':'var(--clay)'}}/><span><b>{P.streak.days}-day</b> logging streak · <button className="link" style={{fontSize:12.5}} onClick={()=>open('recap')}>{P.streak.freezes} freezes</button> available</span></div>
   );
   const WeekBars=()=>(
     <div style={{marginTop:14}}>
@@ -5056,9 +5076,11 @@ function Progress(){
         </div>
         )}
 
-        {/* §2 · THIS WEEK — pinned to the current week whatever the global window (delta 4); promotes to the hero slot under Calm (delta 1) */}
-        <div className={'card animate-up'+(bodyNeutral?' prog-hero':'')} style={{marginTop:bodyNeutral?6:14}}>
-          <div className="spread"><span className="overline">This week</span>{!bodyNeutral && <span className="prog-chip" title="Weekly nutrition-quality composite">Week score {P.weekScore}</span>}</div>
+        {/* §2 · THIS WEEK — pinned to the current week whatever the global window (delta 4); promotes to the hero slot under Calm (delta 1).
+            Constitution Rule 2 (Elevated): sections are titled by the serif section-head OUTSIDE the card; the calm-promoted hero keeps its instrument label. */}
+        {premium && !bodyNeutral && <div className="section-head" style={{margin:'22px 2px 10px'}}><h2 style={{fontSize:18,margin:0}}>This week</h2><span className="prog-chip" title="Weekly nutrition-quality composite">Week score {P.weekScore}</span></div>}
+        <div className={'card animate-up'+(bodyNeutral?' prog-hero':'')} style={{marginTop:bodyNeutral?6:(premium?0:14)}}>
+          {(!premium || bodyNeutral) && <div className="spread"><span className="overline">This week</span>{!bodyNeutral && <span className="prog-chip" title="Weekly nutrition-quality composite">Week score {P.weekScore}</span>}</div>}
           {bodyNeutral
             ? <div className="prog-verdict">A steady, consistent week — your routine is doing the work.</div>
             : <div style={{fontSize:15,lineHeight:1.5,color:'var(--fg-secondary)',marginTop:8}}><b style={{color:'var(--fg)'}}>{onTarget} of 7 days</b> in your calorie range · macro adherence averaged <b style={{color:'var(--fg)'}}>{adhAvg}%</b>.</div>}
@@ -5075,11 +5097,12 @@ function Progress(){
         </div>
 
         {/* §3 · ENERGY — the deficit is the one number; the equation is support: maintenance − intake = deficit */}
-        {!bodyNeutral && (
-        <div className="card animate-up" style={{marginTop:14}}>
-          <div className="spread"><span className="overline">Energy</span><span className="prog-conf">High confidence</span></div>
-          <div style={{display:'flex',alignItems:'baseline',gap:8,marginTop:10}}>
-            <span className="tnum" style={{fontFamily:'var(--font-serif)',fontSize:32,fontWeight:'var(--fw-medium)',lineHeight:1}}>{deficit}</span>
+        {!bodyNeutral && (<>
+        {premium && <div className="section-head" style={{margin:'22px 2px 10px'}}><h2 style={{fontSize:18,margin:0}}>Energy</h2><span className="prog-conf">High confidence</span></div>}
+        <div className="card animate-up" style={{marginTop:premium?0:14}}>
+          {!premium && <div className="spread"><span className="overline">Energy</span><span className="prog-conf">High confidence</span></div>}
+          <div style={{display:'flex',alignItems:'baseline',gap:8,marginTop:premium?2:10}}>
+            <span className="tnum" style={{fontFamily:'var(--font-serif)',fontSize:premium?28:32,fontWeight:'var(--fw-medium)',lineHeight:1}}>{deficit}</span>
             <span style={{fontSize:12.5,color:'var(--fg-secondary)'}}>kcal/day deficit · {P.avgLabel[period]||P.avgLabel.W}</span>
           </div>
           <div className="prog-eq tnum"><b>{P.maintenance.toLocaleString()}</b> maintenance − <b>{P.avgIntake.toLocaleString()}</b> intake = <b>{deficit}</b> · <span style={{color:'var(--success)',fontWeight:600}}>on plan for your cut</span></div>
@@ -5097,11 +5120,12 @@ function Progress(){
             </div>
           )}
         </div>
-        )}
+        </>)}
 
         {/* §4 · BODY COMPOSITION — your own readings are always free (delta 2); the trend + analysis is the Pro layer */}
-        <div className="card animate-up" style={{marginTop:14}}>
-          <div className="spread"><span className="overline">Body composition</span><span style={{fontSize:11.5,color:'var(--fg-tertiary)'}}>{P.bodycomp.fatFrom}</span></div>
+        {premium && <div className="section-head" style={{margin:'22px 2px 10px'}}><h2 style={{fontSize:18,margin:0}}>Body composition</h2><span style={{fontSize:12,color:'var(--fg-tertiary)'}}>{P.bodycomp.fatFrom}</span></div>}
+        <div className="card animate-up" style={{marginTop:premium?0:14}}>
+          {!premium && <div className="spread"><span className="overline">Body composition</span><span style={{fontSize:11.5,color:'var(--fg-tertiary)'}}>{P.bodycomp.fatFrom}</span></div>}
           <div className="prog-bc-tiles">
             <div className="prog-bc-tile"><div className="prog-bc-v tnum">{bodyNeutral?'—':P.bodycomp.fat}</div><div className="prog-bc-l">Body fat</div></div>
             <div className="prog-bc-tile"><div className="prog-bc-v tnum">{bodyNeutral?'—':P.bodycomp.lean}</div><div className="prog-bc-l">Lean mass</div></div>
@@ -5119,8 +5143,9 @@ function Progress(){
         </div>
 
         {/* §5 · YOUR WEEK — one slimmed recap: serif verdict + one texture line + ghost Share (delta 7) */}
-        <div className="card animate-up" style={{marginTop:14}}>
-          <div className="spread"><span className="overline"><I3 n="sparkles" s={13} st={{verticalAlign:'-2px',marginRight:5,color:'var(--primary)'}}/>Your week</span><button className="link" onClick={()=>open('recap')}>Full recap</button></div>
+        {premium && <div className="section-head" style={{margin:'22px 2px 10px'}}><h2 style={{fontSize:18,margin:0}}>Your week</h2><button className="link" onClick={()=>open('recap')}>Full recap</button></div>}
+        <div className="card animate-up" style={{marginTop:premium?0:14}}>
+          {!premium && <div className="spread"><span className="overline"><I3 n="sparkles" s={13} st={{verticalAlign:'-2px',marginRight:5,color:'var(--primary)'}}/>Your week</span><button className="link" onClick={()=>open('recap')}>Full recap</button></div>}
           <div className="prog-verdict">A steady, consistent week — your routine is doing the work.</div>
           <div style={{fontSize:13,color:'var(--fg-secondary)',marginTop:8}}>Your most consistent week this month — Thursday was your best day.</div>
           <div className="prog-wactions" style={{marginTop:14}}>
@@ -7849,7 +7874,7 @@ function WebProgress({open}){
           <div style={{marginTop:10}}>{P.adherence.map(([l,pct,c])=>(
             <div key={l} className="prog-adh-row"><div className="spread" style={{marginBottom:5}}><span className="prog-adh-l">{l}</span>{!bodyNeutral && <span className="tnum prog-adh-v">{pct}%</span>}</div><div className="prog-adh-track"><div className="prog-adh-fill" style={{width:(bodyNeutral?60:pct)+'%',background:c}}></div></div></div>
           ))}</div>
-          <div className="prog-streak"><Ic n="flame" s={15} st={{color:'var(--clay)'}}/><span><b>{P.streak.days}-day</b> logging streak · <button className="link" style={{fontSize:12.5}} onClick={()=>open&&open('recap')}>{P.streak.freezes} freezes</button> available</span></div>
+          <div className="prog-streak"><Ic n="flame" s={15} st={{color:premium?'var(--primary-active)':'var(--clay)'}}/><span><b>{P.streak.days}-day</b> logging streak · <button className="link" style={{fontSize:12.5}} onClick={()=>open&&open('recap')}>{P.streak.freezes} freezes</button> available</span></div>
         </div></div>
 
         {/* §3 · ENERGY — deficit-led; equation as support (maintenance − intake = deficit) */}

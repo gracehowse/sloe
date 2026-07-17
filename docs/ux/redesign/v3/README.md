@@ -323,6 +323,15 @@ these as the target, not as app drift.
 > ENG-1525 hierarchy — the live `Sloe-App.html` is the source of truth for Progress
 > until those captures are regenerated.
 
+## Design Constitution (2026-07-17)
+
+**`DESIGN-CONSTITUTION.md`** is the cohesion rulebook — one page template, one control
+kit, colour governance, the numeric instrument scale, the two-grammar law. The
+**Elevated** mode implements it (v2 adds the constitution kit: 33px title grammar
+everywhere, the one 40px icon button, one chip/rail spec, serif section-heads on
+Progress, clay reserved for Pro). A screen ships at zero violations. Current remains
+the pre-constitution baseline until Grace ratifies.
+
 ## Changelog — 2026-07-17 · "Premium pass" preview (Tweaks → Style → Premium pass)
 
 A toggled A/B preview of the premium elevation direction, benchmarked against Oura /
