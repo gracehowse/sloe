@@ -106,6 +106,7 @@ under `apps/mobile/app/`.
 | Notifications prompt | `notifications-prompt.tsx` | `suppr:///notifications-prompt` | Push-permission primer |
 | What's new | `whats-new.tsx` | `suppr:///whats-new` | Auto-surfaces on build-number bump |
 | Login | `login.tsx` | `suppr:///login` (auto when signed out) | Apple Sign In only |
+| Reset password | `reset-password.tsx` | `suppr:///reset-password` (via `auth-callback` after a recovery-email tap) | ENG-1483; password + confirm, redirects to `/login` on success |
 | Onboarding | `onboarding.tsx` | `suppr:///onboarding` (auto when incomplete) | Canonical wizard |
 | Onboarding (legacy) | `onboarding-v2.tsx` | `suppr:///onboarding-v2` | Thin redirect → `/onboarding` |
 | Not found (404) | `+not-found.tsx` | any unmatched path | "recipe may have been deleted" |

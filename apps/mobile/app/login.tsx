@@ -230,9 +230,9 @@ export default function LoginScreen() {
   async function onSendPasswordReset() {
     if (!email.trim()) { setMessage("Enter your email first, then tap Forgot password."); return; }
     setBusy(true);
-    // ENG-1474: recovery link deep-links back into the app.
+    // ENG-1474: recovery link deep-links into the app. ENG-1483 adds `next` so it lands on the reset form, not the `/(tabs)` default.
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: AUTH_CALLBACK_DEEP_LINK,
+      redirectTo: `${AUTH_CALLBACK_DEEP_LINK}?next=${encodeURIComponent("/reset-password")}`,
     });
     setBusy(false);
     if (error) { setMessage(formatAuthError(error)); return; }

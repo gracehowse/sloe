@@ -73,8 +73,12 @@ describe("login.tsx email round-trips deep-link back into the app (ENG-1474)", (
     expect(src).toMatch(/signInWithOtp\(\{[\s\S]*?emailRedirectTo:\s*AUTH_CALLBACK_DEEP_LINK/);
   });
 
-  it("passes redirectTo on resetPasswordForEmail", () => {
-    expect(src).toMatch(/resetPasswordForEmail\([\s\S]*?redirectTo:\s*AUTH_CALLBACK_DEEP_LINK/);
+  it("passes redirectTo on resetPasswordForEmail, with next=/reset-password (ENG-1483)", () => {
+    // Without `next`, auth-callback fell back to `/(tabs)` and a
+    // just-recovered user had no way to actually set a new password.
+    expect(src).toMatch(
+      /resetPasswordForEmail\([\s\S]*?redirectTo:\s*`\$\{AUTH_CALLBACK_DEEP_LINK\}\?next=\$\{encodeURIComponent\(["']\/reset-password["']\)\}`/,
+    );
   });
 
   it("wires the auth-callback error hook into its message state", () => {
@@ -120,9 +124,25 @@ describe("auth-callback screen exchanges the code and guards next (ENG-1474)", (
   });
 });
 
+describe("reset-password screen — recovery landing (ENG-1483)", () => {
+  const src = readFileSync(join(MOBILE_ROOT, "app", "reset-password.tsx"), "utf8");
+
+  it("updates the password via supabase.auth.updateUser", () => {
+    expect(src).toMatch(/supabase\.auth\.updateUser\(\{\s*password\s*\}\)/);
+  });
+
+  it("redirects to /login on success", () => {
+    expect(src).toMatch(/router\.replace\(["']\/login["']\)/);
+  });
+});
+
 describe("safeAuthRedirectPath — open-redirect guard (ENG-1474)", () => {
   it("accepts a relative in-app path (/onboarding)", () => {
     expect(safeAuthRedirectPath("/onboarding")).toBe("/onboarding");
+  });
+
+  it("accepts /reset-password — the ENG-1483 recovery-form destination", () => {
+    expect(safeAuthRedirectPath("/reset-password")).toBe("/reset-password");
   });
 
   it("accepts the tabs home path", () => {
