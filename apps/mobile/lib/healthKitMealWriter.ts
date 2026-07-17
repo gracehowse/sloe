@@ -237,7 +237,7 @@ export async function writeMealToHealthKitIfEnabled(
   await persistWrittenIds(input.userId);
 
   if (bridgeWroteCount === 0) {
-    console.warn("[hk.writeMeal] FAILED — `saveFood` wrote 0 samples. Check the diagnostic in More → Health Sync → 'Send a test meal' for the bridge error. Most common cause: WRITE toggles still off in Settings → Health → Data Access & Devices → Suppr.", {
+    console.warn("[hk.writeMeal] FAILED — `saveFood` wrote 0 samples. Check the diagnostic in More → Health Sync → 'Send a test meal' for the bridge error. Most common cause: WRITE toggles still off in Settings → Health → Data Access & Devices → Sloe.", {
       mealId: input.mealId,
       name: input.name,
       calories: input.calories,
