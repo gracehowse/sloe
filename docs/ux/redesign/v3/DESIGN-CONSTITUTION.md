@@ -39,9 +39,15 @@ Every tab screen is composed top-to-bottom as:
 ```
 eyebrow overline  ·  serif title 33px  ·  [right-slot control]
 HERO ZONE — the screen's ONE big thing
-serif section-head 18px (+ optional right-slot)  →  content
+OVERLINE SECTION LABEL (11px caps, tracked, grey) (+ right-slot)  →  content
 …repeat sections…
 ```
+
+**Label grammar (Grace's ruling, 2026-07-17): structural labels are the quiet
+tracked-caps overline — the "NET ENERGY" register — everywhere.** Serif never
+labels structure; it is reserved for page titles, hero numerals, content nouns
+(dish names, day names) and verdict sentences. Serif-as-section-head read harsh
+and inconsistent; the overline system is the calm spine of every screen.
 
 - **One hero per screen.** Today = the ring. Plan = the day verdict. Progress = the
   weight trajectory. Cook = tonight's pick. The hero is the only element allowed
@@ -52,7 +58,7 @@ serif section-head 18px (+ optional right-slot)  →  content
 
 Page-ground cards: white, hairline, radius 24, flat. **At most one tinted hero card
 per screen** (`--hero-tint`). Nested cards: flat, borderless. Sheets/overlays float.
-**Sections are titled by the serif section-head outside the card.** In-card overlines
+**Sections are titled by the overline label outside the card.** In-card overlines
 label only *internal* groups (e.g. the instrument label inside a hero, a confidence
 readout) — never the card's identity.
 
@@ -62,6 +68,9 @@ readout) — never the card's identity.
   bordered, or shadowed variant. Anywhere.
 - **Chip:** full-radius pill, muted fill, 13px/600, 9×14 padding; selected = plum
   fill, white text. All chips — quick-add, filters, status — are this chip.
+- **Icons are Lucide geometry** (the ratified P0 direction) at 1.75px stroke,
+  one optical size per slot — no hand-drawn or modified paths. Malformed chrome
+  icons read cheap faster than any other element.
 - **Segmented control:** one spec, used for exclusive 2–5-way switches only.
 - **Rail:** one tile size (64px circle) + 12px label. Creators and cuisines share it.
 - Buttons: one filled CTA per screen (conversion surfaces excepted) · secondary =
@@ -74,8 +83,8 @@ Colour **means** something or it doesn't appear.
 | Hue | May appear as | Never as |
 |---|---|---|
 | Ink + plum family | All chrome, text, controls, links | — |
-| Sage / amber | Day-state semantics only (under/over, on/off-track) | decoration, icons-for-flavour |
-| Clay | Pro / monetisation only | streaks, encouragement, misc accents |
+| Sage / amber | Day-state semantics only (under/over, on/off-track); amber's survival as the over-state is pending Grace's orange ruling | decoration, icons-for-flavour |
+| ~~Clay~~ | **RETIRED (Grace, 2026-07-17)** — monetisation wears plum/frost | anywhere; clay-on-plum was the tell |
 | Macro hues | Inside macro visualisations only | section accents, icon tints |
 | Destructive red | Destructive actions/errors only | over-budget (that's amber) |
 
@@ -178,10 +187,11 @@ user thinking. So fit is **ambient**, everywhere a recipe appears:
 | Pure-white clinical ground | 6 | Warm oat ground |
 
 **Delivered 2026-07-17 (tranche 2):** the recap story (Rule 8, above) · web shell
-de-templated — ink Sloe-Deep sidebar with frosted nav + white Log-food CTA + clay
-Upgrade (Linear's dimmed-shell + Arc's sidebar-as-brand-surface + Stripe's sparse
-header, per the web-shell dossier), web cards to constitution grammar (radius 24,
-hairline, no shadow — was radius-22 + shadow) · motion demos live in the story
+de-templated — first shipped as an ink Sloe-Deep sidebar, **rejected by Grace and
+replaced with the light refined shell** (warm canvas sidebar, hairline separation,
+muted nav states, plum Log food as THE filled — Linear's dimmed-same-family
+grammar), web cards to constitution grammar (radius 24, hairline, no shadow — was
+radius-22 + shadow) · motion demos live in the story
 scenes (380ms house-ease, 70/140ms stagger, reduced-motion honoured) · trajectory
 raw dots + goal line co-visible (Withings), decision-module one-CTA law, Plan
 one-tap fix (open-lane), ambient fit + provenance + import trust card (Rule 10).
@@ -197,7 +207,16 @@ so the ink sidebar owns the one filled CTA (Rule 3); story close button to the
 40px spec; Current's goal-label position restored (an ungated change had leaked);
 post-log toast de-certaintied; Rule 5 amended with the story numeral tier.
 
-Still open for the next tranche: decorative-colour sweep of sheets/pushed screens,
+**Grace review round (2026-07-17, from her screenshots):** structural labels
+unified to the overline grammar (serif section-heads read harsh — Rule 1 amended);
+clay/orange retired outright (the clay Upgrade on the ink sidebar was the
+breaking case); the ink sidebar reverted to the light refined shell; chrome icons
+replaced with true Lucide geometry (the fork was two-pronged with a stray stem —
+"malformed and cheap" was accurate); section rhythm normalised to 28/10.
+
+Still open for the next tranche: full spacing audit against the 4px grid (Grace:
+"still massive spacing issues" — the 28/10 label rhythm is a first cut, not the
+audit), decorative-colour sweep of sheets/pushed screens,
 onboarding steps against Rule 1, mobile-web breakpoint against the ink shell, live
 count-up numerals in story scenes, a real fit-derivation note for the demo
 threshold on shelf cards.
