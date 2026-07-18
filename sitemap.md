@@ -42,7 +42,7 @@ Tab bar order (left → right). The **＋** is a UI-only raised button in
 | **Progress** | `apps/mobile/app/(tabs)/progress.tsx` | `suppr:///progress` | Trends, weight, weekly insights, digest |
 
 **Settings is NOT a tab** — reached via the **avatar (top-right of Today)**.
-Route: `apps/mobile/app/(tabs)/settings.tsx` → `suppr:///settings`.
+Route: `apps/mobile/app/settings.tsx` → `suppr:///settings`.
 
 <sub>✓ = pixel-verified via `simctl openurl` on 2026-06-04.</sub>
 

@@ -33,6 +33,8 @@ claims are explicitly outside the ratification.
    unchanged. Census search, chip, and segmented-control variants against
    ENG-1375/ENG-1532 before migrating anything. Flag:
    `primary_screen_chrome_v1`.
+   The completed residual census is
+   [`2026-07-18-eng-1577-primary-control-residual-census.md`](../audits/2026-07-18-eng-1577-primary-control-residual-census.md).
 2. Close the bottom-chrome contract in ENG-1376: correct measured scroll
    clearance, move Settings to stack ownership, remove its tab bar, and select
    Settings—not Today—on desktop. Flag: `bottom_chrome_contract_v1`.
@@ -141,9 +143,9 @@ collected at parent closure alongside iOS; the card adds no new colour token.
 
 | Issue | Implemented path | Automated evidence |
 |---|---|---|
-| ENG-1577 | Existing web `ScreenChrome` and mobile `ScreenSectionChrome` now own the flag-gated 33px title / 40px action treatment for Plan, Recipes, Progress and Settings. Today keeps its wordmark and ring-first exception. | Shared chrome, design-token and screen-budget suites. |
+| ENG-1577 | Existing web `ScreenChrome` and mobile `ScreenSectionChrome` now own the flag-gated 33px title / 40px action treatment for Plan, Recipes, Progress and Settings. Settings uses the shared pushed-screen leading slot and the `Your account` overline; Today keeps its wordmark and ring-first exception. The [residual control census](../audits/2026-07-18-eng-1577-primary-control-residual-census.md) corrected Recipes chip border/type drift without replacing ENG-1375/ENG-1532 controls. | Shared chrome, residual-census, design-token and screen-budget suites. |
 | ENG-1376 | Settings moves to root-stack ownership under `bottom_chrome_contract_v1`; the hidden legacy tab route remains the rollback path. Tab clearance now includes host breathing and desktop Settings/Profile no longer falsely select Today. | Route-selection, tab-structure, settings integration and bottom-clearance tests. |
-| ENG-1576 | The desktop zero-week dashboard mounts the shared invitation card, suppresses zero stats and the dashed body, opens the first slot from the quiet alternative, and disables both choices while generation runs. | Flag off/on plus zero, partial, populated and generating render tests. |
+| ENG-1576 | The desktop zero-week dashboard mounts the shared invitation card, suppresses zero stats and the dashed body, opens the first slot from the quiet alternative, and disables both choices while generation runs. The iOS initial state now applies the same single-invitation law: day strip, filters, dashed slots and tool rail appear only after `or add meals as you go`. | Flag off/on plus zero, partial, populated and generating render tests. |
 | ENG-1575 | The shared composition helper defines 0/1/2/many Library states; one recipe appears only as the hero and two appear once each. Discover and Library use one deterministic plum-duotone fallback for missing, whitespace and failed image URLs. | Shared derivation, fallback determinism, image-error and platform-parity tests. |
 | ENG-1579 | The existing dedup gate removes the second Describe row, preserves one entry per logging method, and hides method/barcode chrome while an inline search query owns the sheet. Clearing the query restores it. | Mirrored Log-sheet inventory, active-query, accessibility and recovery tests. |
 | ENG-1578 | With empty-state grammar enabled, real weekly evidence leads when weight has fewer than two points and setup moves to slot two. Under `semantic_stat_roles_v1`, Progress equation/triad and Settings summary numerals stay ink; coloured dots carry state. | Sparse/established/opt-out hierarchy tests, equation renders and semantic-role parity assertions. |
@@ -173,3 +175,26 @@ Local evidence is retained under `/tmp/sloe-ui-consistency/web` and
 evidence is the automated coverage listed above and the PR's visual summary;
 no user data, API, persistence, database or schema behavior was exercised or
 changed by this remediation.
+
+The 2026-07-18 simulator recheck also caught two residuals hidden by local
+default-off flags: iOS Plan still rendered its dashed manual-entry dashboard
+under the zero-week invitation, and pushed Settings omitted the standard
+overline. Both are now corrected under the existing flags and covered by
+render/source tests. The same pass found and fixed mobile-web equivalents:
+the legacy Plan tab header duplicated `Your plan`, its empty week still mounted
+the manual-entry dashboard, and Settings retained root header/tab ownership.
+Light and dark recaptures now show one Plan header/invitation and pushed
+Settings ownership on mobile web as well as iOS.
+
+Desktop and mobile-web light/dark recaptures cover Plan, Library, Progress,
+Settings, and the Log sheet at rest and with an active query. The Log query
+screens contain results and type filters only—Photo, Voice, Describe, Quick add,
+barcode, day utilities, and browse tabs correctly recede until the query clears.
+Desktop Library now uses the 33px title with two 40px muted circular actions;
+the one-recipe fallback appears once on every inspected client and theme.
+
+The simulator's development-only overrides leave
+`primary_screen_chrome_v1`, `bottom_chrome_contract_v1`,
+`recipe_sparse_media_v1`, and `semantic_stat_roles_v1` enabled so the flag-on
+paths are directly visible; production defaults are unchanged pending the
+controlled PostHog ramp.

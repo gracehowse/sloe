@@ -9,7 +9,7 @@
   Generator: scripts/generate-decisions-index.mjs (ENG-1370)
 -->
 
-341 decision docs, newest first. Generated 2026-07-17.
+341 decision docs, newest first. Generated 2026-07-18.
 
 | Date | Decision | Summary |
 |------|----------|---------|

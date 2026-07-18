@@ -157,6 +157,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
   const [planImportPill, setPlanImportPill] = useState<string | null>(null);
   const collectionsEnabled = isFeatureEnabled("recipe_collections_v1"); // ENG-1126
   const sparseMediaEnabled = isFeatureEnabled("recipe_sparse_media_v1");
+  const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   // Mobile-parity cycle: Recent (default) / Calories / Protein.
   const [sortKey, setSortKey] = useState<"recent" | "calories" | "protein">("recent");
@@ -166,7 +167,6 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
     );
   };
   const sortLabel = sortKey === "recent" ? "Recent" : sortKey === "calories" ? "Calories" : "Protein";
-
   // ENG-653 — unique plan-import source labels for the contextual pill row.
   const importPlanPills = useMemo(
     () => planImportFilterLabels(savedRecipesForLibrary.map((r) => r.sourceName)),
@@ -286,7 +286,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                     setEntryKind(p.id === "all" ? null : p.id);
                   }}
                   className={[
-                    "shrink-0 inline-flex items-center px-4 py-2 min-h-8 rounded-full text-[13px] transition-all whitespace-nowrap",
+                    `shrink-0 inline-flex items-center px-4 py-2 min-h-8 rounded-full ${consistencyChrome ? "text-xs" : "text-[13px]"} transition-all whitespace-nowrap`,
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                     active
                       ? "bg-primary-soft text-primary-solid font-semibold"
@@ -314,7 +314,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                   data-testid={`library-category-${f.id}`}
                   onClick={() => setCategory(f.id)}
                   className={[
-                    "shrink-0 inline-flex items-center px-4 py-2 min-h-8 rounded-full text-[13px] transition-all whitespace-nowrap",
+                    `shrink-0 inline-flex items-center px-4 py-2 min-h-8 rounded-full ${consistencyChrome ? "text-xs" : "text-[13px]"} transition-all whitespace-nowrap`,
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                     // Chip grammar (ENG-1022): selected = bg-primary-soft + primary-solid label + font-semibold, no border; unselected = quiet bg-card + muted, no border. Shared with the provenance row above.
                     active

@@ -157,11 +157,9 @@ export function PlanV3Surface({
 
   // ENG-1372 (empty-state grammar, Plan empty-week) — behind
   // `empty_state_grammar_v1`: a week with ZERO real meals in any slot
-  // replaces the verdict row + day-detail zero-triad with one warm
-  // invitation card (law 3 — those are derived numbers with nothing behind
-  // them yet). `PlanMealSectionV3`'s per-slot dashed rows stay as the ghost
-  // "add meals as you go" path — the ONE consolidated card, not a second
-  // wall of empty-state chrome, replaces only the verdict/detail cluster.
+  // replaces the derived week dashboard with one invitation card. The day
+  // strip, filter chips, dashed slots, and tool rail stay mounted only after
+  // the person explicitly chooses "add meals as you go".
   const emptyStateGrammarOn = isFeatureEnabled("empty_state_grammar_v1");
   const weekIsEmpty =
     emptyStateGrammarOn &&
@@ -213,55 +211,57 @@ export function PlanV3Surface({
         onAdjust={onAdjust}
         onTemplates={onTemplates}
       />
-      <PlanWeekStripV3
-        days={days}
-        selectedKey={String(safeIndex)}
-        onSelectDay={(key) => setSelectedIndex(Number(key))}
-      />
-      {household ? (
-        <PlanHouseholdBannerV3 {...household} onPress={onOpenHousehold} />
-      ) : null}
       {showEmptyWeekCard ? (
         <PlanEmptyWeekCard
           onGenerate={onGenerate}
           onAddMealsAsYouGo={() => setEmptyWeekCardDismissed(true)}
         />
       ) : (
-        <PlanDayDetailBandV3
-          dayLabel={dayLabel}
-          dayTotalKcal={Math.round(totals?.calories ?? 0)}
-          targetKcal={targetKcal}
-          plannedCount={plannedCount}
-          cookedCount={cookedCount}
-          macros={
-            totals
-              ? {
-                  protein: totals.protein,
-                  carbs: totals.carbs,
-                  fat: totals.fat,
-                }
-              : null
-          }
-        />
+        <>
+          <PlanWeekStripV3
+            days={days}
+            selectedKey={String(safeIndex)}
+            onSelectDay={(key) => setSelectedIndex(Number(key))}
+          />
+          {household ? (
+            <PlanHouseholdBannerV3 {...household} onPress={onOpenHousehold} />
+          ) : null}
+          <PlanDayDetailBandV3
+            dayLabel={dayLabel}
+            dayTotalKcal={Math.round(totals?.calories ?? 0)}
+            targetKcal={targetKcal}
+            plannedCount={plannedCount}
+            cookedCount={cookedCount}
+            macros={
+              totals
+                ? {
+                    protein: totals.protein,
+                    carbs: totals.carbs,
+                    fat: totals.fat,
+                  }
+                : null
+            }
+          />
+          <PlanMealFilterChipsV3 selected={mealFilter} onSelect={setMealFilter} />
+          <PlanMealSectionV3
+            plan={plan}
+            selectedDayIndex={safeIndex}
+            weekDates={weekDates}
+            filter={mealFilter}
+            onOpenMeal={onOpenMeal}
+            onAddToSlot={onAddToSlot}
+            onOpenMealOptions={onOpenMealOptions}
+            nutritionByDay={nutritionByDay}
+          />
+          <PlanToolsV3
+            batchCookSubtitle={batchCookSubtitle}
+            shoppingItemCount={shoppingItemCount}
+            servingCount={servingCount}
+            onOpenBatchCook={onOpenBatchCook}
+            onOpenShopping={onOpenShopping}
+          />
+        </>
       )}
-      <PlanMealFilterChipsV3 selected={mealFilter} onSelect={setMealFilter} />
-      <PlanMealSectionV3
-        plan={plan}
-        selectedDayIndex={safeIndex}
-        weekDates={weekDates}
-        filter={mealFilter}
-        onOpenMeal={onOpenMeal}
-        onAddToSlot={onAddToSlot}
-        onOpenMealOptions={onOpenMealOptions}
-        nutritionByDay={nutritionByDay}
-      />
-      <PlanToolsV3
-        batchCookSubtitle={batchCookSubtitle}
-        shoppingItemCount={shoppingItemCount}
-        servingCount={servingCount}
-        onOpenBatchCook={onOpenBatchCook}
-        onOpenShopping={onOpenShopping}
-      />
     </>
   );
 }

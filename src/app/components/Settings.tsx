@@ -51,6 +51,7 @@ import { SettingsDialogs } from "./settings/SettingsDialogs";
 import { WeighInReminderControl } from "./settings/WeighInReminderControl";
 import { WeeklyRecapToggle } from "./settings/WeeklyRecapToggle";
 import { SettingsTwoPaneShell, type SettingsPaneSection } from "./settings/SettingsTwoPaneShell";
+import { SettingsPageChrome } from "./settings/SettingsPageChrome";
 import { SupprButton } from "./suppr/suppr-button";
 import {
   ACTIVITY_SHORT_LABELS,
@@ -139,6 +140,8 @@ interface SettingsProps {
   /** When true (e.g. user tapped header Upgrade), scroll promo into view once */
   scrollToPromoOnOpen?: boolean;
   onScrollToPromoConsumed?: () => void;
+  /** Mobile-web pushed-screen back action; desktop keeps sidebar ownership. */
+  onBack?: () => void;
 }
 
 const LOCAL_CLEAR_KEYS = [
@@ -148,7 +151,7 @@ const LOCAL_CLEAR_KEYS = [
   "suppr-recent-foods-v1",
 ];
 
-export const Settings = memo(function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToPromoConsumed }: SettingsProps) {
+export const Settings = memo(function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToPromoConsumed, onBack }: SettingsProps) {
   const {
     signOut,
     profileDisplayName,
@@ -849,29 +852,11 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
   // exact same `<SupprCard>` nodes, so no setting is dropped or added.
   // Registered default-OFF in KNOWN_DEFAULT_OFF_FLAGS (web-only re-layout).
   const twoPane = isFeatureEnabled("sloe_v3_settings");
-  const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
   // The page title block — rendered by the legacy stack; the two-pane
   // shell renders its own equivalent header.
   const titleBlock = (
     <div className="mb-8">
-      <div className="flex items-center gap-3 mb-2">
-        {/* Sloe DS (Figma 09 Settings `335:2`): the header glyph sits on
-            a plum-tinted plate (`--foreground-brand` at 10%). */}
-        <div
-          className="p-2 rounded-full"
-          style={{
-            backgroundColor:
-              "color-mix(in srgb, var(--foreground-brand) 10%, transparent)",
-          }}
-        >
-          <Icons.settings
-            className="w-5 h-5"
-            style={{ color: "var(--foreground-brand)" }}
-          />
-        </div>
-        <h1 className={consistencyChrome ? "page-title text-foreground-brand" : "font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"}>Settings</h1>
-      </div>
-      <p className="text-muted-foreground">Manage your account and preferences</p>
+      <SettingsPageChrome onBack={onBack} />
     </div>
   );
 
@@ -2138,6 +2123,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     return (
       <>
         <SettingsTwoPaneShell
+          onBack={onBack}
           header={
             <>
               {profileHeaderCard}

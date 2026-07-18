@@ -28,9 +28,9 @@ export interface ScreenChromeProps {
  * `apps/mobile/components/suppr/screen-section-chrome.tsx`: overline →
  * serif title → optional subtitle, trailing slot, hairline bottom border.
  *
- * Title ruling: ONE tab-title size, serif 24 (`--font-headline`) — mobile
- * `Type.title` (24) is canonical; the old web Progress 28 forked sibling
- * tabs. Hidden at `md+` where the sidebar / desktop headers own navigation.
+ * ENG-1577 title ruling: the consistency path uses the 33px page-title token
+ * across primary screens. The former serif 24px path remains as the rollout
+ * kill switch. Hidden at `md+`, where desktop headers own composition.
  */
 export function ScreenChrome({
   overline,

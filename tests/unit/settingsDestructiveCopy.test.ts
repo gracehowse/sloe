@@ -30,6 +30,10 @@ import { describe, expect, it } from "vitest";
 
 const SETTINGS_PATH = resolve(__dirname, "../../src/app/components/Settings.tsx");
 const SRC = readFileSync(SETTINGS_PATH, "utf8");
+const CHROME_SRC = readFileSync(
+  resolve(__dirname, "../../src/app/components/settings/SettingsPageChrome.tsx"),
+  "utf8",
+);
 // 2026-06-23 (ENG-1225 gap #24): the modal cluster — including the Erase
 // confirm dialog + its calm copy/ledger — moved to settings/SettingsDialogs.tsx
 // when Settings was split for the two-pane layout. The destructive-row BUTTONS
@@ -151,10 +155,10 @@ describe("Settings — page header (P1-5)", () => {
     // `<h1 className="text-foreground bg-clip-text text-transparent">`
     // had no gradient set — it was a remnant. The audit cleaned it to
     // a plain text-foreground heading.
-    expect(SRC).not.toMatch(/<h1[^>]*bg-clip-text/);
-    expect(SRC).not.toMatch(/<h1[^>]*text-transparent/);
-    expect(SRC).toMatch(/className=\{consistencyChrome \? "page-title text-foreground-brand"/);
-    expect(SRC).toMatch(/font-\[family-name:var\(--font-headline\)\][^"]*text-foreground-brand/);
+    expect(CHROME_SRC).not.toMatch(/<h1[^>]*bg-clip-text/);
+    expect(CHROME_SRC).not.toMatch(/<h1[^>]*text-transparent/);
+    expect(CHROME_SRC).toContain('className="page-title text-foreground-brand"');
+    expect(CHROME_SRC).toMatch(/font-\[family-name:var\(--font-headline\)\][^"]*text-foreground-brand/);
   });
 
   it("page-header cog sits on a plum-tinted Sloe plate, not bg-primary/30 or grey bg-muted", () => {
@@ -164,14 +168,14 @@ describe("Settings — page header (P1-5)", () => {
     // Settings `335:2`) so the glyph reads in step with the plum serif
     // title instead of as orphaned grey chrome. The plate fill is
     // `--foreground-brand` at 10% and the glyph ink is the same token.
-    expect(SRC).not.toMatch(/p-2 bg-primary\/30 rounded-xl/);
-    expect(SRC).not.toMatch(/p-2 bg-muted rounded-xl/);
+    expect(CHROME_SRC).not.toMatch(/p-2 bg-primary\/30 rounded-xl/);
+    expect(CHROME_SRC).not.toMatch(/p-2 bg-muted rounded-xl/);
     // Plate: plum at 10% via color-mix on --foreground-brand.
-    expect(SRC).toMatch(
+    expect(CHROME_SRC).toMatch(
       /color-mix\(in srgb, var\(--foreground-brand\) 10%, transparent\)/,
     );
     // Glyph: the settings cog inks in the plum brand token.
-    expect(SRC).toMatch(
+    expect(CHROME_SRC).toMatch(
       /<Icons\.settings[\s\S]*?color: "var\(--foreground-brand\)"/,
     );
   });

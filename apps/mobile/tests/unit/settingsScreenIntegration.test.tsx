@@ -64,6 +64,15 @@ describe("/(tabs)/settings — structural integration", () => {
     expect(SETTINGS).toContain('<SettingsBundleContent context="settings"');
   });
 
+  it("uses shared pushed-screen chrome with the standard overline", () => {
+    expect(SETTINGS).toContain(
+      'from "@/components/suppr/screen-section-chrome"',
+    );
+    expect(SETTINGS).toContain('<ScreenSectionChrome');
+    expect(SETTINGS).toContain('overline={consistencyChrome ? "Your account" : null}');
+    expect(SETTINGS).toContain('testID="settings-screen-chrome"');
+  });
+
   it("renders a single neutral Sign Out row beneath the bundle (P1-5)", () => {
     expect(SETTINGS).toContain('testID="settings-sign-out-row"');
     const noComments = SETTINGS.replace(/\/\/[^\n]*\n/g, "\n").replace(

@@ -190,6 +190,10 @@ export default function App() {
   // (paste dialog / barcode scanner). Cleared once the create view consumes it.
   const [createInitialMethod, setCreateInitialMethod] = useState<CreateMethodHint | null>(null);
   const [plannerMobileTab, setPlannerMobileTab] = useState<"plan" | "shop">("plan");
+  const sloeV3Plan = isFeatureEnabled("sloe_v3_plan");
+  const bottomChromeContract = isFeatureEnabled("bottom_chrome_contract_v1");
+  const rootTabOwnsViewport = ["today", "plan", "library", "discover", "progress"].includes(currentView);
+  const showMobileBottomChrome = !bottomChromeContract || rootTabOwnsViewport;
 
   // ENG-1017 / ENG-1044 — canonical Plan-first tab order for mobile-web
   // bottom nav (matches native iOS). Defaults ON while PostHog loads.
@@ -527,12 +531,12 @@ export default function App() {
       case "plan":
         return (
           <>
-            <PlanTabChrome
+            {sloeV3Plan ? null : <PlanTabChrome
               activeId={plannerMobileTab === "shop" ? "shopping" : "plan"}
               title={plannerMobileTab === "shop" ? "Shopping list" : "Meal plan"}
               shoppingUncheckedCount={shoppingUncheckedCount}
               onSelect={(id) => setPlannerMobileTab(id === "shopping" ? "shop" : "plan")}
-            />
+            />}
             {plannerMobileTab === "plan" ? (
               <FeatureErrorBoundary feature="Meal Planner"><MealPlanner
                 userTier={userTier}
@@ -597,6 +601,7 @@ export default function App() {
               authEmail={authEmail}
               scrollToPromoOnOpen={settingsScrollToPromo}
               onScrollToPromoConsumed={clearSettingsScrollToPromo}
+              onBack={() => navigateToView("today")}
             />
           </>
         );
@@ -704,7 +709,7 @@ export default function App() {
             to a slim row with just the notifications bell pinned right.
             Skipping the border on desktop keeps the canvas continuous
             from the sidebar boundary. */}
-        <header className="flex items-center justify-between sticky top-0 z-40 bg-background/95 backdrop-blur-sm px-pm-5 py-4 border-b border-border md:py-3 md:border-b-0">
+        <header className={`${showMobileBottomChrome ? "flex" : "hidden md:flex"} items-center justify-between sticky top-0 z-40 bg-background/95 backdrop-blur-sm px-pm-5 py-4 border-b border-border md:py-3 md:border-b-0`}>
           <div className="md:hidden">
             <SupprPlateWordmark size={22} />
           </div>
@@ -747,7 +752,7 @@ export default function App() {
             pass. */}
         <main
           id="main-content"
-          className="flex-1 overflow-auto pb-[calc(5rem+env(safe-area-inset-bottom))] scroll-pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 md:scroll-pb-0"
+          className={`flex-1 overflow-auto ${showMobileBottomChrome ? "pb-[calc(5rem+env(safe-area-inset-bottom))] scroll-pb-[calc(5rem+env(safe-area-inset-bottom))]" : "pb-0 scroll-pb-0"} md:pb-0 md:scroll-pb-0`}
           role="main"
         >
           {renderView()}
@@ -771,7 +776,7 @@ export default function App() {
             not render the bottom nav at all (sidebar takes over),
             so the raised button is mobile-web only — consistent with
             D-2026-04-27-11 ("daily logging is a phone activity"). */}
-        <nav
+        {showMobileBottomChrome ? <nav
           aria-label="Main navigation"
           className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] md:hidden"
         >
@@ -863,7 +868,7 @@ export default function App() {
               );
             })}
           </div>
-        </nav>
+        </nav> : null}
       </div>
 
       {/* First-run guided checklist */}

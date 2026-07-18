@@ -81,7 +81,7 @@
   "src/app/components/ProgressDashboard.tsx": 2477,
   "src/app/components/RecipeDetail.tsx": 3530,
   "src/app/components/RecipeUpload.tsx": 3030,
-  "src/app/components/Settings.tsx": 2174,
+  "src/app/components/Settings.tsx": 2160,
   "src/app/components/ShoppingList.tsx": 464,
   "src/app/components/suppr/add-ingredient-dialog.tsx": 448,
   "src/app/components/suppr/create-custom-food-dialog.tsx": 1117,

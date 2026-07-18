@@ -14,9 +14,9 @@ import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { ScreenSectionChrome } from "@/components/suppr/screen-section-chrome";
 import { supabase } from "@/lib/supabase";
 import { Radius, Spacing, Type } from "@/constants/theme";
-import { YouSubTabHeader } from "@/components/tabs/YouSubTabHeader";
 import { SettingsBundleContent } from "@/components/settings/SettingsBundleContent";
 import { DevFlagOverrides } from "@/components/settings/DevFlagOverrides";
 import { filterSettingsIndex } from "@/lib/settingsSearchIndex";
@@ -95,18 +95,9 @@ export default function SettingsScreen() {
           paddingBottom: bottomChromeContract ? Spacing.xxxl + insets.bottom : legacyTabClearance,
           gap: Spacing.md,
         },
-        // Headers census 2026-06-10 (owner call): left-aligned like every
-        // other stack header — the Figma 335:2 dead-centre layout was the
-        // app's only centred title and read as drift once the system
-        // unified on left serif. Serif + navPrimary stay.
-        title: {
-          ...(consistencyChrome ? Type.pageTitle : Type.title),
-          color: colors.navPrimary,
-          marginLeft: Spacing.xs,
-        },
         muted: { color: colors.textSecondary, paddingHorizontal: Spacing.xl },
       }),
-    [bottomChromeContract, colors, consistencyChrome, insets.bottom, legacyTabClearance],
+    [bottomChromeContract, colors, insets.bottom, legacyTabClearance],
   );
 
   if (!userId) {
@@ -119,49 +110,35 @@ export default function SettingsScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
-      {/* Top bar — Sloe DS (Figma 09 Settings `335:2`): back chevron on
-          the left, "Settings" centered in Newsreader serif plum, with a
-          balancing spacer on the right so the title sits dead-centre. No
-          subtitle (the profile row below makes context immediately
-          visible — the cold subtitle is removed). */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingHorizontal: Spacing.lg,
-          // DRIFT-11 fix (2026-05-22): bumped from Spacing.sm to
-          // Spacing.md so the Settings header carries the same top
-          // breathing room as Discover / Plan / Progress.
-          paddingTop: Spacing.md,
-          paddingBottom: Spacing.xs,
-        }}
-      >
-        <PressableScale
-          haptic="selection"
-          onPress={() => {
-            if (router.canGoBack()) router.back();
-            else router.replace("/(tabs)" as never);
-          }}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          style={consistencyChrome
-            ? {
-                width: 40,
-                height: 40,
-                borderRadius: Radius.full,
-                backgroundColor: colors.backgroundSecondary,
-                alignItems: "center",
-                justifyContent: "center",
-              }
-            : { padding: 4, width: 30 }}
-        >
-          <ChevronLeft size={22} color={colors.text} strokeWidth={2} />
-        </PressableScale>
-        <Text style={[styles.title, { flex: 1 }]} accessibilityRole="header">
-          Settings
-        </Text>
-      </View>
+      <ScreenSectionChrome
+        testID="settings-screen-chrome"
+        overline={consistencyChrome ? "Your account" : null}
+        title="Settings"
+        leading={
+          <PressableScale
+            haptic="selection"
+            onPress={() => {
+              if (router.canGoBack()) router.back();
+              else router.replace("/(tabs)" as never);
+            }}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            style={consistencyChrome
+              ? {
+                  width: 40,
+                  height: 40,
+                  borderRadius: Radius.full,
+                  backgroundColor: colors.backgroundSecondary,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }
+              : { padding: 4, width: 30 }}
+          >
+            <ChevronLeft size={22} color={colors.text} strokeWidth={2} />
+          </PressableScale>
+        }
+      />
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}

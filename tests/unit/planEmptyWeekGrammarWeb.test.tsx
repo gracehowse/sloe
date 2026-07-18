@@ -88,7 +88,7 @@ describe("PlanV3Surface — empty-week grammar gating", () => {
     expect(getByText("Nothing planned yet")).not.toBeNull(); // day-detail zero-triad subline
   });
 
-  it("flag ON + fully-empty week: renders the warm invitation card, hides the verdict row", () => {
+  it("flag ON + fully-empty week: renders one invitation and hides derived week chrome", () => {
     forceFlag("empty_state_grammar_v1", true);
     const plan = Array.from({ length: 7 }, emptyDay);
     const { getByTestId, queryByText, queryByTestId } = render(
@@ -97,6 +97,8 @@ describe("PlanV3Surface — empty-week grammar gating", () => {
     expect(getByTestId("plan-empty-week-card")).toBeTruthy();
     expect(queryByText("On track — 0 of 7 days on target")).toBeNull();
     expect(queryByTestId("plan-day-detail-band")).toBeNull();
+    expect(queryByText("All meals")).toBeNull();
+    expect(queryByText("Batch cook")).toBeNull();
   });
 
   it("flag ON but the week has ANY real meal: keeps the normal verdict + day-detail band", () => {
@@ -119,7 +121,7 @@ describe("PlanV3Surface — empty-week grammar gating", () => {
     expect(getByText("On track — 0 of 7 days on target")).not.toBeNull();
   });
 
-  it("'or add meals as you go' dismisses the card for this session, revealing the day-detail band", () => {
+  it("'or add meals as you go' reveals the manual-entry dashboard for this session", () => {
     forceFlag("empty_state_grammar_v1", true);
     const plan = Array.from({ length: 7 }, emptyDay);
     const { getByText, queryByTestId, getByTestId } = render(
@@ -129,5 +131,7 @@ describe("PlanV3Surface — empty-week grammar gating", () => {
     fireEvent.click(getByText("or add meals as you go"));
     expect(queryByTestId("plan-empty-week-card")).toBeNull();
     expect(getByTestId("plan-day-detail-band")).toBeTruthy();
+    expect(getByText("All meals")).toBeTruthy();
+    expect(getByText("Batch cook")).toBeTruthy();
   });
 });

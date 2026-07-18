@@ -132,11 +132,11 @@ export default function LibraryScreen() {
   const cardElevation = useCardElevation({ variant: "soft" });
   // A cold tab-root back falls through to Today instead of stranding the user.
   const goBack = useSafeBack("/(tabs)");
-
   const { recipes: savedRecipes, loading, refreshing, refresh } = useSavedLibraryRecipes(userId);
   const { toggleSave: persistSaveToggle } = useSavedRecipes(userId);
   const collectionsEnabled = isFeatureEnabled("recipe_collections_v1"); // ENG-1126
   const sparseMediaEnabled = isFeatureEnabled("recipe_sparse_media_v1");
+  const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
   const {
     collections: recipeCollections,
     membership: collectionMembership,
@@ -410,7 +410,7 @@ export default function LibraryScreen() {
       paddingVertical: Spacing.sm,
       minHeight: 36,
       borderRadius: Radius.full,
-      borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
+      borderWidth: consistencyChrome ? 0 : cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
       borderColor: colors.border,
       backgroundColor: colors.card,
       justifyContent: "center",
@@ -512,7 +512,7 @@ export default function LibraryScreen() {
       paddingHorizontal: Spacing.dense,
       paddingVertical: Spacing.xs,
       borderRadius: Radius.full,
-      borderWidth: StyleSheet.hairlineWidth,
+      borderWidth: consistencyChrome ? 0 : StyleSheet.hairlineWidth,
       borderColor: colors.border,
       backgroundColor: colors.card,
       justifyContent: "center",
@@ -754,7 +754,7 @@ export default function LibraryScreen() {
     // `accentInk` / `accentSoft` (which depend on it) carry the aubergine
     // treatment, so they are the deps. JSX-level `accent.primary` uses (list
     // spinner, refresh tint, saved bookmark, star) live outside this memo.
-  }), [colors, cardElevation, accentInk, accentSoft]);
+  }), [colors, cardElevation, accentInk, accentSoft, consistencyChrome]);
 
   const renderRecipe = useCallback(
     ({ item }: { item: RecipeCard }) => {
