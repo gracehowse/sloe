@@ -1,8 +1,8 @@
 # Primary UI consistency remediation — action plan
 
-**Decision:** `docs/decisions/2026-07-17-primary-ui-consistency-contract.md`  
-**Audit date:** 2026-07-17  
-**Owner:** Grace; QA findings triage through Claude  
+**Decision:** `docs/decisions/2026-07-17-primary-ui-consistency-contract.md`
+**Audit date:** 2026-07-17
+**Owner:** Grace; QA findings triage through Claude
 **Delivery posture:** web + mobile parity, flag-gated visual changes, screenshot
 evidence before rollout
 
