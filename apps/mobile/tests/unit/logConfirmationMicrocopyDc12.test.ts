@@ -50,8 +50,13 @@ describe("Log confirmation microcopy (DC12)", () => {
   });
 
   it("Plan tab Log-as-planned alert surfaces the recipe title", () => {
+    // ENG-1344 — this site is now flag-gated through `alertOrToast`, which
+    // falls back to the identical `Alert.alert(title, message)` shape when
+    // `plan_alert_to_toast_v1` is off; the recipe title still leads the
+    // confirmation either way. See `alertOrToast.test.ts` for the
+    // flag-branching behaviour itself.
     const src = readSrc(PATHS.planner);
-    expect(src).toContain('Alert.alert(`${meal.recipeTitle} logged`');
+    expect(src).toContain('alertOrToast(toast.showToast, `${meal.recipeTitle} logged`');
   });
 
   it("Recipe detail Log-to-today alert surfaces the recipe title", () => {
