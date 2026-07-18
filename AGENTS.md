@@ -108,7 +108,12 @@ contract: "Design craft contract" in `.claude/agents/_project-context.md`.
   `PressableScale`/`SupprButton`/inline `({ pressed })` fails; migrate a pinned
   file then re-pin lower with `npm run check:pressable-feedback:write`.
 - **One filled CTA per screen** (FAB + conversion surfaces excepted — see the
-  2026-06-09 CTA decision). Secondary = outline, tertiary = ghost.
+  2026-06-09 CTA decision). Secondary + tertiary = ghost — the 2026-06-12
+  button-system decision (`docs/decisions/2026-06-12-button-system-solid-primary.md`)
+  collapsed the old outline + tonal-fill secondaries into ghost, so the
+  `SupprButton` CTA primitive is `primary | ghost` only. (Base shadcn `Button`'s
+  outline/secondary variants stay for non-CTA dialog/toolbar controls — a separate
+  layer from the CTA hierarchy.)
 - **Elevation per the card-grammar ruling (ENG-1497, 2026-07-10):**
   page-ground cards FLAT + hairline (no shadow — border + fill contrast
   separate; Oura/NC grammar), nested cards flat borderless, sheets/overlays
