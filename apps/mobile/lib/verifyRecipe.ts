@@ -31,12 +31,6 @@ import {
   type VerifyScaleResult,
 } from "@suppr/nutrition-core/totalGramsForVerifyScale";
 import { inferAllergensFromIngredients } from "@suppr/nutrition-core/inferAllergens";
-import { isPlausibleMacrosPer100g } from "@suppr/nutrition-core/macroPlausibility";
-import {
-  isBareGenericNounRow,
-  isLowRelevanceNonVerifiedRow,
-  isLowConfidenceDemotedRow,
-} from "@suppr/nutrition-core/searchRowTrust";
 import { stripSectionPrefix } from "@suppr/shared/recipe-import/socialUrlHelpers";
 
 /**

@@ -8,6 +8,7 @@ import { rateLimit } from "@/lib/server/rateLimit";
 import { hasFatSecretConfig, misconfiguredFatSecretResponse } from "@/lib/server/serverEnv";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
+import { isPlausibleMacrosPer100g } from "@/lib/nutrition/macroPlausibility";
 import {
   checkQuota,
   consumeQuota,
@@ -130,23 +131,36 @@ export async function GET(req: Request) {
       const brand = (r.brand_name ?? "").trim();
       const name = (r.food_name ?? "Unknown").trim();
       const displayName = brand ? `${brand} · ${name}` : name;
+      // ENG-1423 (mp-F3/plaus-F3) — mirror OFF's server-side Atwater gate
+      // (searchProducts.ts) on the per-100g basis only; `macrosPerServing`
+      // below is NOT per-100g (a whole meal can legitimately exceed the
+      // per-100g kcal ceiling) so it must never run through this check.
+      // A row whose free-text-parsed per-100g macros fail plausibility is
+      // treated the same as "didn't parse" (macrosPer100g: null) — the row
+      // still surfaces by name and gets a full food.get fetch on tap, rather
+      // than being dropped outright the way an OFF row would be. FatSecret's
+      // per-100g figures come from a free-text description parse (a fussier
+      // source than USDA/Edamam/OFF's structured fields), so nulling the
+      // implausible number is the correct trust behaviour here — never guess.
+      const per100g =
+        parsed && parsed.basis === "100g"
+          ? {
+              calories: parsed.calories,
+              protein: parsed.protein,
+              carbs: parsed.carbs,
+              fat: parsed.fat,
+            }
+          : null;
       return {
         foodId: r.food_id,
         label: displayName,
         brand: brand || null,
         // Per-100g macros only when FatSecret returned a "Per 100g"
-        // basis. Per-serving rows surface with null per-100g macros —
-        // the client fetches the full detail on tap before scaling.
-        // Never invent: if FatSecret didn't ship macros, we don't either.
-        macrosPer100g:
-          parsed && parsed.basis === "100g"
-            ? {
-                calories: parsed.calories,
-                protein: parsed.protein,
-                carbs: parsed.carbs,
-                fat: parsed.fat,
-              }
-            : null,
+        // basis AND that basis passes the plausibility gate. Per-serving
+        // rows surface with null per-100g macros — the client fetches the
+        // full detail on tap before scaling. Never invent: if FatSecret
+        // didn't ship macros (or shipped implausible ones), we don't either.
+        macrosPer100g: per100g && isPlausibleMacrosPer100g(per100g) ? per100g : null,
         servingLabel: parsed?.servingLabel ?? null,
         servingGrams: parsed?.servingGrams ?? null,
         // Per-serving inline payload — used by the search UI to render
