@@ -4,6 +4,7 @@ import { Bookmark, Sparkles, SlidersHorizontal } from "lucide-react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { Accent, Elevation, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 import type { PlanWeekVerdict } from "@suppr/shared/planning/planWeekStatus";
 
 /**
@@ -33,11 +34,13 @@ function ActButton({
   label,
   onPress,
   bg,
+  consistencyChrome,
   children,
 }: {
   label: string;
   onPress: () => void;
   bg: string;
+  consistencyChrome: boolean;
   children: React.ReactNode;
 }) {
   const colors = useThemeColors();
@@ -47,7 +50,14 @@ function ActButton({
       haptic="selection"
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={[styles.act, { backgroundColor: bg, borderColor: colors.border }]}
+      style={[
+        styles.act,
+        consistencyChrome ? styles.actStandard : styles.actLegacy,
+        {
+          backgroundColor: consistencyChrome ? colors.backgroundSecondary : bg,
+          borderColor: colors.border,
+        },
+      ]}
     >
       {children}
     </PressableScale>
@@ -62,6 +72,7 @@ export function PlanHeaderV3({
   onTemplates,
 }: PlanHeaderV3Props) {
   const colors = useThemeColors();
+  const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
   return (
     <View style={styles.container}>
       <View style={styles.row}>
@@ -69,16 +80,23 @@ export function PlanHeaderV3({
           <Text style={[styles.overline, { color: colors.textTertiary }]}>
             {dateRangeLabel.toUpperCase()}
           </Text>
-          <Text style={[styles.title, { color: colors.text }]}>Your plan</Text>
+          <Text
+            style={[
+              consistencyChrome ? styles.pageTitle : styles.title,
+              { color: colors.text },
+            ]}
+          >
+            Your plan
+          </Text>
         </View>
         <View style={styles.acts}>
-          <ActButton label="Generate week" onPress={onGenerate} bg={colors.card}>
+          <ActButton label="Generate week" onPress={onGenerate} bg={colors.card} consistencyChrome={consistencyChrome}>
             <Sparkles size={17} color={colors.text} strokeWidth={1.9} />
           </ActButton>
-          <ActButton label="Adjust constraints" onPress={onAdjust} bg={colors.card}>
+          <ActButton label="Adjust constraints" onPress={onAdjust} bg={colors.card} consistencyChrome={consistencyChrome}>
             <SlidersHorizontal size={17} color={colors.text} strokeWidth={1.9} />
           </ActButton>
-          <ActButton label="Templates" onPress={onTemplates} bg={colors.card}>
+          <ActButton label="Templates" onPress={onTemplates} bg={colors.card} consistencyChrome={consistencyChrome}>
             <Bookmark size={16} color={colors.text} strokeWidth={1.9} />
           </ActButton>
         </View>
@@ -122,8 +140,18 @@ const styles = StyleSheet.create({
   titleCol: { flexShrink: 1, minWidth: 0 },
   overline: { ...Type.statLabel },
   title: { ...Type.screenTitle, marginTop: 3 },
+  pageTitle: { ...Type.pageTitle, marginTop: Spacing.xs },
   acts: { flexDirection: "row", alignItems: "center", gap: 4 },
   act: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actStandard: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.full,
+  },
+  actLegacy: {
     // v3 `.planx-act`: rounded-square WHITE CARD button (radius 11) with a 1px
     // border + soft lift — not a circle, not flat. Grace's call (2026-06-27)
     // to override the flat-surface default for these buttons so they match the
@@ -132,8 +160,6 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: Radius.xl,
     borderWidth: StyleSheet.hairlineWidth,
-    alignItems: "center",
-    justifyContent: "center",
     // Subtle crisp lift (not the floaty page-card cardSoft) — matches the
     // prototype `--shadow-card` + web `shadow-sm` on these 38px buttons.
     ...Elevation.cardHairline,

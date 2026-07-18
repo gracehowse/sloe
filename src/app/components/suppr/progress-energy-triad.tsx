@@ -105,6 +105,7 @@ export function ProgressEnergyTriad({
   // ENG-1506 — the qualifier line + real period label render only behind
   // `energy_numbers_v1`; off → the exact legacy card.
   const energyV1 = isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG);
+  const semanticStats = isFeatureEnabled("semantic_stat_roles_v1");
 
   if (isFeatureEnabled("sloe_v3_energy_equation")) {
     return (
@@ -116,6 +117,7 @@ export function ProgressEnergyTriad({
         isAdaptive={isAdaptive}
         qualifierLine={energyV1 ? (qualifierLine ?? null) : null}
         periodLabel={energyV1 ? (periodLabel ?? null) : null}
+        semanticStatRoles={semanticStats}
         className={className}
       />
     );
@@ -133,8 +135,9 @@ export function ProgressEnergyTriad({
       </Cell>
       <Cell label={tdeeCellLabel} testId="progress-energy-tdee">
         <p
+          data-testid="progress-energy-tdee-value"
           className="mt-1.5 font-[family-name:var(--font-headline)] text-[22px] font-medium tabular-nums"
-          style={{ color: "var(--accent-success-solid)" }}
+          style={{ color: semanticStats ? "var(--foreground)" : "var(--accent-success-solid)" }}
         >
           {maintenanceKcal != null && maintenanceKcal > 0
             ? maintenanceKcal.toLocaleString()
@@ -142,9 +145,10 @@ export function ProgressEnergyTriad({
         </p>
         {maintenanceKcal != null && maintenanceKcal > 0 ? (
           <p
-            className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]"
-            style={{ color: "var(--accent-success-solid)" }}
+            className="mt-0.5 inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.08em]"
+            style={{ color: semanticStats ? "var(--muted-foreground)" : "var(--accent-success-solid)" }}
           >
+            {semanticStats ? <span className="size-1.5 rounded-full bg-success" aria-hidden /> : null}
             {isAdaptive ? "Adaptive" : "Formula"}
           </p>
         ) : null}
@@ -160,9 +164,12 @@ export function ProgressEnergyTriad({
       </Cell>
       <Cell label="Deficit" testId="progress-energy-deficit">
         <p
+          data-testid="progress-energy-deficit-value"
           className="mt-1.5 font-[family-name:var(--font-headline)] text-[22px] font-medium tabular-nums"
           style={{
-            color: isSurplus
+            color: semanticStats
+              ? "var(--foreground)"
+              : isSurplus
               ? "var(--accent-warning-solid)"
               : deficitKcal != null && deficitKcal > 0
                 ? "var(--primary)"
@@ -177,7 +184,17 @@ export function ProgressEnergyTriad({
                 : `+${Math.abs(deficitKcal).toLocaleString()}`
             : "—"}
         </p>
-        {isSurplus ? (
+        {semanticStats && deficitKcal != null && deficitKcal !== 0 ? (
+          <p className="mt-0.5 inline-flex items-center gap-1 text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            <span
+              className="size-1.5 rounded-full"
+              style={{ background: isSurplus ? "var(--warning)" : "var(--foreground-brand)" }}
+              aria-hidden
+            />
+            {isSurplus ? "Surplus" : "Deficit"}
+          </p>
+        ) : null}
+        {!semanticStats && isSurplus ? (
           <p className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-warning-solid">
             Surplus
           </p>
@@ -205,6 +222,7 @@ function ProgressEnergyEquation({
   isAdaptive,
   qualifierLine,
   periodLabel,
+  semanticStatRoles,
   className,
 }: {
   avgIntakeKcal: number | null;
@@ -214,6 +232,7 @@ function ProgressEnergyEquation({
   isAdaptive: boolean;
   qualifierLine: string | null;
   periodLabel: string | null;
+  semanticStatRoles: boolean;
   className?: string;
 }) {
   const [showHow, setShowHow] = React.useState(false);
@@ -226,7 +245,9 @@ function ProgressEnergyEquation({
         : deficitKcal === 0
           ? "0"
           : `+${Math.abs(deficitKcal).toLocaleString()}`;
-  const resultColor = isSurplus
+  const resultColor = semanticStatRoles
+    ? "var(--foreground)"
+    : isSurplus
     ? "var(--accent-warning-solid)"
     : deficitKcal != null && deficitKcal > 0
       ? "var(--primary)"
@@ -249,9 +270,21 @@ function ProgressEnergyEquation({
       <div className="mt-3 flex items-end justify-between gap-1">
         <EqTerm label="Avg intake" value={avgIntakeKcal != null ? avgIntakeKcal.toLocaleString() : "—"} />
         <EqOp>−</EqOp>
-        <EqTerm label="Maintenance" value={hasMaintenance ? maintenanceKcal!.toLocaleString() : "—"} color="var(--accent-success-solid)" />
+        <EqTerm
+          label="Maintenance"
+          value={hasMaintenance ? maintenanceKcal!.toLocaleString() : "—"}
+          color={semanticStatRoles ? undefined : "var(--accent-success-solid)"}
+          stateColor={semanticStatRoles && hasMaintenance ? "var(--success)" : undefined}
+        />
         <EqOp>=</EqOp>
-        <EqTerm label={isSurplus ? "Surplus/day" : "Deficit/day"} value={resultValue} color={resultColor} />
+        <EqTerm
+          label={isSurplus ? "Surplus/day" : "Deficit/day"}
+          value={resultValue}
+          color={resultColor}
+          stateColor={semanticStatRoles && deficitKcal != null && deficitKcal !== 0
+            ? isSurplus ? "var(--warning)" : "var(--foreground-brand)"
+            : undefined}
+        />
       </div>
       {/* ENG-1506 — explicit source qualifier under the equation. */}
       {qualifierLine && hasMaintenance ? (
@@ -298,17 +331,20 @@ function EqTerm({
   label,
   value,
   color,
+  stateColor,
 }: {
   label: string;
   value: string;
   color?: string;
+  stateColor?: string;
 }) {
   return (
     <div className="min-w-0 flex-1 text-center">
-      <p className="font-[family-name:var(--font-headline)] text-[22px] font-medium tabular-nums leading-none" style={color ? { color } : undefined}>
+      <p className="font-[family-name:var(--font-headline)] text-[22px] font-medium tabular-nums leading-none text-foreground" style={color ? { color } : undefined}>
         {value}
       </p>
-      <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+      <p className="mt-1 flex items-center justify-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+        {stateColor ? <span className="size-1.5 rounded-full" style={{ background: stateColor }} aria-hidden /> : null}
         {label}
       </p>
     </div>

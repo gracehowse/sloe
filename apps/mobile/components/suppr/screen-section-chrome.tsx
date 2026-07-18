@@ -5,6 +5,7 @@ import { TodayBrandBar } from "@/components/today/TodayBrandBar";
 import { Layout } from "@/constants/layout";
 import { Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 
 export interface ScreenSectionChromeProps {
   /** Eyebrow above the title. Pass an empty string / null to hide it
@@ -18,9 +19,11 @@ export interface ScreenSectionChromeProps {
   showBrand?: boolean;
   /** Trailing control aligned with the title row (e.g. calendar). */
   trailing?: ReactNode;
+  /** Leading navigation control for pushed utility surfaces (e.g. Settings). */
+  leading?: ReactNode;
   /** @deprecated No-op since the headers census (2026-06-10) — the compact-22
-   *  title fork was off the type ramp; all tab titles render `Type.title` (24).
-   *  Kept only so existing Plan/Progress call sites keep compiling. */
+   *  title fork was off the type ramp. The consistency contract uses
+   *  `Type.pageTitle` (33), with `Type.title` (24) retained by the kill switch. */
   compact?: boolean;
   children?: ReactNode;
   testID?: string;
@@ -38,6 +41,7 @@ export function ScreenSectionChrome({
   subtitle,
   showBrand = false,
   trailing,
+  leading,
   // compact is deprecated (headers census 2026-06-10) — destructured so call
   // sites still compile, intentionally unused now the 22px fork is gone.
   compact: _compact = false,
@@ -47,6 +51,7 @@ export function ScreenSectionChrome({
   titleTestID,
 }: ScreenSectionChromeProps) {
   const colors = useThemeColors();
+  const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
 
   const styles = useMemo(
     () =>
@@ -72,13 +77,16 @@ export function ScreenSectionChrome({
         // headers census 2026-06-10 — eyebrow plumbing → Type.label
         // (11/700/0.88/uppercase). Was 11/700/ls1.2 hand-rolled.
         overline: { ...Type.label, color: colors.textTertiary },
-        // headers census 2026-06-10 — one tab-title size (Type.title, 24);
-        // the compact-22 fork left the type ramp and split sibling tabs.
-        title: { ...Type.title, color: colors.navPrimary },
+        // ENG-1577 — the consistency path converges primary screens on the
+        // 33px page-title token; the former 24px treatment is the kill switch.
+        title: {
+          ...(consistencyChrome ? Type.pageTitle : Type.title),
+          color: colors.navPrimary,
+        },
         // headers census 2026-06-10 — tokenised 13/600 chrome subtitle.
         subtitle: { ...Type.captionStrong, color: colors.textSecondary, marginTop: 2 },
       }),
-    [colors, subtitle],
+    [colors, consistencyChrome, subtitle],
   );
 
   return (
@@ -86,6 +94,7 @@ export function ScreenSectionChrome({
       <View style={styles.titleBlock}>
         {showBrand ? <TodayBrandBar /> : null}
         <View style={styles.titleRow}>
+          {leading ?? null}
           <View style={styles.titleCol}>
             {overline ? (
               <Text style={styles.overline} testID={overlineTestID}>

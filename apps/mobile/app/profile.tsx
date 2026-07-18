@@ -31,6 +31,7 @@ import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
 import { resolveTargets } from "@/lib/calcTargets";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useSafeBack } from "@/hooks/use-safe-back";
+import { settingsRoute } from "@/lib/settingsRoute";
 import { PushScreenHeader } from "@/components/PushScreenHeader";
 import { SupprButton } from "@/components/ui/SupprButton";
 import {
@@ -54,7 +55,6 @@ import { GoalPaceEditorSheet } from "@/components/recap/GoalPaceEditorSheet";
 import { ProfileShowcaseReadView } from "@/components/profile/ProfileShowcaseReadView";
 import { EditorialProfileBlock } from "@/components/profile/EditorialProfileBlock";
 import { ProfileIdentityStrip } from "@/components/profile/ProfileIdentityStrip";
-
 export default function ProfileScreen() {
   const colors = useThemeColors();
   // `accent` (aubergine) drives the loading spinner. The Save CTA + selected
@@ -72,7 +72,7 @@ export default function ProfileScreen() {
   // /(tabs)/more was collapsed to a redirect → /(tabs)/settings (Group G
   // Batch D, 2026-04-29). Targeting the live destination directly avoids
   // the redirect chain when the user taps Back.
-  const goBack = useSafeBack("/(tabs)/settings");
+  const goBack = useSafeBack(settingsRoute());
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 

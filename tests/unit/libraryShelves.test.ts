@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  deriveLibraryComposition,
   deriveLibraryShelves,
   type LibraryShelfRecipe,
 } from "../../src/lib/recipes/libraryShelves";
@@ -20,6 +21,49 @@ const r = (
   prepTimeMin: 10,
   cookTimeMin: 15,
   ...o,
+});
+
+describe("deriveLibraryComposition (ENG-1575)", () => {
+  it("returns no editorial or grid recipes for an empty library", () => {
+    expect(deriveLibraryComposition([], true)).toEqual({
+      mode: "empty",
+      featured: null,
+      shelves: [],
+      gridRecipes: [],
+    });
+  });
+
+  it("shows a sole recipe exactly once as the featured card", () => {
+    const only = r("only");
+    const composition = deriveLibraryComposition([only], true);
+    expect(composition.mode).toBe("single");
+    expect(composition.featured?.id).toBe("only");
+    expect(composition.shelves).toEqual([]);
+    expect(composition.gridRecipes).toEqual([]);
+  });
+
+  it("shows two recipes once each: featured plus grid", () => {
+    const composition = deriveLibraryComposition([r("first"), r("second")], true);
+    expect(composition.mode).toBe("pair");
+    expect(composition.featured?.id).toBe("first");
+    expect(composition.shelves).toEqual([]);
+    expect(composition.gridRecipes.map((recipe) => recipe.id)).toEqual(["second"]);
+  });
+
+  it("preserves the existing editorial and grid density for many recipes", () => {
+    const recipes = [r("a"), r("b"), r("c"), r("d")];
+    const composition = deriveLibraryComposition(recipes, true);
+    expect(composition.mode).toBe("many");
+    expect(composition.shelves.length).toBeGreaterThan(0);
+    expect(composition.gridRecipes.map((recipe) => recipe.id)).toEqual(["a", "b", "c", "d"]);
+  });
+
+  it("retains the old repeated composition behind the kill switch", () => {
+    const only = r("only");
+    const composition = deriveLibraryComposition([only], false);
+    expect(composition.shelves.length).toBeGreaterThan(0);
+    expect(composition.gridRecipes.map((recipe) => recipe.id)).toEqual(["only"]);
+  });
 });
 
 describe("deriveLibraryShelves", () => {

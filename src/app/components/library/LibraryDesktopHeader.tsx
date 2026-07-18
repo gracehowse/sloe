@@ -1,6 +1,7 @@
 "use client";
 
 import { Icons } from "../ui/icons";
+import { isFeatureEnabled } from "@/lib/analytics/track";
 
 /** Navigate the SPA to a create/import view via the `view` query param (the
  *  same hook the mobile-web chrome uses). */
@@ -24,6 +25,7 @@ export interface LibraryDesktopHeaderProps {
  * `apps/mobile/components/tabs/RecipesTabChrome.tsx`.
  */
 export function LibraryDesktopHeader({ recipeCount, sortLabel }: LibraryDesktopHeaderProps) {
+  const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
   return (
     <div className="hidden md:flex items-start justify-between gap-4 mb-6">
       <div>
@@ -31,7 +33,9 @@ export function LibraryDesktopHeader({ recipeCount, sortLabel }: LibraryDesktopH
           Cook
         </div>
         <h1
-          className="mt-0.5 font-[family-name:var(--font-headline)] text-[24px] font-medium text-foreground -tracking-[0.02em]"
+          className={consistencyChrome
+            ? "mt-0.5 page-title text-foreground-brand"
+            : "mt-0.5 font-[family-name:var(--font-headline)] text-[24px] font-medium text-foreground -tracking-[0.02em]"}
           data-testid="library-desktop-title"
         >
           Your kitchen
@@ -48,20 +52,24 @@ export function LibraryDesktopHeader({ recipeCount, sortLabel }: LibraryDesktopH
         <button
           type="button"
           onClick={() => navToView("create")}
-          className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted/60 transition-colors"
+          className={consistencyChrome
+            ? "inline-flex h-10 w-10 items-center justify-center rounded-full bg-muted text-foreground transition-[background-color,transform] hover:bg-[var(--background-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-95"
+            : "inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted/60 transition-colors"}
           aria-label="Create a new recipe"
         >
-          <Icons.edit className="w-4 h-4" aria-hidden />
-          Create
+          <Icons.edit className={consistencyChrome ? "h-5 w-5" : "h-4 w-4"} aria-hidden />
+          {consistencyChrome ? null : "Create"}
         </button>
         <button
           type="button"
           onClick={() => navToView("import")}
-          className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted/60 transition-colors"
+          className={consistencyChrome
+            ? "inline-flex h-10 w-10 items-center justify-center rounded-full bg-muted text-foreground transition-[background-color,transform] hover:bg-[var(--background-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-95"
+            : "inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted/60 transition-colors"}
           aria-label="Import a recipe"
         >
-          <Icons.link className="w-4 h-4" aria-hidden />
-          Import
+          <Icons.link className={consistencyChrome ? "h-5 w-5" : "h-4 w-4"} aria-hidden />
+          {consistencyChrome ? null : "Import"}
         </button>
       </div>
     </div>

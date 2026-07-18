@@ -2,7 +2,7 @@
  * ENG-1374 PR 2 — never-white recipe-image underlay, mobile surface pins.
  *
  * The structural guarantee: EVERY recipe-image container paints an opaque
- * §11.4 cuisine tint (`recipeUnderlayColor`, or `CARD_CREAM` where the
+ * deterministic recipe tint (`recipeUnderlayColor`, or `CARD_CREAM` where the
  * container has no recipe identity) on the WRAPPER itself, so no child
  * failure — 404, SVG mount failure, slow network, style clobber (the
  * ENG-1382 class) — can expose page white. Reference implementation:
@@ -24,7 +24,7 @@ const read = (p: string) => readFileSync(resolve(__dirname, "../..", p), "utf8")
 describe("mobile recipe-image containers — opaque wrapper underlay (ENG-1374 PR 2)", () => {
   it("RecipeCardImage computes the underlay internally — the overridable fallbackBg prop is retired (was fed #FFFFFF)", () => {
     const src = read("components/library/RecipeCardImage.tsx");
-    expect(src).toMatch(/recipeUnderlayColor\(\{ id: recipeId, title: recipeTitle \}, scheme\)/);
+    expect(src).toMatch(/recipeUnderlayColor\(\{ id: recipeId, title: recipeTitle \}, scheme, mediaPalette\)/);
     expect(src).not.toMatch(/fallbackBg[:?]/); // no prop, no type member — comment mentions only
     // photo branch carries the tint on the image element too (flag-off RN Image path)
     expect(src).toContain("style={[cardImageStyle, { backgroundColor: underlay }]}");
@@ -65,27 +65,28 @@ describe("mobile recipe-image containers — opaque wrapper underlay (ENG-1374 P
     );
   });
 
-  it("Discover cluster cards compute the tint per recipe — the white colors.card placeholder prop is retired", () => {
+  it("Discover cluster cards reuse RecipeCardImage for missing, loading, and error media", () => {
     const src = read("components/discover/DiscoverClusterCarousels.tsx");
-    expect(src).toMatch(/const underlay = recipeUnderlayColor\(\{ id: recipe\.id, title: recipe\.title \}, scheme\)/);
+    expect(src).toContain("<RecipeCardImage");
+    expect(src).toContain("uri={recipe.image}");
     expect(src).not.toContain("placeholderColor={colors.card}");
-    expect(src).toContain("backgroundColor: underlay");
   });
 
   it("Discover 'More ideas' row thumbs: tinted wrapper hosts both branches (colors.card ground gone)", () => {
     const src = read("components/discover/DiscoverMoreIdeaRow.tsx");
-    expect(src).toMatch(/backgroundColor: recipeUnderlayColor\(\{ id: item\.id, title: item\.title \}, scheme\)/);
+    expect(src).toMatch(/backgroundColor: recipeUnderlayColor\(\{ id: item\.id, title: item\.title \}, scheme, mediaPalette\)/);
     expect(src).not.toContain("backgroundColor: colors.card");
   });
 
   it("Discover hero media wrapper is tinted", () => {
     const src = read("app/(tabs)/discover.tsx");
-    expect(src).toMatch(/backgroundColor: recipeUnderlayColor\(\{ id: item\.id, title: item\.title \}, scheme\)/);
+    expect(src).toMatch(/backgroundColor: recipeUnderlayColor\(\{ id: item\.id, title: item\.title \}, scheme, isFeatureEnabled\("recipe_sparse_media_v1"\) \? "plum-duotone" : "legacy-cuisine"\)/);
   });
 
-  it("FollowingFeed recipe media wrapper is tinted — the transparent ground is gone", () => {
+  it("FollowingFeed reuses RecipeCardImage so broken URLs converge on the same fallback", () => {
     const src = read("components/discover/FollowingFeed.tsx");
-    expect(src).toMatch(/backgroundColor: recipeUnderlayColor\(\{ id: recipe\.id, title: recipe\.title \}, scheme\)/);
+    expect(src).toContain("<RecipeCardImage");
+    expect(src).toContain("uri={recipe.image}");
     expect(src).not.toContain('backgroundColor: "transparent"');
   });
 

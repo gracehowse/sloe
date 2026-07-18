@@ -714,17 +714,14 @@ function DefaultComposition({
           ? "My recipes"
           : "Saved meals";
 
-  // Inline-search mode is active when the host wired `search.onSelect`.
-  // In that case the search row is a real `<Input>` and results render
-  // via `<FoodSearchPanel>` within this same sheet. Without `onSelect`
-  // we fall back to the legacy tap-to-open path that routes to a
-  // separate `<FoodSearch>` dialog (preserves any host that hasn't
-  // migrated yet — e.g. test harnesses calling `LogSheet` with only
-  // `onOpen`).
+  // `search.onSelect` owns an inline input/results path; `onOpen`-only
+  // callers retain the legacy external dialog.
   const inlineMode = !!search?.onSelect;
 
   // Controlled query; resets on open to `initialQuery` (ENG-1450) or empty.
   const [query, setQuery] = React.useState(initialQuery ?? "");
+  const searchQueryActive = inlineMode && query.trim().length > 0;
+  const showSecondaryMethodChrome = !(isFeatureEnabled("component_grammar_dedup") && searchQueryActive);
   React.useEffect(() => {
     if (!open) {
       setQuery("");
@@ -819,10 +816,11 @@ function DefaultComposition({
           aiMethodTooltipVisible={aiMethodTooltipVisible}
           onQuickAdd={onAddManually}
           onDescribe={describe ? onDescribe : undefined}
+          hidden={!showSecondaryMethodChrome}
         />
       </div>
 
-      {showBarcodeFreePromise && barcode?.onOpen ? (
+      {showSecondaryMethodChrome && showBarcodeFreePromise && barcode?.onOpen ? (
         <LogSheetBarcodeFreePromise onOpen={() => barcode.onOpen?.()} />
       ) : null}
         </>
@@ -839,7 +837,8 @@ function DefaultComposition({
           onCommit={describe.onCommit}
           onPaywall={describe.onPaywall}
           onReviewActiveChange={setDescribeReviewActive}
-          inputHidden={!describeReviewActive && query.trim().length > 0}
+          inputHidden={!describeReviewActive && searchQueryActive}
+          collapsedEntryHidden={isFeatureEnabled("component_grammar_dedup")}
         />
       ) : null}
 

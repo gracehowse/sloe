@@ -34,8 +34,9 @@ export function DiscoverFilterChips({
   filters: DiscoverFilters;
   setFilters: (updater: (prev: DiscoverFilters) => DiscoverFilters) => void;
 }) {
+  const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
   const chipClassName = (isActive: boolean) =>
-    `shrink-0 px-4 py-2 rounded-full text-[13px] whitespace-nowrap transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+    `shrink-0 px-4 py-2 rounded-full ${consistencyChrome ? "text-xs" : "text-[13px]"} whitespace-nowrap transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
       isActive
         ? "bg-primary-soft text-primary-solid font-semibold"
         : "bg-card text-muted-foreground font-medium hover:text-foreground hover:bg-muted"

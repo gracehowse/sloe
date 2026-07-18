@@ -1089,7 +1089,7 @@ export default function ProgressScreen() {
     amber: Accent.warning,
     red: Accent.destructive,
     protein: macro.protein, carbs: macro.carbs, fat: macro.fat,
-  };
+  }; const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
 
   const hasData = Object.keys(byDay).length > 0;
 
@@ -1120,11 +1120,11 @@ export default function ProgressScreen() {
       accessibilityLabel="Log weight"
       onPress={() => setLogWeightOpen(true)}
       style={({ pressed }) => [{
-        width: 36,
-        height: 36,
+        width: consistencyChrome ? 40 : 36,
+        height: consistencyChrome ? 40 : 36,
         borderRadius: Radius.full,
-        backgroundColor: t.elevated,
-        borderWidth: 1,
+        backgroundColor: consistencyChrome ? colors.backgroundSecondary : t.elevated,
+        borderWidth: consistencyChrome ? 0 : 1,
         borderColor: t.border,
         alignItems: "center",
         justifyContent: "center",
@@ -1332,6 +1332,7 @@ export default function ProgressScreen() {
         return (
           <ProgressHierarchyV1
             mode={effectiveWeightSurfaceMode}
+            promoteAvailableProgress={isFeatureEnabled("empty_state_grammar_v1")}
             trajectory={chartsReady ? {
               latestWeightKg, goalWeightKg, weightKgByDay, measurementSystem,
               trend: weightChartTrend, range: weightChartRange, chartKey: `${period.type}:${period.offset}`,
@@ -2341,4 +2342,3 @@ function WeightTrendOnlyCard({
     </View>
   );
 }
-

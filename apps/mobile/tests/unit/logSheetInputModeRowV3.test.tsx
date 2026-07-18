@@ -47,6 +47,10 @@ vi.mock("expo-haptics", () => ({
 // client at module load and explodes with no SUPABASE_URL. These tests never
 // touch search.
 vi.mock("@/lib/verifyRecipe", () => ({
+  splitFoodSearchResults: (_query: string, rows: unknown[]) => ({
+    best: rows ?? [],
+    more: [],
+  }),
   searchFoods: vi.fn(async () => []),
   getFoodMacros: vi.fn(async () => null),
   scaleMacrosByGrams: vi.fn(() => ({
@@ -184,12 +188,32 @@ describe("LogSheet input-method row — v3 tile grammar (mobile)", () => {
   });
 
   it("expands the inline describe flow when the Describe tile is tapped (flag ON, unlocked)", () => {
-    const { getByTestId, queryByTestId } = open({
+    const { getAllByLabelText, getByTestId, queryByTestId } = open({
       describe: { locked: false, onParse: async () => ({ ok: true, items: [] }), onCommit: () => {} },
     });
     expect(queryByTestId("log-sheet-describe-input")).toBeNull();
+    expect(queryByTestId("log-sheet-describe-expand")).toBeNull();
+    expect(getAllByLabelText("Describe")).toHaveLength(1);
     fireEvent.press(getByTestId("log-sheet-method-describe"));
     expect(getByTestId("log-sheet-describe-input")).toBeTruthy();
+  });
+
+  it("lets an active search query own the sheet and restores method chrome when cleared", () => {
+    const { getByLabelText, getByTestId, queryByTestId } = open({
+      search: { onSelect: () => {} },
+      showBarcodeFreePromise: true,
+    });
+    expect(getByTestId("log-sheet-input-mode-row")).toBeTruthy();
+    expect(getByTestId("log-sheet-loud-barcode-cta")).toBeTruthy();
+
+    fireEvent.changeText(getByLabelText("Search foods"), "yogurt");
+    expect(queryByTestId("log-sheet-input-mode-row")).toBeNull();
+    expect(queryByTestId("log-sheet-loud-barcode-cta")).toBeNull();
+    expect(queryByTestId("log-sheet-describe-expand")).toBeNull();
+
+    fireEvent.changeText(getByLabelText("Search foods"), "");
+    expect(getByTestId("log-sheet-input-mode-row")).toBeTruthy();
+    expect(getByTestId("log-sheet-loud-barcode-cta")).toBeTruthy();
   });
 
   it("paywalls (does not expand) when the Describe tile is tapped while locked (flag ON)", () => {

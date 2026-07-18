@@ -327,7 +327,7 @@ describe("LogSheet (mobile) — describe meal review", () => {
       />,
     );
 
-    fireEvent.press(getByTestId("log-sheet-describe-expand"));
+    fireEvent.press(getByTestId("log-sheet-method-describe"));
     fireEvent.changeText(getByLabelText("Describe what you ate"), "chicken sandwich");
     fireEvent.press(getByLabelText("Estimate nutrition from description"));
 

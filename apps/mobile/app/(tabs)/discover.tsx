@@ -99,7 +99,7 @@ function DiscoverHeroMedia({ item }: { item: RecipeCard }) {
   const showPhoto = trimmed.length > 0 && !broken;
   return (
     // ENG-1374 PR 2 — opaque cuisine-tint underlay on the wrapper (never page white)
-    <View style={{ aspectRatio: showPhoto ? 16 / 10 : 8, alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundColor: recipeUnderlayColor({ id: item.id, title: item.title }, scheme) }}>
+    <View style={{ aspectRatio: showPhoto ? 16 / 10 : 8, alignItems: "center", justifyContent: "center", overflow: "hidden", backgroundColor: recipeUnderlayColor({ id: item.id, title: item.title }, scheme, isFeatureEnabled("recipe_sparse_media_v1") ? "plum-duotone" : "legacy-cuisine") }}>
       {showPhoto ? (
         <SmartImage
           source={{ uri: trimmed }}
@@ -133,9 +133,10 @@ export default function DiscoverScreen() {
   // `discover_creator_rail_v1` (dark pending Grace's SEE; real creators win, else
   // a seeded set when the `creators` table is empty). Web parity: DiscoverFeed.tsx.
   const creatorRailEnabled = isFeatureEnabled("discover_creator_rail_v1");
+  const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
+  const filterChipType = consistencyChrome ? Type.captionSmall : Type.body;
   const topCreators = useTopCreators();
   const [unifiedImportOpen, setUnifiedImportOpen] = useState(false); // ENG-1225 #3
-
   // ENG-700 — after publishing from Library / recipe detail, Discover
   // must refetch `published=true` rows when the user switches sub-tabs.
   useFocusEffect(
@@ -641,10 +642,9 @@ export default function DiscoverScreen() {
               // row (`library.tsx` `filterPill`) does NOT carry — the drift
               // this pass converges. Border is now gated through
               // `cardElevation.useBorder` (dead → flat-card decision) so the
-              // two rows render byte-identical: flat in light, fill-only in
-              // dark. Selected border == fill so it never reads as a ring.
+              // Flat in light, fill-only in dark; selection never adds a ring.
               borderRadius: Radius.full,
-              borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
+              borderWidth: consistencyChrome ? 0 : cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
               borderColor: following ? accentSoft : colors.cardBorder,
               backgroundColor: following ? accentSoft : colors.card,
               justifyContent: "center",
@@ -653,7 +653,7 @@ export default function DiscoverScreen() {
           >
             <Text
               numberOfLines={1}
-              style={{ ...Type.body, fontWeight: "600", color: following ? accentInk : colors.textSecondary }}
+              style={{ ...filterChipType, fontWeight: "600", color: following ? accentInk : colors.textSecondary }}
             >
               Following
             </Text>
@@ -678,9 +678,9 @@ export default function DiscoverScreen() {
                   // Chips census (2026-06-13, ENG-1082): see the Following pill
                   // above — border gated through `cardElevation.useBorder` so
                   // the rest chip carries no light-mode ring (§7 "tint is the
-                  // signal"), matching Library's identical row exactly.
+                  // signal"), matching Library's row.
                   borderRadius: Radius.full,
-                  borderWidth: cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
+                  borderWidth: consistencyChrome ? 0 : cardElevation.useBorder ? StyleSheet.hairlineWidth : 0,
                   borderColor: active ? accentSoft : colors.cardBorder,
                   backgroundColor: active ? accentSoft : colors.card,
                   justifyContent: "center",
@@ -689,7 +689,7 @@ export default function DiscoverScreen() {
               >
                 <Text
                   numberOfLines={1}
-                  style={{ ...Type.body, fontWeight: "600", color: active ? accentInk : colors.textSecondary }}
+                  style={{ ...filterChipType, fontWeight: "600", color: active ? accentInk : colors.textSecondary }}
                 >
                   {f.label}
                 </Text>

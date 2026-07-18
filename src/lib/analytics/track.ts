@@ -630,6 +630,10 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "referral_invite_loop_v1", // ENG-1541 — OFF until Pro-days entitlement grant is wired (unkeepable promise)
   "mobile_preauth_reveal_v1", // ENG-1513 — MOBILE-ONLY (pre-auth onboarding reveal). Registered here only for the web↔mobile KNOWN_DEFAULT_OFF_FLAGS parity check; web already runs pre-auth (ENG-962).
   "progress_hierarchy_v1", // ENG-1525 — Progress 5-section hierarchy; else = legacy 13-card stack (kill switch). Keep in sync with apps/mobile/lib/analytics.ts.
+  "primary_screen_chrome_v1", // ENG-1577 — 33px title + 40px muted-circle actions; Today remains the exception.
+  "bottom_chrome_contract_v1", // ENG-1376 — measured floating-bar clearance + Settings viewport ownership.
+  "recipe_sparse_media_v1", // ENG-1575 — 0/1/2/many Library composition + one recipe fallback policy.
+  "semantic_stat_roles_v1", // ENG-1578 — sibling stats stay ink; state lives in sanctioned indicators.
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

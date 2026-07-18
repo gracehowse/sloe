@@ -16,6 +16,7 @@ import type { DayPlan } from "@/types/recipe";
 import { PlanHeaderV3 } from "./PlanHeaderV3";
 import { PlanMealCardV3 } from "./PlanMealCardV3";
 import { PlanEmptySlotV3 } from "./PlanEmptySlotV3";
+import { PlanEmptyWeekCard } from "./PlanEmptyWeekCard";
 import {
   PlanHouseholdBannerV3,
   type PlanHouseholdBannerV3Props,
@@ -55,6 +56,7 @@ export interface PlanV3WebDashboardProps {
   verdict: PlanWeekVerdict | null;
   household: Omit<PlanHouseholdBannerV3Props, "onPress"> | null;
   onGenerate: () => void;
+  isGenerating?: boolean;
   onAdjust: () => void;
   onTemplates: () => void;
   onOpenHousehold: () => void;
@@ -251,6 +253,7 @@ export function PlanV3WebDashboard({
   verdict,
   household,
   onGenerate,
+  isGenerating = false,
   onAdjust,
   onTemplates,
   onOpenHousehold,
@@ -282,7 +285,6 @@ export function PlanV3WebDashboard({
         })),
       ),
     );
-
   return (
     <div>
       <PlanHeaderV3
@@ -292,13 +294,20 @@ export function PlanV3WebDashboard({
         onAdjust={onAdjust}
         onTemplates={onTemplates}
       />
-      <StatStrip stats={stats} />
+      {!weekIsEmpty ? <StatStrip stats={stats} /> : null}
       {household ? (
         <div className="mt-4">
           <PlanHouseholdBannerV3 {...household} onPress={onOpenHousehold} />
         </div>
       ) : null}
 
+      {weekIsEmpty ? (
+        <PlanEmptyWeekCard
+          onGenerate={onGenerate}
+          isGenerating={isGenerating}
+          onAddMealsAsYouGo={() => onAddToSlot(0, 0)}
+        />
+      ) : (
       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
         {/* Left: the whole week stacked — each day a header + its meal cards. */}
         <div className="space-y-6">
@@ -379,6 +388,7 @@ export function PlanV3WebDashboard({
           />
         </aside>
       </div>
+      )}
     </div>
   );
 }

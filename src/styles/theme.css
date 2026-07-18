@@ -26,6 +26,7 @@
   --text-xl: 1.375rem;    /* 22px */
   --text-2xl: 1.5rem;     /* 24px */
   --text-3xl: 1.75rem;    /* 28px */
+  --text-page-title: 2.0625rem; /* 33px — ENG-1574 standard page chrome */
   --text-display: 2.25rem;/* 36px — hero numbers */
 
   /** 4px grid spacing tokens — semantic naming aligned with mobile
@@ -1086,6 +1087,16 @@
     font-weight: var(--font-weight-semibold);
     line-height: 1.21; /* 34/28 ≈ mobile lineHeight */
     letter-spacing: -0.01em;
+  }
+
+  /** Standard page-chrome title — ENG-1574/1577. Today is an explicit
+   * exception and keeps its wordmark + ring-first composition. */
+  .page-title {
+    font-family: var(--font-headline);
+    font-size: var(--text-page-title);
+    font-weight: var(--font-weight-medium);
+    line-height: 1.15;
+    letter-spacing: -0.012em;
   }
 
   /** Nav title — mirror of mobile `Type.navTitle`. The compact nav-bar-row

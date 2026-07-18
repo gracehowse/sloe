@@ -5,15 +5,19 @@
  * subtitle, trailing slot, hairline bottom border, hidden at md+.
  */
 import * as React from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import { ScreenChrome } from "../../src/app/components/suppr/screen-chrome";
 
+vi.mock("../../src/lib/analytics/track", () => ({
+  isFeatureEnabled: (flag: string) => flag === "primary_screen_chrome_v1",
+}));
+
 void React;
 
-describe("ScreenChrome (ENG-1375 S6)", () => {
-  it("renders overline → serif-24 title → subtitle with the shared grammar", () => {
+describe("ScreenChrome (ENG-1577)", () => {
+  it("renders overline → serif-33 page title → subtitle with the shared grammar", () => {
     render(
       <ScreenChrome
         overline="Your trends"
@@ -33,12 +37,7 @@ describe("ScreenChrome (ENG-1375 S6)", () => {
     expect(overline.className).toContain("text-foreground-tertiary");
 
     const title = screen.getByRole("heading", { level: 1, name: "Progress" });
-    // TITLE RULING: ONE tab-title size, serif 24 (mobile Type.title is
-    // canonical; the old Progress 28 forked sibling tabs).
-    expect(title.className).toContain("text-[24px]");
-    expect(title.className).toContain(
-      "font-[family-name:var(--font-headline)]",
-    );
+    expect(title.className).toContain("page-title");
     expect(title.className).toContain("text-foreground-brand");
 
     expect(screen.getByText("This week").className).toContain("text-[13px]");

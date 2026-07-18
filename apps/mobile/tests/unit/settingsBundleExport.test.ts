@@ -21,7 +21,7 @@ const BUNDLE_PATH = resolve(
 );
 const SETTINGS_PATH = resolve(
   __dirname,
-  "../../app/(tabs)/settings.tsx",
+  "../../app/settings.tsx",
 );
 const BUNDLE = readFileSync(BUNDLE_PATH, "utf8");
 const SETTINGS = readFileSync(SETTINGS_PATH, "utf8");

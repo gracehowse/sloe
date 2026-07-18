@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Linking, ScrollView, StyleSheet, Text, View } from "react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useSafeBack } from "@/hooks/use-safe-back";
+import { settingsRoute } from "@/lib/settingsRoute";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Beaker, BookOpen, ChevronLeft, Database, ExternalLink, Globe2, Utensils, type LucideIcon } from "lucide-react-native";
 import { Spacing, Radius, Type } from "@/constants/theme";
@@ -64,7 +65,7 @@ const FALLBACK_ICON: LucideIcon = BookOpen;
 
 export default function NutritionSourcesScreen() {
   const insets = useSafeAreaInsets();
-  const goBack = useSafeBack("/(tabs)/settings");
+  const goBack = useSafeBack(settingsRoute());
   const colors = useThemeColors();
   // Source links + the INFO overline read in `accent.primarySolid` (the
   // aubergine text/icon-on-light / lifted aubergine on dark); the icon-box

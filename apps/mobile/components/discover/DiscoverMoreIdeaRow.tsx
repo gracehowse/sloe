@@ -11,6 +11,7 @@ import { decodeEntities } from "@/lib/decodeEntities";
 import type { RecipeCard } from "@/lib/types";
 import { displayAttribution } from "@suppr/shared/recipes/displayAttribution";
 import { recipeCardAccessibilityLabel } from "@suppr/shared/recipes/recipeCardAccessibilityLabel";
+import { isFeatureEnabled } from "@/lib/analytics";
 
 /** Row thumbnail: if `uri` 404s, show the same glyph box as missing image. */
 function DiscoverCoverImage({
@@ -53,6 +54,7 @@ export interface DiscoverMoreIdeaRowProps {
 export function DiscoverMoreIdeaRow({ item, idx, onPress }: DiscoverMoreIdeaRowProps) {
   const colors = useThemeColors();
   const scheme = useResolvedScheme(); // ENG-1528 — dark ramp underlay on dark cards
+  const mediaPalette = isFeatureEnabled("recipe_sparse_media_v1") ? "plum-duotone" : "legacy-cuisine";
   const kcal = Math.round(item.calories);
   const protein = Math.round(item.protein);
   const carbs = Math.round(item.carbs);
@@ -86,7 +88,7 @@ export function DiscoverMoreIdeaRow({ item, idx, onPress }: DiscoverMoreIdeaRowP
           height: 56,
           borderRadius: Radius.xl,
           overflow: "hidden",
-          backgroundColor: recipeUnderlayColor({ id: item.id, title: item.title }, scheme),
+          backgroundColor: recipeUnderlayColor({ id: item.id, title: item.title }, scheme, mediaPalette),
         }}
       >
         <DiscoverCoverImage

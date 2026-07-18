@@ -153,7 +153,7 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
       "weekly weigh",
       "remind me to weigh",
     ],
-    route: "/(tabs)/settings",
+    route: "/settings",
   },
 ];
 

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { deriveLibraryShelves } from "@/lib/recipes/libraryShelves";
+import { deriveLibraryComposition } from "@/lib/recipes/libraryShelves";
 import type { RecipeCard } from "@/types/recipe";
 import { FeaturedHero } from "./FeaturedHero";
 import { EditorialShelf } from "./EditorialShelf";
@@ -27,19 +27,21 @@ export interface LibraryShelvesHeaderProps {
   /** Active category id — shelves show only when this is "all". */
   category: string;
   onPressRecipe: (recipe: RecipeCard) => void;
+  sparseMediaEnabled?: boolean;
 }
 
 export function LibraryShelvesHeader({
   filtered,
   category,
   onPressRecipe,
+  sparseMediaEnabled = false,
 }: LibraryShelvesHeaderProps) {
-  const shelves = React.useMemo(
-    () => deriveLibraryShelves(filtered),
-    [filtered],
+  const composition = React.useMemo(
+    () => deriveLibraryComposition(filtered, sparseMediaEnabled),
+    [filtered, sparseMediaEnabled],
   );
   if (category !== "all") return null;
-  const featured = shelves[0]?.recipes[0] ?? filtered[0] ?? null;
+  const { featured, shelves } = composition;
   return (
     <>
       {featured ? (

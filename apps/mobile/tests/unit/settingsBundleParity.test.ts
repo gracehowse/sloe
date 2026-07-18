@@ -25,7 +25,7 @@ const BUNDLE_PATH = resolve(
   ROOT,
   "components/settings/SettingsBundleContent.tsx",
 );
-const SETTINGS_PATH = resolve(ROOT, "app/(tabs)/settings.tsx");
+const SETTINGS_PATH = resolve(ROOT, "app/settings.tsx");
 
 const bundle = readFileSync(BUNDLE_PATH, "utf8");
 const settings = readFileSync(SETTINGS_PATH, "utf8");
@@ -372,9 +372,12 @@ describe("Settings — Figma `335:2` frame reskin", () => {
     );
   });
 
-  it("the screen title is centred in the top bar (shell)", () => {
-    expect(settings).toMatch(/textAlign: "center"/);
-    expect(settings).toMatch(/<Text style=\{\[styles\.title[\s\S]*?>\s*Settings\s*<\/Text>/);
+  it("the screen uses shared pushed-screen chrome with a back action", () => {
+    expect(settings).toContain("<ScreenSectionChrome");
+    expect(settings).toContain('overline={consistencyChrome ? "Your account" : null}');
+    expect(settings).toContain('title="Settings"');
+    expect(settings).toContain("leading={");
+    expect(settings).toContain('accessibilityLabel="Go back"');
     // The cold subtitle was removed.
     expect(settings).not.toContain("Plan, targets, and how the app shows up.");
   });

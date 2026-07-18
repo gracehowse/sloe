@@ -65,6 +65,9 @@ export interface ProgressHierarchyV1Props {
   energy: EnergySectionData;
   bodyComp: BodyCompSectionData;
   yourWeek: YourWeekSectionData;
+  /** `empty_state_grammar_v1`: if weight has fewer than two points but other
+   *  progress exists, let that evidence lead and move setup into slot two. */
+  promoteAvailableProgress?: boolean;
   className?: string;
 }
 
@@ -77,12 +80,27 @@ export function ProgressHierarchyV1({
   energy,
   bodyComp,
   yourWeek,
+  promoteAvailableProgress = false,
   className,
 }: ProgressHierarchyV1Props) {
+  const hasAvailableProgress =
+    week.days.some((day) => day.calories > 0) ||
+    week.streakDays > 0 ||
+    energy.hasEnoughData ||
+    !yourWeek.shareDisabled;
+  const promoteWeek =
+    promoteAvailableProgress &&
+    weightSurfaceMode === "show" &&
+    hero.sparse &&
+    hasAvailableProgress;
+
   return (
     <div className={className} data-testid="progress-hierarchy-v1">
+      {promoteWeek ? <ProgressWeekSection {...week} className={SECTION_GAP} /> : null}
+
       {/* §1 Trajectory — goal-conditional. Full opt-out ("hide") drops the
-          section entirely; This Week leads by position. */}
+          section entirely. Under the empty-state grammar a sparse weight
+          setup moves below real weekly evidence instead of claiming the hero. */}
       {weightSurfaceMode === "show" || weightSurfaceMode === "trends_only" ? (
         <ProgressTrajectoryHero
           {...hero}
@@ -92,7 +110,7 @@ export function ProgressHierarchyV1({
       ) : null}
 
       {/* §2 This Week — always pinned to the current week. */}
-      <ProgressWeekSection {...week} className={SECTION_GAP} />
+      {!promoteWeek ? <ProgressWeekSection {...week} className={SECTION_GAP} /> : null}
 
       {/* §3 Energy — deficit-led. */}
       <ProgressEnergySection {...energy} className={SECTION_GAP} />

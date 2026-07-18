@@ -66,6 +66,7 @@ export function LogSheetInputModeRow({
   aiMethodTooltipVisible = false,
   onQuickAdd,
   onDescribe,
+  hidden = false,
 }: {
   barcode: LogSheetProps["barcode"];
   voice: LogSheetProps["voice"];
@@ -78,6 +79,7 @@ export function LogSheetInputModeRow({
   onQuickAdd?: () => void;
   /** ENG-1303 — host expands (or paywalls) the inline describe flow. */
   onDescribe?: () => void;
+  hidden?: boolean;
 }) {
   const colors = useThemeColors();
   const accent = useAccent();
@@ -130,6 +132,8 @@ export function LogSheetInputModeRow({
   const tooltipKey = aiMethodTooltipVisible
     ? modes.find((m) => m.aiMethod && m.locked && m.onPress)?.key ?? null
     : null;
+
+  if (hidden) return null;
 
   if (v3) {
     return (

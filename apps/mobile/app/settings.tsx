@@ -8,22 +8,23 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useRouter } from "expo-router";
 import { ChevronLeft, ChevronRight, LogOut, Search } from "lucide-react-native";
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { ScreenSectionChrome } from "@/components/suppr/screen-section-chrome";
 import { supabase } from "@/lib/supabase";
 import { Radius, Spacing, Type } from "@/constants/theme";
-import { YouSubTabHeader } from "@/components/tabs/YouSubTabHeader";
 import { SettingsBundleContent } from "@/components/settings/SettingsBundleContent";
 import { DevFlagOverrides } from "@/components/settings/DevFlagOverrides";
 import { filterSettingsIndex } from "@/lib/settingsSearchIndex";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 
 /**
- * `/(tabs)/settings` — single source of truth for Settings.
+ * `/settings` — single source of truth for Settings.
  *
  * Pre-2026-05-01 the screen rendered TWO settings shells stacked: a
  * legacy in-file set of sections (Plan / Appearance / Account / Body
@@ -55,12 +56,13 @@ import { filterSettingsIndex } from "@/lib/settingsSearchIndex";
  */
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  // ENG-1247 — frosted tab bar overlays scroll content; pad to clear it.
-  const tabBarHeight = useTabBarClearance();
   const router = useRouter();
   const { session } = useAuth();
   const userId = session?.user.id ?? null;
   const colors = useThemeColors();
+  const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
+  const bottomChromeContract = isFeatureEnabled("bottom_chrome_contract_v1");
+  const legacyTabClearance = useTabBarClearance();
 
   // Wave-2 (2026-04-30 audit-vs-competitors) — Settings search.
   // Empty query shows the canonical bundle body. Non-empty query
@@ -90,17 +92,12 @@ export default function SettingsScreen() {
         screen: { flex: 1, backgroundColor: colors.background },
         scrollContent: {
           paddingHorizontal: Spacing.xl,
-          paddingBottom: 120,
+          paddingBottom: bottomChromeContract ? Spacing.xxxl + insets.bottom : legacyTabClearance,
           gap: Spacing.md,
         },
-        // Headers census 2026-06-10 (owner call): left-aligned like every
-        // other stack header — the Figma 335:2 dead-centre layout was the
-        // app's only centred title and read as drift once the system
-        // unified on left serif. Serif + navPrimary stay.
-        title: { ...Type.title, color: colors.navPrimary, marginLeft: Spacing.xs },
         muted: { color: colors.textSecondary, paddingHorizontal: Spacing.xl },
       }),
-    [colors],
+    [bottomChromeContract, colors, insets.bottom, legacyTabClearance],
   );
 
   if (!userId) {
@@ -113,44 +110,39 @@ export default function SettingsScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
-      {/* Top bar — Sloe DS (Figma 09 Settings `335:2`): back chevron on
-          the left, "Settings" centered in Newsreader serif plum, with a
-          balancing spacer on the right so the title sits dead-centre. No
-          subtitle (the profile row below makes context immediately
-          visible — the cold subtitle is removed). */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          paddingHorizontal: Spacing.lg,
-          // DRIFT-11 fix (2026-05-22): bumped from Spacing.sm to
-          // Spacing.md so the Settings header carries the same top
-          // breathing room as Discover / Plan / Progress.
-          paddingTop: Spacing.md,
-          paddingBottom: Spacing.xs,
-        }}
-      >
-        <PressableScale
-          haptic="selection"
-          onPress={() => {
-            if (router.canGoBack()) router.back();
-            else router.replace("/(tabs)" as never);
-          }}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel="Go back"
-          style={{ padding: 4, width: 30 }}
-        >
-          <ChevronLeft size={22} color={colors.text} strokeWidth={2} />
-        </PressableScale>
-        <Text style={[styles.title, { flex: 1 }]} accessibilityRole="header">
-          Settings
-        </Text>
-      </View>
+      <ScreenSectionChrome
+        testID="settings-screen-chrome"
+        overline={consistencyChrome ? "Your account" : null}
+        title="Settings"
+        leading={
+          <PressableScale
+            haptic="selection"
+            onPress={() => {
+              if (router.canGoBack()) router.back();
+              else router.replace("/(tabs)" as never);
+            }}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+            style={consistencyChrome
+              ? {
+                  width: 40,
+                  height: 40,
+                  borderRadius: Radius.full,
+                  backgroundColor: colors.backgroundSecondary,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }
+              : { padding: 4, width: 30 }}
+          >
+            <ChevronLeft size={22} color={colors.text} strokeWidth={2} />
+          </PressableScale>
+        }
+      />
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: tabBarHeight + Spacing.xl }]}
+        contentContainerStyle={styles.scrollContent}
       >
         {/* Search — sticks at the top of the ScrollView. The bundle
             owns its own section structure and is hidden when the
@@ -322,7 +314,7 @@ export default function SettingsScreen() {
                     style={{
                       ...Type.captionSmall,
                       color: colors.textSecondary,
-                      marginTop: 2,
+                      marginTop: Spacing.xs,
                       lineHeight: 16,
                     }}
                     numberOfLines={2}

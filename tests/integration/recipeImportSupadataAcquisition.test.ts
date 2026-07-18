@@ -21,6 +21,13 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+// `followWithSsrfGuard` resolves every host before it calls the stubbed fetch.
+// Keep this integration suite hermetic: DNS availability is not part of the
+// acquisition contract under test.
+vi.mock("node:dns/promises", () => ({
+  lookup: vi.fn(async () => [{ address: "93.184.216.34", family: 4 }]),
+}));
+
 vi.mock("@/lib/supabase/serverAnonClient", () => ({
   getUserIdFromRequest: vi.fn(async () => "user-123"),
 }));

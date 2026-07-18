@@ -7,7 +7,7 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { ScreenSectionChrome } from "@/components/suppr/screen-section-chrome";
 import { SegmentedTrack } from "@/components/ui/SegmentedTrack";
 import { SubTabPill } from "@/components/ui/SubTabPill";
-import { IconSize, Spacing } from "@/constants/theme";
+import { IconSize, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
 
@@ -27,6 +27,10 @@ export function RecipesTabChrome() {
   const router = useRouter();
   const pathname = usePathname();
   const colors = useThemeColors();
+  const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
+  const actionStyle = consistencyChrome
+    ? { width: 40, height: 40, borderRadius: Radius.full, backgroundColor: colors.backgroundSecondary, alignItems: "center" as const, justifyContent: "center" as const }
+    : { padding: 6 };
 
   const activeId: RecipesTab = pathname?.startsWith("/discover") ? "discover" : "library";
 
@@ -43,7 +47,7 @@ export function RecipesTabChrome() {
             accessibilityRole="button"
             accessibilityLabel="Create recipe"
             hitSlop={8}
-            style={{ padding: 6 }}
+            style={actionStyle}
           >
             {/* Neutral ink (not plum) — these quiet utilities defer to the serif
                 title; matches web `text-foreground-secondary` + the prototype
@@ -56,7 +60,7 @@ export function RecipesTabChrome() {
             accessibilityRole="button"
             accessibilityLabel="Import recipe"
             hitSlop={8}
-            style={{ padding: 6 }}
+            style={actionStyle}
           >
             <Link size={IconSize.lg} color={colors.textSecondary} strokeWidth={1.75} />
           </PressableScale>

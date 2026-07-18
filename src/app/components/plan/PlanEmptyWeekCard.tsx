@@ -30,11 +30,13 @@ import { Sparkles } from "lucide-react";
 export interface PlanEmptyWeekCardProps {
   onGenerate: () => void;
   onAddMealsAsYouGo: () => void;
+  isGenerating?: boolean;
 }
 
 export function PlanEmptyWeekCard({
   onGenerate,
   onAddMealsAsYouGo,
+  isGenerating = false,
 }: PlanEmptyWeekCardProps) {
   return (
     <div
@@ -51,14 +53,17 @@ export function PlanEmptyWeekCard({
       <button
         type="button"
         onClick={onGenerate}
-        className="mt-2 rounded-full bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        disabled={isGenerating}
+        aria-busy={isGenerating}
+        className="mt-2 rounded-full bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60"
       >
-        Generate this week
+        {isGenerating ? "Generating…" : "Generate this week"}
       </button>
       <button
         type="button"
         onClick={onAddMealsAsYouGo}
-        className="mt-1 text-[13px] font-semibold text-primary-solid underline underline-offset-2 transition-opacity hover:opacity-80"
+        disabled={isGenerating}
+        className="mt-1 text-[13px] font-semibold text-primary-solid underline underline-offset-2 transition-opacity hover:opacity-80 disabled:cursor-wait disabled:opacity-60"
       >
         or add meals as you go
       </button>

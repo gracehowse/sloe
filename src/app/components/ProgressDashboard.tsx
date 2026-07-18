@@ -1079,18 +1079,16 @@ function ProgressDashboardContent() {
     onShownAtPersisted: setMilestone30ShownAt,
   });
 
-  // ENG-822 — card elevation is now delegated to the canonical SupprCard
-  // primitive, which reads `design_system_elevation` internally and applies
-  // the soft shadow + border-drop on flag-ON, or the flat border on flag-OFF.
-  // The manual progressCardClass / progressCardsElevated vars are removed.
+  // ENG-822 — canonical SupprCard owns elevation; no local card classes.
 
+  const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
   const progressCalendarButton = (
     <button
       type="button"
       data-testid="progress-calendar-button"
       aria-label="Open calendar"
       onClick={() => router.replace("/home?view=weight-tracker")}
-      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-foreground hover:bg-muted/40 transition-colors"
+      className={consistencyChrome ? "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground hover:bg-[var(--background-secondary)] transition-colors" : "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-foreground hover:bg-muted/40 transition-colors"}
     >
       <Icons.calendar className="h-4 w-4" aria-hidden />
     </button>
@@ -1106,7 +1104,7 @@ function ProgressDashboardContent() {
         </p>
         <h1
           data-testid="progress-header"
-          className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"
+          className={consistencyChrome ? "page-title text-foreground-brand" : "font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"}
         >
           Progress
         </h1>
@@ -1133,7 +1131,7 @@ function ProgressDashboardContent() {
     const progressLoadingCalendar = (
       <span
         aria-hidden
-        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card opacity-60"
+        className={consistencyChrome ? "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted opacity-60" : "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card opacity-60"}
       >
         <Icons.calendar className="h-4 w-4 text-muted-foreground" />
       </span>
@@ -1324,6 +1322,7 @@ function ProgressDashboardContent() {
           <>
             <ProgressHierarchyV1
               weightSurfaceMode={effectiveWeightSurfaceMode}
+              promoteAvailableProgress={isFeatureEnabled("empty_state_grammar_v1")}
               hero={{
                 isImperial,
                 latestWeightKg,

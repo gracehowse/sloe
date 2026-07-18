@@ -96,7 +96,7 @@ cap "suppr:///(tabs)/library" "tabs-library"
 cap "suppr:///(tabs)/discover" "tabs-discover"
 cap "suppr:///(tabs)/planner" "tabs-planner"
 cap "suppr:///(tabs)/progress" "tabs-progress"
-cap "suppr:///(tabs)/settings" "tabs-settings"
+cap "suppr:///settings" "settings"
 cap "suppr:///(tabs)/notifications" "tabs-notifications"
 cap "suppr:///(tabs)/search" "tabs-search"
 

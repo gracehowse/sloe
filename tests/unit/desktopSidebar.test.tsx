@@ -199,10 +199,10 @@ describe("resolvePrimaryFromView — leaf-to-primary mapping", () => {
     expect(resolvePrimaryFromView("plan")).toBe("plan");
     expect(resolvePrimaryFromView("shopping")).toBe("plan");
   });
-  it("maps Progress / Profile / Settings / household-settings / targets leaves to you primary", () => {
+  it("maps Progress / household-settings / targets to Progress and leaves avatar-owned screens unselected", () => {
     expect(resolvePrimaryFromView("progress")).toBe("you");
-    expect(resolvePrimaryFromView("profile")).toBe("today");
-    expect(resolvePrimaryFromView("settings")).toBe("today");
+    expect(resolvePrimaryFromView("profile")).toBeNull();
+    expect(resolvePrimaryFromView("settings")).toBeNull();
     expect(resolvePrimaryFromView("household-settings")).toBe("you");
     expect(resolvePrimaryFromView("targets")).toBe("you");
   });

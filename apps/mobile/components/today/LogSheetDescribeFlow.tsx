@@ -44,6 +44,9 @@ export type LogSheetDescribeFlowProps = {
   onReviewActiveChange?: (active: boolean) => void;
   /** Hide the describe card while the user is typing a food search. */
   inputHidden?: boolean;
+  /** The deduplicated Log-sheet grammar opens Describe only from its method
+   *  tile, so the old collapsed row must not render as a second entry point. */
+  collapsedEntryHidden?: boolean;
   /** Active meal slot label (Breakfast/Lunch/…) shown on the review summary. */
   slotLabel?: string;
   /** ENG-1303 — the Describe method tile bumps this to expand the flow EMPTY
@@ -62,6 +65,7 @@ function LogSheetDescribeFlowImpl({
   onPaywall,
   onReviewActiveChange,
   inputHidden = false,
+  collapsedEntryHidden = false,
   slotLabel,
   expandSignal = 0,
 }: LogSheetDescribeFlowProps) {
@@ -205,6 +209,7 @@ function LogSheetDescribeFlowImpl({
   }
 
   if (!expanded && stage === "input" && !error) {
+    if (collapsedEntryHidden) return null;
     return (
       <Pressable
         testID="log-sheet-describe-expand"

@@ -117,7 +117,7 @@ describe("YouSubTabHeader (deprecated 2026-05-19 — Progress is a tab; Settings
       "utf-8",
     );
     const settingsSrc = fs.readFileSync(
-      path.resolve(__dirname, "../../app/(tabs)/settings.tsx"),
+      path.resolve(__dirname, "../../app/settings.tsx"),
       "utf-8",
     );
     expect(progressSrc).not.toMatch(/<YouSubTabHeader/);
@@ -206,7 +206,7 @@ describe("(tabs)/_layout.tsx — primary tab structure pin", () => {
 
   it("hides discover / settings / barcode / notifications via href: null (more + search deleted)", () => {
     expect(layoutSrc).toContain('name="discover" options={{ href: null }}');
-    expect(layoutSrc).toContain('name="settings" options={{ href: null }}');
+    expect(layoutSrc).toContain('name="settings-legacy" options={{ href: null }}');
     expect(layoutSrc).toContain('name="barcode" options={{ href: null }}');
     expect(layoutSrc).toContain('name="notifications" options={{ href: null }}');
     // more.tsx deleted in Group G IA Batch E (2026-05-14) — no registration needed.
@@ -237,14 +237,14 @@ describe("(tabs)/_layout.tsx — primary tab structure pin", () => {
     );
     // TodayDateHeader keeps the settings route in its non-stripOnly
     // branches (other consumers / calm-date-nav still render the avatar).
-    expect(headerSrc).toMatch(/router\.push\("\/\(tabs\)\/settings"\)/);
+    expect(headerSrc).toMatch(/router\.push\(settingsRoute\(\)\)/);
     expect(headerSrc).not.toMatch(/router\.push\("\/profile"\)/);
   });
 
   it("SLOE redesign (2026-06-03): the Today wordmark-header avatar also routes to Settings", () => {
     // The visible Today avatar now lives in the Sloe wordmark header in
     // (tabs)/index.tsx (the date header below it is stripOnly). Pin that
-    // the new avatar's Pressable routes to /(tabs)/settings so a future
+    // the new avatar's Pressable routes through the Settings owner so a future
     // change can't strand the Settings entry point.
     const indexSrc = fs.readFileSync(
       path.resolve(__dirname, "../../app/(tabs)/_today/TodayScreen.tsx"),
@@ -254,7 +254,7 @@ describe("(tabs)/_layout.tsx — primary tab structure pin", () => {
     // added the notifications bell); the host passes onOpenSettings, the header
     // wires it to the avatar.
     expect(indexSrc).toMatch(
-      /onOpenSettings=\{\(\) => router\.push\("\/\(tabs\)\/settings"\)\}/,
+      /onOpenSettings=\{\(\) => router\.push\(settingsRoute\(\)\)\}/,
     );
     const headerSrc = fs.readFileSync(
       path.resolve(__dirname, "../../components/today/TodayHeaderBar.tsx"),

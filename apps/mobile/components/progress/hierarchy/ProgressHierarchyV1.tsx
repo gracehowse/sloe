@@ -62,6 +62,9 @@ export interface ProgressHierarchyV1Props {
   bodyComp: ProgressBodyCompSectionProps | null;
   /** §5 Your Week — null when the week has no story to tell yet. */
   yourWeek: ProgressYourWeekSectionProps | null;
+  /** `empty_state_grammar_v1`: real weekly evidence leads when weight still
+   *  has fewer than two points; the setup invitation moves into slot two. */
+  promoteAvailableProgress?: boolean;
 }
 
 export function ProgressHierarchyV1({
@@ -71,13 +74,28 @@ export function ProgressHierarchyV1({
   energy,
   bodyComp,
   yourWeek,
+  promoteAvailableProgress = false,
 }: ProgressHierarchyV1Props) {
   const showTrajectory = mode !== "hide" && trajectory != null;
+  const trajectoryIsSparse = trajectory != null && trajectory.trend.points.length < 2;
+  const hasAvailableProgress =
+    (week?.days.some((day) => day.calories > 0) ?? false) ||
+    (week?.streakDays ?? 0) > 0 ||
+    (energy?.hasEnoughData ?? false) ||
+    yourWeek?.shareText != null;
+  const promoteWeek =
+    promoteAvailableProgress &&
+    mode === "show" &&
+    showTrajectory &&
+    trajectoryIsSparse &&
+    week != null &&
+    hasAvailableProgress;
 
   return (
     <View testID="progress-hierarchy-v1" style={{ gap: Spacing.lg }}>
+      {promoteWeek ? <ProgressWeekSection {...week} /> : null}
       {showTrajectory ? <ProgressTrajectoryHero mode={mode} {...trajectory} /> : null}
-      {week ? <ProgressWeekSection {...week} /> : null}
+      {!promoteWeek && week ? <ProgressWeekSection {...week} /> : null}
       {energy ? <ProgressEnergySection {...energy} /> : null}
       {bodyComp ? <ProgressBodyCompSection {...bodyComp} /> : null}
       {yourWeek ? <ProgressYourWeekSection {...yourWeek} /> : null}

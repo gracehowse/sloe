@@ -39,6 +39,18 @@ describe("PlanEmptyWeekCard", () => {
     expect(cls).toContain("bg-primary-soft");
     expect(cls).not.toContain("bg-surface-warm");
   });
+
+  it("disables both actions while generation is in flight", () => {
+    const { getByRole } = render(
+      <PlanEmptyWeekCard
+        onGenerate={() => {}}
+        onAddMealsAsYouGo={() => {}}
+        isGenerating
+      />,
+    );
+    expect(getByRole("button", { name: "Generating…" })).toBeDisabled();
+    expect(getByRole("button", { name: "or add meals as you go" })).toBeDisabled();
+  });
 });
 
 describe("PlanGhostSlotPill", () => {

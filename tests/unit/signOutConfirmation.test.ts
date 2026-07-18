@@ -13,7 +13,7 @@ const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
 
 describe("ENG-1517 — Sign Out is confirmed, not instant (web + mobile parity)", () => {
   it("mobile Settings sign-out row routes through an Alert confirmation", () => {
-    const src = read("apps/mobile/app/(tabs)/settings.tsx");
+    const src = read("apps/mobile/app/settings.tsx");
     // The sign-out Pressable confirms via Alert before calling signOut().
     expect(src).toMatch(
       /testID="settings-sign-out-row"[\s\S]{0,500}?Alert\.alert\(\s*\n?\s*"Sign out\?"/,

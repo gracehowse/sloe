@@ -5,6 +5,7 @@ import { ChevronRight } from "lucide-react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { settingsRoute } from "@/lib/settingsRoute";
 
 export interface ProfileShowcaseReadViewProps {
   displayName: string;
@@ -72,7 +73,7 @@ export function ProfileShowcaseReadView({
           {calories} kcal · {protein}g P · {carbs}g C · {fat}g F
         </Text>
         <PressableScale
-          onPress={() => router.push("/(tabs)/settings" as never)}
+          onPress={() => router.push(settingsRoute())}
           haptic="selection"
           accessibilityRole="button"
           accessibilityLabel="Edit goals and targets in Settings"

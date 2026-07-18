@@ -26,7 +26,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = resolve(__dirname, "../..");
-const SETTINGS = readFileSync(resolve(ROOT, "app/(tabs)/settings.tsx"), "utf8");
+const SETTINGS = readFileSync(resolve(ROOT, "app/settings.tsx"), "utf8");
 const HOUSEHOLD = readFileSync(
   resolve(ROOT, "app/household-settings.tsx"),
   "utf8",
@@ -62,6 +62,15 @@ describe("/(tabs)/settings — structural integration", () => {
       'from "@/components/settings/SettingsBundleContent"',
     );
     expect(SETTINGS).toContain('<SettingsBundleContent context="settings"');
+  });
+
+  it("uses shared pushed-screen chrome with the standard overline", () => {
+    expect(SETTINGS).toContain(
+      'from "@/components/suppr/screen-section-chrome"',
+    );
+    expect(SETTINGS).toContain('<ScreenSectionChrome');
+    expect(SETTINGS).toContain('overline={consistencyChrome ? "Your account" : null}');
+    expect(SETTINGS).toContain('testID="settings-screen-chrome"');
   });
 
   it("renders a single neutral Sign Out row beneath the bundle (P1-5)", () => {

@@ -4,6 +4,8 @@
  * RecipeCardWide / EditorialShelf / FeaturedHero render. Pins the shelf
  * derivation, the card meta line, the shelf header, and the hero kicker/badge.
  */
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { StyleSheet, Text } from "react-native";
 import { fireEvent, render } from "@testing-library/react-native";
@@ -70,6 +72,13 @@ describe("useLibraryShelves", () => {
       />,
     );
     expect(getByText("keys:fits,quick,high-protein|first:a")).toBeTruthy();
+  });
+});
+
+describe("sparse Library host composition", () => {
+  it("does not append the empty-library card when a single recipe lives in the header hero", () => {
+    const host = readFileSync(resolve(__dirname, "../../app/(tabs)/library.tsx"), "utf8");
+    expect(host).toMatch(/ListEmptyComponent=\{\s*filtered\.length > 0 \? null/);
   });
 });
 

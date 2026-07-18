@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import { isFeatureEnabled } from "@/lib/analytics/track";
 import { cn } from "../ui/utils";
 
 export interface ScreenChromeProps {
@@ -27,9 +28,9 @@ export interface ScreenChromeProps {
  * `apps/mobile/components/suppr/screen-section-chrome.tsx`: overline →
  * serif title → optional subtitle, trailing slot, hairline bottom border.
  *
- * Title ruling: ONE tab-title size, serif 24 (`--font-headline`) — mobile
- * `Type.title` (24) is canonical; the old web Progress 28 forked sibling
- * tabs. Hidden at `md+` where the sidebar / desktop headers own navigation.
+ * ENG-1577 title ruling: the consistency path uses the 33px page-title token
+ * across primary screens. The former serif 24px path remains as the rollout
+ * kill switch. Hidden at `md+`, where desktop headers own composition.
  */
 export function ScreenChrome({
   overline,
@@ -42,6 +43,7 @@ export function ScreenChrome({
   overlineTestID,
   titleTestID,
 }: ScreenChromeProps) {
+  const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
   return (
     <header
       className={cn(
@@ -62,7 +64,12 @@ export function ScreenChrome({
           ) : null}
           <h1
             data-testid={titleTestID}
-            className="font-[family-name:var(--font-headline)] text-[24px] font-medium leading-[1.1] tracking-tight text-foreground-brand"
+            className={cn(
+              "text-foreground-brand",
+              consistencyChrome
+                ? "page-title"
+                : "font-[family-name:var(--font-headline)] text-[24px] font-medium leading-[1.1] tracking-tight",
+            )}
           >
             {title}
           </h1>

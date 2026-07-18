@@ -253,6 +253,39 @@ describe("ProgressHierarchyV1 — weight opt-out (web)", () => {
   });
 });
 
+describe("ProgressHierarchyV1 — sparse weight with other progress (web, ENG-1578)", () => {
+  it("lets available weekly evidence lead and moves weight setup into slot two", () => {
+    const props = baseProps();
+    props.promoteAvailableProgress = true;
+    props.hero = { ...props.hero, sparse: true, chartData: [] };
+    const { container } = render(<ProgressHierarchyV1 {...props} />);
+    expect(sectionIdsIn(container)).toEqual([
+      "progress-hierarchy-week",
+      "progress-hierarchy-hero",
+      "progress-hierarchy-energy",
+      "progress-hierarchy-body-comp",
+      "progress-hierarchy-your-week",
+    ]);
+  });
+
+  it("keeps weight setup first when there is no other real progress", () => {
+    const props = baseProps();
+    props.promoteAvailableProgress = true;
+    props.hero = { ...props.hero, sparse: true, chartData: [] };
+    props.week = {
+      ...props.week,
+      adherencePct: null,
+      onTargetCount: 0,
+      streakDays: 0,
+      days: props.week.days.map((day) => ({ ...day, calories: 0 })),
+    };
+    props.energy = { ...props.energy, hasEnoughData: false };
+    props.yourWeek = { ...props.yourWeek, shareDisabled: true };
+    const { container } = render(<ProgressHierarchyV1 {...props} />);
+    expect(sectionIdsIn(container)[0]).toBe("progress-hierarchy-hero");
+  });
+});
+
 // ---------------------------------------------------------------------------
 // 5 — §3 Energy: the equation in words, correct arithmetic
 // ---------------------------------------------------------------------------

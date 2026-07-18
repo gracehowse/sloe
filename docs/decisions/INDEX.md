@@ -9,11 +9,12 @@
   Generator: scripts/generate-decisions-index.mjs (ENG-1370)
 -->
 
-340 decision docs, newest first. Generated 2026-07-17.
+341 decision docs, newest first. Generated 2026-07-18.
 
 | Date | Decision | Summary |
 |------|----------|---------|
 | 2026-07-17 | [Calorie dial — flat material, all states, both themes](./2026-07-17-dial-flat-material.md) | The calorie ring dial (web `src/app/components/suppr/calorie-ring-dial.tsx`, mobile `apps/mobile/components/charts/CalorieRingDial.tsx`) renders as **flat material in ALL states, in BOTH themes**. The radial **bloom** —… |
+| 2026-07-17 | [Primary UI consistency contract](./2026-07-17-primary-ui-consistency-contract.md) | Sloe's authenticated product keeps the production **cool plum-white canvas** (`#F7F6FA`) with white, flat, hairline-separated cards. Warmth belongs in food photography, its editorial grade, and deliberately bounded food… |
 | 2026-07-16 | [Progress hierarchy v1 — 13 equal-weight cards → 5 prioritised sections](./2026-07-16-progress-hierarchy-v1.md) | Rebuild the Progress tab (web + mobile, in parity) as a **5-section prioritised hierarchy** behind the flag **`progress_hierarchy_v1`**, **default OFF** (in `KNOWN_DEFAULT_OFF_FLAGS` on both `src/lib/analytics/track.ts`… |
 | 2026-07-15 | [Onboarding seed taster-week tier semantics (Free = 1 day, paid = 7)](./2026-07-15-onboarding-seed-taster-week-tier.md) | The onboarding first-plan seeder (`buildFirstWeekFromSeeds`, `src/lib/onboarding/onboardingFirstWeek.ts`) seeds **1 day for Free signups** and **7 days for paid**. Implemented as the function's default `planDays: 1`; a p… |
 | 2026-07-12 | [Launch is blocked until a working paid rail is live](./2026-07-12-launch-blocked-on-paid-rail.md) | **We do not launch until a user can actually pay and receive the entitlement they paid for.** No soft launch, no "trial-only" beta, no "we'll wire billing after the wedge lands." The paid rail — checkout → payment → enti… |

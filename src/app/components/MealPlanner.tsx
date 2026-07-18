@@ -1191,7 +1191,6 @@ export const MealPlanner = memo(function MealPlanner({
       numberedPresetSlots,
     ],
   );
-
   return (
     <div className="product-shell py-pm-6 space-y-5">
       {sloeV3Plan ? (
@@ -1202,6 +1201,7 @@ export const MealPlanner = memo(function MealPlanner({
           planStartDate={mealPlanStartDate}
           household={householdBanner}
           onGenerate={requestRegenerate}
+          isGenerating={isGenerating}
           onAdjust={() => setAdjustOpen(true)}
           onTemplates={() => setTemplatesOpen(true)}
           onOpenHousehold={() => {

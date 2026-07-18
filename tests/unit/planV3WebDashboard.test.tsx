@@ -7,7 +7,7 @@
  * open-slot / item counts (no fabricated suggestions).
  */
 import * as React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import { ALL_MEAL_SLOTS } from "../../src/lib/nutrition/mealPlanAlgo";
@@ -17,7 +17,11 @@ import { PlanV3WebDashboard } from "../../src/app/components/plan/PlanV3WebDashb
 
 void React;
 
-const meal = (name: string, calories: number, opts: Partial<DayPlanMeal> = {}): DayPlanMeal => ({
+const meal = (
+  name: string,
+  calories: number,
+  opts: Partial<DayPlanMeal> = {},
+): DayPlanMeal => ({
   name,
   recipeTitle: name,
   calories,
@@ -30,7 +34,12 @@ const placeholder = (slot: string): DayPlanMeal =>
   meal(slot, 0, { recipeTitle: "", isPlaceholder: true });
 
 const fullDay = (day: number): DayPlan => {
-  const meals = [meal("Oats", 420), meal("Bowl", 540), meal("Salmon", 610), meal("Apple", 180)];
+  const meals = [
+    meal("Oats", 420),
+    meal("Bowl", 540),
+    meal("Salmon", 610),
+    meal("Apple", 180),
+  ];
   const totals = meals.reduce(
     (a, m) => ({
       calories: a.calories + m.calories,
@@ -58,11 +67,33 @@ const week: DayPlan[] = [
   emptyDay(5),
   emptyDay(6),
 ];
-const weekDates = Array.from({ length: 7 }, (_, i) => new Date(2026, 5, 15 + i));
+const weekDates = Array.from(
+  { length: 7 },
+  (_, i) => new Date(2026, 5, 15 + i),
+);
 const verdict = computePlanWeekVerdict(
-  week.map((dp) => dp.meals.map((m, i) => ({ slot: ALL_MEAL_SLOTS[i] ?? "Snacks", kcal: m.calories, empty: m.isPlaceholder }))),
+  week.map((dp) =>
+    dp.meals.map((m, i) => ({
+      slot: ALL_MEAL_SLOTS[i] ?? "Snacks",
+      kcal: m.calories,
+      empty: m.isPlaceholder,
+    })),
+  ),
 );
 const noop = () => {};
+
+function forceEmptyGrammar(value: boolean): void {
+  (
+    window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }
+  ).__SUPPR_FORCE_FLAGS__ = {
+    empty_state_grammar_v1: value,
+  };
+}
+
+afterEach(() => {
+  delete (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> })
+    .__SUPPR_FORCE_FLAGS__;
+});
 
 const baseProps = {
   plan: week,
@@ -115,19 +146,76 @@ describe("PlanV3WebDashboard", () => {
     }
   });
 
-  it("ENG-1547 — an all-empty week renders NO verdict row (law 3: '0 of 7 days on target' is derived noise)", () => {
+  it("flag ON + empty week renders one invitation and suppresses the zero dashboard", () => {
+    forceEmptyGrammar(true);
     const allEmpty = Array.from({ length: 7 }, (_, i) => emptyDay(i));
     const emptyVerdict = computePlanWeekVerdict(
       allEmpty.map((dp) =>
-        dp.meals.map((m, i) => ({ slot: ALL_MEAL_SLOTS[i] ?? "Snacks", kcal: m.calories, empty: m.isPlaceholder })),
+        dp.meals.map((m, i) => ({
+          slot: ALL_MEAL_SLOTS[i] ?? "Snacks",
+          kcal: m.calories,
+          empty: m.isPlaceholder,
+        })),
       ),
     );
-    render(<PlanV3WebDashboard {...baseProps} plan={allEmpty} verdict={emptyVerdict} />);
-    // The verdict headline must not appear on an empty week (desktop parity
-    // with mobile PlanV3Surface's gate).
+    render(
+      <PlanV3WebDashboard
+        {...baseProps}
+        plan={allEmpty}
+        verdict={emptyVerdict}
+      />,
+    );
     expect(screen.queryByText(/days on target/)).not.toBeInTheDocument();
-    // The 0/7 fact still lives in the stat strip alone.
+    expect(screen.getByTestId("plan-empty-week-card")).toBeInTheDocument();
+    expect(screen.queryByText("0/7")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Add breakfast/i)).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: "Generate this week" }),
+    ).toHaveLength(1);
+  });
+
+  it("flag OFF + empty week preserves the legacy zero dashboard", () => {
+    forceEmptyGrammar(false);
+    const allEmpty = Array.from({ length: 7 }, (_, i) => emptyDay(i));
+    render(<PlanV3WebDashboard {...baseProps} plan={allEmpty} />);
+    expect(
+      screen.queryByTestId("plan-empty-week-card"),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("0/7")).toBeInTheDocument();
+    expect(screen.getAllByText(/Add breakfast/i).length).toBeGreaterThan(0);
+  });
+
+  it("flag ON + partial week preserves stats and the standard week body", () => {
+    forceEmptyGrammar(true);
+    render(<PlanV3WebDashboard {...baseProps} />);
+    expect(
+      screen.queryByTestId("plan-empty-week-card"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("5/7")).toBeInTheDocument();
+    expect(screen.getAllByText(/Add breakfast/i).length).toBeGreaterThan(0);
+  });
+
+  it("flag ON + populated week preserves the complete dashboard", () => {
+    forceEmptyGrammar(true);
+    const fullWeek = Array.from({ length: 7 }, (_, i) => fullDay(i));
+    render(<PlanV3WebDashboard {...baseProps} plan={fullWeek} />);
+    expect(
+      screen.queryByTestId("plan-empty-week-card"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("7/7")).toBeInTheDocument();
+    expect(screen.queryByText(/Add breakfast/i)).not.toBeInTheDocument();
+  });
+
+  it("flag ON + generating empty week retains progress and prevents duplicate submits", () => {
+    forceEmptyGrammar(true);
+    const allEmpty = Array.from({ length: 7 }, (_, i) => emptyDay(i));
+    render(<PlanV3WebDashboard {...baseProps} plan={allEmpty} isGenerating />);
+    const generate = screen.getByRole("button", { name: "Generating…" });
+    expect(generate).toBeDisabled();
+    expect(generate).toHaveAttribute("aria-busy", "true");
+    expect(
+      screen.getByRole("button", { name: /add meals as you go/i }),
+    ).toBeDisabled();
   });
 
   it("offers + Add on empty slots and fires the add handler", () => {

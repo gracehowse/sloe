@@ -31,6 +31,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Icons } from "../ui/icons";
+import { SettingsPageChrome } from "./SettingsPageChrome";
 
 export interface SettingsPaneSection {
   /** Stable id — used as the React key + active-state token. */
@@ -50,11 +51,13 @@ export interface SettingsTwoPaneShellProps {
    *  the profile header card + Sloe Pro banner, which read as the page
    *  identity, not a tab. Optional. */
   header?: ReactNode;
+  /** Mobile-web pushed-screen back action; hidden at the desktop breakpoint. */
+  onBack?: () => void;
   /** Section groups, in nav order. The first is selected on open. */
   sections: SettingsPaneSection[];
 }
 
-export function SettingsTwoPaneShell({ header, sections }: SettingsTwoPaneShellProps) {
+export function SettingsTwoPaneShell({ header, onBack, sections }: SettingsTwoPaneShellProps) {
   // Defensive: an empty section list renders nothing but the header rather
   // than crashing on `sections[0]`.
   const [activeId, setActiveId] = useState<string>(() => sections[0]?.id ?? "");
@@ -64,24 +67,7 @@ export function SettingsTwoPaneShell({ header, sections }: SettingsTwoPaneShellP
     <div className="product-shell py-8" data-testid="settings-two-pane">
       {/* Page header — serif title + the always-on identity content. */}
       <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div
-            className="p-2 rounded-xl"
-            style={{
-              backgroundColor:
-                "color-mix(in srgb, var(--foreground-brand) 10%, transparent)",
-            }}
-          >
-            <Icons.settings
-              className="w-5 h-5"
-              style={{ color: "var(--foreground-brand)" }}
-            />
-          </div>
-          <h1 className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand">
-            Settings
-          </h1>
-        </div>
-        <p className="text-foreground-tertiary">Manage your account and preferences</p>
+        <SettingsPageChrome legacyRadius="xl" onBack={onBack} />
       </div>
 
       {header ? <div className="mb-8">{header}</div> : null}

@@ -106,7 +106,7 @@ describe("filterSettingsIndex", () => {
       expect(ids, q).toContain("weigh-in-reminder");
     }
     const entry = SETTINGS_SEARCH_INDEX.find((e) => e.id === "weigh-in-reminder");
-    expect(entry?.route).toBe("/(tabs)/settings");
+    expect(entry?.route).toBe("/settings");
     // Anti-nag framing in the sub copy — never a streak/badge/threat.
     expect(entry?.sub.toLowerCase()).not.toMatch(/streak|badge|don't lose|keep your/);
   });

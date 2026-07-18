@@ -147,6 +147,9 @@ describe.skipIf(!hasNativeIos)("Sloe brand: generated native iOS catalog (local 
   it("native splash logo imageset is a transparent wordmark (keeps alpha)", () => {
     const light = pngHeader(join(IOS, "Images.xcassets/SplashScreenLogo.imageset/image@3x.png"));
     expect(light.colorType).toBe(6);
-    expect(light.width).toBeGreaterThan(light.height);
+    // Expo's native catalog pads the wide source wordmark onto a square
+    // transparent canvas; the tracked source above owns the wide aspect.
+    expect(light.width).toBe(600);
+    expect(light.height).toBe(600);
   });
 });

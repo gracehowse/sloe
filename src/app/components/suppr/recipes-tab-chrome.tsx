@@ -36,6 +36,7 @@ export function RecipesTabChrome({
   onSelect,
   className,
 }: RecipesTabChromeProps) {
+  const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
   return (
     <ScreenChrome
       overline="Cook"
@@ -48,7 +49,9 @@ export function RecipesTabChrome({
             type="button"
             onClick={() => navToView("create")}
             aria-label="Create recipe"
-            className="p-1.5 rounded-lg text-foreground-secondary hover:text-foreground hover:bg-muted transition-colors"
+            className={consistencyChrome
+              ? "grid h-10 w-10 place-items-center rounded-full bg-muted text-foreground hover:bg-[var(--background-secondary)] transition-colors"
+              : "p-1.5 rounded-lg text-foreground-secondary hover:text-foreground hover:bg-muted transition-colors"}
           >
             <Icons.edit className="w-[18px] h-[18px]" aria-hidden />
           </button>
@@ -56,7 +59,9 @@ export function RecipesTabChrome({
             type="button"
             onClick={() => navToView("import")}
             aria-label="Import recipe"
-            className="p-1.5 rounded-lg text-foreground-secondary hover:text-foreground hover:bg-muted transition-colors"
+            className={consistencyChrome
+              ? "grid h-10 w-10 place-items-center rounded-full bg-muted text-foreground hover:bg-[var(--background-secondary)] transition-colors"
+              : "p-1.5 rounded-lg text-foreground-secondary hover:text-foreground hover:bg-muted transition-colors"}
           >
             <Icons.link className="w-[18px] h-[18px]" aria-hidden />
           </button>
