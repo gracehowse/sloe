@@ -23,6 +23,7 @@
 import { Loader2, Plus } from "lucide-react";
 import { Icons } from "../ui/icons";
 import { Badge } from "../suppr/badge";
+import { SearchResultConfidenceChip } from "../ui/search-result-confidence-chip";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
 import {
   resolveFoodSearchHeadline,
@@ -52,38 +53,16 @@ export type FoodSearchResultRowProps = {
 };
 
 /** The legible Verified/Estimated tier chip (ENG-807/ENG-815) — identical
- *  markup on both grammar paths so the trust signal stays inline. */
+ *  markup on both grammar paths so the trust signal stays inline. Delegates
+ *  to the shared `SearchResultConfidenceChip` primitive (ENG-1429), which
+ *  also backs the barcode result card and the web voice-log review row —
+ *  one chip definition, not three formerly-inline copies. */
 function tierChip(tier: SearchRowConfidenceTier) {
   return (
-    <span
-      data-testid={`food-search-confidence-${tier}`}
-      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10.5px] font-extrabold tracking-wide ${
-        tier === "verified" ? "bg-primary/10 text-primary-solid" : ""
-      }`}
-      // ENG P5 parity (gap #11): the Estimated chip must NOT reuse
-      // the over-budget `--warning` orange — that exact token paints
-      // the over-budget fat macro in this same row, so one colour
-      // would mean both "estimated data" and "over-budget". Use the
-      // dedicated warm-amber `--chip-estimated` (#BF8324) token,
-      // mirroring the mobile chip
-      // (apps/mobile/components/ui/SearchResultConfidenceChip.tsx:60)
-      // exactly. Verified branch unchanged.
-      style={
-        tier === "verified"
-          ? undefined
-          : {
-              color: "var(--chip-estimated)",
-              backgroundColor: "var(--chip-estimated-soft)",
-            }
-      }
-    >
-      {tier === "verified" ? (
-        <Icons.check className="h-2.5 w-2.5" aria-hidden />
-      ) : (
-        <Icons.info className="h-2.5 w-2.5" aria-hidden />
-      )}
-      {tier === "verified" ? "Structured" : "Estimated"}
-    </span>
+    <SearchResultConfidenceChip
+      tier={tier}
+      testId={`food-search-confidence-${tier}`}
+    />
   );
 }
 
