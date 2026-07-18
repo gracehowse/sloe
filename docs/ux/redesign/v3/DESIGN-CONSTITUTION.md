@@ -138,6 +138,26 @@ is 100% `.1em`; serif-600 count is zero (monograms exempt); the label register
 is one spec (11/700/.1em/fg-tertiary — `fg-muted` is the same hex and appears
 only in legacy rules).
 
+## Rule 6a — Spacing & radius, snapped (build S10, 2026-07-17)
+
+The 4/8/12/16/20/24/32/40 spacing scale and 4/6/8/12/24 radius scale (Rule 6)
+were ratified but not swept — a deterministic pass found **664 off-scale
+spacing values and 173 off-scale radii** across the CSS. Snapped 643 spacing
+values to their nearest scale step (ties round up) and 160 radii to their
+nearest legal corner. **34 values deliberately left off-scale** — all sub-4px
+micro-decoration (confetti dust, story-scene dots, weekbar/trend-key swatches,
+underline indicators), the `.phone` device-frame bezel (chrome, not app UI),
+the `.statusbar` device clock/icon row (exempted the same way), and one
+43px alignment offset (macro-chip left-indent matching an icon's width, not
+a rhythm value). None are perceptible as "off" — they sit below the size
+floor where the spacing/radius scale even applies.
+
+**Corollary:** functional clearances above 40px (avatar diameters, hero
+paddings 44–116px) are not spacing-scale violations — the scale governs
+*rhythm* between elements, not every pixel dimension in the file. Do not
+snap element sizes to the spacing scale; only padding/margin/gap between
+elements.
+
 ## Rule 6 — Ground & depth
 
 Light: warm oat ground (`#fbfaf6` family), white cards, plum hairlines; **glow is
