@@ -44,7 +44,7 @@ MacroFactor users pay for the surface.
   `tdeeDeltaKcal`, `daysLoggedThisWeek` so the funnel can slice
   acceptance rate by delta size.
 
-### Known gaps (PR follow-ups)
+### Deferred: see ENG-1585
 - The modal passes `weightDeltaKg: null` until the host wires real
   7-day weigh-in data through. The modal honestly suppresses the
   weight-delta row rather than fabricate "+0.0 kg".

@@ -18,8 +18,7 @@ const expoConfig = require('eslint-config-expo/flat');
  *    drift is most observable. The rest of `apps/mobile/**` carries
  *    a baseline of legacy literals — those migrate opportunistically
  *    as files are touched. Expanding the scope from "today/" to
- *    `components/**` and `app/**` is a follow-up once the today/
- *    tree is clean.
+ *    `components/**` and `app/**` // deferred: see ENG-1587
  *
  * 2. `no-restricted-imports` — flag `@expo/vector-icons` Ionicons
  *    imports. The icon library decision (2026-04-28, Top-5 #4) was

@@ -40,7 +40,7 @@ function detectSocialPlatform(url: string): SocialPlatform {
  *
  * NOTE: a "collection" kind (a saved IG/TikTok collection of many posts) is a
  * future addition — collection URLs are rare + ambiguous, so they currently
- * classify as `social`/`recipe-url`. Tracked as a follow-up, not a silent gap.
+ * classify as `social`/`recipe-url`. // deferred: see ENG-1581
  */
 export type ImportKind =
   | "social"
