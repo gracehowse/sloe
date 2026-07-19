@@ -70,7 +70,11 @@ describe("mobile plan persist — ENG-1492 anchor contract", () => {
   it("closure-staleness guards: persistPlan and generatePlan dep arrays carry what their write paths read", () => {
     expect(PLANNER).toMatch(/\[userId, startOffset, activePlanSlotId, adoptPlanStartDate\],/);
     // generatePlan's inline persist derives from the chip + slot — both in deps.
-    expect(PLANNER).toMatch(/planCalorieFloor, startOffset, activePlanSlotId, adoptPlanStartDate\]\);/);
+    // ENG-1344 appended `toast.showToast` (the flag-gated Alert-to-toast
+    // migration's stable dependency) after `adoptPlanStartDate`.
+    expect(PLANNER).toMatch(
+      /planCalorieFloor, startOffset, activePlanSlotId, adoptPlanStartDate, toast\.showToast\]\);/,
+    );
   });
 
   it("planner.tsx is the ONLY mobile save_meal_plan call site (new call sites must adopt the anchor contract consciously)", () => {

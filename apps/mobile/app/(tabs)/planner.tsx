@@ -187,7 +187,9 @@ import { PlanEmptyState } from "@/components/PlanEmptyState";
 import { PlanSourceSelector } from "@/components/plan/PlanSourceSelector";
 import { PlanDayMacroSummary } from "@/components/plan/PlanDayMacroSummary";
 import { PlanAnchorBudgetBand } from "@/components/plan/PlanAnchorBudgetBand";
-import { PlanRegenerateToast } from "@/components/plan/PlanRegenerateToast";
+import { Toast } from "@/components/ui/Toast";
+import { useToast } from "@/hooks/useToast";
+import { alertOrToast } from "@/lib/alertOrToast";
 import { ResetPlanSheet } from "@/components/plan/ResetPlanSheet";
 import { usePlannerGenerateMenu } from "@/hooks/usePlannerGenerateMenu";
 import { useResetPlanGate } from "@/hooks/useResetPlanGate";
@@ -704,27 +706,14 @@ export default function PlannerScreen() {
   const openPlanImport = useCallback(() => {
     router.push("/plan-import");
   }, [router]);
-  // Group E Card 4 (premium-bar audit 2026-05-14): regenerate diff
-  // toast. When the user taps Regenerate against an existing plan,
-  // we snapshot the prior plan in `prevPlanForDiffRef`, run the
-  // generator, then count how many meals (by recipeId, falling back
-  // to recipeTitle) differ between before/after. The toast surfaces
-  // the count for ~2.4s so the user reads the action as "the engine
-  // picked N new recipes" rather than "did anything change?". The
-  // pattern mirrors `FirstLogAcknowledgment` (one-shot toast, host
-  // owns visibility lifecycle).
+  // Group E Card 4 (premium-bar audit 2026-05-14): regenerate diff toast —
+  // snapshot the prior plan in `prevPlanForDiffRef`, run the generator,
+  // count changed meals (by recipeId, falling back to recipeTitle), surface
+  // the count for ~2.4s. ENG-1344: consolidated onto the shared
+  // `useToast`/`<Toast>` primitive (was a bespoke `PlanRegenerateToast`) so
+  // this and the Alert-to-toast migration below share ONE host.
   const prevPlanForDiffRef = useRef<DayPlan[] | null>(null);
-  const [regenerateToast, setRegenerateToast] = useState<{
-    visible: boolean;
-    changedCount: number;
-  } | null>(null);
-  useEffect(() => {
-    if (!regenerateToast?.visible) return;
-    const handle = setTimeout(() => {
-      setRegenerateToast(null);
-    }, 2400);
-    return () => clearTimeout(handle);
-  }, [regenerateToast]);
+  const toast = useToast();
   // 2026-05-14 (premium-bar audit Plan Card 4 #8): when the user
   // taps Regenerate while a plan is already visible, show a soft
   // shimmer overlay over the day-card stack so the surface reads
@@ -1185,7 +1174,7 @@ export default function PlannerScreen() {
       return tags.length === 0 || tags.some((t: string) => normaliseMealSlot(t) === canonicalSlot);
     });
     if (fits.length === 0) {
-      Alert.alert("No alternatives", "Save more recipes to swap.");
+      alertOrToast(toast.showToast, "No alternatives", "Save more recipes to swap.");
       return;
     }
 
@@ -1372,7 +1361,7 @@ export default function PlannerScreen() {
           }
         },
     });
-  }, [savedRecipes, discoverRecipes, plan, planTargets, persistPlan, recipeFiberPool, startOffset, shoppingScope]);
+  }, [savedRecipes, discoverRecipes, plan, planTargets, persistPlan, recipeFiberPool, startOffset, shoppingScope, toast.showToast]);
 
   // ENG-1225 Block 3 — v3 Plan meal handlers (open → recipe detail; add → swap
   // picker), lifted to a hook so the pinned planner stays lean.
@@ -2248,7 +2237,7 @@ export default function PlannerScreen() {
 
   const generatePlan = useCallback(async (options?: { resetMode?: ResetPlanMode }) => {
     if (savedRecipes.length === 0 && discoverRecipes.length === 0) {
-      Alert.alert("No recipes available", "Save at least 1 recipe from Discover to generate a plan.");
+      alertOrToast(toast.showToast, "No recipes available", "Save at least 1 recipe from Discover to generate a plan.");
       return;
     }
 
@@ -2548,7 +2537,10 @@ export default function PlannerScreen() {
       if (prevPlan && prevPlan.length > 0) {
         const changed = countChangedMealsInPlan(prevPlan, newPlan);
         if (changed > 0) {
-          setRegenerateToast({ visible: true, changedCount: changed });
+          toast.showToast(
+            `Plan updated — ${changed} ${changed === 1 ? "meal" : "meals"} changed`,
+            { icon: RefreshCw, durationMs: 2400 },
+          );
         }
       }
       prevPlanForDiffRef.current = null;
@@ -2595,14 +2587,11 @@ export default function PlannerScreen() {
     }
     } catch (err) {
       console.error("[planner] generatePlan failed:", err);
-      Alert.alert(
-        "Couldn't generate plan",
-        "Something went wrong while building your plan. Please try again.",
-      );
+      alertOrToast(toast.showToast, "Couldn't generate plan", "Something went wrong while building your plan. Please try again.", "error");
     } finally {
       setGenerating(false);
     }
-  }, [savedRecipes, discoverRecipes, days, userId, enabledSlots, recipeFiberPool, planSourceSelector, planSource, winMomentsEnabled, plan, mealLockEnabled, allowBatchLeftovers, planCalorieFloor, startOffset, activePlanSlotId, adoptPlanStartDate]);
+  }, [savedRecipes, discoverRecipes, days, userId, enabledSlots, recipeFiberPool, planSourceSelector, planSource, winMomentsEnabled, plan, mealLockEnabled, allowBatchLeftovers, planCalorieFloor, startOffset, activePlanSlotId, adoptPlanStartDate, toast.showToast]);
 
   const resetPlan = useResetPlanGate(planHasRealMeals, generatePlan);
   const requestLibraryGenerate = resetPlan.requestLibraryGenerate;
@@ -2657,9 +2646,17 @@ export default function PlannerScreen() {
       testID="screen-planner"
       style={[styles.container, { paddingTop: insets.top }]}
     >
-      {/* Regenerate diff toast — extracted to its own component (ENG-1225
-          Block 1) to free planner.tsx line-budget for the v3 Plan UI. */}
-      <PlanRegenerateToast toast={regenerateToast} topInset={insets.top} />
+      {/* Shared toast host (ENG-1344) — regenerate-diff toast + the
+          flag-gated Alert-to-toast migration below share this ONE
+          instance so they can't render two overlapping overlays. */}
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        variant={toast.variant}
+        icon={toast.icon}
+        inset={insets.top + Spacing.sm}
+        testID="planner-toast"
+      />
       {/* Phase 2 / B1.1 — Plan sub-tab pill bar (Plan default, Shopping as a
           sub-view → `/shopping`). Hidden under sloe_v3_plan: the v3 header owns
           generate/adjust/templates and PlanToolsV3 carries the Shopping row. */}
@@ -2771,7 +2768,7 @@ export default function PlannerScreen() {
                         style: "destructive",
                         onPress: () => {
                           if (planSlots.length <= 1) {
-                            Alert.alert("Can't delete", "You need at least one plan slot.");
+                            alertOrToast(toast.showToast, "Can't delete", "You need at least one plan slot.", "error");
                             return;
                           }
                           Alert.alert(
@@ -4359,11 +4356,11 @@ export default function PlannerScreen() {
                 .from("nutrition_entries")
                 .insert(buildNutritionEntryRow(plannedLogMeal, dk, userId));
               if (error) {
-                Alert.alert("Log failed", "Could not save to tracker. " + error.message);
+                alertOrToast(toast.showToast, "Log failed", "Could not save to tracker. " + error.message, "error");
               } else {
                 void snapshotDailyTargetIfMissing(supabase, userId, { canonicalEnergyInputs: isFeatureEnabled("energy_numbers_v1") });
                 const dayLabel = shortWeekdayLabel(planDayCalendarDate(calInput));
-                Alert.alert(`${meal.recipeTitle} logged`, `Added to ${dayLabel}'s tracker.`);
+                alertOrToast(toast.showToast, `${meal.recipeTitle} logged`, `Added to ${dayLabel}'s tracker.`, "success");
               }
               } finally {
                 rowMenuLogInFlightRef.current = false;
@@ -4419,7 +4416,7 @@ export default function PlannerScreen() {
             const doMove = () => {
               setRowMenu(null);
               if (!hasRecipeOv) {
-                Alert.alert("Nothing to move", "This slot is empty.");
+                alertOrToast(toast.showToast, "Nothing to move", "This slot is empty.");
                 return;
               }
               if (sourceDayOv == null || mealIndexInDay < 0) return;
