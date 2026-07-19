@@ -2,13 +2,24 @@
  * ENG-1569 — self-test for the PostHog-host leak gate
  * (`scripts/check-posthog-proxy.mjs`).
  *
- * The ticket: the gate used to suppress a URL match in the compiled client
- * bundle as "vendor-owned" whenever it was byte-identical to something in the
- * installed SDK source. Because the SDK's own default host is string-identical
- * to our server-only DEFAULT_POSTHOG_HOST, a real leak of the official host
- * from ANY of our modules matched vendor source too and passed silently. The
- * fix: stop scanning the compiled client bundle for the URL literal at all, and
- * make the server-only module-marker deny-list the sole gate on that surface.
+ * The original bug: the gate suppressed a URL match in the compiled client
+ * bundle as "vendor-owned" whenever it was byte-identical to something found
+ * by scanning the installed SDK package on disk. Because the SDK's own
+ * default host is string-identical to our server-only DEFAULT_POSTHOG_HOST,
+ * a real leak of the official host from our own code matched vendor source
+ * too and passed silently.
+ *
+ * The fix: stop deriving the allowlist from vendor package contents, and
+ * hardcode the small, finite set of strings the SDK is actually known to ship
+ * (`https://app.posthog.com`, `https://us.posthog.com`,
+ * `https://us.i.posthog.com`) — suppressing those three exact literals only.
+ * The URL-literal scan otherwise stays ACTIVE on the compiled client bundle,
+ * running alongside (not instead of) the server-only module-marker deny-list.
+ * A first pass at this fix removed the URL scan entirely on this surface,
+ * which regressed detection of any *other* direct host literal (e.g. a
+ * misconfigured region) landing in client output through a path that never
+ * touches either server-only module — see the last test in the first
+ * `describe` block below, which pins that this stays caught.
  *
  * The script runs entirely at top level with filesystem side effects and reads
  * `process.cwd()` as its repo root, so this pins behaviour by running the real
@@ -16,18 +27,18 @@
  * spacing/token/screen-budget self-tests use), not by importing it.
  *
  * What each case protects:
- *  1. The ENG-1569 fix itself — a client bundle carrying ONLY the SDK's own
- *     host literal (and no server-only marker) passes, WITHOUT any installed
- *     vendor package to suppress against. Under the old code this exact tree
- *     failed (empty vendor set ⇒ nothing suppressed ⇒ the literal was flagged),
- *     so this test breaks if the fix is reverted.
- *  2. Real-leak detection is intact — a server-only module's distinctive marker
- *     appearing in the client bundle still hard-fails.
+ *  1. The three known SDK-default literals pass on the bundle surface with no
+ *     installed vendor package required to suppress against (hardcoded, not
+ *     derived) — this is what the fix actually changed.
+ *  2. Real-leak detection via the module-marker deny-list is intact.
  *  3. Source-side detection is untouched — a raw host literal in committed
  *     src/ source still fails (that arm never used vendor suppression).
  *  4. The three legitimate carve-outs the fix must preserve — serverTrack.ts,
  *     featureFlags.ts, and app/api/** holding the raw host — do NOT
  *     false-positive.
+ *  5. A non-default host literal in the compiled bundle (not one of the three
+ *     known SDK strings, and not routed through either server-only module)
+ *     still fails — the regression a marker-only design would miss.
  */
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -83,16 +94,29 @@ afterAll(() => {
   for (const dir of createdDirs) rmSync(dir, { recursive: true, force: true });
 });
 
-describe("check-posthog-proxy — ENG-1569 fix (compiled client bundle no longer URL-scanned)", () => {
-  it("passes a client bundle carrying ONLY the SDK's own host literal, with no vendor package to suppress against", () => {
+describe("check-posthog-proxy — ENG-1569 fix (hardcoded SDK-default allowlist, not vendor-derived)", () => {
+  it("passes a client bundle carrying ONLY the SDK's known default host literals, with no installed vendor package required", () => {
     // The crux: under the old vendor-string suppression this tree FAILED (no
     // node_modules ⇒ empty known-string set ⇒ the literal was reported). The
-    // fix skips URL scanning on this surface entirely, so it now passes.
+    // fix hardcodes the known-string set instead of deriving it from disk, so
+    // this now passes without needing node_modules present at all.
     const { status, output } = runGate({
-      ".next/static/chunks/vendor.js": `var a="${OFFICIAL_HOST}";var b="https://us.posthog.com";`,
+      ".next/static/chunks/vendor.js": `var a="${OFFICIAL_HOST}";var b="https://us.posthog.com";var c="https://app.posthog.com";`,
     });
     expect(status).toBe(0);
     expect(output).toContain("OK: no direct PostHog host literal found");
+  });
+
+  it("still hard-fails on a non-default host literal in the compiled client bundle (the regression a marker-only gate would miss)", () => {
+    // Not one of the three known SDK-default strings, and never routed
+    // through DEFAULT_POSTHOG_HOST or system:killswitch — a marker-only gate
+    // (an earlier version of this fix) would silently pass this. The
+    // URL-literal scan staying active on this surface is what catches it.
+    const { status, output } = runGate({
+      ".next/static/chunks/vendor.js": 'var a="https://eu.i.posthog.com";',
+    });
+    expect(status).toBe(1);
+    expect(output).toContain("eu.i.posthog.com");
   });
 
   it("still hard-fails when a server-only module marker leaks into the client bundle (real leak)", () => {
