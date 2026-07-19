@@ -192,7 +192,7 @@ function PermissionCard({
         padding: 16,
         marginBottom: Spacing.dense,
         borderWidth: 1,
-        borderColor: granted === true ? Accent.success + "66" : colors.border,
+        borderColor: granted === true ? Accent.successLight : colors.border, // ENG-1572 — solid Light, no alpha
       }}
     >
       <View

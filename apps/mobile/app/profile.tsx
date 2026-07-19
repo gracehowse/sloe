@@ -332,7 +332,7 @@ export default function ProfileScreen() {
     // grammar. (Sage stays reserved for success/status + nutrition-confidence
     // semantics, not selection state.)
     dietaryChipActive: {
-      borderColor: accent.primarySolid + "80",
+      borderColor: accent.primaryLight, // ENG-1572 — solid Light, no alpha
       backgroundColor: accent.primarySoft,
     },
     dietaryLabel: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },

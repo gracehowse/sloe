@@ -347,7 +347,7 @@ export default function VoiceLogSheet({
                 accessibilityRole="alert"
                 style={{
                   borderWidth: 1,
-                  borderColor: Accent.destructive + "66",
+                  borderColor: accent.destructiveLight, // ENG-1572 — solid Light, no alpha
                   backgroundColor: accent.destructiveSoft,
                   borderRadius: Radius.md,
                   padding: Spacing.md,

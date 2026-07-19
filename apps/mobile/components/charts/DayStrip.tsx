@@ -169,6 +169,8 @@ export default function DayStrip({
           // Selected day-LETTER demoted to 70% white (prototype `.is-sel .dc-dow`
           // rgba(255,255,255,.7) + web `text-primary-foreground/70`); the day
           // NUMBER stays full white, so the letter doesn't read as loud. (ENG-1247 S1)
+          // ENG-1572 exempt: foreground-text opacity on a filled pill, not a
+          // border or tint — no clean named-token equivalent, stays as alpha.
           const labelColor = selectedFill ? accent.primaryForeground + "B3" : secondaryColor;
           return (
             <PressableScale

@@ -768,7 +768,7 @@ export default function BarcodeScannerModal({
       width: "80%",
       height: "50%",
       borderWidth: 2,
-      borderColor: accent.primary + "80",
+      borderColor: accent.primaryLight, // ENG-1572 — solid Light, no alpha
       borderRadius: Radius.lg,
     },
     // F-134 (2026-05-08): when the camera collapses on result, the

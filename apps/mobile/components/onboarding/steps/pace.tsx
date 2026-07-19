@@ -280,7 +280,7 @@ export function MobilePaceStep() {
             borderRadius: Radius.md,
             borderWidth: 1,
             backgroundColor: mcSoft[MACRO_KEY_BY_GOAL[goal] as keyof typeof mcSoft],
-            borderColor: accent + "66",
+            borderColor: accent, // ENG-1572 — macro-solid tone, no alpha (no MacroColorsLight family for one site)
             flexDirection: "row",
           }}
         >

@@ -1177,7 +1177,7 @@ export default function CreateRecipeScreen() {
                 <Search size={20} color={accent.primary} />
               </Pressable>
               <Pressable style={styles.removeBtn} onPress={() => removeIngredient(ing.id)} accessibilityLabel="Remove ingredient">
-                <CircleX size={20} color={Accent.destructive + "B0"} />
+                <CircleX size={20} color={Accent.destructiveLight} /* ENG-1572 */ />
               </Pressable>
             </View>
           ))}
@@ -1248,7 +1248,7 @@ export default function CreateRecipeScreen() {
           <Switch
             value={publish}
             onValueChange={setPublish}
-            trackColor={{ false: colors.border, true: accent.primary + "80" }}
+            trackColor={{ false: colors.border, true: accent.primaryLight }} // ENG-1572
             thumbColor={publish ? accent.primary : colors.textTertiary}
           />
         </View>

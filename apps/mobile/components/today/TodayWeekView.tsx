@@ -274,7 +274,7 @@ function TodayWeekViewImpl(props: TodayWeekViewProps) {
               const isCurrentDay = day.key === todayDk;
               const isScrubbed = scrubIndex === i;
               const barColor = over
-                ? Accent.warning + "CC"
+                ? Accent.warning // ENG-1572 — solid, no alpha
                 : day.totals.calories > 0
                   ? accent.primary
                   : borderColor;
@@ -346,7 +346,7 @@ function TodayWeekViewImpl(props: TodayWeekViewProps) {
                 right: 0,
                 height: 0,
                 borderTopWidth: 1,
-                borderTopColor: accent.primary + "66",
+                borderTopColor: accent.primaryLight, // ENG-1572 — solid Light, no alpha
                 borderStyle: "dashed",
                 transform: [{ translateY: -targetRuleY }],
               }}

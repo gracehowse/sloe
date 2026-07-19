@@ -87,7 +87,7 @@ export default function NotificationsScreen() {
         sub: { color: colors.textSecondary, marginTop: 4, fontSize: 14 },
         center: { flex: 1, alignItems: "center", justifyContent: "center", padding: Spacing.xl, gap: Spacing.dense },
         err: { color: Accent.destructive, textAlign: "center", fontSize: 15 },
-        retry: { marginTop: Spacing.sm, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.dense, borderRadius: Radius.md, borderWidth: 1, borderColor: accent.primary + "80" },
+        retry: { marginTop: Spacing.sm, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.dense, borderRadius: Radius.md, borderWidth: 1, borderColor: accent.primaryLight }, // ENG-1572 — solid Light, no alpha
         retryText: { color: accent.primarySolid, fontWeight: "700", fontSize: 15 },
         btn: { backgroundColor: colors.card, paddingHorizontal: Spacing.dense, paddingVertical: Spacing.sm, borderRadius: Radius.md, borderWidth: 1, borderColor: colors.border },
         btnDisabled: { opacity: 0.4 },
