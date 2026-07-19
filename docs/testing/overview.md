@@ -154,7 +154,7 @@ for scripted E2E.
 |------|--------|------|
 | AppDataContext (central state) | No tests | High — most complex logic |
 | Recipe import pipeline | No happy-path test | Medium — requires API keys |
-| Verification pipeline (end-to-end) | Golden + **mocked USDA + mocked OFF** integration tests; FatSecret branch still thin | Low–medium — add mocked FatSecret serving edge cases if FS stays in product |
+| Verification pipeline (multi-source cascade) | Golden + mocked-provider integration tests across **USDA, OFF, FatSecret, Edamam**. USDA **multi-candidate fallback** (top-2 parallel + serial tail, ENG-560) is covered by `verifyIngredientsUsdaMultiCandidate.test.ts` (ENG-1427); FatSecret/Edamam **ranked-candidate + fall-through-on-failure** by `verifyIngredientsRankedCandidates.test.ts` (ENG-1426) + the same ENG-1427 file's Edamam case | Low |
 | RecipeDetail component | No tests | Medium |
 | Mobile UI (full screens) | **Vitest + RNTL** for many components/helpers under `apps/mobile/tests/unit/`; **Maestro** for device flows in `apps/mobile/.maestro/` (see [qa/SCREEN_TEST_MATRIX.md](../qa/SCREEN_TEST_MATRIX.md)); not every screen has automation | Medium |
 | Offline cache | No tests | Low |

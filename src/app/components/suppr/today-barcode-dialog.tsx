@@ -13,6 +13,7 @@ import {
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
 import { Icons } from "../ui/icons";
+import { SearchResultConfidenceChip } from "../ui/search-result-confidence-chip";
 import {
   fetchProductByBarcode,
   type OffProductMacros,
@@ -527,27 +528,10 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <span
-                                  data-testid={`barcode-confidence-${tier}`}
-                                  className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10.5px] font-extrabold tracking-wide ${
-                                    tier === "verified" ? "bg-primary/10 text-primary-solid" : ""
-                                  }`}
-                                  style={
-                                    tier === "verified"
-                                      ? undefined
-                                      : {
-                                          color: "var(--chip-estimated)",
-                                          backgroundColor: "var(--chip-estimated-soft)",
-                                        }
-                                  }
-                                >
-                                  {tier === "verified" ? (
-                                    <Icons.check className="h-2.5 w-2.5" aria-hidden />
-                                  ) : (
-                                    <Icons.info className="h-2.5 w-2.5" aria-hidden />
-                                  )}
-                                  {tier === "verified" ? "Structured" : "Estimated"}
-                                </span>
+                                <SearchResultConfidenceChip tier={tier}
+                                  sourceLabel="Open Food Facts"
+                                  testId={`barcode-confidence-${tier}`}
+                                />
                               </div>
                               <div className="flex flex-col items-end shrink-0">
                                 <span className="text-[18px] font-extrabold text-foreground tabular-nums leading-none">

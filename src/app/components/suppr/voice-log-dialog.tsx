@@ -36,12 +36,10 @@ import {
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Icons } from "../ui/icons";
-import { ConfidenceDot } from "./confidence-dot";
-import { Badge } from "./badge";
+import { VoiceLogReviewItem } from "./voice-log-review-item";
 import {
   aggregateTotals,
   averageConfidence,
-  classifyConfidence,
   isLowConfidence,
   sanitiseAiItems,
   type AiLoggedItem,
@@ -346,76 +344,15 @@ export function VoiceLogDialog({
 
         {stage === "review" && (
           <div className="grid gap-2 py-2 max-h-[50vh] overflow-y-auto">
-            {items.map((item, i) => {
-              const level = classifyConfidence(item.confidence);
-              const low = isLowConfidence(item);
-              return (
-                <div
-                  key={`${item.name}-${i}`}
-                  className={`rounded-lg border p-2.5 text-sm ${
-                    low ? "border-amber-400/50 bg-amber-400/5" : "border-border bg-card"
-                  }`}
-                >
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1 min-w-0">
-                      <Input
-                        value={item.name}
-                        onChange={(e) => updateItem(i, { name: e.target.value })}
-                        aria-label={`Item ${i + 1} name`}
-                        className="h-8 text-sm font-medium"
-                      />
-                      {item.unit && (
-                        <p className="text-[11px] text-muted-foreground mt-1">{item.unit}</p>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <ConfidenceDot level={level} showLabel />
-                      <Badge
-                        variant="ai"
-                        ariaLabel="AI estimated nutrition"
-                        icon={<Icons.sparkles />}
-                      >
-                        AI estimate
-                      </Badge>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeItem(i)}
-                      className="size-7 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      aria-label={`Remove ${item.name}`}
-                    >
-                      <Icons.close className="size-4" />
-                    </button>
-                  </div>
-                  <div className="mt-2 grid grid-cols-4 gap-2">
-                    {(["calories", "protein", "carbs", "fat"] as const).map((key) => (
-                      <label key={key} className="grid gap-0.5">
-                        <span className="text-[10px] font-semibold uppercase text-muted-foreground">
-                          {key === "calories" ? "kcal" : `${key.charAt(0).toUpperCase()}${key.slice(1)} (g)`}
-                        </span>
-                        <Input
-                          type="number"
-                          min={0}
-                          step={1}
-                          value={item[key]}
-                          onChange={(e) => {
-                            const n = Math.max(0, Number(e.target.value));
-                            updateItem(i, { [key]: Number.isFinite(n) ? n : 0 });
-                          }}
-                          className="h-7 text-xs"
-                          aria-label={`${item.name} ${key}`}
-                        />
-                      </label>
-                    ))}
-                  </div>
-                  {low && (
-                    <p role="alert" className="mt-1.5 text-[11px] text-amber-700">
-                      Low confidence — please verify the portion and macros before logging.
-                    </p>
-                  )}
-                </div>
-              );
-            })}
+            {items.map((item, i) => (
+              <VoiceLogReviewItem
+                key={`${item.name}-${i}`}
+                item={item}
+                index={i}
+                onChange={(patch) => updateItem(i, patch)}
+                onRemove={() => removeItem(i)}
+              />
+            ))}
             <div className="mt-1 rounded-lg bg-muted/40 p-2.5 text-xs text-muted-foreground">
               Logging to <span className="font-semibold text-foreground">{activeSlot}</span>.
               Total: {totals.calories} kcal · P {totals.protein}g · C {totals.carbs}g · F {totals.fat}g

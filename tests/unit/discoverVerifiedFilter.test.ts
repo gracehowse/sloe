@@ -26,7 +26,7 @@ const FILTER_CHIPS = readFileSync(
 const WEB_TRACK = readFileSync(resolve(ROOT, "src/lib/analytics/track.ts"), "utf8");
 const MOBILE_ANALYTICS = readFileSync(resolve(ROOT, "apps/mobile/lib/analytics.ts"), "utf8");
 
-describe("ENG-1417 — Discover Verified-only filter chip", () => {
+describe("ENG-1417 / ENG-1567 — Discover source-backed filter chip", () => {
   it("is registered as a default-OFF flag (net-new structural control)", () => {
     expect(WEB_TRACK).toContain('"discover_verified_filter_v1"');
     const defaultOnStart = WEB_TRACK.indexOf("const REDESIGN_DEFAULT_ON");
@@ -58,7 +58,9 @@ describe("ENG-1417 — Discover Verified-only filter chip", () => {
       /setFilters\(\(prev\) => \(\{ \.\.\.prev, verified: !prev\.verified \}\)\)/,
     );
     expect(FILTER_CHIPS).toContain('data-testid="discover-filter-verified"');
-    expect(FILTER_CHIPS).toContain('aria-label="Filter: Verified only"');
+    expect(FILTER_CHIPS).toContain('"Source-backed only"');
+    expect(FILTER_CHIPS).toContain('"Verified only"');
+    expect(FILTER_CHIPS).toMatch(/aria-label=\{`Filter: \$\{sourceFilterLabel\}`\}/);
   });
 
   it("uses the same chip grammar as the category pills (design-craft parity)", () => {

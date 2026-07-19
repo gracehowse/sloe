@@ -1,9 +1,9 @@
-# Trust vocabulary — partial implementation (ENG-1431)
+# Trust vocabulary — canonical five-tier implementation (ENG-1431 / ENG-1464 / ENG-1567)
 
 - **Date:** 2026-07-06
 - **Area:** Nutrition trust / cross-system consistency
-- **Status:** Partially shipped — mechanical fixes landed, full unification deferred
-- **Linear:** ENG-1431
+- **Status:** Completed — mechanical alignment and user-facing copy retirement shipped
+- **Linear:** ENG-1431, ENG-1464, ENG-1567
 
 ## Summary
 
@@ -16,10 +16,11 @@ floor everywhere else). A Fable-backed pass proposed a single canonical 5-tier
 ladder (Matched/Partial/Estimated/Manual/No-data) that retires the word
 "Verified"/"Structured" from user copy and shows the actual source name instead.
 
-Grace approved the full proposal. This pass shipped the safe, mechanical half of
-it and deferred the copy-retirement half after its real blast radius turned out
-to be materially larger than scoped — documenting the split explicitly rather
-than silently doing a partial job.
+Grace approved the full proposal. The work shipped in two controlled parts: the
+safe mechanical alignment first, followed by the cross-platform copy-retirement
+pass once its real blast radius had been audited. The resulting display contract
+is now complete; persistence identifiers and confidence calculations are
+unchanged.
 
 ## Shipped this pass
 
@@ -45,35 +46,46 @@ than silently doing a partial job.
 All three are mechanical, low-blast-radius, and directly fix confirmed
 contradictions. Full test coverage updated and green (see Verification).
 
-## Deferred — the copy-retirement / 5-tier-ladder unification
+## Copy-retirement / five-tier ladder — completed by ENG-1464 and ENG-1567
 
-Fable's proposal to retire "Verified"/"Structured"/"Unverified" from all user
-copy and show the source name as the trust signal touches far more surface than
-the initial scoping assumed:
+Fable's proposal to retire "Verified"/"Structured"/"Unverified" from user copy
+and show the source name as the strongest trust signal touched more surface than
+the initial scoping assumed. ENG-1464 delivered the shared TrustChip/SourceDot
+slice; ENG-1567 completed the remaining display surfaces:
 
-- `src/app/components/ui/trust-chip.tsx` and its mobile twin
-  `apps/mobile/components/ui/TrustChip.tsx` (the actual copy).
-- `src/app/components/ui/source-dot.tsx` / `apps/mobile/components/ui/SourceDot.tsx`.
-- `src/lib/nutrition/structuredSourceGate.ts` — needs to be read carefully to
-  confirm it doesn't do any literal string-matching against label text
-  (as opposed to matching source *identifiers*) before any label text changes.
-- `apps/mobile/app/(tabs)/discover.tsx`.
-- At least 6 test files pin the exact string "USDA verified" across both
-  platforms (`trustPostureSweepPhase3.test.tsx`, `trustPostureSweepPhase4.test.tsx`,
-  `supprPrimitives.test.tsx` on both platforms, `searchResultConfidenceChip.test.tsx`).
+- nutrition-source badges on web and iOS;
+- food-search confidence chips on web and iOS;
+- barcode result confidence on web and iOS;
+- recipe ingredient trust labels on web and iOS;
+- the web Discover filter (mobile has no equivalent filter control); and
+- RecipeUpload's success, tooltip and macro-summary copy.
 
-This is a real, separate refactor — not a copy tweak — and deserves its own
-dedicated pass with full regression coverage rather than being rushed alongside
-the ENG-1415/1417 persistence fix (the higher-priority sev-5 launch blocker)
-in the same session. Filed as ENG-1464, not silently dropped.
+The canonical visible ladder is **source name (or Matched) / Partial /
+Estimated / Manual / No data**. Discover uses **Source-backed only** because it
+describes the filter without implying certification. `structuredSourceGate.ts`
+was audited and left unchanged: it matches real stored source identifiers, not
+display labels. The existing default-on `trust_source_name_v1` flag gates every
+meaning-changing copy path and retains the old wording as an emergency kill
+switch.
 
-Also deferred (unchanged from the original Fable recommendation's own
+Still deferred (unchanged from the original Fable recommendation's own
 scoping): the `user_foods.verification_status` → `moderation_status` column
 rename. That column is referenced by the ENG-1393 security lockdown trigger
 shipped earlier this session — renaming it needs its own careful pass, not a
 bundle with unrelated copy work.
 
 ## Verification
+
+- `tests/unit/nutritionTrustVocabulary.test.ts` pins the canonical five-tier
+  formatter, cross-platform adoption, provenance naming and Discover wording.
+- Web and mobile search-result tests pin source names on the default-on path;
+  the mobile confidence-chip test separately pins the legacy flag-off wording.
+- Web barcode coverage pins Open Food Facts on a source-backed result rather
+  than the retired generic Structured label.
+- The targeted web and mobile lint/typecheck/test suites, decision index and
+  final repository CI are required before ENG-1567 closes.
+
+### Earlier mechanical pass
 
 - `tests/unit/ingredientVerificationStatus.test.ts` — updated pinned boundary
   tests for the 0.55 floor, added a regression test for the killed 0.50–0.549

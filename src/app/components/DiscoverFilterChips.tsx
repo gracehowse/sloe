@@ -35,6 +35,9 @@ export function DiscoverFilterChips({
   setFilters: (updater: (prev: DiscoverFilters) => DiscoverFilters) => void;
 }) {
   const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
+  const sourceFilterLabel = isFeatureEnabled("trust_source_name_v1")
+    ? "Source-backed only"
+    : "Verified only";
   const chipClassName = (isActive: boolean) =>
     `shrink-0 px-4 py-2 rounded-full ${consistencyChrome ? "text-xs" : "text-[13px]"} whitespace-nowrap transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
       isActive
@@ -90,10 +93,10 @@ export function DiscoverFilterChips({
             onClick={() => setFilters((prev) => ({ ...prev, verified: !prev.verified }))}
             className={`inline-flex items-center gap-1.5 ${chipClassName(filters.verified)}`}
             aria-pressed={filters.verified}
-            aria-label="Filter: Verified only"
+            aria-label={`Filter: ${sourceFilterLabel}`}
           >
             <ShieldCheck width={14} height={14} aria-hidden />
-            Verified only
+            {sourceFilterLabel}
           </button>
         ) : null}
       </div>

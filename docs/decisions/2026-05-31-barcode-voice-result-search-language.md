@@ -1,7 +1,7 @@
 # Search-results design language on the barcode + voice result sheets (mobile)
 
-**Date:** 2026-05-31
-**Status:** Resolved (mobile implemented; flag-gated OFF pending sim sign-off)
+**Date:** 2026-05-31 (web voice parity added 2026-07-17, ENG-1429)
+**Status:** Resolved (mobile implemented; web barcode ENG-737 + web voice ENG-1429 at parity; flag-gated OFF pending sign-off)
 **Area:** Logging / Food search / Brand consistency
 **Flag:** `redesign_search_results` (visual/structural → flag-gated per CLAUDE.md; same flag as the food-search redesign so the three logging entry points ramp together)
 **Issue:** [ENG-817](https://linear.app/suppr/issue/ENG-817)
@@ -100,13 +100,54 @@ All 20 green. Mobile typecheck clean on all lane files (the two
 `FoodSearchPanel.tsx` `renderEmptyState`/`renderListFooter` errors are from the
 in-flight food-search lane, not this change).
 
+**Web (ENG-1429):**
+
+- `tests/unit/searchResultConfidenceChipWeb.test.tsx` — 5 render cases for the
+  shared web chip: Structured/Estimated labels, the honest warm-amber
+  `--chip-estimated` token (never the over-budget `--warning` orange), a11y
+  label, custom testId override, label override.
+- `tests/unit/voiceLogReviewItemChip.test.tsx` — 4 cases on the extracted voice
+  review row: flag OFF → no chip; flag ON → `voice-confidence-chip` reading
+  "Estimated"; the chip stays "Estimated" even for a 0.99-confidence item (never
+  "Structured" — trust posture); the granular low-confidence verify gate + AI
+  badge still render (extraction regression guard).
+- `tests/unit/voiceLogChipParity.test.ts` — source-pin web↔mobile parity: BOTH
+  voice surfaces render the shared chip as `tier="estimated"` on
+  `redesign_search_results`; NEITHER photo surface renders it.
+
 ## Parity
 
-**Mobile-only.** Barcode scanning and voice logging are both mobile-only
-surfaces (no web counterpart — see `_project-context.md`). No new cross-platform
-divergence: the chip uses the same Verified/Estimated grammar and the same blue
-commit colour as the web + mobile food-search redesign, so the three logging
-entry points read as one product.
+The original note claimed barcode + voice were "mobile-only (no web
+counterpart)". That was already inaccurate — web ships `today-barcode-dialog.tsx`,
+`voice-log-dialog.tsx`, and `photo-log-dialog.tsx` — and is superseded:
+
+- **Web barcode** reached chip parity in **ENG-737** (2026-06-17): the
+  `today-barcode-dialog.tsx` result card renders the same Estimated/Verified
+  chip, tier from `barcodeConfidenceTier`.
+- **Web voice** reached chip parity in **ENG-1429** (2026-07-17): the voice
+  review row was extracted to
+  `src/app/components/suppr/voice-log-review-item.tsx` (mirroring the mobile
+  `AiLogReviewItem`) and renders the shared web
+  `src/app/components/ui/search-result-confidence-chip.tsx` as
+  `tier="estimated"`, gated on the same `redesign_search_results` flag,
+  addressable via the shared `voice-confidence-chip` test hook. The web chip was
+  consolidated in the same change: `today-barcode-dialog.tsx` and the food-search
+  row's `tierChip()` helper (`FoodSearchResultRow.tsx`, extracted from
+  `FoodSearchPanel.tsx` by the unrelated ENG-1532 grammar-dedup work) were
+  migrated off their formerly-inline/formerly-duplicated copies onto the one
+  shared web primitive, so web now mirrors mobile's single-shared-chip
+  architecture.
+- **Photo (both platforms): no chip — by design.** The 2026-05-01 range-first
+  re-architecture (`PhotoLogSheet` / `photo-log-dialog.tsx`) dropped the shared
+  review row; neither platform's photo surface shows the confidence chip. This
+  is intentional parity, not a gap — `tests/unit/voiceLogChipParity.test.ts`
+  pins it (voice: both show; photo: neither) so a future web-only addition
+  can't silently diverge.
+
+No new cross-platform divergence: the chip uses the same Verified/Estimated
+grammar and tokens (web `--chip-estimated` mirrors the mobile `#BF8324`) as the
+food-search redesign, so every logging entry point reads as one product across
+web and mobile.
 
 ## Rollout
 

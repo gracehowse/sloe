@@ -160,7 +160,7 @@ function flagOn(...flags: string[]) {
 
 describe("FoodSearchPanel results redesign (mobile, ENG-814)", () => {
   it("flag ON: renders unified labels, Best/More section headers and confidence chips", async () => {
-    flagOn("redesign_search_results", "design_system_elevation");
+    flagOn("redesign_search_results", "design_system_elevation", "trust_source_name_v1");
     const { findByText, findByTestId, queryByText } = render(
       <FoodSearchPanel
         query="chicken"
@@ -191,7 +191,7 @@ describe("FoodSearchPanel results redesign (mobile, ENG-814)", () => {
     // Legible confidence chips — the canonical shared
     // <SearchResultConfidenceChip> (testID `confidence-chip`), one Verified
     // (strong USDA) and one Estimated.
-    await findByText("Structured");
+    await findByText("USDA");
     await findByText("Estimated");
   });
 
@@ -280,7 +280,7 @@ describe("FoodSearchPanel results redesign (mobile, ENG-814)", () => {
 // `tests/unit/foodSearchPanelRedesign.test.tsx`.
 describe("ENG-1532 — unified search-row grammar (component_grammar_dedup)", () => {
   it("flag ON: best matches render as plain rows — unified sub-line, no KCAL numeral, chips + overlines stay", async () => {
-    flagOn("redesign_search_results", "component_grammar_dedup");
+    flagOn("redesign_search_results", "component_grammar_dedup", "trust_source_name_v1");
     const { findByTestId, findByText, findAllByTestId, queryByText } = render(
       <FoodSearchPanel
         query="chicken"
@@ -303,11 +303,10 @@ describe("ENG-1532 — unified search-row grammar (component_grammar_dedup)", ()
     // Section overlines survive the dedup.
     await findByTestId("food-search-section-best");
     await findByTestId("food-search-section-more");
-    // The tier chip stays inline in the row (current labels — ENG-1567
-    // renames are a separate ticket).
+    // The tier chip stays inline and names the actual source.
     const chips = await findAllByTestId("confidence-chip");
     expect(chips.length).toBe(2);
-    await findByText("Structured");
+    await findByText("USDA");
     await findByText("Estimated");
   });
 

@@ -3,6 +3,8 @@ import { StyleSheet, Text, View } from "react-native";
 import { Accent, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { classifySource, type SourceTier } from "@suppr/nutrition-core/classifySource";
+import { formatNutritionTrustTierLabel } from "@suppr/nutrition-core/sourceLabel";
+import { isFeatureEnabled } from "@/lib/analytics";
 
 const CONFIG: Record<SourceTier, { label: string; abbr: string }> = {
   verified: { label: "Structured", abbr: "✓" },
@@ -13,6 +15,9 @@ const CONFIG: Record<SourceTier, { label: string; abbr: string }> = {
 export default function NutritionSourceBadge({ source, compact = true }: { source?: string | null; compact?: boolean }) {
   const tier = classifySource(source);
   const cfg = CONFIG[tier];
+  const label = isFeatureEnabled("trust_source_name_v1")
+    ? formatNutritionTrustTierLabel(tier, source)
+    : cfg.label;
   const colors = useThemeColors();
   // ENG-716 — `manual` previously used a cool-slate literal off the Sloe
   // palette. It now reads the warm-grey `sourceManual` provenance token (the
@@ -54,9 +59,9 @@ export default function NutritionSourceBadge({ source, compact = true }: { sourc
   );
 
   return (
-    <View style={styles.badge} accessibilityLabel={`${cfg.label} nutrition data`}>
+    <View style={styles.badge} accessibilityLabel={`${label} nutrition data`}>
       <Text style={styles.abbr}>{cfg.abbr}</Text>
-      {!compact && <Text style={styles.label}>{cfg.label}</Text>}
+      {!compact && <Text style={styles.label}>{label}</Text>}
     </View>
   );
 }

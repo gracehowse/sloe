@@ -17,20 +17,39 @@
  * regression that silently drops the confidence signal can't ship.
  */
 import * as React from "react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react-native";
+
+const { isFeatureEnabledSpy } = vi.hoisted(() => ({
+  isFeatureEnabledSpy: vi.fn(() => true),
+}));
+vi.mock("../../lib/analytics", () => ({
+  isFeatureEnabled: isFeatureEnabledSpy,
+}));
 
 import { SearchResultConfidenceChip } from "../../components/ui/SearchResultConfidenceChip";
 
 void React;
 
 describe("SearchResultConfidenceChip", () => {
-  it("renders the Structured label for the verified tier", () => {
+  beforeEach(() => {
+    isFeatureEnabledSpy.mockReset();
+    isFeatureEnabledSpy.mockReturnValue(true);
+  });
+
+  it("renders the canonical Matched fallback for a source-backed tier without provenance", () => {
     const { getByText, getByTestId } = render(
       <SearchResultConfidenceChip tier="verified" />,
     );
-    expect(getByText("Structured")).toBeTruthy();
+    expect(getByText("Matched")).toBeTruthy();
     expect(getByTestId("confidence-chip")).toBeTruthy();
+  });
+
+  it("names the actual source for a source-backed match", () => {
+    const { getByText } = render(
+      <SearchResultConfidenceChip tier="verified" sourceLabel="USDA" />,
+    );
+    expect(getByText("USDA")).toBeTruthy();
   });
 
   it("renders the Estimated label for the estimated tier", () => {
@@ -42,7 +61,7 @@ describe("SearchResultConfidenceChip", () => {
     const { getByLabelText } = render(
       <SearchResultConfidenceChip tier="verified" />,
     );
-    expect(getByLabelText("Structured nutrition data")).toBeTruthy();
+    expect(getByLabelText("Matched nutrition data")).toBeTruthy();
   });
 
   it("honours a custom testID for per-surface addressing", () => {
@@ -59,5 +78,13 @@ describe("SearchResultConfidenceChip", () => {
       <SearchResultConfidenceChip tier="verified" label="USDA" />,
     );
     expect(getByText("USDA")).toBeTruthy();
+  });
+
+  it("preserves Structured behind the flag-off kill switch", () => {
+    isFeatureEnabledSpy.mockReturnValue(false);
+    const { getByText } = render(
+      <SearchResultConfidenceChip tier="verified" sourceLabel="USDA" />,
+    );
+    expect(getByText("Structured")).toBeTruthy();
   });
 });

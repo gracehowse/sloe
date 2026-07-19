@@ -141,7 +141,7 @@
     "src/app/components/suppr/progress-weight-empty-state.stories.tsx": 1,
     "src/app/components/suppr/quick-add-panel.tsx": 2,
     "src/app/components/suppr/source-badge.tsx": 4,
-    "src/app/components/suppr/voice-log-dialog.tsx": 3,
+    "src/app/components/suppr/voice-log-review-item.tsx": 3,
     "src/app/components/suppr/weekly-recap-card.tsx": 14,
     "src/app/components/TodayAtAGlance.tsx": 4,
     "src/app/components/trust/TrustPageHeader.tsx": 19,
