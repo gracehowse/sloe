@@ -1,5 +1,5 @@
-import { verifyIngredients } from "../../nutrition/verifyIngredients";
-import { recipeConfidenceTier } from "../../nutrition/verifyConfidencePolicy";
+import { acceptedLineCount, verifyIngredients } from "../../nutrition/verifyIngredients";
+import { recipeConfidenceTierWithExclusions } from "../../nutrition/verifyConfidencePolicy";
 import { ingredientRowsFromRecipe } from "./compilePlanImport";
 import type {
   PlanImportParsedRecipe,
@@ -25,6 +25,7 @@ export async function verifyImportRecipe(
       confidence: "low",
       confidenceTier: "low",
       ingredientCount: 0,
+      excludedLineCount: 0,
     };
   }
   const result = await verifyIngredients({
@@ -32,7 +33,26 @@ export async function verifyImportRecipe(
     servings: recipe.serves,
     provider: "auto",
   });
-  const tier = recipeConfidenceTier(result.avgIngredientConfidence);
+  // ENG-1422 — cap the displayed tier on excluded lines so a more incomplete
+  // recipe can't read at a higher confidence than a fully-matched one.
+  //
+  // "Excluded" here must mean every row NOT summed into `totals`/`perServing`
+  // — that's two row classes, not one: below-accept-floor rows (macros !=
+  // null, confidence too low) AND no-match rows (macros === null, e.g. an
+  // unparseable line or an estimator that couldn't resolve a weight — see
+  // verifyIngredients.ts's `belowAcceptFloor` assignment comment). Using
+  // `result.belowAcceptFloorCount` alone undercounts: a recipe whose lines are
+  // mostly no-match (not merely low-confidence) would report zero excluded
+  // lines and cap nothing, reproducing the exact inverted-trust-signal bug
+  // this cap exists to close. `acceptedLineCount` already excludes both
+  // classes from "accepted" (see its own doc comment), so the true excluded
+  // count is simply the complement against the full verified row set.
+  const excludedLineCount = result.verified.length - acceptedLineCount(result);
+  const tier = recipeConfidenceTierWithExclusions(
+    result.avgIngredientConfidence,
+    excludedLineCount,
+    acceptedLineCount(result),
+  );
   const ingredientMacros = result.verified.map((v) => ({
     name: v.input.name,
     amount: v.input.amount,
@@ -57,6 +77,7 @@ export async function verifyImportRecipe(
     confidence: tier,
     confidenceTier: tier,
     ingredientCount: rows.length,
+    excludedLineCount,
     ingredientMacros,
   };
 }

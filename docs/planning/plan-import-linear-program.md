@@ -106,6 +106,28 @@ Source (paste / PDF)
 
 One parse pipeline for all inputs — adaptors at the input layer only.
 
+## Trust — excluded-line tier cap (ENG-1422)
+
+Since ENG-1305 the recipe confidence tier is computed from the **accepted-rows**
+average, so dropping more unmatched/junk lines could *raise* the surviving
+average — a more incomplete recipe read at a **higher** confidence (an inverted
+trust signal). Fixed 2026-07-17:
+
+- **Cap:** the shared `recipeConfidenceTierWithExclusions(avg,
+  belowAcceptFloorCount, acceptedLineCount)` helper caps the displayed tier —
+  any excluded line ⇒ never "high" (at most "medium"); half-or-more of the
+  recipe excluded ⇒ "low". Monotonic non-increasing in the excluded count, so
+  more junk can never read higher. Applied in both verify paths (the parse route
+  + the shared `verifyImportRecipe`, so cookbook import inherits it). **Unflagged**
+  server logic (bug fix, no visual surface — the tier isn't rendered/persisted).
+- **Surfacing:** `stats.excludedLineCount` (summed once per recipe) drives a
+  calm amber review advisory — *"N low-confidence line(s) left out of these
+  totals — review before importing."* on both web (`PlanImportReview`) and
+  mobile (`app/plan-import.tsx`). Gated by `plan_import_excluded_lines_v1`
+  (default-ON, PostHog kill switch). Never blocks import.
+
+Full rationale: `docs/decisions/2026-07-17-plan-import-excluded-line-tier-cap.md`.
+
 ## Web parity (ENG-696) — shipped
 
 Mobile shipped the full flow first (iOS is the primary surface). The web app

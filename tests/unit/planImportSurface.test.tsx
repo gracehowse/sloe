@@ -59,13 +59,14 @@ vi.mock("../../src/context/AppDataContext.tsx", () => ({
 
 import { PlanImport } from "../../src/app/components/PlanImport";
 import { toast } from "sonner";
-import { track } from "../../src/lib/analytics/track.ts";
+import { track, isFeatureEnabled } from "../../src/lib/analytics/track.ts";
 
 const toastMock = toast as unknown as {
   success: ReturnType<typeof vi.fn>;
   error: ReturnType<typeof vi.fn>;
 };
 const trackMock = track as unknown as ReturnType<typeof vi.fn>;
+const isFeatureEnabledMock = isFeatureEnabled as unknown as ReturnType<typeof vi.fn>;
 
 const originalFetch = global.fetch;
 
@@ -100,7 +101,15 @@ const PARSE_OK = {
       confidence: "high" as const,
     },
   ],
-  stats: { recipeCount: 1, slotCount: 1, linkedCount: 1, blockedCount: 0, avgKcalPerDay: 410 },
+  stats: { recipeCount: 1, slotCount: 1, linkedCount: 1, blockedCount: 0, avgKcalPerDay: 410, excludedLineCount: 0 },
+};
+
+// ENG-1422 — same plan but three ingredient lines were dropped below the accept
+// floor (excludedLineCount > 0), so the review must surface the count line.
+const PARSE_WITH_EXCLUDED = {
+  ...PARSE_OK,
+  recipes: [{ ...PARSE_OK.recipes[0], excludedLineCount: 3 }],
+  stats: { ...PARSE_OK.stats, excludedLineCount: 3 },
 };
 
 beforeEach(() => {
@@ -109,6 +118,8 @@ beforeEach(() => {
   trackMock.mockClear();
   commitMock.mockReset();
   setMealPlanMock.mockClear();
+  isFeatureEnabledMock.mockReset();
+  isFeatureEnabledMock.mockReturnValue(true); // flag DEFAULT-ON
 });
 
 afterEach(() => {
@@ -274,5 +285,53 @@ describe("PlanImport — web Plan-Import surface (ENG-696)", () => {
       ),
     );
     expect(setMealPlanMock).not.toHaveBeenCalled();
+  });
+
+  // ENG-1422 — the review surfaces the excluded-line count so the user sees how
+  // incomplete the Sloe-calc totals are before importing.
+  it("surfaces the excluded-line advisory when lines were left out (flag on)", async () => {
+    mockFetchOnce(PARSE_WITH_EXCLUDED);
+    render(<PlanImport onClose={vi.fn()} />);
+    fireEvent.change(screen.getByTestId("plan-import-paste-field"), { target: { value: "x" } });
+    fireEvent.click(screen.getByTestId("plan-import-parse"));
+    await waitFor(() => expect(screen.getByTestId("plan-import-review")).toBeInTheDocument());
+
+    const note = screen.getByTestId("plan-import-excluded-note");
+    expect(note).toHaveTextContent(/3 low-confidence lines left out of these totals/i);
+    expect(note).toHaveTextContent(/review before importing/i);
+  });
+
+  it("uses the singular 'line' when exactly one line was excluded", async () => {
+    mockFetchOnce({
+      ...PARSE_OK,
+      recipes: [{ ...PARSE_OK.recipes[0], excludedLineCount: 1 }],
+      stats: { ...PARSE_OK.stats, excludedLineCount: 1 },
+    });
+    render(<PlanImport onClose={vi.fn()} />);
+    fireEvent.change(screen.getByTestId("plan-import-paste-field"), { target: { value: "x" } });
+    fireEvent.click(screen.getByTestId("plan-import-parse"));
+    await waitFor(() => expect(screen.getByTestId("plan-import-review")).toBeInTheDocument());
+    expect(screen.getByTestId("plan-import-excluded-note")).toHaveTextContent(
+      /1 low-confidence line left out/i,
+    );
+  });
+
+  it("omits the advisory when no lines were excluded", async () => {
+    mockFetchOnce(PARSE_OK); // excludedLineCount: 0
+    render(<PlanImport onClose={vi.fn()} />);
+    fireEvent.change(screen.getByTestId("plan-import-paste-field"), { target: { value: "x" } });
+    fireEvent.click(screen.getByTestId("plan-import-parse"));
+    await waitFor(() => expect(screen.getByTestId("plan-import-review")).toBeInTheDocument());
+    expect(screen.queryByTestId("plan-import-excluded-note")).toBeNull();
+  });
+
+  it("hides the advisory when the flag is off (kill switch), even with excluded lines", async () => {
+    isFeatureEnabledMock.mockReturnValue(false);
+    mockFetchOnce(PARSE_WITH_EXCLUDED);
+    render(<PlanImport onClose={vi.fn()} />);
+    fireEvent.change(screen.getByTestId("plan-import-paste-field"), { target: { value: "x" } });
+    fireEvent.click(screen.getByTestId("plan-import-parse"));
+    await waitFor(() => expect(screen.getByTestId("plan-import-review")).toBeInTheDocument());
+    expect(screen.queryByTestId("plan-import-excluded-note")).toBeNull();
   });
 });

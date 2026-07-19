@@ -144,6 +144,58 @@ export function recipeConfidenceTier(avgConfidence: number): RecipeConfidenceTie
   return "low";
 }
 
+/**
+ * ENG-1422 — the display tier for an imported recipe, CAPPED by how many lines
+ * were excluded from its headline totals.
+ *
+ * Since ENG-1305, {@link recipeConfidenceTier}'s input average describes the
+ * ACCEPTED rows only (the same rows `totals` sum). That makes the raw tier an
+ * INVERTED trust signal on the import surfaces: dropping more junk/unmatched
+ * lines can RAISE the surviving average, so a MORE incomplete recipe reads at a
+ * HIGHER confidence than a fully-matched one. This wrapper removes the
+ * inversion by capping the tier on the excluded-line count:
+ *
+ *   - no excluded lines                     → the raw accepted-average tier
+ *     (may be "high").
+ *   - some, but under half the recipe        → never "high" — capped at "medium"
+ *     (a "low" average still reads "low").
+ *   - at least half the recipe's lines gone  → "low" — the headline is missing
+ *     at least as much food as it counts, so the surviving matches can't earn
+ *     any better than the floor.
+ *
+ * Invariant (at a fixed accepted-average AND fixed accepted-line count): the
+ * returned tier is monotonically NON-INCREASING in `belowAcceptFloorCount` —
+ * more excluded lines can only hold or lower the displayed tier, never raise
+ * it. With a three-value ladder the step can't be strictly-distinct per count,
+ * so the guarantee is "never higher", not "always strictly lower".
+ *
+ * `acceptedLineCount` is the number of rows the average was taken over — rows
+ * with macros that cleared {@link MIN_ACCEPT_CONFIDENCE} (i.e. the length of
+ * the confidence set the caller averaged into `avgConfidence`).
+ */
+export function recipeConfidenceTierWithExclusions(
+  avgConfidence: number,
+  belowAcceptFloorCount: number,
+  acceptedLineCount: number,
+): RecipeConfidenceTier {
+  const base = recipeConfidenceTier(avgConfidence);
+  const excluded =
+    Number.isFinite(belowAcceptFloorCount) && belowAcceptFloorCount > 0
+      ? Math.floor(belowAcceptFloorCount)
+      : 0;
+  if (excluded <= 0) return base;
+  const accepted =
+    Number.isFinite(acceptedLineCount) && acceptedLineCount > 0
+      ? Math.floor(acceptedLineCount)
+      : 0;
+  // Half or more of the recipe couldn't be matched → the totals are missing at
+  // least as much food as they contain → low trust regardless of how clean the
+  // surviving matches look. (accepted === 0 with any exclusion lands here too.)
+  if (accepted === 0 || excluded >= accepted) return "low";
+  // Any excluded line means the totals are incomplete → never claim "high".
+  return base === "low" ? "low" : "medium";
+}
+
 export function ingredientVerifyNeedsReview(
   avgIngredientConfidence: number | null | undefined,
   minIngredientConfidence: number | null | undefined,

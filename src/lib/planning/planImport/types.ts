@@ -53,6 +53,15 @@ export type PlanImportVerifiedRecipe = PlanImportParsedRecipe & {
   confidence: PlanImportConfidence;
   confidenceTier: PlanImportConfidence;
   ingredientCount: number;
+  /**
+   * ENG-1422 — count of ingredient lines dropped from `supprNutrition` because
+   * their match fell below the accept floor (`VerifyResult.belowAcceptFloorCount`).
+   * `confidenceTier` is already capped for this via
+   * `recipeConfidenceTierWithExclusions`; the raw count is carried so the review
+   * surfaces can tell the user how incomplete the totals are. Absent on paths
+   * that never ran verification (0 in practice).
+   */
+  excludedLineCount?: number;
   ingredientMacros?: Array<{
     name: string;
     amount?: string;
@@ -99,6 +108,13 @@ export type PlanImportParseResult = {
     linkedCount: number;
     blockedCount: number;
     avgKcalPerDay: number;
+    /**
+     * ENG-1422 — total ingredient lines across the imported recipes that fell
+     * below the accept floor and were left out of the Sloe-calc totals. Surfaced
+     * on the review screen ("N low-confidence lines left out") so the user knows
+     * the headline numbers are incomplete before importing.
+     */
+    excludedLineCount: number;
   };
 };
 

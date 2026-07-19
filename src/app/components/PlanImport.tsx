@@ -61,6 +61,7 @@ export function PlanImport({ onClose }: PlanImportProps) {
         displaySlots={s.displaySlots}
         avgKcal={s.avgKcal}
         targetKcal={s.targetKcal}
+        showExcludedLines={s.showExcludedLines}
         planName={s.planName}
         setPlanName={s.setPlanName}
         nutritionMode={s.nutritionMode}

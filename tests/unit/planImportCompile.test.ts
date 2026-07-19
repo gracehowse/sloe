@@ -58,5 +58,20 @@ describe("planImport compile", () => {
     expect(stats.slotCount).toBe(3);
     expect(stats.blockedCount).toBe(0);
     expect(stats.avgKcalPerDay).toBeGreaterThan(0);
+    // ENG-1422 — excluded count defaults to 0 when no recipes are supplied.
+    expect(stats.excludedLineCount).toBe(0);
+  });
+
+  it("sums excludedLineCount across recipes, once per recipe (ENG-1422)", () => {
+    // Attach excluded counts to the verified recipes; a recipe referenced by
+    // several slots must still count once because the sum walks recipes, not slots.
+    const verified = mockVerified(MEAL_PREP_WEEK1_PARSED.recipes).map((r, i) => ({
+      ...r,
+      excludedLineCount: i === 0 ? 2 : i === 1 ? 1 : 0,
+    }));
+    const normalized = normalizeLlmPayload(MEAL_PREP_WEEK1_PARSED);
+    const slots = compilePlanImportSlots({ schedule: normalized.schedule, recipes: verified });
+    const stats = planImportStats(slots, verified);
+    expect(stats.excludedLineCount).toBe(3);
   });
 });

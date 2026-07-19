@@ -106,6 +106,18 @@ export type IngredientOverride = {
 };
 
 /**
+ * ENG-1422 — the number of ACCEPTED rows behind a {@link VerifyResult}: rows
+ * with macros that cleared {@link MIN_ACCEPT_CONFIDENCE} (i.e. the exact row set
+ * that `totals`/`perServing` sum and that `avgIngredientConfidence` averages).
+ * Below-floor rows (`belowAcceptFloorCount`) and no-match rows (null macros)
+ * are excluded. Kept here so the tier-cap callers share ONE definition of
+ * "accepted" with the stats computation below — no drift.
+ */
+export function acceptedLineCount(result: Pick<VerifyResult, "verified">): number {
+  return result.verified.filter((v) => v.macros != null && !v.belowAcceptFloor).length;
+}
+
+/**
  * Accept floor + per-source gates for ingredient matches (ENG-691, Decision
  * D-05, Grace 2026-05-25; value set by the nutrition-engine impact review
  * 2026-05-26 — see the full rationale on the constants themselves).

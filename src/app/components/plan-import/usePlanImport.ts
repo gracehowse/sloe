@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { consumePendingImportText } from "../../../lib/recipe-import/pendingImportText.ts";
 import { useAppData } from "../../../context/AppDataContext.tsx";
 import { supabase } from "../../../lib/supabase/browserClient.ts";
-import { track } from "../../../lib/analytics/track.ts";
+import { isFeatureEnabled, track } from "../../../lib/analytics/track.ts";
 import { AnalyticsEvents } from "../../../lib/analytics/events.ts";
 import { commitPlanImport } from "../../../lib/planning/planImport/commitPlanImport.ts";
 import { rebalanceImportedPlanDays } from "../../../lib/planning/planImport/rebalanceImportedPlan.ts";
@@ -229,5 +229,8 @@ export function usePlanImport(onClose: () => void) {
     avgKcal,
     runParse,
     finishCommit,
+    // ENG-1422 — gate the excluded-line advisory (trust/safety fix, DEFAULT-ON;
+    // PostHog row is the kill switch). Off → the review omits the count line.
+    showExcludedLines: isFeatureEnabled("plan_import_excluded_lines_v1"),
   };
 }

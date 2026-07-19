@@ -407,6 +407,7 @@ export default function PlanImportScreen() {
           borderWidth: 1,
           borderColor: colors.border,
         },
+        excludedNote: { ...Type.captionSmall, color: Accent.warningSolid, marginTop: Spacing.xs, fontWeight: "600" },
         row: {
           flexDirection: "row",
           alignItems: "flex-start",
@@ -463,6 +464,10 @@ export default function PlanImportScreen() {
               {parseResult.stats.recipeCount} recipes · {parseResult.stats.slotCount} slots ·{" "}
               {parseResult.stats.blockedCount} blocked
             </Text>
+            {/* ENG-1422 — surface the excluded-line count (the tier alone hid how incomplete the totals are). DEFAULT-ON; PostHog kill switch. */}
+            {isFeatureEnabled("plan_import_excluded_lines_v1") && parseResult.stats.excludedLineCount > 0 ? (
+              <Text style={styles.excludedNote} testID="plan-import-excluded-note">{parseResult.stats.excludedLineCount} low-confidence {parseResult.stats.excludedLineCount === 1 ? "line" : "lines"} left out of these totals — review before importing.</Text>
+            ) : null}
           </View>
 
           <Text style={styles.label}>Nutrition handling</Text>
@@ -581,13 +586,7 @@ export default function PlanImportScreen() {
           <Text style={styles.calloutItem}>Coach PDF — schedule + recipe appendix</Text>
         </View>
         <View style={styles.sourceTabs} accessibilityRole="tablist">
-          {(
-            [
-              ["paste", "Paste"],
-              ["pdf", "PDF"],
-              ["photo", "Photo"],
-            ] as const
-          ).map(([key, label]) => (
+          {([["paste", "Paste"], ["pdf", "PDF"], ["photo", "Photo"]] as const).map(([key, label]) => (
             <Pressable
               key={key}
               testID={`plan-import-source-${key}`}
