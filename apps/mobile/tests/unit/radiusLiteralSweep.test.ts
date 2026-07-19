@@ -21,10 +21,6 @@ const FILES: ReadonlyArray<{ rel: string; banned: RegExp }> = [
     banned: /borderRadius:\s*9\b/g,
   },
   {
-    rel: "../../components/today/TodayStreakInsightCard.tsx",
-    banned: /borderRadius:\s*10\b/g,
-  },
-  {
     rel: "../../components/today/TodayNutrientsModal.tsx",
     banned: /borderRadius:\s*10\b/g,
   },

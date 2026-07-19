@@ -30,7 +30,6 @@ const ROOT = resolve(__dirname, "../..");
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), "utf8");
 
 const BADGE = read("components/Badge.tsx");
-const STREAK_INSIGHT = read("components/today/TodayStreakInsightCard.tsx");
 const HYDRATION = read("components/HydrationStimulantsCard.tsx");
 const THEME_CTX = read("context/theme.tsx");
 
@@ -192,17 +191,6 @@ describe("ENG-1275 mobile — call sites ink with the scheme-resolved `-solid`, 
     // The fill/border still anchor on the raw hue (`color`), not the solid.
     expect(BADGE).toContain("backgroundColor: color + BG_ALPHA");
     expect(BADGE).toContain("borderColor: color + BORDER_ALPHA");
-  });
-
-  it("TodayStreakInsightCard headline reads accent.successSolid; Got-it reads accent.cyanSolid", () => {
-    expect(STREAK_INSIGHT).toContain("import { useAccent }");
-    expect(STREAK_INSIGHT).toContain("color: accent.successSolid");
-    expect(STREAK_INSIGHT).toContain("color: accent.cyanSolid");
-    // The icons stay on the raw Accent.success / Accent.cyan fills; the soft
-    // tints read the named scheme-resolved Soft tokens (ENG-1521).
-    expect(STREAK_INSIGHT).toContain("color={Accent.success}");
-    expect(STREAK_INSIGHT).toContain("backgroundColor: accent.successSoft");
-    expect(STREAK_INSIGHT).toContain("color={Accent.cyan}");
   });
 
   it("HydrationStimulantsCard alcohol chip label reads accent.alcoholSolid", () => {
