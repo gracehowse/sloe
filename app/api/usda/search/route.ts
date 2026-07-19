@@ -4,6 +4,7 @@ import { rateLimit } from "@/lib/server/rateLimit";
 import { misconfiguredUsdaResponse } from "@/lib/server/serverEnv";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
+import { isPlausibleMacrosPer100g } from "@/lib/nutrition/macroPlausibility";
 import {
   checkQuota,
   consumeQuota,
@@ -117,6 +118,35 @@ export async function GET(req: Request) {
       await new Promise((r) => setTimeout(r, USDA_RETRY_BACKOFF_MS));
       hits = await fdcFoodsSearch(cfg, q, { pageNumber });
     }
+    // ENG-1423 (mp-F3/plaus-F3) — mirror OFF's server-side Atwater gate
+    // (searchProducts.ts). Only OFF was filtering implausible per-100g rows;
+    // a USDA row whose inline macros fail the same check is dropped here
+    // before it ever reaches the merge/cache, closing the vendor-parity gap.
+    //
+    // Unlike OFF (whose rows always carry parsed nutriments) or Edamam (whose
+    // helper always returns defaulted numbers), USDA's inline search macros
+    // are genuinely OPTIONAL (`FdcFoodSearchHit.calories?` etc.) — many
+    // Foundation/SR Legacy/Survey hits carry no matching nutrient in the
+    // *search* response at all (the full panel only appears on the detail
+    // fetch). A hit reporting NO macro field whatsoever is "no opinion, no
+    // data" and must pass through untouched — running it through the gate
+    // with `?? 0` defaults would misread "we have no data" as "all-zero
+    // junk" and silently drop legitimate USDA rows from search. Only hits
+    // that DO report at least one macro are held to the Atwater check.
+    hits = hits.filter((h) => {
+      const hasAnyMacro =
+        typeof h.calories === "number" ||
+        typeof h.protein === "number" ||
+        typeof h.carbs === "number" ||
+        typeof h.fat === "number";
+      if (!hasAnyMacro) return true;
+      return isPlausibleMacrosPer100g({
+        calories: h.calories ?? 0,
+        protein: h.protein ?? 0,
+        carbs: h.carbs ?? 0,
+        fat: h.fat ?? 0,
+      });
+    });
     // Cache only the genuine, successful response — never an error/degraded.
     await setCachedSearch("usda", q, hits, { locale, page: pageNumber });
     return NextResponse.json({ ok: true, hits, page: pageNumber });

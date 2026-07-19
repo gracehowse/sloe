@@ -9,6 +9,7 @@ import { rateLimit } from "@/lib/server/rateLimit";
 import { hasEdamamConfig } from "@/lib/server/serverEnv";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
+import { isPlausibleMacrosPer100g } from "@/lib/nutrition/macroPlausibility";
 import {
   checkQuota,
   consumeQuota,
@@ -148,7 +149,19 @@ export async function GET(req: Request) {
         ...(Object.keys(microsPer100g).length > 0 ? { microsPer100g } : {}),
         servingSizes: h.food.servingSizes ?? [],
       };
-    });
+    })
+      // ENG-1423 (mp-F3/plaus-F3) — mirror OFF's server-side Atwater gate
+      // (searchProducts.ts). Edamam's per-100g macros were never plausibility
+      // filtered; a row that fails the same check OFF already applies is
+      // dropped here before it ever reaches the merge/cache.
+      .filter((h) =>
+        isPlausibleMacrosPer100g({
+          calories: h.calories,
+          protein: h.protein,
+          carbs: h.carbs,
+          fat: h.fat,
+        }),
+      );
     // Cache only the genuine successful response — the catch block below
     // returns ok+empty on upstream failure and must NOT be cached as a
     // real empty (that would poison the cache for 24h on a transient blip).
