@@ -3,6 +3,8 @@ import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { Check, Info } from "lucide-react-native";
 
 import { Accent, Radius } from "@/constants/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
+import { formatNutritionTrustTierLabel } from "@suppr/nutrition-core/sourceLabel";
 
 /**
  * `<SearchResultConfidenceChip>` — the legible Verified / Estimated
@@ -38,6 +40,8 @@ export interface SearchResultConfidenceChipProps {
   tier: SearchResultConfidenceTier;
   /** Optional label override. Defaults to "Structured" / "Estimated". */
   label?: string;
+  /** Provenance displayed for a source-backed match when the trust-copy flag is on. */
+  sourceLabel?: string | null;
   style?: ViewStyle;
   testID?: string;
 }
@@ -68,10 +72,15 @@ const TIER_STYLE: Record<
 export function SearchResultConfidenceChip({
   tier,
   label,
+  sourceLabel,
   style,
   testID,
 }: SearchResultConfidenceChipProps) {
-  const displayLabel = label ?? defaultLabel[tier];
+  const displayLabel =
+    label ??
+    (isFeatureEnabled("trust_source_name_v1")
+      ? formatNutritionTrustTierLabel(tier, sourceLabel)
+      : defaultLabel[tier]);
   const { bg, fg } = TIER_STYLE[tier];
   const Glyph = tier === "verified" ? Check : Info;
 

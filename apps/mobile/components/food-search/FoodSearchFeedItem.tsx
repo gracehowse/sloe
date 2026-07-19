@@ -127,6 +127,7 @@ export function FoodSearchFeedItem({
   // tier falls back to the CONSERVATIVE "Estimated" — never "Verified"
   // (CLAUDE.md trust posture; matches the web sibling ENG-815).
   const chipTier = row.confidenceTier === "verified" ? "verified" : "estimated";
+  const sourceLabel = foodSearchSourceLabel(row._source);
 
   if (grammarDedup) {
     // ── Flag ON — unified plain row (the Past-logged skeleton) ──────────
@@ -172,7 +173,7 @@ export function FoodSearchFeedItem({
             {isCustom ? (
               <Badge variant="custom">Custom</Badge>
             ) : (
-              <SearchResultConfidenceChip tier={chipTier} />
+              <SearchResultConfidenceChip tier={chipTier} sourceLabel={sourceLabel} />
             )}
           </View>
           <Text
@@ -275,7 +276,7 @@ export function FoodSearchFeedItem({
             }}
           >
             {isCustom && <Badge variant="custom">Custom</Badge>}
-            <SearchResultConfidenceChip tier={chipTier} />
+            <SearchResultConfidenceChip tier={chipTier} sourceLabel={sourceLabel} />
             <Text style={styles.resultName} numberOfLines={2}>
               {row.name}
             </Text>

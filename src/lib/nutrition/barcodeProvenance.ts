@@ -19,3 +19,35 @@ export function barcodeProvenanceLabel(product: {
   if (product.source === "user") return "Community submitted";
   return "via Open Food Facts";
 }
+
+type BarcodeProvenanceProduct = Parameters<typeof barcodeProvenanceLabel>[0];
+
+/**
+ * Canonical source name for the trust chip (ENG-1567).
+ *
+ * The verified barcode corpus is assembled from promoted community entries,
+ * so "Sloe community" is the honest provenance name. Raw external fallbacks
+ * name Open Food Facts directly; pending community rows keep their submission
+ * provenance but remain Estimated in the confidence classifier.
+ */
+export function barcodeTrustSourceName(product: BarcodeProvenanceProduct): string {
+  if (product.verified || product.verificationStatus === "verified") {
+    return "Sloe community";
+  }
+  if (product.source === "user") return "Community submitted";
+  return "Open Food Facts";
+}
+
+/** Default-on provenance line that removes the retired generic trust claim. */
+export function barcodeTrustProvenanceLabel(
+  product: BarcodeProvenanceProduct,
+): string {
+  if (product.isOwnSubmission && product.verificationStatus === "pending") {
+    return "Not yet confirmed";
+  }
+  if (product.verified || product.verificationStatus === "verified") {
+    return "Sloe community";
+  }
+  if (product.source === "user") return "Community submitted";
+  return "via Open Food Facts";
+}

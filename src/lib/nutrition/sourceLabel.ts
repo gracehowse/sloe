@@ -56,3 +56,36 @@ export function formatNutritionSourceLabel(
     .replace(/[_-]+/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+/**
+ * Canonical user-facing nutrition trust ladder (ENG-1431 / ENG-1567).
+ *
+ * Persistence and matching still use their existing source/tier identifiers;
+ * this helper is deliberately display-only. A strong match names its source
+ * when one is available, because provenance is more useful and less
+ * over-claiming than the retired generic "Verified" / "Structured" labels.
+ */
+export type NutritionTrustTier =
+  | "verified"
+  | "partial"
+  | "estimated"
+  | "manual"
+  | "unverified";
+
+export function formatNutritionTrustTierLabel(
+  tier: NutritionTrustTier,
+  source?: string | null,
+): string {
+  switch (tier) {
+    case "verified":
+      return formatNutritionSourceLabel(source) ?? "Matched";
+    case "partial":
+      return "Partial";
+    case "estimated":
+      return "Estimated";
+    case "manual":
+      return "Manual";
+    case "unverified":
+      return "No data";
+  }
+}

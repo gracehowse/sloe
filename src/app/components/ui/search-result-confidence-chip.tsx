@@ -1,5 +1,7 @@
 import * as React from "react";
 import { Icons } from "./icons";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
+import { formatNutritionTrustTierLabel } from "../../../lib/nutrition/sourceLabel";
 
 /**
  * `<SearchResultConfidenceChip>` — the web twin of the mobile
@@ -43,6 +45,8 @@ export interface SearchResultConfidenceChipProps {
   tier: SearchResultConfidenceTier;
   /** Optional label override. Defaults to "Structured" / "Estimated". */
   label?: string;
+  /** Provenance displayed for a source-backed match when the trust-copy flag is on. */
+  sourceLabel?: string | null;
   /** Per-surface test hook. Defaults to `confidence-chip`. */
   testId?: string;
   /** Extra classes appended to the chip's base classes. */
@@ -52,10 +56,15 @@ export interface SearchResultConfidenceChipProps {
 export function SearchResultConfidenceChip({
   tier,
   label,
+  sourceLabel,
   testId,
   className,
 }: SearchResultConfidenceChipProps) {
-  const displayLabel = label ?? DEFAULT_LABEL[tier];
+  const displayLabel =
+    label ??
+    (isFeatureEnabled("trust_source_name_v1")
+      ? formatNutritionTrustTierLabel(tier, sourceLabel)
+      : DEFAULT_LABEL[tier]);
   const Glyph = tier === "verified" ? Icons.check : Icons.info;
   return (
     <span

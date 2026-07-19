@@ -1,7 +1,7 @@
 /**
  * <SearchResultConfidenceChip> (web) — the web twin of the mobile chip test
  * (`apps/mobile/tests/unit/searchResultConfidenceChip.test.tsx`). Pins the
- * load-bearing trust behaviour of the consolidated Verified/Estimated chip
+ * load-bearing trust behaviour of the consolidated source/Estimated chip
  * (ENG-1429): correct labels + a11y, the honest warm-amber Estimated token
  * (never the over-budget `--warning` orange that paints the over-budget fat
  * macro in the same row), and per-surface testId addressing.
@@ -19,10 +19,10 @@ import { SearchResultConfidenceChip } from "../../src/app/components/ui/search-r
 void React;
 
 describe("SearchResultConfidenceChip (web)", () => {
-  it("renders the Structured label for the verified tier with the primary token, not amber", () => {
+  it("renders the canonical Matched fallback for a source-backed tier", () => {
     render(<SearchResultConfidenceChip tier="verified" />);
     const chip = screen.getByTestId("confidence-chip");
-    expect(screen.getByText("Structured")).toBeInTheDocument();
+    expect(screen.getByText("Matched")).toBeInTheDocument();
     expect(chip.className).toMatch(/\bbg-primary\/10\b/);
     expect(chip.className).toMatch(/\btext-primary-solid\b/);
     // Verified carries no inline estimated tint.
@@ -42,7 +42,12 @@ describe("SearchResultConfidenceChip (web)", () => {
 
   it("exposes an a11y label that names the tier", () => {
     render(<SearchResultConfidenceChip tier="verified" />);
-    expect(screen.getByLabelText("Structured nutrition data")).toBeInTheDocument();
+    expect(screen.getByLabelText("Matched nutrition data")).toBeInTheDocument();
+  });
+
+  it("names the actual source for a source-backed match", () => {
+    render(<SearchResultConfidenceChip tier="verified" sourceLabel="USDA" />);
+    expect(screen.getByText("USDA")).toBeInTheDocument();
   });
 
   it("honours a custom testId for per-surface addressing", () => {
