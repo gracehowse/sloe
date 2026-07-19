@@ -799,6 +799,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "recipe_sparse_media_v1", // ENG-1575 — 0/1/2/many Library composition + one recipe fallback policy.
   "semantic_stat_roles_v1", // ENG-1578 — sibling stats stay ink; state lives in sanctioned indicators.
   "plan_alert_to_toast_v1", // ENG-1344 first slice — planner.tsx's 7 non-blocking Alert.alert calls migrate to the shared Toast primitive; else = legacy Alert.alert (unchanged). Mobile-only: web has no Alert.alert-as-toast pattern to migrate (already native sonner).
+  "library_single_filter_row_v1", // ENG-1607 — Cookbook single provenance chip row (v3); off = legacy two-row stack (kill switch). Web + mobile.
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when
