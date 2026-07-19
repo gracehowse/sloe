@@ -25,6 +25,8 @@
 | HS-08 | HS-02 | Enable **Simple labels only** → sync new MFP food | `Imported food (N kcal)` titles | Generic label path | **Blocked — ENG-874** |
 | HS-09 | Dev build | Open `dev/health-import-labels` | Raw HK metadata for MFP samples | Informs label fixes | **Blocked — ENG-874** |
 
+Mobile-only for live HK metadata (device required); a web mirror at `/dev/health-import-labels` (`app/dev/health-import-labels/page.tsx`) exists for Playwright captures of the fallback-title format/filter against hardcoded sample data — see [`food-tracking.md`](../journeys/food-tracking.md#healthkit-import-fallback-titles-n1-2026-05-03).
+
 ## Diagnostic affordances (shipped 2026-06-04)
 
 | Control | Location | Purpose |

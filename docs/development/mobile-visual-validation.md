@@ -35,6 +35,24 @@ Web mirror:
 - Dev page: [`app/dev/daily-ring-states/page.tsx`](../../app/dev/daily-ring-states/page.tsx)
 - Playwright spec: [`tests/e2e/screenshots/bundle-1a-validation.spec.ts`](../../tests/e2e/screenshots/bundle-1a-validation.spec.ts)
 - Screenshots: `docs/screenshots/launch-bugs/bundle-1a-after/`
+- Product context for what's being validated (the hero ring + NET-tile
+  states this route renders): see the "Internal QA tooling" subsection
+  (under Layout) in
+  [`docs/journeys/food-tracking.md`](../journeys/food-tracking.md).
+
+## Second implementation — Bundle 1B
+
+- Dev screen: [`apps/mobile/app/dev/health-import-labels.tsx`](../../apps/mobile/app/dev/health-import-labels.tsx)
+- Maestro flow: [`apps/mobile/.maestro/00g_bundle_1b_validation.yaml`](../../apps/mobile/.maestro/00g_bundle_1b_validation.yaml)
+- Screenshots: `apps/mobile/screenshots/latest/bundle-1b-mobile-*.png`
+
+Web mirror:
+- Dev page: [`app/dev/health-import-labels/page.tsx`](../../app/dev/health-import-labels/page.tsx)
+
+Validates the HealthKit-import fallback-title format + filter
+(`isHealthImportFallbackTitle`) against hardcoded sample data — see
+[`docs/journeys/food-tracking.md`](../journeys/food-tracking.md#healthkit-import-fallback-titles-n1-2026-05-03)
+for the product behaviour this harness exists to check.
 
 ## How to run the mobile flow
 

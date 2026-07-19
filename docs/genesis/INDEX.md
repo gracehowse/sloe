@@ -6,7 +6,7 @@ Quick routes into the existing `docs/` tree. **Do not duplicate long explanation
 |--------|----------|------------------|--------|
 | Product | All / PM | [`../product/overview.md`](../product/overview.md), [`../product-roadmap.md`](../product-roadmap.md), [`../product/web-mobile-parity-scope.md`](../product/web-mobile-parity-scope.md) | Roadmap + **web/mobile parity rules** |
 | User | End user | [`../user/`](../user/) | How-tos, onboarding |
-| Journeys | UX / QA / Eng | [`../journeys/README.md`](../journeys/README.md) | Entry → action → result (+ gap map to Maestro) |
+| Journeys | UX / QA / Eng | [`../journeys/README.md`](../journeys/README.md) | Entry → action → result, organized by cross-cutting product loop (+ gap map to Maestro) |
 | Technical | Engineer | [`../technical/architecture.md`](../technical/architecture.md), [`../technical/components.md`](../technical/components.md) | Stack, screens, components |
 | API | Engineer | [`../api/endpoints.md`](../api/endpoints.md) | Route contracts |
 | Data & schema | Engineer / data | [`../data/schema.md`](../data/schema.md) | Tables, RLS, analytics catalog |

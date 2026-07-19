@@ -2,13 +2,61 @@
 
 **Surface:** Deterministic coaching, narrative insights, North-Star suggestion, progress commentary, digest, trajectory forecast, inline today insights, fasting narrative
 **Platforms:** iOS primary (mobile), web parity
-**Author:** documentation-system
 **Date:** 2026-06-02
-**Status:** Spec — not yet implemented
+**Status:** ⚠️ SUPERSEDED (2026-07-19) — see banner below. Originally "Spec — not yet implemented" (2026-06-02).
+
+---
+
+## ⚠️ SUPERSEDED — READ THIS BEFORE ANYTHING BELOW
+
+**This doc's central claim is no longer true.** Section 0 states *"There is no
+AI chat, no 'Ask' tab, no LLM-backed coach in Suppr"* and §3.12 explicitly
+instructs *"Do not build the bounded Ask surface until the product explicitly
+greenlights it."* Both statements were accurate on 2026-06-02. They are false
+today.
+
+**What shipped:** on 2026-07-01, Suppr shipped exactly the surface §3.12
+said not to build yet: a standalone `/coach` destination screen with an
+LLM-voiced day narrative ("Today's read") plus three LLM-answered bounded Ask
+chips ("Ask the coach"), sitting alongside a ranked "What to eat next" list.
+It is bounded, not free-text/open-conversation — every LLM output is
+number-grounded and validated against the app's own computed facts, so the
+"never invents a number" trust gate this spec cared about is preserved — but
+the flat claim "there is no LLM-backed coach in Suppr" is no longer accurate,
+and the "do not build" instruction in §3.12 has been overtaken by a shipped
+feature.
+
+**Rollout:** the Coach screen is default-on for both web and mobile, gated
+only by a PostHog kill switch rather than a staged ramp — it ships to
+everyone today, not a subset. (In code, the gate is the `coach_screen_v1`
+flag, which sits inside the broader `REDESIGN_DEFAULT_ON` default.)
+
+**Canonical doc for the shipped Coach screen:**
+[`docs/journeys/what-to-eat-next.md`](../../journeys/what-to-eat-next.md) —
+Part 2, "The full Coach destination screen". Read that doc for what is
+actually live today (entry points, the three sections, grounding contract,
+known web/mobile parity defects, analytics).
+
+**What is still true / still useful here:** the deterministic North-Star
+"what to eat next" engine described in §3.1 (card layout, band chips, states,
+preserve-exactly rules) is largely accurate to what shipped in the Today
+block, and the visual-craft reasoning throughout this doc (typography roles,
+card grammar, benchmark rationale) remains a legitimate historical record of
+the original constraint-driven design thinking. **Do not treat any claim
+about "no AI coach exists" or "the Ask surface is unbuilt" as current** —
+those two claims, and only those, are the parts this banner supersedes.
+Everything else in the body below should be cross-checked against
+`docs/journeys/what-to-eat-next.md` before being relied on for anything
+shipping today.
 
 ---
 
 ## 0. Critical framing — read before anything else
+
+> **⚠ Superseded — see banner above.** The paragraph immediately below was
+> accurate on 2026-06-02 and is **false as of 2026-07-01**, when Suppr
+> shipped a bounded, LLM-voiced Coach surface. Kept verbatim below as
+> historical record only — do not cite it as current.
 
 **There is no AI chat, no "Ask" tab, no LLM-backed coach in Suppr.** The four-tab bar is Today / Plan / Recipes / Progress. Every `ai*` route in the codebase is extraction-only (photo→food, voice→food, label→nutrition, recipe-import). None generates advice, conversation, or coaching.
 
@@ -470,7 +518,7 @@ Three-row list, each row: 14px Inter Regular label (left) + 14px Inter Semibold 
 
 ### 3.9 Win-moment
 
-**Treatment:** a single full-width warm message in Fraunces Italic 18px, ink, centred, with a 1px terracotta hairline rule above and below (4px above card, 4px below). No confetti. No animation beyond a gentle fade-in (300ms ease-out). This is the Noom-delight line — understated, not celebratory. Decision: `docs/decisions/2026-05-25-noom-delight-vs-gamification-line.md`.
+**Treatment:** a single full-width warm message in Fraunces Italic 18px, ink, centred, with a 1px terracotta hairline rule above and below (4px above card, 4px below). No confetti. No animation beyond a gentle fade-in (300ms ease-out). This is the Noom-delight line: the product deliberately favours a quiet, specific acknowledgement over gamification — no badges, no streak fireworks, no celebratory motion.
 
 **Preserve exactly:** the win-moment trigger conditions (hitting calorie target / weight win). No gamification elements added.
 
@@ -513,6 +561,24 @@ Oura ring + narrative paragraph (https://mobbin.com/screens/146a11e1-f12f-4536-8
 ---
 
 ### 3.12 Net-new bounded "Ask" surface (design spec, not a build commitment)
+
+> **⚠ Superseded — see banner at the top of this file.** This section was
+> written as a design-only spec, explicitly gated on a future product
+> greenlight that had not happened yet. That greenlight happened: on
+> 2026-07-01 Suppr shipped the bounded Ask surface as "Ask the coach" —
+> three fixed chips, grounded, Pro-gated AI phrasing with a deterministic
+> template fallback for Free users, default-on (implementation gate:
+> `coach_screen_v1`). The "not a build commitment" framing below no longer
+> applies; the shipped implementation is documented in
+> [`docs/journeys/what-to-eat-next.md`](../../journeys/what-to-eat-next.md)
+> (Part 2, "Ask the coach") and
+> [`docs/api/endpoints.md`](../../api/endpoints.md) (`/api/nutrition/coach-ask`
+> contract). The visual/interaction spec below is kept as historical record —
+> some of it (the chip-row / no-free-text-input model, the non-diagnostic
+> disclaimer, the "never invents a number" hard gate) is close to what
+> shipped; other details (exact chip copy, "Sources" panel, entry-point chip
+> below North-Star) diverged. Do not treat this section as a description of
+> the current product.
 
 **Gate:** this section defines the visual and interaction spec for a bounded Ask surface **only if** the product decides to build it. The engine beneath must remain deterministic or must be a bounded data-grounded LLM with citation-only generation (never open completion).
 
@@ -617,7 +683,7 @@ Empty/null states do not get card chrome — they appear as full-width muted sen
 | Surface | Mobile | Web | Status |
 |---|---|---|---|
 | North-Star block | NorthStarBlock.tsx | north-star-block.tsx | Parity |
-| North-Star why-dialog | Component exists | Confirmed | **Verify mobile dialog parity — ENG gap** |
+| North-Star why-dialog | Component exists | Confirmed | **Unconfirmed** |
 | TodayWeeklyInsightCard | Not present | Desktop right-rail | Intentional carve-out |
 | TodayDeficitInsight | Confirmed | **Unconfirmed** | **Parity check needed** |
 | ProgressHeadline | progress-headline.tsx (mobile) | progress-headline.tsx (web) | Parity |
@@ -737,8 +803,8 @@ Every audited feature, data point, rule, and gate — confirmed preserved (or im
 ## 7. Implementation notes for executor
 
 1. **Do not build the bounded Ask surface** until the product explicitly greenlights it. The spec in §3.12 is a design reference only.
-2. **Flag for sync-enforcer:** TodayDeficitInsight web parity location is unconfirmed. Verify before implementing the redesign on web.
-3. **Flag for sync-enforcer:** North-Star why-dialog mobile parity — confirm `NorthStarBlock.tsx` on mobile renders the why-dialog sheet, not just the why-line text.
+2. **TodayDeficitInsight web parity is unconfirmed.** Locate and verify the web equivalent of the banner before implementing the redesign there.
+3. **North-Star why-dialog mobile parity is unconfirmed.** Check that `NorthStarBlock.tsx` on mobile renders the same why-dialog sheet as web, not just the why-line text.
 4. All visual changes (card grammar, typography, chip styles, trajectory chart) must ship behind a feature flag per CLAUDE.md.
 5. The trajectory chart SVG/Skia implementation should be extracted into a `<TrajectoryChart />` component separate from `TrajectoryCard.tsx` to keep the screen file under 400 lines.
 6. The ConfidenceChip repositioning (before headline, not after) is a meaningful layout change — it needs a flag gate and before/after screenshots in the PR.
@@ -746,8 +812,25 @@ Every audited feature, data point, rule, and gate — confirmed preserved (or im
 
 ---
 
-## 8. Open parity gaps (carry forward to sync-enforcer)
+## 8. Known parity gaps
 
-1. **TodayDeficitInsight web parity** — web location of the deficit banner not confirmed in audit. Severity: High (core insight surface).
-2. **North-Star why-dialog mobile** — mobile component exists but dialog parity with web not confirmed. Severity: Medium.
-3. **TodayWeeklyInsightCard** — web desktop right-rail only, no mobile equivalent. Documented intentional carve-out. No action needed.
+**TodayDeficitInsight web parity.** The web location of the deficit banner
+hasn't been confirmed against the mobile implementation. This is a core
+insight surface on Today, so the gap is worth closing before any further
+redesign work touches it.
+
+**North-Star why-dialog mobile parity.** The mobile component exists, but
+whether it renders the same explanatory sheet as the web tooltip/popover
+hasn't been confirmed.
+
+**TodayWeeklyInsightCard.** Web-desktop right-rail only, with no mobile
+equivalent. This is an intentional carve-out, not a gap.
+
+---
+
+## 9. Related documents
+
+- [`docs/journeys/what-to-eat-next.md`](../../journeys/what-to-eat-next.md) — canonical doc for the shipped Coach screen (entry points, sections, grounding contract, analytics).
+- [`docs/decisions/2026-07-01-coach-screen-eng1240.md`](../../decisions/2026-07-01-coach-screen-eng1240.md) — the decision to ship the Coach screen.
+- [`docs/decisions/2026-05-25-noom-delight-vs-gamification-line.md`](../../decisions/2026-05-25-noom-delight-vs-gamification-line.md) — the win-moment vs. gamification decision referenced in §3.9.
+- [`docs/api/endpoints.md`](../../api/endpoints.md) — the `/api/nutrition/coach-ask` contract behind "Ask the coach".

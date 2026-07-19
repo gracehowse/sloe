@@ -9,11 +9,21 @@ A creator writes their own recipe in the app — title, photo, ingredients,
 steps, macros — and saves it private OR publishes it to the community
 Discover feed.
 
-This journey is distinct from
-[Import a Recipe](./import-recipe.md) (URL / share-extension flow):
+## Loop
 
-- **Import** = "this recipe exists somewhere, bring it in"
-- **Create** = "this recipe doesn't exist yet, I'm writing it"
+Create-from-scratch is **adjacent to, but distinct from,** the
+[Import a Recipe](./import-recipe.md) loop — two different entry points
+into the same Library, not two versions of the same flow:
+
+- **Create** = "this recipe doesn't exist yet, I'm writing it" (this doc)
+- **Import** = "this recipe exists somewhere, bring it in" — see
+  [Import a Recipe](./import-recipe.md) for the URL / share-extension /
+  bulk-photo / cookbook-PDF flows
+
+If you landed here looking for "paste a link" or "share from Instagram,"
+you want [Import a Recipe](./import-recipe.md) instead — the create
+wizard intentionally has no paste/scan/URL affordances (see "Web vs
+mobile" below).
 
 ## Surfaces
 
@@ -168,4 +178,7 @@ returning-power-user surface.
 - `src/app/components/RecipeUpload.tsx` — web counterpart
 - `apps/mobile/tests/unit/createRecipeWizard.test.ts` — step machine + structural pins
 - `apps/mobile/tests/unit/createRecipeNormalisationParity.test.ts` — write-side normalise pin
-- `docs/audits/2026-04-28-recipe-creation-audit.md` — customer-lens findings (CR-01 to CR-07)
+
+## Related documents
+
+- [Import a Recipe](./import-recipe.md) — the sibling loop for bringing in an existing recipe (URL / share-extension / bulk-photo / cookbook-PDF)

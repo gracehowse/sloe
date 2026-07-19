@@ -103,7 +103,7 @@ export type LogSheetInlineSelectedFood = InlineSelectedFood;
  * that all other Suppr sheets use. Snap behaviour is approximated
  * via a height-controlled inner content. A `KeyboardAvoidingView`
  * wraps the sheet card so the inline results region scrolls above
- * the keyboard. Documented at `docs/journeys/log-sheet-2026-04-27.md`.
+ * the keyboard. Documented at `docs/journeys/log-sheet.md`.
  *
  * Web mirror: `src/app/components/suppr/log-sheet.tsx` (web inline
  * lift is a follow-up commit).
