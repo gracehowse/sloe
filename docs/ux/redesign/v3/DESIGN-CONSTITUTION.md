@@ -81,8 +81,11 @@ readout) — never the card's identity.
   icons read cheap faster than any other element.
 - **Segmented control:** one spec, used for exclusive 2–5-way switches only.
 - **Rail:** one tile size (64px circle) + 12px label. Creators and cuisines share it.
-- Buttons: one filled CTA per screen (conversion surfaces excepted) · secondary =
-  tonal · tertiary = ghost text. Unchanged from the CTA ruling.
+- Buttons: one filled CTA per screen (conversion surfaces excepted) · secondary +
+  tertiary = ghost text. The 2026-06-12 button-system decision collapsed the old
+  outline/tonal secondaries into ghost — the `SupprButton` CTA primitive is
+  `primary | ghost` only. (shadcn `Button`'s outline variant stays for non-CTA
+  dialog/toolbar controls.)
 
 ## Rule 4 — Colour governance (the discipline that reads as luxury)
 
@@ -273,7 +276,7 @@ the recap now serves a numbers-light Calm variant (no ranges/weight for
 body-neutral users); the import trust line no longer claims "high confidence"
 beside "quick check needed" (now "2 to confirm below", sage reserved for
 verified); "Fits Thursday dinner" → "Fits a dinner this week"; the protein target
-chip dropped its macro tint (Rule 4); web page-header primaries demote to outline
+chip dropped its macro tint (Rule 4); web page-header primaries demote to ghost
 so the ink sidebar owns the one filled CTA (Rule 3); story close button to the
 40px spec; Current's goal-label position restored (an ungated change had leaked);
 post-log toast de-certaintied; Rule 5 amended with the story numeral tier.
