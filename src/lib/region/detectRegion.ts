@@ -18,7 +18,7 @@
  *     wired — the Stripe price IDs only exist in GBP today. Until we
  *     ship EU / US Stripe prices, EU visitors see GBP amounts with an
  *     explicit "EU pricing coming soon — current prices in GBP" note.
- *     The UK surface always renders GBP.
+ *     The UK surface always renders GBP. // deferred: see ENG-1442
  *
  * Inputs (precedence order):
  *   1. `CF-IPCountry` header — Cloudflare edge-injected ISO-3166-alpha-2.

@@ -2223,7 +2223,7 @@ export default function TrackerScreen() {
   // `null` for `weightDeltaKg` until a downstream change wires real
   // weigh-in data through (`profileWeightKgByDay` + a 7-day window
   // resolver). The modal suppresses the row rather than fabricate
-  // "+0.0 kg" — see PR body "Risks / follow-ups" entry.
+  // "+0.0 kg". // deferred: see ENG-1585
   useEffect(() => {
     if (!isToday) return;
     if (weeklyCheckinHandledRef.current) return;
@@ -2281,7 +2281,7 @@ export default function TrackerScreen() {
       priorTdee: resolvedMaintenance?.formulaKcal ?? null,
       currentTargetKcal: targets.calories,
       avgCaloriesThisWeek: weekData.weekAvg.calories,
-      // weightDeltaKg follow-up: see PR body. Honest null for now.
+      // weightDeltaKg follow-up: honest null until wired. Tracked as ENG-1585.
       weightDeltaKg: null,
       // ENG-1027 — sex-aware suggested-target floor (never suggest a man
       // below 1,500 / a woman below 1,200).

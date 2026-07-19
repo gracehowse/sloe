@@ -12,9 +12,12 @@
  * ─── Why an SSOT? ─────────────────────────────────────────────────────
  * Web and mobile render the same rows in the same order with the same
  * labels. Drift between platforms here would mean a user sees "Sleep" on
- * web but not on mobile, or the two in a different order. The parity
- * test (`tests/unit/healthSyncTypesParity.test.ts`) pins the order and
- * labels so future edits can't silently diverge.
+ * web but not on mobile, or the two in a different order. There is
+ * currently no automated parity test pinning this order/labels — an
+ * earlier version of this comment claimed one existed
+ * (`tests/unit/healthSyncTypesParity.test.ts`), but it was never written
+ * (see the ENG-1469 footer note below, which found and removed a dead
+ * export referencing the same nonexistent file). Tracked in ENG-1584.
  *
  * ─── Why some are `supported: false`? ─────────────────────────────────
  * The prototype shows `Sleep`, but `apps/mobile/lib/healthSync.ts` does
@@ -23,6 +26,7 @@
  * toggle visually disabled and a "Coming soon" sub-label rather than
  * being shown as a fully functional opt-in. When the underlying sync is
  * wired, flip `supported` to `true` and the UI lights up automatically.
+ * // deferred: see ENG-1584
  */
 
 /** Canonical key used to persist a per-type preference (AsyncStorage on

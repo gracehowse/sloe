@@ -643,7 +643,7 @@ async function runWeeklyRecapPush(req: Request) {
         // user who would have hit Rule 1 instead lands on Rule 2/3/
         // 4/5 or the unsuggested recap variant. Acceptable for v1.
         // Promoting Rule 1 would require fetching `saved_meals`
-        // here — ticket noted in the docs follow-up.
+        // here. // deferred: see ENG-1586
         const suggestion = selectDigestSuggestion({
           recap,
           proteinOnTarget: weekBundle.proteinOnTarget,
