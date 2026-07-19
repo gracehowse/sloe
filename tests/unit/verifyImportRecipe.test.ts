@@ -136,6 +136,33 @@ describe("verifyImportRecipe", () => {
     expect(result.excludedLineCount).toBe(2);
   });
 
+  it("ENG-1422 — counts no-match rows (null macros) as excluded, not just below-floor rows", async () => {
+    // 2 accepted rows + 2 no-match rows (macros: null — an unparseable line or
+    // an estimator that couldn't resolve a weight). belowAcceptFloorCount is 0
+    // because neither excluded row has a confidence score to fall below the
+    // floor with — but they're still absent from `totals`, so the cap must
+    // still see them as excluded. Regression test for the bug where
+    // excludedLineCount was read straight off belowAcceptFloorCount and missed
+    // this row class entirely, letting a half-unmatched recipe report zero
+    // exclusions and keep its uncapped "high" tier.
+    mockVerifyIngredients.mockResolvedValue({
+      avgIngredientConfidence: 0.95,
+      perServing: { calories: 230, protein: 15, carbs: 20, fat: 5, fiberG: 1 },
+      belowAcceptFloorCount: 0,
+      verified: [
+        { input: { name: "rice", amount: "100", unit: "g" }, macros: { calories: 130 }, source: "USDA", confidence: 0.95 },
+        { input: { name: "chicken", amount: "150", unit: "g" }, macros: { calories: 100 }, source: "USDA", confidence: 0.95 },
+        { input: { name: "??? sauce", amount: "", unit: "" }, macros: null, source: "Unverified", confidence: 0 },
+        { input: { name: "garnish, to taste", amount: "", unit: "" }, macros: null, source: "Unverified", confidence: 0 },
+      ],
+    });
+    const result = await verifyImportRecipe(parsedRecipe);
+    expect(result.excludedLineCount).toBe(2);
+    // Half the recipe unmatched → capped to "low" despite a 0.95 accepted average.
+    expect(result.confidence).toBe("low");
+    expect(result.confidenceTier).toBe("low");
+  });
+
   it("ENG-1422 — drops to low when half or more of the recipe was excluded", async () => {
     // 2 accepted + 3 excluded → majority unmatched → low despite a pristine average.
     mockVerifyIngredients.mockResolvedValue({

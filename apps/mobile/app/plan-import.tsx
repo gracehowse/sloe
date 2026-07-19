@@ -466,7 +466,7 @@ export default function PlanImportScreen() {
             </Text>
             {/* ENG-1422 — surface the excluded-line count (the tier alone hid how incomplete the totals are). DEFAULT-ON; PostHog kill switch. */}
             {isFeatureEnabled("plan_import_excluded_lines_v1") && parseResult.stats.excludedLineCount > 0 ? (
-              <Text style={styles.excludedNote} testID="plan-import-excluded-note">{parseResult.stats.excludedLineCount} low-confidence {parseResult.stats.excludedLineCount === 1 ? "line" : "lines"} left out — review before importing.</Text>
+              <Text style={styles.excludedNote} testID="plan-import-excluded-note">{parseResult.stats.excludedLineCount} low-confidence {parseResult.stats.excludedLineCount === 1 ? "line" : "lines"} left out of these totals — review before importing.</Text>
             ) : null}
           </View>
 
