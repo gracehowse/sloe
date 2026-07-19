@@ -111,6 +111,13 @@ describe("TodayBarcodeDialog — redesigned result card (web)", () => {
     expect(screen.queryByTestId("barcode-confidence-verified")).toBeNull();
   });
 
+  it("names Open Food Facts instead of claiming Structured for a source-backed row", () => {
+    render(<Harness preview={makeProduct({ verified: true })} />);
+    expect(screen.getByTestId("barcode-confidence-verified")).toBeDefined();
+    expect(screen.getByText("Open Food Facts")).toBeDefined();
+    expect(screen.queryByText("Structured")).toBeNull();
+  });
+
   it("surfaces a prominent kcal headline with the real per-100g number", () => {
     render(<Harness preview={makeProduct({ calories: 400 })} />);
     const card = screen.getByTestId("barcode-result-card");

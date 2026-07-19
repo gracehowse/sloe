@@ -81,6 +81,7 @@ import {
 import { saveVerifiedIngredientsRpc } from "../../lib/nutrition/saveVerifiedIngredientsRpc.ts";
 import { AnalyticsEvents } from "../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
+import { formatNutritionTrustTierLabel } from "../../lib/nutrition/sourceLabel.ts";
 import { RecipeLogPortionDialog } from "./suppr/recipe-log-portion-dialog.tsx";
 import {
   recipeLogMicrosMultiplier,
@@ -2979,12 +2980,8 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
                   const ingCal = Math.round((eff.calories * servings) / baseServings);
                   const rowHasOverride = hasOverride(ingredient);
                   const rowAddedByUser = Boolean(ingredient.addedByUser);
-                  /**
-                   * 2026-05-02 fix — derive verification tier from the
-                   * persisted `{is_verified, confidence, source}` triple so the
-                   * dot, badge, and Verify CTA agree with the row. Shared helper
-                   * keeps web/mobile in sync.
-                   */
+                  // Derive the tier from persisted status, confidence and source so
+                  // the dot, badge and Verify CTA agree; the helper keeps parity.
                   const verificationTier = deriveIngredientVerificationTier({
                     isVerified: ingredient.isVerified ?? null,
                     confidence: ingredient.confidence ?? null,
@@ -2992,7 +2989,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
                   });
                   const showVerifyCta = ingredientShouldShowVerifyCta(verificationTier);
                   const tierColorVar = ING_TIER_COLOR[verificationTier];
-                  const tierLabel = ING_TIER_LABEL[verificationTier];
+                  const tierLabel = isFeatureEnabled("trust_source_name_v1") ? formatNutritionTrustTierLabel(verificationTier, ingredient.source) : ING_TIER_LABEL[verificationTier];
                   // formatIngredientAmountUnit rounds numeric amounts to 2dp
                   // (audit 2026-04-30 P1 #6 — no "0.6666… cup" servings drift).
                   const amountLine = ingredient.amount

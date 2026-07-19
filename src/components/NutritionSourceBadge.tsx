@@ -1,6 +1,8 @@
 "use client";
 
 import { classifySource, type SourceTier } from "../lib/nutrition/classifySource";
+import { isFeatureEnabled } from "../lib/analytics/track";
+import { formatNutritionTrustTierLabel } from "../lib/nutrition/sourceLabel";
 
 // ENG-716 — off-token Tailwind palette literals (green/yellow/slate)
 // migrated to the Sloe semantic state tokens. Verified → success (sage),
@@ -18,10 +20,18 @@ const CONFIG: Record<SourceTier, { label: string; abbr: string; className: strin
 export default function NutritionSourceBadge({ source }: { source?: string | null }) {
   const tier = classifySource(source);
   const cfg = CONFIG[tier];
-  const tip = source?.trim() ? `${source.trim()} (${cfg.label})` : `${cfg.label} nutrition data`;
+  const trustSourceName = isFeatureEnabled("trust_source_name_v1");
+  const label = trustSourceName
+    ? formatNutritionTrustTierLabel(tier, source)
+    : cfg.label;
+  const tip = trustSourceName
+    ? `${label} nutrition data`
+    : source?.trim()
+      ? `${source.trim()} (${cfg.label})`
+      : `${cfg.label} nutrition data`;
   return (
     <span className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold ${cfg.className}`} title={tip}>
-      {cfg.abbr} {cfg.label}
+      {cfg.abbr} {label}
     </span>
   );
 }

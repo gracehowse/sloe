@@ -28,7 +28,7 @@ import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useRouter, type Href } from "expo-router";
 
 import { barcodeConfidenceTier, lookupBarcode, scaleMacrosByGrams, submitFoodCorrection, type BarcodeProduct } from "@/lib/verifyRecipe";
-import { barcodeProvenanceLabel } from "@/lib/barcodeProvenance";
+import { barcodeProvenanceLabel, barcodeTrustProvenanceLabel, barcodeTrustSourceName } from "@/lib/barcodeProvenance";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled } from "@/lib/analytics";
@@ -62,10 +62,9 @@ export default function BarcodeScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
-  // Search-results redesign (2026-05-31): when on, the barcode result adopts the
-  // food-search language — Verified/Estimated confidence chip + blue commit CTA.
-  // Old path (binary green tick + green CTA) stays alive in the else.
+  // Search redesign uses the food-search chip + blue CTA; the old binary path is the kill switch.
   const searchRedesign = isFeatureEnabled("redesign_search_results");
+  const trustSourceName = isFeatureEnabled("trust_source_name_v1");
 
   const [permission, requestPermission] = useCameraPermissions();
   const [last, setLast] = useState<string | null>(null);
@@ -961,18 +960,19 @@ export default function BarcodeScreen() {
               <View style={{ alignItems: "center", gap: Spacing.xs }}>
                 <SearchResultConfidenceChip
                   tier={barcodeConfidenceTier(product)}
+                  sourceLabel={barcodeTrustSourceName(product)}
                   testID="barcode-confidence-chip"
                 />
-                <Text style={styles.source}>{barcodeProvenanceLabel(product)}</Text>
+                <Text style={styles.source}>{trustSourceName ? barcodeTrustProvenanceLabel(product) : barcodeProvenanceLabel(product)}</Text>
               </View>
             ) : product.verified ? (
               // Old path (binary green tick): preserved for flag-off.
               <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }}>
                 <Check size={11} color={Colors.dark.textTertiary} strokeWidth={3} />
-                <Text style={styles.source}>Verified</Text>
+                <Text style={styles.source}>{trustSourceName ? barcodeTrustSourceName(product) : "Verified"}</Text>
               </View>
             ) : (
-              <Text style={styles.source}>{barcodeProvenanceLabel(product)}</Text>
+              <Text style={styles.source}>{trustSourceName ? barcodeTrustProvenanceLabel(product) : barcodeProvenanceLabel(product)}</Text>
             )}
             <View style={styles.btnRow}>
               <Pressable

@@ -160,7 +160,7 @@ describe("ENG-815 — FoodSearchPanel redesigned results (flag-gated)", () => {
   });
 
   it("flag ON: renders the redesigned container with the Best/More section grouping", async () => {
-    flagFn.mockImplementation((f: string) => f === "redesign_search_results");
+    enableFlags("redesign_search_results", "trust_source_name_v1");
     vi.stubGlobal("fetch", BOTH_SOURCES);
     const { container } = renderPanel();
     await drain();
@@ -177,8 +177,8 @@ describe("ENG-815 — FoodSearchPanel redesigned results (flag-gated)", () => {
     expect(card).not.toBeNull();
   });
 
-  it("flag ON: renders the honest Verified chip for a verified-provenance row", async () => {
-    flagFn.mockImplementation((f: string) => f === "redesign_search_results");
+  it("flag ON: names the source in the confidence chip for a source-backed row", async () => {
+    enableFlags("redesign_search_results", "trust_source_name_v1");
     vi.stubGlobal(
       "fetch",
       makeFetchStub({
@@ -192,7 +192,7 @@ describe("ENG-815 — FoodSearchPanel redesigned results (flag-gated)", () => {
     await drain();
 
     expect(await screen.findByTestId("food-search-confidence-verified")).toBeInTheDocument();
-    expect(screen.getByText("Structured")).toBeInTheDocument();
+    expect(screen.getByText("USDA")).toBeInTheDocument();
     // The verified row's byline names its source.
     expect(screen.getByText(/per 100g · USDA/i)).toBeInTheDocument();
   });
@@ -361,7 +361,7 @@ describe("ENG-815 — FoodSearchPanel redesigned results (flag-gated)", () => {
 // `apps/mobile/tests/unit/foodSearchRedesignResults.test.tsx`.
 describe("ENG-1532 — unified search-row grammar (component_grammar_dedup)", () => {
   it("flag ON: best matches render as plain rows — no card wrapper, unified sub-line, no KCAL numeral", async () => {
-    enableFlags("redesign_search_results", "component_grammar_dedup");
+    enableFlags("redesign_search_results", "component_grammar_dedup", "trust_source_name_v1");
     vi.stubGlobal("fetch", BOTH_SOURCES);
     const { container } = renderPanel();
     await drain();
@@ -382,10 +382,9 @@ describe("ENG-1532 — unified search-row grammar (component_grammar_dedup)", ()
     // The big right-aligned KCAL display numeral is gone — the kcal value
     // only appears inside the sub-line string, never as a standalone numeral.
     expect(screen.queryByText("96")).toBeNull();
-    // The tier chip stays inline in the row (current labels — ENG-1567
-    // renames are a separate ticket).
+    // The tier chip stays inline and names the actual source.
     expect(screen.getByTestId("food-search-confidence-verified")).toBeInTheDocument();
-    expect(screen.getByText("Structured")).toBeInTheDocument();
+    expect(screen.getAllByText("USDA").length).toBeGreaterThan(0);
     void container;
   });
 

@@ -528,8 +528,8 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <SearchResultConfidenceChip
-                                  tier={tier}
+                                <SearchResultConfidenceChip tier={tier}
+                                  sourceLabel="Open Food Facts"
                                   testId={`barcode-confidence-${tier}`}
                                 />
                               </div>

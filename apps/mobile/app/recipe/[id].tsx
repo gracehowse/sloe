@@ -61,6 +61,7 @@ import { mapPersistenceError, userFacingImageGenError, userFacingImportError } f
 import { normaliseCachedTier } from "@/lib/cachedUserTier";
 import { authedFetch } from "@/lib/authedFetch";
 import { track, isFeatureEnabled } from "@/lib/analytics";
+import { formatNutritionTrustTierLabel } from "@suppr/nutrition-core/sourceLabel";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { webRecipeDeepLink } from "@suppr/shared/share/recipeDeepLink";
 import {
@@ -1931,8 +1932,7 @@ export default function RecipeDetailScreen() {
 
   // Per-ingredient tap → branded `IngredientInfoSheet` (status / source /
   // per-line macros + a Verify route when the tier still needs review). This
-  // replaces the prior off-brand `Alert.alert` info popup (premium-audit
-  // 2026-06-09, gap 5). The host owns the full derivation (tier label/colour,
+  // replaces the prior off-brand alert. The host owns the full derivation (tier label/colour,
   // explanation, Verify gate) so the sheet stays a pure presenter.
   const onIngredientPress = (index: number) => {
     const ing = ingredientsForIngredientsTab[index];
@@ -1944,9 +1944,9 @@ export default function RecipeDetailScreen() {
       confidence: conf,
       source: ing.source ?? null,
     });
-    const tierLabel =
-      tier === "verified"
-        ? "Structured"
+    const tierLabel = isFeatureEnabled("trust_source_name_v1")
+      ? formatNutritionTrustTierLabel(tier, ing.source)
+      : tier === "verified" ? "Structured"
         : tier === "partial"
           ? "Partial match"
           : tier === "estimated"

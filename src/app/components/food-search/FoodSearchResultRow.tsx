@@ -52,15 +52,14 @@ export type FoodSearchResultRowProps = {
   onDeleteCustom: (food: CustomFood) => void;
 };
 
-/** The legible Verified/Estimated tier chip (ENG-807/ENG-815) — identical
- *  markup on both grammar paths so the trust signal stays inline. Delegates
- *  to the shared `SearchResultConfidenceChip` primitive (ENG-1429), which
- *  also backs the barcode result card and the web voice-log review row —
- *  one chip definition, not three formerly-inline copies. */
-function tierChip(tier: SearchRowConfidenceTier) {
+/** The legible source/Estimated tier chip (ENG-807/ENG-815/ENG-1567) —
+ *  identical on both grammar paths. Delegates to the shared primitive used by
+ *  barcode and web voice review, so the trust signal cannot drift. */
+function tierChip(tier: SearchRowConfidenceTier, sourceLabel: string | null) {
   return (
     <SearchResultConfidenceChip
       tier={tier}
+      sourceLabel={sourceLabel}
       testId={`food-search-confidence-${tier}`}
     />
   );
@@ -166,7 +165,7 @@ export function FoodSearchResultRow({
               <span className="text-[15px] font-semibold text-foreground truncate">
                 {item.name}
               </span>
-              {isCustom ? <Badge variant="custom">Custom</Badge> : tierChip(tier)}
+              {isCustom ? <Badge variant="custom">Custom</Badge> : tierChip(tier, sourceLabel)}
             </div>
             <span className="mt-0.5 block text-xs tabular-nums text-muted-foreground">
               {subline ?? "Tap for nutrition info"}
@@ -206,7 +205,7 @@ export function FoodSearchResultRow({
             {isCustom ? (
               <Badge variant="custom">Custom</Badge>
             ) : (
-              tierChip(tier)
+              tierChip(tier, sourceLabel)
             )}
           </div>
           {headline.mode === "per-serving" ? (

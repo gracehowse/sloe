@@ -1750,7 +1750,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       // ENG-1415 — no more guessed number labelled "estimated"; honest state
       // is "still working it out" until verify resolves.
       const savedMacroLine = chosenPerServing
-        ? `${chosenPerServing.calories} kcal · ${chosenPerServing.protein}P · ${chosenPerServing.carbs}C · ${chosenPerServing.fat}F per serving (verified)`
+        ? `${chosenPerServing.calories} kcal · ${chosenPerServing.protein}P · ${chosenPerServing.carbs}C · ${chosenPerServing.fat}F per serving (${isFeatureEnabled("trust_source_name_v1") ? "source-backed" : "verified"})`
         : "Nutrition pending — we're still verifying this recipe's macros.";
       if (mode === "import") {
         setImportSuccess({
@@ -2595,7 +2595,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                   <>
                     <span
                       className="text-xs font-medium tabular-nums text-success whitespace-nowrap px-2 py-1 rounded-lg bg-success/10 border border-success/30"
-                      title={verifiedTotals ? "Verified (USDA/FatSecret) when available" : "Estimated from name, amount, and unit"}
+                      title={verifiedTotals ? (isFeatureEnabled("trust_source_name_v1") ? "Matched to a nutrition source when available" : "Verified (USDA/FatSecret) when available") : "Estimated from name, amount, and unit"}
                     >
                       {(() => {
                         const r = resolveStructuredIngredient(ingredient);
@@ -2754,7 +2754,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                 <>
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
               <h4 className="text-sm font-semibold text-success">
-                {verifiedTotals ? `Best available (${verifiedTotals.primarySource ?? "Verified"})` : "Estimated (heuristics)"}
+                {verifiedTotals ? `Best available (${verifiedTotals.primarySource ?? (isFeatureEnabled("trust_source_name_v1") ? "Matched" : "Verified")})` : "Estimated (heuristics)"}
               </h4>
               {verifying ? (
                 <span className="text-xs font-semibold text-success/70">Updating…</span>
@@ -2800,7 +2800,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             <div className="mt-4 rounded-xl border border-success/30 bg-card/60 p-4">
               <div className="flex items-baseline justify-between gap-3 mb-3">
                 <p className="text-xs font-semibold tracking-wide text-emerald-900 dark:text-emerald-100 uppercase">
-                  {verifiedTotals ? "Macro wheel (verified)" : "Macro wheel (estimated)"}
+                  {verifiedTotals ? `Macro wheel (${isFeatureEnabled("trust_source_name_v1") ? "source-backed" : "verified"})` : "Macro wheel (estimated)"}
                 </p>
                 <p className="text-[11px] text-emerald-800/80 dark:text-emerald-400/80">Per serving</p>
               </div>
