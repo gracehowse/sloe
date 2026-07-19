@@ -642,6 +642,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "bottom_chrome_contract_v1", // ENG-1376 — measured floating-bar clearance + Settings viewport ownership.
   "recipe_sparse_media_v1", // ENG-1575 — 0/1/2/many Library composition + one recipe fallback policy.
   "semantic_stat_roles_v1", // ENG-1578 — sibling stats stay ink; state lives in sanctioned indicators.
+  "library_single_filter_row_v1", // ENG-1607 — Cookbook single provenance chip row (v3); off = legacy two-row stack (kill switch). Web + mobile.
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

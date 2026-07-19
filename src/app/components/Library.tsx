@@ -145,9 +145,8 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
     savedCount: savedRecipesForLibrary.length,
     onGoDiscover,
   });
-  // ENG-921 (Grace) — CATEGORY filters per Figma `527:2`, shared with mobile via
-  // `recipeCategoryFilters.ts`. ENG-1247 (Grace 2026-06-26 "Both rows") re-added
-  // the entry-kind buckets as the visible provenance row above the category row.
+  // ENG-921 category filters (shared: `recipeCategoryFilters.ts`); ENG-1247
+  // added the provenance row; ENG-1607's single-row path hides categories.
   const [category, setCategory] = useState<RecipeCategoryId>("all");
   // Secondary entry-kind filter — null = no entry-kind narrowing.
   const [entryKind, setEntryKind] = useState<"saved" | "imported" | "created" | null>(null);
@@ -158,6 +157,8 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
   const collectionsEnabled = isFeatureEnabled("recipe_collections_v1"); // ENG-1126
   const sparseMediaEnabled = isFeatureEnabled("recipe_sparse_media_v1");
   const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
+  // ENG-1607 — v3 single chip row: ON hides the category row; OFF = legacy two-row stack (kill switch).
+  const singleFilterRow = isFeatureEnabled("library_single_filter_row_v1");
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
   // Mobile-parity cycle: Recent (default) / Calories / Protein.
   const [sortKey, setSortKey] = useState<"recent" | "calories" | "protein">("recent");
@@ -268,8 +269,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               className="w-full pl-11 pr-4 py-3 bg-card border border-border rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
             />
           </div>
-          {/* Provenance row — v3 Cookbook (All/Saved/Created/Imported), ENG-1247
-              "Both rows" (Grace); writes `entryKind`. Mobile parity. */}
+          {/* Provenance row — v3 Cookbook (ENG-1247); writes `entryKind`. */}
           <div
             data-testid="library-provenance-pills"
             className="flex flex-nowrap md:flex-wrap gap-2 items-center overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
@@ -300,7 +300,10 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               );
             })}
           </div>
-          {/* Category pills — ENG-921/Figma 527:2 (meal types · Quick 30 · …); provenance is the row above (ENG-1247). Padding snapped px-3.5→px-4 (ENG-1280) to match Discover's on-scale 16px; the ENG-921 squish-fix was vertical-only (py-2 min-h-8) so this doesn't regress it. */}
+          {/* Category pills — ENG-921 (padding per ENG-1280: px-4 py-2 min-h-8).
+              ENG-1607: hidden on the single-row path — `category` stays "all"
+              while hidden so filtering/shelves logic is untouched. */}
+          {singleFilterRow ? null : (
           <div
             data-testid="library-filter-pills"
             className="flex flex-nowrap md:flex-wrap gap-2 items-center overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
@@ -329,13 +332,10 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               );
             })}
           </div>
-          {/* ENG-653 — contextual "Imported plans" source pills. A
-              refinement of the Imported entry-kind, so they only reveal when
-              Imported is active AND the user actually has plan imports. This
-              keeps the default Library at a single filter row (categories)
-              while preserving plan-import filtering. Mobile parity:
-              `apps/mobile/app/(tabs)/library.tsx` (contextual plan-import
-              pills under the category row). */}
+          )}
+          {/* ENG-653 — contextual "Imported plans" source pills: reveal only
+              when Imported is active AND plan imports exist. Mobile parity:
+              library.tsx. */}
           {entryKind === "imported" && importPlanPills.length > 0 ? (
             <div
               data-testid="library-plan-import-pills"

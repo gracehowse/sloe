@@ -9,10 +9,11 @@
   Generator: scripts/generate-decisions-index.mjs (ENG-1370)
 -->
 
-341 decision docs, newest first. Generated 2026-07-19.
+342 decision docs, newest first. Generated 2026-07-19.
 
 | Date | Decision | Summary |
 |------|----------|---------|
+| 2026-07-19 | [Cookbook single filter row (ENG-1607)](./2026-07-19-cookbook-single-filter-row.md) | The Recipes tab (Library/Cookbook) shows **one** standing filter chip row — the provenance row (All / Saved / Created / Imported) — on both platforms. The standing category pill row (All / Breakfast / Lunch / Dinner / De… |
 | 2026-07-17 | [Calorie dial — flat material, all states, both themes](./2026-07-17-dial-flat-material.md) | The calorie ring dial (web `src/app/components/suppr/calorie-ring-dial.tsx`, mobile `apps/mobile/components/charts/CalorieRingDial.tsx`) renders as **flat material in ALL states, in BOTH themes**. The radial **bloom** —… |
 | 2026-07-17 | [Primary UI consistency contract](./2026-07-17-primary-ui-consistency-contract.md) | Sloe's authenticated product keeps the production **cool plum-white canvas** (`#F7F6FA`) with white, flat, hairline-separated cards. Warmth belongs in food photography, its editorial grade, and deliberately bounded food… |
 | 2026-07-16 | [Progress hierarchy v1 — 13 equal-weight cards → 5 prioritised sections](./2026-07-16-progress-hierarchy-v1.md) | Rebuild the Progress tab (web + mobile, in parity) as a **5-section prioritised hierarchy** behind the flag **`progress_hierarchy_v1`**, **default OFF** (in `KNOWN_DEFAULT_OFF_FLAGS` on both `src/lib/analytics/track.ts`… |

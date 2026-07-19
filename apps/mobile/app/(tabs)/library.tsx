@@ -137,6 +137,9 @@ export default function LibraryScreen() {
   const collectionsEnabled = isFeatureEnabled("recipe_collections_v1"); // ENG-1126
   const sparseMediaEnabled = isFeatureEnabled("recipe_sparse_media_v1");
   const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
+  // ENG-1607 — v3 single chip row: ON hides the standing category row
+  // (discovery = shelves + search); OFF = legacy two-row stack (kill switch).
+  const singleFilterRow = isFeatureEnabled("library_single_filter_row_v1");
   const {
     collections: recipeCollections,
     membership: collectionMembership,
@@ -184,15 +187,9 @@ export default function LibraryScreen() {
   // (search / setSearch) to leave all 100+ downstream usages alone.
   const { query: search, setQuery: setSearch } = useLibrarySearchStore();
   const [sortKey, setSortKey] = useState<SortKey>("recent");
-  // ENG-921 (2026-06-07, Grace) — CATEGORY filters per Figma `527:2`
-  // (All · Breakfast · Lunch · Dinner · Dessert · Quick 30 · Under 500
-  // cal · High protein · Soup · Pasta · Chicken · Salad), shared with
-  // web via `recipeCategoryFilters.ts`. The entry-kind buckets
-  // (Saved / Imported) are preserved — ENG-921 polish (2026-06-07) folds
-  // them into a single quiet segmented control in the header (above the
-  // category row) instead of a competing second pill row. Plan-import
-  // sources reveal contextually under the category row only when the
-  // Imported segment is active, so the default surface is one filter row.
+  // ENG-921 category filters, shared with web via `recipeCategoryFilters.ts`.
+  // ENG-1607's single-row path hides the standing category row (category
+  // stays "all"); plan-import sources still reveal under Imported.
   const [category, setCategory] = useState<RecipeCategoryId>("all");
   // Secondary filter — entry-kind ("saved"/"imported") or a plan-import
   // id ("plan-import:<source>"); null = no secondary narrowing.
@@ -436,11 +433,8 @@ export default function LibraryScreen() {
       fontWeight: "600",
       color: colors.textSecondary,
     },
-    // ENG-921 polish (2026-06-07) / Figma `527:2` — the entry-kind buckets
-    // (All / Saved / Imported) no longer occupy a second filter row. They
-    // ride as a quiet text control on the count line, alongside sort +
-    // create, so the surface reads as the calm Figma count ("N saved
-    // recipes") with light trailing controls — never a competing pill row.
+    // Count line ("N saved recipes") with quiet trailing sort + create
+    // controls (ENG-921; entry-kind moved to the provenance row, ENG-1247).
     countRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -971,8 +965,10 @@ export default function LibraryScreen() {
                   );
                 })}
               </ScrollView>
-              {/* Category filter pills — ENG-921 / Figma `527:2` (web parity:
-                  Library.tsx). Clay-fill active, line-border inactive. */}
+              {/* Category filter pills — ENG-921 (web parity: Library.tsx).
+                  ENG-1607: hidden on the single-row path — `category` stays
+                  "all", so filter/shelf/grid logic is untouched. */}
+              {singleFilterRow ? null : (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -1001,6 +997,7 @@ export default function LibraryScreen() {
                   );
                 })}
               </ScrollView>
+              )}
               {collectionsEnabled ? (
                 <RecipeCollectionsBar
                   collections={recipeCollections}
