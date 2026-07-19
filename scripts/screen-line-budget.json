@@ -95,12 +95,12 @@
   "src/app/components/suppr/photo-log-dialog.tsx": 669,
   "src/app/components/suppr/quick-add-panel.tsx": 649,
   "src/app/components/suppr/today-activity-bonus-card.tsx": 463,
-  "src/app/components/suppr/today-barcode-dialog.tsx": 751,
+  "src/app/components/suppr/today-barcode-dialog.tsx": 735,
   "src/app/components/suppr/today-dashboard-macro-tiles.tsx": 455,
   "src/app/components/suppr/today-meals-section.tsx": 1147,
   "src/app/components/suppr/today-week-view.tsx": 457,
   "src/app/components/suppr/upgrade-paywall-dialog.tsx": 567,
-  "src/app/components/suppr/voice-log-dialog.tsx": 485,
+  "src/app/components/suppr/voice-log-dialog.tsx": 422,
   "src/app/components/Targets.tsx": 702,
   "src/app/components/ui/sidebar.tsx": 726
 }
