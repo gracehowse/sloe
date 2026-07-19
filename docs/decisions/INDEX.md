@@ -9,12 +9,13 @@
   Generator: scripts/generate-decisions-index.mjs (ENG-1370)
 -->
 
-344 decision docs, newest first. Generated 2026-07-20.
+345 decision docs, newest first. Generated 2026-07-20.
 
 | Date | Decision | Summary |
 |------|----------|---------|
 | 2026-07-20 | [SupprBot public bot-contact page — built for real (ENG-1570)](./2026-07-20-supprbot-public-bot-page.md) | Build the page for real at `app/bot/page.tsx`, reachable without auth (added to `middleware.ts` `PUBLIC_ROUTES`), and link the existing "public bot contact page" / "public bot page" text in Terms and Help to it. Covers:… |
 | 2026-07-19 | [Cookbook single filter row (ENG-1607)](./2026-07-19-cookbook-single-filter-row.md) | The Recipes tab (Library/Cookbook) shows **one** standing filter chip row — the provenance row (All / Saved / Created / Imported) — on both platforms. The standing category pill row (All / Breakfast / Lunch / Dinner / De… |
+| 2026-07-19 | [Ingredients render as text — no icon/image tiles (ENG-1611)](./2026-07-19-ingredient-text-rows.md) | Foods and ingredients render as **text rows** — no glyph tiles, no monogram tiles, no photos — on: |
 | 2026-07-17 | [Calorie dial — flat material, all states, both themes](./2026-07-17-dial-flat-material.md) | The calorie ring dial (web `src/app/components/suppr/calorie-ring-dial.tsx`, mobile `apps/mobile/components/charts/CalorieRingDial.tsx`) renders as **flat material in ALL states, in BOTH themes**. The radial **bloom** —… |
 | 2026-07-17 | [Plan Import — cap the displayed tier on excluded lines; surface the count (ENG-1422)](./2026-07-17-plan-import-excluded-line-tier-cap.md) | Plan Import computes a per-recipe confidence tier from `VerifyResult.avgIngredientConfidence`. Since ENG-1305 that average describes the **accepted rows only** — the rows that cleared `MIN_ACCEPT_CONFIDENCE` (0.55) and w… |
 | 2026-07-17 | [Primary UI consistency contract](./2026-07-17-primary-ui-consistency-contract.md) | Sloe's authenticated product keeps the production **cool plum-white canvas** (`#F7F6FA`) with white, flat, hairline-separated cards. Warmth belongs in food photography, its editorial grade, and deliberately bounded food… |

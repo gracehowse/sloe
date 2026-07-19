@@ -1394,14 +1394,14 @@ function LibraryList({ library, slotName }: { library: NonNullable<LogSheetProps
 }
 
 /* -------------------------- Skeleton -------------------------- */
-
 function SkeletonList({ colors }: { colors: ReturnType<typeof useThemeColors> }) {
+  const textRows = isFeatureEnabled("ingredient_text_rows_v1"); // ENG-1611 — text rows load as text
   return (
     <View style={{ padding: Spacing.md }}>
       {[0, 1, 2, 3].map((i) => (
         <View key={i} style={styles.skeletonRow}>
-          <View style={[styles.skeletonThumb, { backgroundColor: colors.skeleton }]} />
-          <View style={{ flex: 1, marginLeft: Spacing.sm }}>
+          {textRows ? null : <View style={[styles.skeletonThumb, { backgroundColor: colors.skeleton }]} />}
+          <View style={{ flex: 1, marginLeft: textRows ? 0 : Spacing.sm }}>
             <View style={[styles.skeletonLine, { backgroundColor: colors.skeleton, width: "65%" }]} />
             <View
               style={[

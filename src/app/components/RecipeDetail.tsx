@@ -57,8 +57,10 @@ import { formatIngredientAmountUnit } from "../../lib/recipe-ingredients/formatI
 import {
   deriveIngredientVerificationTier,
   ingredientShouldShowVerifyCta,
-  type IngredientVerificationTier,
 } from "../../lib/recipe-ingredients/ingredientVerificationStatus.ts";
+import { ING_TIER_COLOR, ING_TIER_LABEL } from "../../lib/recipe-ingredients/ingredientTierDisplay.ts";
+import { RecipeIngredientTextRows } from "./suppr/recipe-ingredient-text-rows.tsx";
+import { postIngredientImage, EMPTY_TILE_SOURCES } from "../../lib/recipe/postIngredientImage.ts";
 import { structuredIngredientsForVerify } from "../../lib/recipe-ingredients/structuredIngredientsForVerify.ts";
 import {
   flatMacroRowsFromVerifyJson,
@@ -311,15 +313,8 @@ function mapDbIngredientToRow(row: DbIngredientRow): IngredientRow {
   return out;
 }
 
-// Inline ingredient-card tier → colour + label (F-120; ENG-1431: estimated is amber, not red — ENG-1296).
-const ING_TIER_COLOR: Record<IngredientVerificationTier, string> = {
-  verified: "var(--success)", partial: "var(--warning)",
-  estimated: "var(--warning)", unverified: "var(--foreground-tertiary)",
-};
-const ING_TIER_LABEL: Record<IngredientVerificationTier, string> = {
-  verified: "Structured", partial: "Partial match",
-  estimated: "Estimated", unverified: "Unverified",
-};
+// Tier → colour/label maps moved to ingredientTierDisplay.ts (ENG-1611 —
+// shared with the text rows).
 
 function RecipeHeroImage({
   src,
@@ -348,18 +343,6 @@ function RecipeHeroImage({
     // eslint-disable-next-line @next/next/no-img-element
     <img src={src} alt={alt} className={className} style={style} onError={() => setBroken(true)} />
   );
-}
-
-/** Web transport for the ingredient-image lazy generate-on-miss endpoint —
- *  module-level + stable so `useIngredientTileImages`'s effect deps can safely
- *  exclude it. */
-function postIngredientImage(body: { names: string[]; aliases?: Array<{ name: string; aliasKey: string }> }) {
-  return fetch("/api/ingredient-image", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
-    body: JSON.stringify(body),
-  });
 }
 
 // ENG-1380 — terminal contract for the recipe-detail loading skeleton: bound
@@ -1089,9 +1072,12 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
 
   // Sloe image system (2026-06-08) + ENG-1276 alias fallback — hydrate the
   // ingredient tile images by `name_key`. Shared hook keeps web/mobile in sync.
+  // ENG-1611 — text rows need no tile images: empty source list means no
+  // ingredient_images read and no generation enqueue.
+  const ingredientTextRows = isFeatureEnabled("ingredient_text_rows_v1");
   const ingredientImageMap = useIngredientTileImages(
     supabase,
-    ingredients,
+    ingredientTextRows ? EMPTY_TILE_SOURCES : ingredients,
     postIngredientImage,
   );
 
@@ -2972,6 +2958,16 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
               >
                 No ingredients listed yet.
               </div>
+            ) : ingredientTextRows ? (
+              /* ENG-1611 — prototype .w-ing text rows; legacy tile grid in the else. */
+              <RecipeIngredientTextRows
+                ingredients={ingredients}
+                servings={servings}
+                baseServings={baseServings}
+                dbIngredientIds={dbIngredientIds}
+                onVerify={(index) => { setVerifyIndex(index); setVerifySearchOpen(true); }}
+                onOverride={(index) => setOverrideIndex(index)}
+              />
             ) : (
               <ul className="grid grid-cols-3 sm:grid-cols-4 gap-3" aria-label="Ingredients">
                 {ingredients.map((ingredient, index) => {
