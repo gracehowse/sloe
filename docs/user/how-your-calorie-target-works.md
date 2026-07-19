@@ -1,12 +1,11 @@
 # How your calorie target works
 
-**Audience:** End Users
-
 Every day, Suppr shows you a calorie target and a "maintenance" number — the
-calories you'd burn on a quiet day. This page explains, in plain English, where
-those numbers come from and how they change over time. You can see a short
-version of this any time inside the app: open **Daily targets** and tap **How is
-this calculated?**
+calories you'd burn on a quiet day. This page explains where those numbers
+come from, how your Apple Watch fits in, and how they change over time.
+
+You can see a short version of this any time inside the app: open **Daily
+targets** and tap **How is this calculated?**
 
 ## The short version
 
@@ -19,12 +18,20 @@ this calculated?**
 3. **Partly-logged days don't count.** A day where it looks like you only logged a
    snack doesn't get used for learning — so a forgotten dinner can never drag
    your number down.
-4. **Your Watch helps, in its lane.** If you wear an Apple Watch, your workouts
-   and activity get added to *today's* budget the day you earn them, and we use
-   its resting-burn reading as a sanity check. We don't average workout calories
-   into your everyday baseline.
+4. **Your Watch helps, in its lane — and sometimes more.** If you wear an Apple
+   Watch, your workouts and activity get added to *today's* budget the day you
+   earn them, and we use its resting-burn reading as a sanity check. If you
+   wear it consistently enough, it can go further than a sanity check: your
+   Watch's actual observed burn can become the number your whole maintenance
+   is based on, replacing the formula or the learned-from-logging number
+   outright. More on this below.
 5. **It moves gently.** Your number updates gradually as we learn, and it never
    drifts outside a sensible range of your starting estimate.
+6. **Screens are catching up with each other.** We're working to make every
+   screen in the app show your maintenance number the same way. Until that's
+   finished, it's possible to see a different maintenance number on Daily
+   targets than on Today, Progress, or your Activity summary for the same
+   day — see "If two screens show slightly different numbers" below.
 
 ## Where your first number comes from
 
@@ -65,12 +72,14 @@ one you can trust.
 
 ## What your Apple Watch does (and doesn't) do
 
-If you wear an Apple Watch, you might expect it to set your calorie burn directly.
-We deliberately don't do that, and here's the honest reason: wearables are
-excellent at heart rate and steps, but their estimate of *calories burned during
-exercise* is the least reliable number they produce — it can be off by a lot.
+If you wear an Apple Watch, you might expect it to set your calorie burn
+directly. For most Watch wearers, we deliberately don't do that by default,
+and here's the honest reason: wearables are excellent at heart rate and
+steps, but their estimate of *calories burned during a single workout* is the
+least reliable number they produce — it can be off by a lot. (There's an
+exception to this — see the next section.)
 
-So we give your Watch the jobs it's genuinely good at:
+So, most of the time, we give your Watch the jobs it's genuinely good at:
 
 - **Today's activity bonus.** Workouts and movement add to *today's* budget on the
   day you do them. Earn a hard session, eat a bit more that day — without it ever
@@ -78,9 +87,39 @@ So we give your Watch the jobs it's genuinely good at:
 - **A sanity check.** We use your Watch's resting-burn reading as a floor, to
   catch any number that drifts implausibly low.
 
-What we don't do is fold your workout calories into your baseline maintenance,
-because that would both lean on the Watch's weakest number and double-count the
-activity you've already been credited for that day.
+In this mode, we don't fold your workout calories into your baseline
+maintenance, because that would both lean on the Watch's weakest number and
+double-count the activity you've already been credited for that day.
+
+### When your Watch is good enough to set your whole number
+
+There's one case where your Watch does more than sanity-check your number —
+it *sets* it. If you wear it consistently enough — roughly two weeks of
+solid, mostly-continuous daily wear — we can measure your actual full-day
+burn (resting *and* active) instead of estimating it from a formula or from
+your logs. When we have that much reliable data, your **measured
+maintenance** replaces the formula or learned-from-logging number outright.
+An observed full day of real burn is a better maintenance source than any
+estimate.
+
+A few honesty rules keep this safe:
+
+- We use the **middle** (median) of your recent full-day totals, not an
+  average, so one big workout day or one barely-worn day can't skew your
+  number.
+- We still won't let your measured number recommend *less* food than your own
+  formula-based safety minimum. If a measured reading comes in
+  unrealistically low — usually a sign of a wear-tracking gap, not a real
+  metabolic dip — we quietly fall back to your formula number instead of
+  under-feeding you.
+- When your measured number is doing the job, your daily activity bonus turns
+  off. Your workout calories are already inside that number, so we don't add
+  them a second time on top.
+
+This is a newer part of Suppr and it's being rolled out gradually, so you may
+not have it yet even if you wear a Watch every day. When you do, the app
+labels the number clearly as coming from **Apple Health**, rather than a
+formula or your logs, so you always know which one you're looking at.
 
 ## How your number changes over time
 
@@ -108,6 +147,25 @@ kcal for men, 1,200 for women), we'll show you exactly that and ask you to tick 
 box to confirm before saving. We don't stop you — but we make sure it's a
 deliberate choice, and we point you to the guidance behind those numbers.
 
+## If two screens show slightly different numbers
+
+We're working on making sure every screen that shows your maintenance
+number — Daily targets, Today, Progress, and your Activity summary — always
+shows exactly the same figure. Most of the time they already agree. Right
+now, though, it's possible on the phone app to see a noticeably different
+maintenance number on **Daily targets** than on **Today**, **Progress**, or
+your **Activity summary** for the same day. This happens because Daily
+targets sometimes uses a simpler calculation than the other screens when
+there isn't enough learned or measured data yet — not because your
+underlying data disagrees with itself.
+
+It doesn't affect the food you've logged or the target you're working
+toward day to day — it's specifically the maintenance readout that can be
+briefly inconsistent between screens. If you spot a mismatch, go to **Daily
+targets** and tap **Recalculate** to get that screen's most current number.
+We're working to bring every screen in line, and we'll update this page
+once that's done.
+
 ## A note on accuracy
 
 Every number in Suppr is an estimate, including this one. We use the widely-used
@@ -117,16 +175,15 @@ substitute for medical advice — please talk to your doctor before making a
 significant change to how you eat, especially if you're pregnant, under 18, or
 managing a health condition.
 
-## Where this comes from
+We chose this way of calculating your numbers after comparing several
+well-established methods for estimating metabolism, always favouring
+whichever one is least likely to under-feed you or lead you astray. If
+you're curious about the details, our support team is happy to walk you
+through it.
 
-The method behind these numbers — and the evidence we weighed in choosing it — is
-written up for the curious in the repository:
+## Related help articles
 
-- Decision: [`docs/decisions/2026-06-10-adaptive-tdee-gating.md`](../decisions/2026-06-10-adaptive-tdee-gating.md)
-- Methodology survey: [`docs/ux/research/2026-06-10-tdee-methodology-survey.md`](../ux/research/2026-06-10-tdee-methodology-survey.md)
-
-## Related documents
-
-- [Getting Started](getting-started.md)
-- [Product Overview](../product/overview.md)
+- Getting Started
+- What Suppr does and how it works
+- How your weekly progress is calculated
 

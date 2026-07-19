@@ -1,140 +1,184 @@
 # Web / mobile parity & navigation scope
 
-**Status:** Active product decisions (engineering follows; do not “fix” as unscoped parity bugs).
+Suppr is one product that happens to run on two platforms. This page records
+where web and mobile are meant to behave identically, where they're
+deliberately different (and why), and where a gap simply hasn't been closed
+yet. Where the platforms differ, treat it as a documented product choice, not
+a bug to fix quietly on the side.
 
-**Last confirmed:** 2026-06-17
+**Last confirmed:** 2026-07-19
 
-**D-P1-7 maintenance (2026-04-25):** No new **intentional** divergences were recorded this cycle. Optional product follow-up (tickets, copy spec) for visual / voice-photo parity lives in [`PARITY_PRODUCT_QUEUE.md`](PARITY_PRODUCT_QUEUE.md), not as “open” audit rows. Re-open **exceptions** in this document (or `docs/decisions/`) only when product signs a new intentional divergence.
+No new intentional differences were added in the most recent review. Smaller
+follow-up ideas for visual polish and voice/photo parity live in
+[`PARITY_PRODUCT_QUEUE.md`](PARITY_PRODUCT_QUEUE.md) rather than as open items
+here. A new intentional difference gets added to this document (or to
+`docs/decisions/`) only once product has actually signed off on it.
 
-### D-P1-7 — Rolling maintenance (do each quarter or before a major release)
+### Keeping this page current
 
-1. Skim **merged PRs** that touched only one platform’s UI; confirm each either has a matching change, a filed follow-up, or a new row in the summary table above with rationale.  
-2. Skim [`PARITY_PRODUCT_QUEUE.md`](PARITY_PRODUCT_QUEUE.md) for P-P2-1 / P-P2-2 closure updates (optional).  
-3. Bump **Last confirmed** (this document); if you maintain the consolidated audit log, align its historical *Last cross-check* note for D-P1-7 when you complete the pass.  
-4. If product **signs** a new intentional divergence: add a short bullet under the right table row (or a `docs/decisions/` note) and link it from the consolidated checklist.
+Roughly every quarter, or before a major release, it's worth:
 
-## Cross-platform completion gate (non-negotiable)
+1. Checking recently merged changes that touched only one platform's UI, and
+   confirming each either has a matching change on the other platform, a
+   tracked follow-up, or a new row below with a rationale.
+2. Checking [`PARITY_PRODUCT_QUEUE.md`](PARITY_PRODUCT_QUEUE.md) for anything
+   ready to close out.
+3. Bumping the **Last confirmed** date above.
+4. Adding a short entry to the table below (or a `docs/decisions/` note)
+   whenever product signs off on a new intentional difference.
 
-Any change that **ships, removes, improves, or fixes** a user-visible feature on **one** platform must:
+## Why parity matters
 
-1. **Identify** the corresponding surface on the **other** platform (screen, API consumer, shared helper).
-2. **Decide** parity: match behaviour, match copy, or **document an intentional** platform-only difference (with rationale in this file or `docs/decisions/`).
-3. **Update** shared logic in `src/lib/**` when the behaviour is meant to be identical; then wire **both** clients.
-4. **Update** tests (Vitest parity / Maestro / Playwright) and **journey or parity notes** here when behaviour changes.
+People move between the web app and the mobile app expecting the same
+product — same behaviour, same copy, same features. A difference they notice
+reads as a bug, even when it isn't. So whenever a user-visible change ships,
+is removed, or is improved on one platform, it gets checked against the
+other:
 
-**A change is not complete until both platforms have been reviewed** — see also [Testing system — task completion gate](../testing/SYSTEM.md#task-completion-gate-non-negotiable) and [Genesis §2](../genesis/README.md#2-task-completion-gate-non-negotiable).
+1. Find the matching surface on the other platform.
+2. Decide: should this match exactly, or is it a deliberate, documented
+   difference (recorded here or in `docs/decisions/`)?
+3. When behaviour is meant to be identical, build it as shared logic both
+   platforms call into — not two separate copies that can quietly drift
+   apart.
+4. Update this document, and the relevant tests, whenever behaviour changes.
+
+A change isn't finished until both platforms have been considered against it
+— see also [Testing system — task completion gate](../testing/SYSTEM.md#task-completion-gate-non-negotiable)
+and [Genesis §2](../genesis/README.md#2-task-completion-gate-non-negotiable).
 
 ---
 
-## Current parity summary (high level)
+## Where the platforms stand today
 
 | Area | Status | Notes |
 |------|--------|--------|
-| **Shared nutrition / planning math** | **Aligned** | `src/lib/nutrition/**`, meal plan algo, verify pipeline, TDEE helpers consumed by both. |
-| **Quick Add / usual meals** | **Aligned (logic)** | Helpers in `src/lib/nutrition/foodHistory.ts`, `favoriteFoods.ts`, `savedMeals.ts`, `savedMealsLogic.ts`; web `quick-add-panel` + mobile `QuickAddPanel` are wrappers — divergent behaviour is a **regression**. |
-| **Food search ranking / dedupe / source labels** | **Aligned (logic)** | ENG-1113 moved merged-row ranking, defensive filtering, per-source dedupe, confidence-tier stamping, and source labels to `src/lib/nutrition/foodSearchMerge.ts`; web `FoodSearchPanel` and mobile `verifyRecipe.mergeResults` are thin callers. |
-| **Discover quick filters** | **Aligned (Popular)** | Both load global save counts after the community recipe list fetch (`fetchPublicRecipeSaveCounts` → `public_recipe_save_counts_batch` + `DISCOVER_POPULAR_MIN_SAVES`); **Popular** = saves ≥ threshold. Web `DiscoverFeed` + mobile `discover.tsx` use the same constant. Mobile offline cache stores **enriched** rows (counts included) and re-fetches counts when hydrating from cache if Supabase is reachable (P-P2-3). |
-| **Stripe vs IAP** | **Intentionally different billing rails** | Documented in [`subscriptions-stripe-and-iap.md`](subscriptions-stripe-and-iap.md); entitlements must match in **`profiles.user_tier`**. |
-| **Apple Health / Apple Sign-In** | **Mobile-first / native** | Web has manual steps / different OS capabilities — **intentional**. |
-| **Fasting timer** | **Aligned (web expanded 2026-05-14)** | [`../decisions/2026-04-fasting-web-scope.md`](../decisions/2026-04-fasting-web-scope.md) — web ships ring + milestones + projected end + history + landing card; remaining deliberate deltas are long-press End Fast (mobile only), long-press delete history row (mobile only), push notifications (mobile only, web notifications deferred). |
-| **Discover / Plan / Profile chrome** | **May diverge visually** | Styling and density may differ until a **product pass** tickets explicit UI parity. |
-| **Today — colour + macro hues (light)** | **Enforced** | `theme.css` ↔ `Colors.light` parity test (`tests/unit/crossPlatformThemeTokens.test.ts`); over-budget ring + macro captions use amber tokens (ENG-624–625); state-matrix captures in `docs/ux/captures/today-premium-2026-05-19/`. |
-| **Today — dark surfaces** | **Intentional delta (documented)** | Mobile dark bg `#0a0a0f` vs web `#101014` — platform-native depth; not a regression. Revisit in P4 if product wants pixel-match. |
-| **Today — layout / chrome** | **Aligned (P1)** | Calm date header, ≤2 below-meals prompts, desktop week rail, auth cold-open routes — see Premium P1 sign-off checklist. |
-| **Today — hero status pills** | **Aligned (flag-gated)** | "On track" (logged + within ±10% of target) + "Adaptive TDEE learning · N of 7 days" pills below the hero stats. Web `today-hero-stats.tsx` (desktop hero) + mobile `TodayHero.tsx` (below ring). Both behind `today-status-pills`. `tdeeLearnDays` is currently a confidence-bucket proxy (high=6 / medium=4 / low=2) until a real weigh-in count lands (ENG-758). ENG-753; tests `tests/unit/todayStatusPills.test.tsx` (web) + `apps/mobile/tests/unit/todayStatusPills.test.tsx` (mobile). |
-| **Today — weekly insight card** | **Aligned (flag-gated)** | Web `today-weekly-insight-card.tsx` (desktop right-rail) + mobile `WeeklyInsightCard.tsx` (below meals). Shared sparkline maths (`max(target × 1.2, ...daily, 1)`); empty days clamp to 4% baseline; `weekAvgKcal=null` → no faux "0 kcal". Mobile behind `today-weekly-insight-mobile`; `householdSize` is the honest minimum (1) until the Today data layer exposes membership (ENG-758). ENG-754; test `apps/mobile/tests/unit/weeklyInsightCardMobile.test.tsx`. |
-| **Progress — trend summary tiles** | **Aligned (flag-gated)** | Web `TrendSummaryCardWeb` (in `ProgressDashboard.tsx`) + mobile `TrendSummaryCard.tsx` (above `DigestStoryCard`). Rows: days hit calorie target (±10%), days hit protein target, weigh-ins, optional projected goal. Mobile behind `progress-trend-summary-mobile`. ENG-755; test `apps/mobile/tests/unit/trendSummaryCardMobile.test.tsx`. |
-| **Discover — fit-% badge** | **Aligned (NOT rendered, both)** | F-45 (2026-04-22) removed the fit-% pill on both surfaces; `computeRecipeFitPercent` stays imported (`void`) for a future ranking pass. ENG-756 parity audit (2026-05-27) confirmed no drift — no action. Removal pinned by `tests/unit/recipeCardFitBadge.test.ts`. |
+| **Nutrition and meal-plan math** | **Aligned** | Calorie and macro calculations, meal-plan logic, ingredient verification, and calorie-target calibration all run through one shared engine that both apps call into — results are identical everywhere by construction, not by convention. |
+| **Quick Add (Favourites / Frequent / Recent / Usual meals)** | **Aligned** | Governed by one shared set of rules; web and mobile just render it differently. A different tab order, empty-state message, or AI-logged-item handling between the two would be a bug, not a style choice — see "Quick Add panel" below. |
+| **Food search ranking, de-duplication, and source labels** | **Aligned** | Ranking, de-duplication, and confidence labelling for search results run through one shared library, so searching for the same ingredient returns the same ranked list with the same source labels on both platforms. |
+| **Discover "Popular" filter** | **Aligned** | Both platforms use the same save-count threshold to decide which community recipes count as Popular, so the same recipe qualifies (or doesn't) either way. Mobile's offline cache keeps the same counts and refreshes them once it's back online. |
+| **Billing** | **Intentionally different rails** | Web subscribers pay through Stripe; mobile subscribers pay through Apple's in-app purchase system, because that's how each platform's payment rules work. Whichever rail someone pays through, their subscription status lands in the same place, so a Pro subscriber is Pro everywhere. Detail: [Stripe and IAP](subscriptions-stripe-and-iap.md), [monetisation and paywall journey](../journeys/monetisation-and-paywall.md). |
+| **Apple Health and Apple Sign-In** | **Mobile-first, intentionally** | These are iOS system features with no web equivalent, so mobile gets native integrations (step tracking, one-tap sign-in) that web replaces with manual entry or password sign-in. Concrete examples: the Progress "Steps" card and the onboarding "Connect Apple Health" prompt exist only on mobile. See the [Progress journey](../journeys/progress.md) and the [onboarding journey](../journeys/onboarding-to-first-log.md). |
+| **Onboarding sign-up method** | **Known limitation** | During onboarding sign-up, web only offers email and password; mobile only offers Sign in with Apple. Web does have an Apple option on its general sign-in screen, just not in this specific onboarding step — and nobody has recorded a product reason why the onboarding step itself excludes Apple on web, separately from the broader "Apple features are mobile-native" rule that explains the rest of the mobile-first Apple integrations. Worth a decision rather than an assumption. Detail: [onboarding journey](../journeys/onboarding-to-first-log.md), "Signup" section. |
+| **Legal and reference pages** (DMCA policy, licences, help, roadmap) | **Web-only, by design** | These pages live only on the web, with no mobile screen — apart from Privacy and Terms, which mobile links out to in the browser, mobile has no way to reach them at all. Low-traffic reference pages where a native mobile build isn't worth the cost. Rationale: [DMCA/licences/whats-new decision](../decisions/2026-05-05-public-routes-dmca-licences-whats-new.md); detail: [marketing-to-signup journey](../journeys/marketing-to-signup.md). |
+| **Fasting timer** | **Aligned** | Web now carries the full experience — timer ring, milestones, projected end time, history, and a landing-page card — matching mobile. A few small interactions stay mobile-only because they depend on touch gestures or push notifications: ending a fast early via long-press, deleting a history entry via long-press, and fasting push reminders. Detail: [fasting web-scope decision](../decisions/2026-04-fasting-web-scope.md). |
+| **Discover, meal planner, and Profile styling** | **Not yet aligned** | Layout, spacing, and density can differ between web and mobile today. Closing this needs a deliberate design pass rather than an automated fix — see "Discover, Plan, and Profile still need a visual-parity pass" below. |
+| **Today colours (light mode)** | **Aligned** | Today's colours, including the amber over-budget state, are pinned to the same design tokens on both platforms and checked automatically, so they can't quietly drift apart. |
+| **Today dark-mode background tone** | **Intentional, small difference** | Dark mode uses a very slightly different background shade on each platform, matched to how each platform's dark surfaces typically read. Not worth chasing pixel-perfect unless product decides it matters. |
+| **Today layout** | **Aligned** | The date header, the capped number of prompts below the meal list, the desktop week view, and sign-in entry points all match across platforms. |
+| **Today status badges** | **Aligned** | Both platforms show the same two badges under the day's totals: "On track" when someone's logged and within range of their target, and an "Adaptive TDEE learning" badge while the system is still calibrating someone's calorie target from real data. One known limitation: the "days learning" count in that badge is currently estimated rather than counted from actual weigh-ins, until real weigh-in tracking is wired into that number. |
+| **Today weekly trend card** | **Aligned** | Both platforms show a weekly calorie-trend sparkline below the day's totals (desktop side rail on web, below the meal list on mobile), using the same maths so the shapes match. One known limitation: the household-size figure behind the comparison currently defaults to 1 rather than reflecting an actual household, until that data is wired through. |
+| **Progress trend tiles** | **Aligned** | Both platforms show the same trend tiles: days the calorie target was hit, days the protein target was hit, weigh-ins logged, and (optionally) a projected goal date. |
+| **Recipe "fit %" badge** | **Aligned (not shown, either platform)** | Neither platform currently shows a recipe fit-percentage badge — it was removed from both when it wasn't earning its place on the card. The underlying calculation still exists in case it's useful for a future recipe-ranking feature, but nothing renders it today. |
+| **Incident banner** | **Aligned as a tool, asymmetric in practice** | Both platforms share the same global incident banner, switched on manually from the analytics dashboard during a live outage (e.g. a Supabase outage), with the same fallback message if no custom text is set. It's off by default and never turns itself on — an incident tool, not a live health-check widget. Known limitation: on mobile, the banner can only reach someone who has explicitly accepted analytics tracking — a person who declined, or hasn't yet answered that prompt, will never see it, whatever's switched on. Web has no such gate; it reaches everyone regardless of their tracking choice. In practice, treat the in-app banner as reaching most but not all mobile users, and effectively all web users — status.suppr.club and outbound channels (email, social) remain the only way to guarantee everyone hears about an incident. Detail: [disaster-recovery runbook](../runbooks/disaster-recovery.md). |
 
-### 2026-05-25 sweep — retired divergences + convergence decisions
+### Five differences we retired in 2026-05-25
 
-The full-product sweep RETIRED five previously-documented divergences — engineering should now drive these to **parity** (no longer "intentional"):
+A wider review that quarter closed five gaps that had previously been
+treated as acceptable platform differences. From that point on, engineering
+treats these as parity requirements, not stylistic choices:
 
-| Was a carve-out | Now | Issue |
-|---|---|---|
-| Paywall default (web monthly / mobile annual) | Unify to **monthly** both platforms (verify IAP trial SKU) | ENG-698 |
-| Move-meal (mobile-only) | Add to web `/planner` | ENG-699 |
-| Recipe "Go Public" (web-only) | Add to mobile | ENG-700 |
-| Onboarding Welcome copy (web vs mobile) | Fresh copy pass, matched | ENG-697 |
-| Discover IA (may diverge visually) | Converge mobile to web cuisine-carousel | ENG-695 |
+- **Paywall default billing period** — web used to default to monthly and
+  mobile to annual; both now default to monthly.
+- **Moving a meal between days** — used to be mobile-only; now available on
+  web's planner too.
+- **Making a recipe public** — used to be web-only; now available on mobile
+  too.
+- **Onboarding welcome copy** — web and mobile used to carry different copy;
+  now matched.
+- **Discover layout** — mobile has converged to web's cuisine-carousel
+  layout.
 
-**Still intentional (KEEP):** onboarding step count web N/13 vs mobile N/12; iOS-only; calorie-ring colour map; Stripe vs IAP rails; Apple Health mobile-first; Today dark tone. Fourth-tab canonical label = **"Progress"** (testID `tab-you` kept for Maestro). Full rationale: [`../decisions/2026-05-25-sweep-parity-ia-pricing-resolutions.md`](../decisions/2026-05-25-sweep-parity-ia-pricing-resolutions.md).
+**Still genuinely intentional:** the onboarding step count (web runs one
+step longer than mobile, which has an extra plan-refresh step), the
+iOS-only build, the calorie-ring colour system, the Stripe/Apple-IAP billing
+split, Apple Health being mobile-first, and the slightly different
+dark-mode tone on Today. The fourth mobile tab is labelled "Progress." Full
+rationale: [sweep resolutions decision](../decisions/2026-05-25-sweep-parity-ia-pricing-resolutions.md).
 
-### 2026-06-17 — Plan Import web gap CLOSED (ENG-696)
+### Plan Import reached web — 2026-06-17
 
-Plan Import shipped mobile-first; the web app had no equivalent surface. ENG-696
-built the web Plan-Import flow to parity at `/plan-import` (paste → parse →
-review → assessment → commit), reusing the **same** `/api/plan-import/parse`
-route and a **shared** `commitPlanImport` pipeline (mobile's commit is now a
-thin wrapper around it). Gated on the shared `plan_import_enabled` flag.
+Plan Import — paste in a meal plan, have it parsed and reviewed, then commit
+it to your week — shipped on mobile first. Web now has the same flow at
+`/plan-import`: paste, parse, review, and commit, built on the same
+underlying parsing and commit logic as mobile, so the two stay in sync going
+forward.
 
-**One intentional remaining difference (not drift):** the mobile flow offers
-Paste / PDF / Photo source tabs; the web spine ships **paste only**. Web PDF +
-photo source tabs are tracked under the Plan Import **Sprint 2 (PDF + image)**
-project (same extract route + review UI). See
-[`../planning/plan-import-linear-program.md`](../planning/plan-import-linear-program.md)
-"Web parity (ENG-696)".
+**One remaining, deliberate gap:** mobile lets someone import a plan from a
+pasted list, a PDF, or a photo; web currently supports paste only. PDF and
+photo import on web are planned as a follow-up. See the
+[Plan Import planning notes](../planning/plan-import-linear-program.md).
+
+### Known limitations not yet resolved
+
+A few platform differences exist today without a clear, recorded product
+decision behind them. Worth naming rather than treating as either bugs or
+settled choices:
+
+- **The onboarding sign-up method split** (mobile Apple-only, web
+  email/password-only) — see the row above.
+- **"Add to my regulars" in Cook Mode** is mobile-only today. The original
+  note describing this feature didn't say it should be mobile-only
+  specifically — it reads as though cross-platform support was assumed —
+  so this looks more like an unintentional gap than a deliberate choice,
+  though nobody has ruled on it. Detail:
+  [discover and library journey](../journeys/discover-and-library.md).
+- **Cookbook PDF import** is mobile-only today, and it's never been decided
+  whether that's meant to be permanent or is simply where the feature
+  happened to launch first. Detail:
+  [import cookbook journey](../journeys/import-cookbook.md).
+
+These stay as open questions in their own journey docs until product makes a
+call on each.
 
 ---
 
-## Discover / Plan / Profile — screen-by-screen audit
+## Discover, Plan, and Profile still need a visual-parity pass
 
-- **Discover, Plan (meal planner), and Profile** may still differ between web and mobile in **styling, density, and minor feature placement**.
-- Closing those gaps is a **manual product pass** (screen-by-screen review, acceptance criteria, then ticketed work).
-- **No standing engineering mandate** to drive repo-wide alignment from an automated audit alone.
+Discover, the meal planner, and Profile are functionally the same on both
+platforms, but their styling, density, and exact feature placement can
+differ. Closing that gap isn't something that can be automated — it needs a
+deliberate, screen-by-screen design review that decides, for each surface,
+what should match exactly and what's fine to leave different, with the
+reasoning written down either way. Until that review happens, differences
+here aren't bugs to fix opportunistically.
 
-## Photo / voice parity and tier gating
+## Photo and voice logging need a copy and UX pass too
 
-- **Photo logging and voice logging** remain **partial parity** where copy and UX naturally overlap other work.
-- **No new** subscription **tier gating**, paywall surfaces, or **mobile-only** logging flows are in scope until product runs a dedicated initiative.
-- Do not expand scope (e.g. new Pro gates, exclusive mobile entry points) without an explicit product spec.
+Photo logging and voice logging already work the same way on both platforms
+where it matters most — the subscription rules (what's free, what's Pro) are
+enforced consistently and covered by tests. What hasn't had a dedicated pass
+is the surrounding experience: matching copy, matching entry points, and
+matching empty-state and error messaging, so the two apps feel like one
+product when someone tries these features. Until product defines exactly
+what should match, engineering isn't adding new Pro gates or mobile-only
+entry points to these flows — that would be building against an undefined
+target.
 
-## Library navigation
+## Why Library isn't a bottom tab
 
-- **Library is not a bottom tab** by design.
-- Discovery path: **header shortcut** to Library plus the **hidden `view=library` route** (and equivalent deep links where applicable).
-- Treat “Library missing from tab bar” as **intentional information architecture**, not a defect, unless product reopens navigation.
+Library is reachable through a header shortcut and a direct link rather than
+living in the bottom tab bar — a deliberate information-architecture choice,
+not an oversight. Don't read its absence from the tab bar as something to
+fix unless product decides to revisit mobile navigation.
 
-## Quick Add panel (Favourites / Frequent / Recent / Usual meals)
+## Quick Add panel
 
-**Rule (audit H1, 2026-04-18):** Quick Add panel logic lives in
-`src/lib/nutrition/foodHistory.ts`, `favoriteFoods.ts`, `savedMeals.ts`,
-and `savedMealsLogic.ts`. The mobile `apps/mobile/components/QuickAddPanel.tsx`
-and web `src/app/components/suppr/quick-add-panel.tsx` are render-only
-wrappers around those helpers. Divergent behaviour — different tab order,
-different empty-state copy, different AI-source detection, etc. — is a
-regression, not a stylistic choice. The AI-source detection rule itself
-lives in `isAiSourcedFoodHistoryItem(item)` and is imported by both
-components; if the rule changes, change it once there.
+Favourites, frequent items, recent items, and usual meals are governed by
+one shared set of rules that both platforms simply render. A different tab
+order, different empty-state wording, or different handling of AI-logged
+items between web and mobile is a bug, not a design choice. When that logic
+needs to change, it changes once, in one place, and both platforms pick it
+up automatically.
 
 ---
-
-## Backlog: P-P2-1 — Discover / Plan / Profile visual parity (product)
-
-Engineering **does not** treat styling-only drift as bugs until product defines acceptance. Use this map to run a **screen-by-screen** review (density, typography, empty states, filter placement).
-
-| Surface | Web (primary) | Mobile (primary) | Automation hints |
-|---------|---------------|------------------|------------------|
-| Discover feed + filters | [`src/app/App.tsx`](../../src/app/App.tsx) (`DiscoverFeed`), [`src/app/components/DiscoverFeed.tsx`](../../src/app/components/DiscoverFeed.tsx) | [`apps/mobile/app/(tabs)/discover.tsx`](../../apps/mobile/app/(tabs)/discover.tsx) | Maestro `apps/mobile/.maestro/11_discover.yaml` |
-| Meal planner | [`src/app/components/MealPlanner.tsx`](../../src/app/components/MealPlanner.tsx) | [`apps/mobile/app/(tabs)/planner.tsx`](../../apps/mobile/app/(tabs)/planner.tsx) | `03_meal_plan.yaml` |
-| Profile | [`src/app/components/Profile.tsx`](../../src/app/components/Profile.tsx) | [`apps/mobile/app/profile.tsx`](../../apps/mobile/app/profile.tsx) | `04_profile_settings.yaml`, `34_profile_targets.yaml` |
-
-**Definition of done (product):** written acceptance per row (or “explicitly allow divergence”) + tracked tickets; then engineering can align components without guesswork.
-
-## Backlog: P-P2-2 — Voice / photo parity spec (product)
-
-**Tier gates and API behaviour** are already covered by server routes and integration tests — this backlog is **copy, entry points, empty states, and cross-platform messaging** so both apps feel like one product.
-
-| Concern | Web | Mobile | Engineering verification (already in repo) |
-|---------|-----|--------|-----------------------------------------------|
-| Voice log UI | [`src/app/components/suppr/voice-log-dialog.tsx`](../../src/app/components/suppr/voice-log-dialog.tsx) | [`apps/mobile/components/VoiceLogSheet.tsx`](../../apps/mobile/components/VoiceLogSheet.tsx) | [`tests/integration/voiceLogRoute.test.ts`](../../tests/integration/voiceLogRoute.test.ts), [`src/lib/nutrition/aiLogging.ts`](../../src/lib/nutrition/aiLogging.ts) |
-| Photo log UI | [`src/app/components/suppr/photo-log-dialog.tsx`](../../src/app/components/suppr/photo-log-dialog.tsx) | [`apps/mobile/components/PhotoLogSheet.tsx`](../../apps/mobile/components/PhotoLogSheet.tsx) | [`tests/integration/photoLogRoute.test.ts`](../../tests/integration/photoLogRoute.test.ts) |
-| Paywall / tier copy | [`src/app/components/suppr/ai-paywall-dialog.tsx`](../../src/app/components/suppr/ai-paywall-dialog.tsx) | Same product rules; entry from Today / FAB in [`apps/mobile/app/(tabs)/index.tsx`](../../apps/mobile/app/(tabs)/index.tsx) | Tier assertions in route tests above |
-
-**Definition of done (product):** a short spec (Notion/Linear) listing matched strings, Pro vs Free behaviour, and error toasts; link that spec from this section when it exists.
 
 ## Related
 
-- Product queue & agent closure rules: [`PARITY_PRODUCT_QUEUE.md`](PARITY_PRODUCT_QUEUE.md)  
-- Maestro and Playwright setup: `apps/mobile/.maestro/README.md`, `tests/e2e/README.md`.  
-- Testing gate: [`docs/testing/SYSTEM.md`](../testing/SYSTEM.md).
+- [`PARITY_PRODUCT_QUEUE.md`](PARITY_PRODUCT_QUEUE.md) — the running list of
+  smaller parity follow-ups.
+- [Testing system](../testing/SYSTEM.md) — the broader quality gate this
+  parity check feeds into.
+- [Disaster-recovery runbook](../runbooks/disaster-recovery.md) — when the
+  incident banner referenced above actually gets switched on, and how we
+  communicate during an incident.

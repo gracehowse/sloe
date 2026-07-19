@@ -5,7 +5,8 @@
 **Status:** Resolved
 **Linear:** ENG-995
 **Source file:** `src/lib/nutrition/northStarSuggestion.ts`
-**Journey doc:** `docs/journeys/north-star-2026-04-27.md`
+**Journey doc:** `docs/journeys/what-to-eat-next.md` (renamed 2026-07-18 from
+`north-star-2026-04-27.md`)
 
 ## Context
 

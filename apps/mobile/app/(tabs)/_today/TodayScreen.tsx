@@ -258,7 +258,7 @@ import {
 } from "@/lib/weeklyCheckin";
 // Phase 3 (B2.1, 2026-04-27) — TodayFabSheet replaced by LogSheet.
 // The component file remains for any deep test references (sweep
-// docs/journeys/log-sheet-2026-04-27.md for migration notes).
+// docs/journeys/log-sheet.md for migration notes).
 import { TodayEditMealModal } from "@/components/today/TodayEditMealModal";
 import { SavedMealPortionSheet } from "@/components/today/SavedMealPortionSheet";
 // TodayNutrientsModal replaced by FullNutrientPanelSheet on 2026-05-02

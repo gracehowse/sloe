@@ -11,17 +11,19 @@ Structured rules for how this tree scales and stays accurate: [genesis/README.md
 ## Documentation Index
 
 ### Product
-- [Product Overview](product/overview.md) — what Suppr is, who it's for, feature map
+- [Product Overview](product/overview.md) — what Suppr is, who it's for, and the canonical map of the product's **15 loops** + **feature areas**, each linking to its journey doc(s). Not a feature-by-feature description — go to the linked journey doc for behaviour detail.
 - [Web / mobile parity scope](product/web-mobile-parity-scope.md) — intentional differences + cross-platform completion gate
 
 ### User Guides
 - [Getting Started](user/getting-started.md) — onboarding, first recipe import, daily usage
+- [How your calorie target works](user/how-your-calorie-target-works.md) — the formula → learned → measured maintenance chain, in plain English
+- [Shortcuts and Widgets](user/shortcuts-and-widgets.md) — Siri Shortcuts / Action Button deep links; no native widget yet
 
 ### User Journeys
-- [Import a Recipe](journeys/import-recipe.md) — URL → parsed recipe → saved to library
-- [Verify Ingredients](journeys/verify-ingredients.md) — ingredient-level nutrition correction
-- [Meal Planning](journeys/meal-planning.md) — generate → review → swap → log → shop
-- [Food Tracking](journeys/food-tracking.md) — daily/weekly diary with meal slots
+See [journeys/README.md](journeys/README.md) for the full loop-first index —
+all 15 product loops with their ordered reading path, plus an A-Z lookup
+table by doc name. Not duplicated here to avoid a second place to keep in
+sync.
 
 ### Technical
 - [Architecture](technical/architecture.md) — system diagram, tech stack, data flow, dependencies

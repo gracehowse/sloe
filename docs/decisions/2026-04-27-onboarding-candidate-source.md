@@ -82,4 +82,7 @@ Open this question again when **any** of:
 
 - Source: production design spec Surface F at `docs/specs/2026-04-27-production-design-spec.md`.
 - Strategic decision parent: `docs/decisions/2026-04-27-strategic-direction.md` D-2026-04-27-14.
-- Phase 3 partial landing: `docs/journeys/onboarding-final-step-2026-04-27.md`.
+- Phase 3 partial landing (historical — the picker step it documented was
+  cut 2026-05-30, `docs/decisions/2026-05-30-cut-onboarding-recipe-picker.md`):
+  `docs/journeys/onboarding-final-step-2026-04-27.md` (now a redirect stub).
+  Current onboarding journey doc: `docs/journeys/onboarding-to-first-log.md`.

@@ -1,13 +1,147 @@
 # User Journey: Import a Recipe
 
-**Audience:** Product / Design
+**Audience:** Product / Design / Engineering / Legal
+**Status:** Live — URL/blog import, share-sheet/deep-link/clipboard capture,
+bulk photo import, and the multi-link queue are all shipped and real on both
+platforms. The safe Instagram/TikTok caption-only path is code-complete but
+**OFF in production** — read the Legal caveat below before treating
+Instagram/TikTok import as a clean, ToS-compliant, shipped feature in any
+external claim.
 
 ## Overview
-User finds a recipe online and imports it into their Suppr library with verified nutrition data.
+A user finds a recipe somewhere else — a blog, a Pinterest pin, an
+Instagram/TikTok post, a photo of a cookbook page, or a stack of photos —
+and brings it into their Suppr library, with nutrition estimated and then
+verified per ingredient. This is the **entry stage** of the founder's core
+loop (see "Loop" below): deep ingredient correction, library organisation,
+cooking, and the legal/attribution handling of third-party content each
+have their own canonical doc, and this file doesn't re-explain those
+stages.
 
-## Related journeys
+**Import** ("this recipe exists somewhere, bring it in") is distinct from
+**[Create a Recipe](create-recipe.md)** ("this recipe doesn't exist yet,
+I'm writing it") — same Library, two different mental models. If you're
+looking for "write my own recipe," that's the doc, not this one.
 
-- **[Import a cookbook (PDF)](import-cookbook.md)** — batch digitise a scanned book into Library (Pro); build the week in Plan separately.
+## Scope
+
+**In scope for this doc:**
+- URL / paste-link import (blog, Pinterest, AllRecipes, etc.)
+- Instagram / TikTok / YouTube social-share import — both the safe
+  caption-only path and the live fallback path (see Legal caveat)
+- Share-sheet / deep-link / clipboard capture (mobile-native entry)
+- Bulk photo import (Pro) and the legacy single-photo OCR path
+- The multi-link queue / staged-progress drawer
+- Import review, save-to-Library, and the post-save success sheet
+
+**Out of scope — covered by their own docs:**
+- Deep per-ingredient nutrition correction after save →
+  [verify-ingredients.md](verify-ingredients.md)
+- Cookbook PDF batch import → [import-cookbook.md](import-cookbook.md)
+- Browsing Discover, organising Library, Cook Mode →
+  [discover-and-library.md](discover-and-library.md)
+- Creating a recipe from scratch → [create-recipe.md](create-recipe.md)
+- Attribution, DMCA takedown, and reporting imported content →
+  [creator-platform.md](creator-platform.md)
+
+## Loop: Import → Verify → Save → Cook/Log
+
+This is the **first leg** of the founder's headline loop — share a recipe,
+get it parsed and nutrition-verified, save it, then cook or log it so it
+feeds the macro spine (Today ring, adaptive TDEE). It's the primary
+viral/retention wedge: "share a Reel, recipe appears in Suppr."
+
+**What comes next, once a recipe is imported:**
+1. **Deep ingredient verification** — correct a low-confidence match, swap
+   an ingredient, add a missing one. → **[verify-ingredients.md](verify-ingredients.md)**.
+   Note: mobile has a dedicated `/recipe/verify?id=` screen reached
+   post-save; web verifies **inline inside this same import form**, with
+   no equivalent standalone route — don't assume the two platforms verify
+   the same way.
+2. **Where the recipe lives** — a saved import lands in the user's
+   Library (Recipes tab) alongside anything found via Discover; from
+   there it's organised into a collection, cooked via Cook Mode, or
+   slotted into Plan. → **[discover-and-library.md](discover-and-library.md)**.
+3. **Attribution / legal handling of imported content** — every imported
+   (non-first-party) recipe carries a source card, a disclaimer, and a
+   link back to the original; a user can report an issue or file a DMCA
+   takedown. → **[creator-platform.md](creator-platform.md)**.
+
+Parallel entry into the same review→save flow: cookbook PDF batch import
+(mobile-only, Pro) — see **[import-cookbook.md](import-cookbook.md)**.
+
+## Legal caveat — Instagram / TikTok import (read before any public claim)
+
+**This section is a required read before anyone makes an external claim
+about "Instagram import" or "TikTok import" — landing page copy, App Store
+listing, social post, or investor deck. Get legal sign-off before making
+any such claim; don't assume this is settled.**
+
+There are two different code paths for an Instagram/TikTok/YouTube share,
+and they have very different legal postures:
+
+1. **The safe path (the only one legally approved as a permanent design).**
+   `POST /api/recipe-import/caption` runs the LLM only on the caption text
+   the user's iOS share sheet handed over — Suppr's server never contacts
+   Instagram or TikTok. This is the rebuild that Suppr's Instagram/TikTok
+   import legal posture conditionally approved. It's gated behind the
+   `IG_TT_IMPORT_ENABLED` server flag (`src/lib/featureFlags/igTtImport.ts`),
+   **which defaults to `false`**. Flag off → the route returns `404` by
+   design, so callers fall through to path 2.
+2. **The fallback path — live in production today, on both platforms.**
+   When the caption route 404s, both web (`src/app/components/RecipeUpload.tsx`)
+   and mobile (`apps/mobile/app/import-shared.tsx`) fall through to
+   `POST /api/recipe-import`, whose social branch calls
+   `fetchSocialPostMeta()` (`src/lib/recipe-import/extractSocialRecipe.ts`).
+   That function does a genuine **server-side fetch of the Instagram/TikTok/
+   YouTube post page itself** (SSRF-guarded, spoofed browser UA), scraping
+   `og:description` / `twitter:description` meta tags for the caption text,
+   plus a supplementary fetch of each platform's oEmbed endpoint for a clean
+   thumbnail/author. This is not an edge case or a rare failure mode — it is
+   the path that runs for **every** Instagram/TikTok/YouTube import while
+   the flag stays at its default (off).
+
+Suppr's legal posture on this is unambiguous: server-side fetching of
+Instagram/TikTok post bodies for recipe extraction is blocked as a
+*permanent design*, with the caption-only rebuild conditionally approved
+as its replacement. `fetchSocialPostMeta()` is exactly the server-side
+post-body fetch that posture blocks — and it is the code path that
+actually runs in production today, because the safe replacement is
+default-off. The two paths were never meant to coexist this way; the
+caption path was built to *replace* the fetch path, not sit behind it as
+an unused fallback.
+
+The gap between policy and code shows up inside the same route: the newer
+Supadata transcript-acquisition adapter *does* self-gate — for
+TikTok/Instagram it returns `blocked_by_policy` and no-ops unless
+`IG_TT_IMPORT_ENABLED` is on (`app/api/recipe-import/route.ts`, ~line 219).
+The older `fetchSocialPostMeta()` call feeding the primary caption/title
+extraction has no equivalent gate. One code path in the file respects the
+legal posture; the other, which runs first and more often, does not — an
+unresolved inconsistency, not a settled exception.
+
+**Open legal question:** whether any part of this fallback — specifically
+the oEmbed metadata call, as distinct from the HTML/meta-tag scrape — is
+defensible as an "official path" carve-out that the original posture
+decision didn't anticipate. This hasn't been ruled on. It's the
+HTML-scrape leg, not the oEmbed leg, that actually does the caption
+extraction; oEmbed only supplies a thumbnail/author name.
+
+Until that question is resolved:
+- Do not describe Instagram/TikTok import as shipped, compliant, or "safe
+  by design" in any external-facing material — internally it is a known,
+  live gap, not a resolved feature.
+- Treat "we never fetch from Instagram/TikTok" as **false** while this
+  fallback is live — it directly contradicts the honest-fetcher framing
+  already shipped for the web/blog path, which explicitly bans "we never
+  use bots" language for the same reason: it isn't true, and the honest
+  framing is stronger anyway.
+- Flipping `IG_TT_IMPORT_ENABLED` to `true` — which would make the safe
+  path the *actual* default and retire reliance on the fallback — needs
+  DMCA designated-agent registration (owner: Grace; still open) and legal
+  sign-off on the privacy-notice/DMCA copy. Flipping the flag does not, by
+  itself, remove the fallback code path — that removal is separate
+  follow-up work, not yet scheduled.
 
 ## Entry Points
 
@@ -18,7 +152,7 @@ User finds a recipe online and imports it into their Suppr library with verified
 4. **Deep link** — `suppr://import?url=...`
 5. **Bulk photo** (Pro, primary path; `import-progress-v2`) — "Import from
    photos" opens a multi-select picker; each photo imports as its own recipe
-   into the queue drawer (ENG-735)
+   into the queue drawer
 
 ### Web
 - **Canonical route:** `/import` (`app/(product)/import/page.tsx`). Like
@@ -31,17 +165,17 @@ User finds a recipe online and imports it into their Suppr library with verified
   "Extract from image" affordance.
 - **In-app navigation:** the desktop sidebar / "Import instead" toggle on
   `/create` route to `/import` via `navigateToView("import")`.
-- **ENG-669 (launch-blocker, fixed):** `/import` once rendered a blank
-  white page because the `pathDerivedView` map in `App.tsx` did not list
-  the `import` (or `create`) segment, so the URL never switched the view
-  to the already-built import UI. The fix adds those segments to the
-  path→view map. Pinned by `tests/unit/webRouteCompletion.test.ts`
-  (route wiring) and `tests/unit/recipeImportSurface.test.tsx` (rendered
-  import UI). The web import flow reuses the same `/api/recipe-import`
+- `/import` once rendered a blank white page, because the
+  `pathDerivedView` map in `App.tsx` didn't list the `import` (or
+  `create`) segment, so the URL never switched the view to the
+  already-built import UI. That's fixed — the map now includes both
+  segments, pinned by `tests/unit/webRouteCompletion.test.ts` (route
+  wiring) and `tests/unit/recipeImportSurface.test.tsx` (rendered import
+  UI). The web import flow reuses the same `/api/recipe-import`
   (URL/social) and `/api/recipe-import/image` (photo OCR) routes as
   mobile — no platform-specific parse logic.
 
-### Mobile idle surface (`recipe-import-redesign`, ENG-997, 2026-06-09)
+### Mobile idle surface (`recipe-import-redesign`, 2026-06-09)
 
 The mobile import idle (`apps/mobile/app/import-shared.tsx`) was un-boxed to
 editorial-premium parity, **flag-gated** behind `recipe-import-redesign` (the
@@ -74,20 +208,28 @@ Source-pinned by `apps/mobile/tests/unit/importSharedRedesign.test.ts`; the
 Maestro flow `25_import_shared.yaml` + e2e `25-import-shared.test.ts` assert the
 new copy.
 
-> **Parity (deferred — see ENG-997 follow-up):** the equivalent web
-> `RecipeUpload` (`src/app/components/RecipeUpload.tsx`) does not yet have the
-> WORKS WITH trust row, the IG/TT caption-preview trust card, or the unified
-> "how this fits your day" labelled-bar treatment. These web parity items are
-> tracked, not silently dropped.
+> **Parity gap (web, deferred):** the equivalent web `RecipeUpload`
+> (`src/app/components/RecipeUpload.tsx`) does not yet have the WORKS WITH
+> trust row, the IG/TT caption-preview trust card, or the unified "how this
+> fits your day" labelled-bar treatment. This is a known follow-up, not a
+> silently dropped requirement.
 
-### Method tiles deliver their method (ENG-1211, 2026-06-18)
+**Platform status (2026-07-18): mobile is ahead of web here, not equal to
+it.** The redesigned idle surface above — WORKS WITH row, caption-preview
+trust card, unified verdict bar — is mobile-only today. Do not describe or
+screenshot the idle-import surface as "the same on both platforms" until
+the web follow-up ships; a reviewer or marketing pass that treats the
+mobile screen as representative of web will overstate what's live there.
+
+### Method tiles deliver their method (2026-06-18)
 
 The three-method tile row (**Photo / Paste text / Scan**) must DELIVER the
 method it advertises — tapping a tile lands on the matching affordance, not a
 generic screen.
 
 - **Photo** — Pro-gated picker (`onPhotoImportPress`, mobile) / file input
-  (`onPhotoMethodPress`, web). Unchanged by ENG-1211.
+  (`onPhotoMethodPress`, web). Already delivered correctly; untouched by
+  this fix.
 - **Paste text** — opens a paste-ingredient affordance on arrival.
 - **Scan** — opens the barcode scanner on arrival.
 
@@ -128,7 +270,7 @@ User opens Import screen
   → App checks: router params → deep link → clipboard (3 retry attempts at 450ms/600ms/1100ms)
   → If ONE URL found, auto-start import
   → If MORE than one URL found (paste/share blob), enqueue one job per link
-    (ENG-981, see "Multi-link URL import" below)
+    (see "Multi-link URL import" below)
   → If no URL, show manual paste input
 ```
 
@@ -152,8 +294,8 @@ single-`importing`-state + `ImportLoadingSkeleton` path stays live in the
 
 **Honest stage machine** (`src/lib/recipes/importProgressMachine.ts`,
 shared web ↔ mobile). The stages map only to boundaries the client genuinely
-observes — Sloe's extraction is one atomic server POST (this ticket does NOT
-touch that backend), so we never fake sub-stages inside the server call:
+observes — extraction is one atomic server POST (this queue redesign doesn't
+touch that backend), so the client never fakes sub-stages inside the server call:
 
 ```
 queued      → "In queue (#N) — starts when a slot opens"   (waiting for a concurrency slot)
@@ -176,10 +318,32 @@ always release in `finally` so a thrown runner can never leak one.
 **Scope:** v2 wires the **URL/link** AND **bulk photo** paths into the queue
 on BOTH platforms. Caption imports keep the inline single-import path on both
 platforms for now (parity is preserved — neither platform queues caption
-yet). Caption queue parity is tracked, not silently deferred — see the Linear
-"Import-progress staged state-machine + queue UX" issue follow-up.
+yet). Caption queue parity is a known, tracked follow-up — not a silently
+dropped requirement.
 
-#### Bulk photo import — the primary import path (`import-progress-v2`, ENG-735, 2026-06-17)
+**QA / visual-validation harness (`app/dev/import-queue`).** An internal,
+auth-free page that renders the real `RecipeImportQueueDrawer` against
+isolated, seeded `RecipeImportScheduler` instances — mock jobs only, no PII,
+no live `/api/recipe-import` calls — so an agent or Grace can see every
+terminal / mid-flight state side by side instead of waiting through a real
+15–30s extraction per state. Four fixed frames: a single import parked
+mid-`extracting`; a backlog (two active + one `queued`, exercising the "In
+queue (#N)" copy); a mixed batch (one `done` → tap-to-open, one retryable
+`timeout` failure, one still in flight); and a non-retryable failure
+(`no_recipe_extracted` — Retry hidden, Dismiss only, per the
+retry-eligibility rule above). It is a **dev/QA harness, not a user-facing
+route**: reachable locally, in CI, and on Vercel preview deploys, but the
+whole `/dev/*` prefix is blocked on the production (`suppr.club`) deployment
+(`middleware.ts`, `isDevPreview()` gated on `VERCEL_ENV === "production"`),
+so it never renders for a real user. Companion coverage: Storybook
+(`src/app/components/suppr/recipe-import-queue-drawer.stories.tsx`) for the
+same component in isolation, and the mobile equivalent
+(`apps/mobile/app/dev/import-queue-states.tsx`, reachable in a dev build at
+`suppr:///dev/import-queue-states`) for cross-platform state parity. This is
+how the five queue-drawer states were screenshotted and compared web ↔ iOS
+before the `import-progress-v2` ship.
+
+#### Bulk photo import — the primary import path (`import-progress-v2`, 2026-06-17)
 
 PDF cookbook import is demoted; **multi-photo import is the primary import
 path**. When `import-progress-v2` is on:
@@ -232,7 +396,7 @@ Distinct from the server-side `recipe_import_pipeline_stage` (which traces
 extraction internals for nutrition-debug) — the v2 events measure the
 front-end *experience* (time-at-stage, cancel points, batch size).
 
-#### Multi-link URL import (`import-progress-v2`, ENG-981, 2026-06-30)
+#### Multi-link URL import (`import-progress-v2`, 2026-06-30)
 
 The URL-share path mirrors the bulk-photo fan-out. When a paste / share /
 deep link / clipboard blob resolves to **more than one** link, each link
@@ -291,7 +455,7 @@ Success screen with two CTAs:
   → "Review ingredients" → navigates to verify screen
 ```
 
-**Magic moment (ENG-728, `import_magic_moment`, default-OFF).** When the flag
+**Magic moment (`import_magic_moment`, default-OFF).** When the flag
 is ON and the user has NOT requested reduced motion, the success sheet arrives
 with a subtle fade + scale settle and a one-shot CALM `log-confirm`
 `WinMomentPlayer` overlay (the quiet gold "Logged" beat — the loud `goal-hit`
@@ -309,13 +473,35 @@ no overlay. Flag OFF (the shipped default) → zero visual change.
 
 ## Edge Cases
 - **Pinterest URLs** — resolved to actual recipe source via redirect following
-- **Instagram/TikTok** — parsed via OpenAI caption extraction (requires API key)
+- **Instagram/TikTok/YouTube** — see the **Legal caveat** above: the safe
+  caption-only path needs `IG_TT_IMPORT_ENABLED` (default OFF); with the
+  flag off, both platforms fall back to a live server-side fetch of the
+  post page + oEmbed endpoints whose ToS-compliance is unresolved. Either
+  path additionally needs an AI provider key configured server-side, else
+  the route returns `ai_not_configured` (503) / `openai_not_configured`.
 - **Sites that block scraping** — UA spoofing with Chrome UA string
 - **No JSON-LD** — error with clear message: "No Recipe JSON-LD found"
-- **Rate limited** — 20 imports per minute per IP
+- **Rate limited** — 20 imports per minute per user
 - **Not signed in** — shows sign-in prompt, preserves URL
+- **`verifyIngredients` throws mid-import** — the import still persists,
+  with ingredient + recipe macros at zero and the honest under-count note
+  surfaced on review (documented behaviour, not a crash path) — see
+  `docs/product/nutrition-approximation-policy.md` G3.
 
 ## Related Documents
+- [Journey: Verify Ingredients](verify-ingredients.md) — the deep
+  per-ingredient correction step right after this one
+- [Journey: Discover & Library](discover-and-library.md) — where a saved
+  import lives, and how it gets cooked
+- [Journey: Creator Platform](creator-platform.md) — attribution, DMCA
+  takedown, and reporting for imported content; also the Discover creator
+  rail this doc's imports never populate (that surface's fabricated-seed
+  risk is documented there, not here)
+- [Journey: Create a Recipe](create-recipe.md) — the adjacent "write my
+  own" flow
+- [Journey: Import a Cookbook (PDF)](import-cookbook.md) — the parallel
+  mobile-only batch path
+- [Decision: IG/TT recipe-import legal posture (2026-04-30)](../decisions/2026-04-30-ig-tt-recipe-import-legal-posture.md)
+- [Decision: Recipe-import posture hardening + creator-claim rules (2026-06-03)](../decisions/2026-06-03-recipe-import-posture-part1-part2.md)
 - [API: Recipe Import](../api/endpoints.md#post-apirecipe-import)
 - [Technical: Recipe Import Pipeline](../technical/architecture.md#recipe-import)
-- [Journey: Verify Ingredients](verify-ingredients.md)
