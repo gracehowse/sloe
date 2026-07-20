@@ -85,6 +85,7 @@ import {
 } from "@suppr/nutrition-core/progressPeriod";
 import { ProgressPeriodControl } from "@/components/progress/ProgressPeriodControl";
 import { getDailyTargets, type DailyTarget } from "@suppr/nutrition-core/dailyTargetRead";
+import { journalHistoryWindowStartKey } from "@suppr/nutrition-core/journalWindow";
 import { clampTargetToSafetyFloor, coerceSex } from "@suppr/shared/onboarding/targets";
 import {
   readFreezeLedger,
@@ -420,9 +421,8 @@ export default function ProgressScreen() {
     // arrive. Today's bar was never snapshot-dependent — `daily_targets`
     // only snapshots *past* days, so no computed number flips for the
     // current day.
-    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 3600 * 1000)
-      .toISOString()
-      .slice(0, 10);
+    // ENG-1580: UTC-midnight-anchored (shared, matches web) — not raw `Date.now()` ms-subtraction.
+    const ninetyDaysAgo = journalHistoryWindowStartKey();
     // Action 13 Item #10 — track HK sync status so the Steps card
     // can render "Sync paused" instead of a misleading bare 0 when
     // HealthKit refuses (permissions, native bridge crash, etc.).
