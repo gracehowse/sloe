@@ -46,4 +46,20 @@ describe("ENG-1236 referral invite surface parity", () => {
     expect(read("app/g/[code]/ReferralLandingClient.tsx")).toContain("REFERRAL_STORAGE_KEY");
     expect(read("src/app/components/onboarding/web-flow.tsx")).toContain("redeemPendingReferral");
   });
+
+  // ENG-1541 follow-up — the flag flip alone didn't gate the PUBLIC
+  // `/g/<code>` landing page or the capture/redemption pipeline behind it;
+  // both advertised/captured unconditionally regardless of the flag. Full
+  // render-level behavioural coverage lives in
+  // `referralLandingFlagGating.test.tsx`; this just guards the static wiring
+  // doesn't regress back to an unguarded call site.
+  it("gates the public landing page and the capture/redemption pipeline behind the flag (ENG-1541)", () => {
+    const landing = read("app/g/[code]/ReferralLandingClient.tsx");
+    expect(landing).toContain("REFERRAL_FLAG");
+    expect(landing).toContain("isFeatureEnabled");
+
+    const pending = read("src/lib/referrals/pendingReferral.ts");
+    expect(pending).toContain("REFERRAL_FLAG");
+    expect(pending).toContain("isFeatureEnabled");
+  });
 });

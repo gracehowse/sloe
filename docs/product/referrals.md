@@ -30,6 +30,19 @@ product turned the whole loop off until that pipeline is finished. Full
 context: [Launch is blocked until a working paid rail is
 live](../decisions/2026-07-12-launch-blocked-on-paid-rail.md).
 
+**"Off" means the whole loop, including the public landing page (ENG-1541,
+2026-07-20).** The invite-generation card was flag-gated from day one, but
+the initial fix only removed the flag from the default-on list — the public
+`/g/<code>` landing page itself has no server-side gate on the URL (it's a
+real route) and kept showing the "30 Pro reward days" promise, capturing the
+code, and calling the redeem RPC to any visitor regardless of the flag.
+ENG-1541 closed that gap: the landing page now reads the flag and shows
+neutral "you've been invited" copy with no code capture when off, and the
+capture/redemption pipeline checks the same flag before writing to
+`localStorage` or calling the redeem RPC — so a code from before the flag
+flipped off sits inert rather than being silently redeemed. Re-enable
+alongside the entitlement-grant wiring (ENG-1487).
+
 ## How the loop works, once it's switched back on
 
 1. A signed-in user opens the invite screen — the same screen used to
