@@ -68,6 +68,9 @@ function mapJoinError(code: string): string {
       return "This household has been disbanded.";
     case "invite_expired":
       return "This invite code has expired. Ask the owner for a new one.";
+    // ENG-1389 SEC-09: per-user brute-force throttle on the invite-code RPC.
+    case "rate_limited":
+      return "Too many attempts. Please wait a minute and try again.";
     default:
       return code || "Couldn't join household.";
   }
