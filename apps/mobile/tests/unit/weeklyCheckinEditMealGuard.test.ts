@@ -21,6 +21,11 @@
  * Post-fix: the edit-flow guard ALSO marks the check-in as handled
  * for the rest of this app session. The check-in eligibility is
  * once-per-week server-side; deferring to the next app launch is fine.
+ *
+ * ENG-1594 (2026-07-20, Today extract slice 1): the gate itself moved
+ * from TodayScreen.tsx to `useTodayWeeklyCheckin` — this test now
+ * source-scans the hook file. Same regex assertions, same guard text
+ * (verbatim code move, zero behaviour change).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
@@ -28,7 +33,7 @@ import { resolve } from "node:path";
 
 const REPO = resolve(__dirname, "..", "..", "..", "..");
 const SRC = readFileSync(
-  resolve(REPO, "apps/mobile/app/(tabs)/_today/TodayScreen.tsx"),
+  resolve(REPO, "apps/mobile/hooks/useTodayWeeklyCheckin.ts"),
   "utf8",
 );
 
