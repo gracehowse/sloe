@@ -29,7 +29,7 @@ export function CookbookImportSuccess({
       className="product-shell py-pm-6 flex flex-col items-center justify-center min-h-[60vh] text-center gap-4"
     >
       <CheckCircle className="size-14 text-success-solid" aria-hidden />
-      <h1 className="font-[family-name:var(--font-headline)] text-[32px] text-foreground-brand">
+      <h1 className="font-[family-name:var(--font-headline)] text-[28px] text-foreground-brand">
         Saved.
       </h1>
       <p className="text-[15px] text-muted-foreground max-w-sm">
@@ -37,7 +37,7 @@ export function CookbookImportSuccess({
           ? `Saved ${savedCount} recipes before the free save limit. Upgrade to save the rest.`
           : `${savedCount} ${savedCount === 1 ? "recipe" : "recipes"} saved to Library as Imported · ${label}. Build your week in Plan when you're ready.`}
       </p>
-      <span className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-[12px] font-semibold text-muted-foreground">
+      <span className="inline-flex items-center rounded-full border border-border bg-muted px-3 py-1 text-[13px] font-semibold text-muted-foreground">
         In your library
       </span>
       <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm mt-4">

@@ -64,7 +64,7 @@ export function CookbookImportReview({
       </p>
 
       {parseWarnings.length > 0 ? (
-        <p className="text-[12px] text-muted-foreground mb-4">
+        <p className="text-[13px] text-muted-foreground mb-4">
           Note: {parseWarnings.join(", ").replace(/_/g, " ")}
         </p>
       ) : null}

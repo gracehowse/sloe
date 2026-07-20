@@ -123,7 +123,7 @@ export function CookbookImport({
         onClick={() => s.fileInputRef.current?.click()}
         className="w-full rounded-[var(--radius-card-lg)] border border-dashed border-border bg-card p-6 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
-        <p className="font-[family-name:var(--font-headline)] text-[17px] text-foreground">
+        <p className="font-[family-name:var(--font-headline)] text-[15px] text-foreground">
           {s.pickedFile ? s.pickedFile.name : "Choose cookbook PDF"}
         </p>
         <p className="text-[13px] text-muted-foreground mt-2">
@@ -143,7 +143,7 @@ export function CookbookImport({
           value={s.bookName}
           onChange={(e) => s.setBookName(e.target.value)}
           placeholder="e.g. Fast 800"
-          className="w-full rounded-[var(--radius-card)] border border-border bg-card px-4 py-3 text-[15px] text-foreground focus:outline-none focus:ring-2 focus-visible:ring-primary/40"
+          className="w-full rounded-[var(--radius-card)] border border-border bg-card px-4 py-3 text-[15px] text-foreground focus:outline-none focus:ring-2 focus-visible:ring-primary"
         />
       </div>
 

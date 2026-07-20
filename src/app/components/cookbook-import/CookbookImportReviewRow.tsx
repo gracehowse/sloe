@@ -43,7 +43,7 @@ export function CookbookImportReviewRow({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
         excluded
           ? "border-border bg-card opacity-55"
-          : "border-2 border-primary bg-primary-soft",
+          : "border border-primary bg-primary-soft",
       ].join(" ")}
     >
       <div className="flex items-center gap-3">
@@ -54,18 +54,18 @@ export function CookbookImportReviewRow({
           <UtensilsCrossed className="size-[18px] text-muted-foreground" strokeWidth={1.5} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="font-[family-name:var(--font-headline)] text-[17px] text-foreground line-clamp-2">
+          <p className="font-[family-name:var(--font-headline)] text-[15px] text-foreground line-clamp-2">
             {item.title}
           </p>
-          <p className="text-[12px] text-muted-foreground mt-1">
+          <p className="text-[13px] text-muted-foreground mt-1">
             Serves {item.serves} · {item.ingredientCount ?? item.ingredients.length} ingredients ·{" "}
             {item.confidence} confidence
           </p>
           {trustKcal != null && nutritionMode === "match" && item.authorNutrition?.calories ? (
-            <p className="text-[12px] text-muted-foreground mt-0.5">author {item.authorNutrition.calories}</p>
+            <p className="text-[13px] text-muted-foreground mt-0.5">author {item.authorNutrition.calories}</p>
           ) : null}
           {trustKcal != null && nutritionMode === "author" ? (
-            <p className="text-[12px] text-muted-foreground mt-0.5">Sloe {item.supprNutrition.calories}</p>
+            <p className="text-[13px] text-muted-foreground mt-0.5">Sloe {item.supprNutrition.calories}</p>
           ) : null}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
