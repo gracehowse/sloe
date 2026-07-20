@@ -79,7 +79,7 @@
   "src/app/components/onboarding/web-flow.tsx": 575,
   "src/app/components/Profile.tsx": 1295,
   "src/app/components/ProgressDashboard.tsx": 2477,
-  "src/app/components/RecipeDetail.tsx": 3502,
+  "src/app/components/RecipeDetail.tsx": 3498,
   "src/app/components/RecipeUpload.tsx": 3030,
   "src/app/components/Settings.tsx": 2160,
   "src/app/components/ShoppingList.tsx": 464,
