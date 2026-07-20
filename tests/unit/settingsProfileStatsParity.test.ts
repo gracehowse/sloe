@@ -8,10 +8,12 @@ const read = (relative: string) => fs.readFileSync(path.join(ROOT, relative), "u
 describe("settings profile stats parity (ENG-1614)", () => {
   it("mobile Settings uses the shared orphan-tile guard", () => {
     const bundle = read("apps/mobile/components/settings/SettingsBundleContent.tsx");
+    const tiles = read("apps/mobile/components/settings/SettingsProfileStatsTiles.tsx");
     expect(bundle).toContain("resolveSettingsProfileStatsPresentation");
     expect(bundle).toContain('profileStatsPresentation.mode === "tiles"');
     expect(bundle).toContain("formatSettingsProfileSubline");
-    expect(bundle).toContain('testID="settings-profile-stats-tiles"');
+    expect(bundle).toContain("SettingsProfileStatsTiles");
+    expect(tiles).toContain('testID="settings-profile-stats-tiles"');
   });
 
   it("web Settings has no Recipes/Streak tile strip to orphan", () => {

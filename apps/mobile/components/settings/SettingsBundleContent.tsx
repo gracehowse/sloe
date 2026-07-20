@@ -96,6 +96,7 @@ import {
   formatSettingsProfileSubline,
   resolveSettingsProfileStatsPresentation,
 } from "@suppr/shared/settings/settingsProfileStats";
+import { SettingsProfileStatsTiles } from "@/components/settings/SettingsProfileStatsTiles";
 import { normaliseDietaryFromProfile } from "../../../../src/constants/dietaryPreferences";
 import { saveWeekStartDay } from "@suppr/nutrition-core/weekStartDayClient";
 import {
@@ -1434,58 +1435,13 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         }}
       />
 
-      {/* Stats strip — Recipes / Streak.
-          Audit 2026-05-22 subtractive: hide tiles whose value is zero
-          (and the whole row if both are zero). ENG-1614: when only one
-          stat is present, fold it into the profile subline above — a lone
-          full-width tile reads as dead chrome. The two-tile row renders
-          only when both Recipes and Streak are non-zero. */}
       {profileStatsPresentation.mode === "tiles" ? (
-        <View
-          testID="settings-profile-stats-tiles"
-          style={{ flexDirection: "row", gap: 8, marginTop: 10 }}
-        >
-          {profileStatsPresentation.tiles.map((tile) => {
-            const color =
-              semanticStatRoles
-                ? colors.text
-                : tile.kind === "recipes"
-                  ? t.accent
-                  : t.green;
-            return (
-              <Pressable
-                key={tile.kind}
-                // One-card-treatment (2026-06-09): the stat tile sits on the
-                // page ground, so it takes the same soft card chrome as its
-                // siblings — standard card fill + soft lift — instead of the
-                // bespoke tinted-border inputBg chip that read as one-off
-                // "dead chrome" next to the lifted cards around it. The
-                // accent lives in the numeral, not the border.
-                style={[
-                  {
-                    flex: 1,
-                    alignItems: "center",
-                    paddingVertical: Spacing.dense,
-                    borderRadius: TILE_RADIUS,
-                    backgroundColor: statTileElevation.liftBg ?? colors.card,
-                    borderWidth: statTileElevation.useBorder ? 1 : 0,
-                    borderColor: colors.cardBorder,
-                  },
-                  statTileElevation.shadowStyle,
-                ]}
-              >
-                <Text style={{ fontSize: 18, fontWeight: "700", color }}>
-                  {tile.value}
-                </Text>
-                <Text
-                  style={{ fontSize: 10, color: colors.textTertiary, marginTop: 2 }}
-                >
-                  {tile.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <SettingsProfileStatsTiles
+          tiles={profileStatsPresentation.tiles}
+          semanticStatRoles={semanticStatRoles}
+          accentColor={t.accent}
+          streakColor={t.green}
+        />
       ) : null}
 
       {/* Personal — the user's identity + personal preferences group.
