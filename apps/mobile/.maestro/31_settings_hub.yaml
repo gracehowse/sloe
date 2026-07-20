@@ -20,14 +20,8 @@ name: "Settings hub — sections, navigation, profile info"
 - assertVisible:
     text: ".*(?:Free|Pro|Base).*"
 
-# Bundle stats strip (Recipes / Streak)
-- scrollUntilVisible:
-    element: ".*Recipes.*"
-    direction: DOWN
-- assertVisible: ".*Recipes.*"
-- assertVisible: ".*Streak.*"
-
-# Goals & targets bundle section
+# Bundle stats strip (Recipes / Streak) — only when both are non-zero.
+# A lone stat folds into the profile subline (ENG-1614).
 - scrollUntilVisible:
     element: ".*Goals & targets.*"
     direction: DOWN

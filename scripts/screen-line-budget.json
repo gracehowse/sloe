@@ -56,7 +56,7 @@
   "apps/mobile/components/recipe/RecipeEditSheet.tsx": 680,
   "apps/mobile/components/RulerSlider.tsx": 409,
   "apps/mobile/components/SaveMealSheet.tsx": 438,
-  "apps/mobile/components/settings/SettingsBundleContent.tsx": 3666,
+  "apps/mobile/components/settings/SettingsBundleContent.tsx": 3644,
   "apps/mobile/components/today/LogSheet.tsx": 1742,
   "apps/mobile/components/today/NorthStarBlock.tsx": 501,
   "apps/mobile/components/today/onboarding-nudges/OnboardingNudgeBanner.tsx": 455,

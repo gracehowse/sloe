@@ -22,11 +22,19 @@ describe("semantic stat roles parity (ENG-1578)", () => {
     const mobileProgress = read("apps/mobile/components/progress/ProgressEnergyTriad.tsx");
     const webProgress = read("src/app/components/suppr/progress-energy-triad.tsx");
     const mobileSettings = read("apps/mobile/components/settings/SettingsBundleContent.tsx");
+    const mobileSettingsTiles = read(
+      "apps/mobile/components/settings/SettingsProfileStatsTiles.tsx",
+    );
 
     expect(mobileProgress).toContain("semanticStats ? text : sage");
     expect(mobileProgress).toMatch(/color: semanticStats[\s\S]{0,90}\? text/);
     expect(webProgress).toContain('semanticStats ? "var(--foreground)"');
-    expect(mobileSettings).toContain("semanticStatRoles ? colors.text : t.accent");
-    expect(mobileSettings).toContain("semanticStatRoles ? colors.text : t.green");
+    expect(mobileSettings).toContain("semanticStatRoles");
+    expect(mobileSettingsTiles).toMatch(
+      /semanticStatRoles[\s\S]{0,120}colors\.text[\s\S]{0,120}accentColor/,
+    );
+    expect(mobileSettingsTiles).toMatch(
+      /semanticStatRoles[\s\S]{0,200}streakColor/,
+    );
   });
 });
