@@ -11,7 +11,9 @@ import { PressableScale } from "@/components/ui/PressableScale";
  * 2026-07-10 (`docs/decisions/2026-07-10-chip-grammar-soft-tint.md`,
  * "Segmented controls" section):
  *
- *   - Track: full-radius `inputBg` rail with the 2px inner pad.
+ *   - Track: full-radius `inputBg` rail with the 2px inner pad, and the same
+ *     2px gap between segments (ENG-1608 — keeps the rail sliver uniform on
+ *     every edge of the active thumb, not just the outer track boundary).
  *   - Active segment: card-white full-radius thumb + the subtle 1px shadow
  *     (legal under the interactive-elevation carve-out in
  *     `2026-07-10-card-grammar-rounder-flat.md` — a thumb is feedback chrome,
@@ -37,7 +39,15 @@ import { PressableScale } from "@/components/ui/PressableScale";
  *  inset (the sliver of rail visible around the thumb), not a layout rhythm
  *  value. It lives ONLY here, in the single primitive — intentionally a
  *  module constant, not a `Spacing` token, so `2` never becomes a legal
- *  layout value — not a gap. */
+ *  layout value — not a layout gap.
+ *
+ *  ENG-1608: also used as the `track`'s inter-segment `gap`. Pre-fix, the
+ *  pad only wrapped the outer edge of the whole segment row, so the active
+ *  thumb showed a 2px rail sliver against the track boundary but a 0px
+ *  sliver against its neighbour — the shadowed white thumb read as
+ *  colliding with the adjacent label instead of sitting inset on all
+ *  sides. Reusing the same ratified 2px value (not a new number) keeps the
+ *  rail sliver uniform around the thumb on every edge. */
 const TRACK_PAD = 2;
 
 export interface SegmentedTrackOption<T extends string = string> {
@@ -153,6 +163,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderRadius: Radius.full,
     padding: TRACK_PAD,
+    // ENG-1608 — same rail sliver between segments as around the track's
+    // outer edge, so the shadowed active thumb never sits flush against a
+    // neighbouring inactive segment.
+    gap: TRACK_PAD,
     alignSelf: "stretch",
   },
   trackHug: {
