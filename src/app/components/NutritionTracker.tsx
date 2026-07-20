@@ -1940,9 +1940,9 @@ export const NutritionTracker = memo(function NutritionTracker({
         />
       ) : null}
 
-      {/* TodayStreakInsightCard removed 2026-04-20 (Grace's call per
-          Today alignment pass). Mobile removed same commit. Streak
-          logic still runs but is no longer surfaced on Today. */}
+      {/* TodayStreakInsightCard removed (ENG-1596, 2026-07-19) — the
+          component itself is deleted (both platforms). Streak logic
+          still runs but is no longer surfaced on Today. */}
 
       {/* Deficit insight removed (2026-04-18, Pass 7): the standalone
           web `CalorieDeficitInsight` panel duplicated data already

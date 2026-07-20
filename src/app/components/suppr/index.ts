@@ -80,10 +80,9 @@ export { TodayHeroRing, type TodayHeroRingProps } from "./today-hero-ring";
 // TodayEatAgainBanner removed (ENG-984, 2026-06-17) — the Eat-again banner
 // was suppressed from Today on 2026-05-22 (v4) and rendered nowhere on web
 // or mobile thereafter. The dead component + its barrel export are retired.
-export {
-  TodayStreakInsightCard,
-  type TodayStreakInsightCardProps,
-} from "./today-streak-insight-card";
+// TodayStreakInsightCard removed (ENG-1596, 2026-07-19) — unrendered on
+// both platforms since the 2026-04-20 Today alignment pass; the dead
+// component (+ mobile twin, Storybook story, barrel export) is retired.
 export { TodayFastingPill, type TodayFastingPillProps } from "./today-fasting-pill";
 export { TodayStepsCard, type TodayStepsCardProps } from "./today-steps-card";
 export {

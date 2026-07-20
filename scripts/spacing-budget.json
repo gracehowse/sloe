@@ -144,7 +144,6 @@
     "apps/mobile/components/today/TodayMealsSection.tsx": 6,
     "apps/mobile/components/today/TodayPlannedMealsCard.tsx": 1,
     "apps/mobile/components/today/TodaySnapShortcut.tsx": 1,
-    "apps/mobile/components/today/TodayStreakInsightCard.tsx": 1,
     "apps/mobile/components/today/TodayWeekView.tsx": 1,
     "apps/mobile/components/today/WeeklyCheckinBanner.tsx": 2,
     "apps/mobile/components/today/WhereThisComesFromSheet.tsx": 1,

@@ -4372,10 +4372,9 @@ export default function TrackerScreen() {
           />
         ) : null}
 
-        {/* TodayStreakInsightCard removed 2026-04-20 (Grace, Today alignment
-            pass) — streak logic still runs for the freeze ledger + recap.
-            Deficit insight lives in the unified context block above (Phase 4 /
-            Top-5 #2, 2026-04-28). Eat-again card retired (ENG-984). */}
+        {/* TodayStreakInsightCard deleted (ENG-1596) — streak logic still
+            runs for the freeze ledger + recap. Deficit insight lives in
+            the unified context block above (Phase 4 / Top-5 #2). */}
 
         {/* Meal sections (day view only) — prototype style: single card, IconBox per slot */}
         {/* Figma `654:2` — What to eat next sits above Today's Meals. */}
