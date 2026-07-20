@@ -11,8 +11,9 @@
  * and content could REST under the FAB at scroll bottom.
  *
  * Pins (source-level, same pattern as calorieRingSolidGreenAtTarget.test.ts):
- *   1. the <main> scroll reservation is safe-area-aware
- *      (`pb-[calc(5rem+env(safe-area-inset-bottom))]`), not a static pb-20;
+ *   1. the <main> scroll reservation is safe-area-aware and shares the
+ *      `mobileWebBottomChrome` inset contract (5rem nav + optional consent
+ *      strip + safe-area), not a static pb-20;
  *   2. a matching `scroll-pb-[…]` keeps programmatic scrolls
  *      (scrollIntoView / anchor jumps) from LANDING content under the FAB;
  *   3. desktop (md+) resets both — the bottom nav does not render there.
@@ -33,15 +34,14 @@ const APP_SRC = readFileSync(
 
 describe("mobile-web main scroll clears the fixed tab bar + raised FAB (ENG-1323)", () => {
   it("reserves safe-area-aware bottom padding for the full nav + FAB overlay", () => {
-    expect(APP_SRC).toContain("pb-[calc(5rem+env(safe-area-inset-bottom))]");
+    expect(APP_SRC).toContain("MOBILE_WEB_BOTTOM_NAV_SCROLL_PADDING");
+    expect(APP_SRC).toContain("mobileWebBottomChrome.ts");
     // The static reservation that under-measured on notched devices is gone.
     expect(APP_SRC).not.toMatch(/id="main-content"[^>]*pb-20/);
   });
 
   it("scroll-padding keeps programmatic scrolls from landing content under the FAB", () => {
-    expect(APP_SRC).toContain(
-      "scroll-pb-[calc(5rem+env(safe-area-inset-bottom))]",
-    );
+    expect(APP_SRC).toContain("MOBILE_WEB_BOTTOM_NAV_SCROLL_PADDING_BOTTOM");
   });
 
   it("desktop (md+) resets the reservation — no bottom nav renders there", () => {

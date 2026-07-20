@@ -9,6 +9,7 @@ import {
   loginWithVisualGoldenUser,
 } from "./utils/auth";
 import { QA_AUTH_HOSTS, QA_VISUAL_AUTH_HOSTS } from "./utils/authHosts";
+import { seedConsent } from "./utils/visual";
 
 setup.describe.configure({ retries: 2 });
 
@@ -49,6 +50,7 @@ async function refreshAuthState({ browser, origin, file, login }: RefreshAuthSta
   const context = await browser.newContext({ baseURL: origin });
   const page = await context.newPage();
   try {
+    await seedConsent(page);
     await login(page);
     mkdirSync(dirname(file), { recursive: true });
     await context.storageState({ path: file });

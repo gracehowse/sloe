@@ -56,7 +56,8 @@ describe("CookieConsent — chrome tokens (gap #31)", () => {
     mockPathname.mockReturnValue("/today");
     const { container } = await renderBanner();
     const strip = container.querySelector("div.fixed") as HTMLElement;
-    expect(strip.className).toContain("bottom-[calc(4.5rem");
+    expect(strip.className).toContain("bottom-[calc(5rem");
+    expect(strip.className).toContain("z-40");
   });
 
   it("uses redesign surface tokens, not raw slate, on the container", async () => {

@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  COOKIE_CONSENT_SCROLL_INSET_VAR,
+  isMobileWebProductRoute,
+  MOBILE_WEB_CONSENT_BANNER_INSET,
+  MOBILE_WEB_CONSENT_DOCK_BOTTOM,
+} from "../../lib/layout/mobileWebBottomChrome.ts";
 import { SupprPlateMark } from "./ui/suppr-mark.tsx";
 
 const CONSENT_KEY = "suppr_cookie_consent";
@@ -11,9 +17,13 @@ export type ConsentChoice = "accepted" | "declined" | null;
 
 export function getConsentChoice(): ConsentChoice {
   if (typeof window === "undefined") return null;
-  const v = localStorage.getItem(CONSENT_KEY);
-  if (v === "accepted" || v === "declined") return v;
-  return null;
+  try {
+    const v = localStorage.getItem(CONSENT_KEY);
+    if (v === "accepted" || v === "declined") return v;
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -27,7 +37,11 @@ export function getConsentChoice(): ConsentChoice {
  */
 export function setConsentChoice(choice: "accepted" | "declined"): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(CONSENT_KEY, choice);
+  try {
+    localStorage.setItem(CONSENT_KEY, choice);
+  } catch {
+    /* storage denied — in-memory choice still governs this session */
+  }
   window.dispatchEvent(new CustomEvent("suppr-consent", { detail: choice }));
   if (choice === "declined") {
     try {
@@ -41,36 +55,57 @@ export function setConsentChoice(choice: "accepted" | "declined"): void {
   }
 }
 
-/** ENG-633 — FAB + bottom nav sit above the consent strip on authed app routes. */
-function isProductAppRoute(pathname: string): boolean {
-  const seg = pathname.replace(/^\/+|\/+$/g, "").split("/")[0] ?? "";
-  return (
-    seg === "today" ||
-    seg === "plan" ||
-    seg === "shopping" ||
-    seg === "library" ||
-    seg === "recipes" ||
-    seg === "progress" ||
-    seg === "settings" ||
-    seg === "profile" ||
-    seg === "recipe"
-  );
+function shouldShowConsentBanner(): boolean {
+  return getConsentChoice() === null;
 }
 
 /** Marketing / legal surfaces — top-anchored so hero CTAs stay tappable (ENG-802). */
 function isMarketingRoute(pathname: string): boolean {
-  return !isProductAppRoute(pathname);
+  return !isMobileWebProductRoute(pathname);
 }
 
 export function CookieConsent() {
   const pathname = usePathname() ?? "";
   const [visible, setVisible] = useState(false);
-  const liftAboveMobileChrome = visible && isProductAppRoute(pathname);
+  const [hydrated, setHydrated] = useState(false);
+  const onProductRoute = isMobileWebProductRoute(pathname);
+  const liftAboveMobileChrome = visible && onProductRoute;
   const topAnchored = visible && isMarketingRoute(pathname);
 
   useEffect(() => {
-    if (!getConsentChoice()) setVisible(true);
+    setHydrated(true);
+    setVisible(shouldShowConsentBanner());
+
+    function onConsent(e: Event) {
+      const detail = (e as CustomEvent<string>).detail;
+      if (detail === "accepted" || detail === "declined") {
+        setVisible(false);
+      }
+    }
+
+    function onStorage(e: StorageEvent) {
+      if (e.key !== CONSENT_KEY) return;
+      setVisible(shouldShowConsentBanner());
+    }
+
+    window.addEventListener("suppr-consent", onConsent);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("suppr-consent", onConsent);
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    const root = document.documentElement;
+    const inset =
+      visible && onProductRoute ? MOBILE_WEB_CONSENT_BANNER_INSET : "0px";
+    root.style.setProperty(COOKIE_CONSENT_SCROLL_INSET_VAR, inset);
+    return () => {
+      root.style.removeProperty(COOKIE_CONSENT_SCROLL_INSET_VAR);
+    };
+  }, [hydrated, onProductRoute, visible]);
 
   function accept() {
     setConsentChoice("accepted");
@@ -82,7 +117,7 @@ export function CookieConsent() {
     setVisible(false);
   }
 
-  if (!visible) return null;
+  if (!hydrated || !visible) return null;
 
   // Audit 2026-05-04 #24 + #36 (centred floating card → slim full-width
   // bottom strip): the floating card overlapped Pro tier, roadmap, and
@@ -102,14 +137,17 @@ export function CookieConsent() {
   // the banner must paint on first paint pre-consent. SupprPlateMark is
   // imported directly (not SupprMark, which evaluates the
   // design_system_brandmark flag).
+  // ENG-1386: dock above the tab bar (5rem + safe-area, shared with App.tsx)
+  // at z-40 so the nav (z-50) always wins taps; publish
+  // --cookie-consent-scroll-inset so scroll surfaces clear the strip.
   return (
     <div
       data-testid="cookie-consent-banner"
-      className={`fixed inset-x-0 z-50 bg-card/95 backdrop-blur border-border shadow-[var(--elev-sheet)] ${
+      className={`fixed inset-x-0 z-40 bg-card/95 backdrop-blur border-border shadow-[var(--elev-sheet)] ${
         topAnchored
           ? "top-0 border-b pt-[env(safe-area-inset-top)]"
           : liftAboveMobileChrome
-            ? "bottom-[calc(4.5rem+env(safe-area-inset-bottom))] border-t pb-[env(safe-area-inset-bottom)]"
+            ? `${MOBILE_WEB_CONSENT_DOCK_BOTTOM} border-t`
             : "bottom-0 border-t pb-[env(safe-area-inset-bottom)]"
       }`}
     >
