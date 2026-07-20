@@ -45,7 +45,7 @@ npm run test:e2e:visual:update
 npm run test:e2e:visual:update -- tests/e2e/visual-regression-deep.spec.ts -g "recipe detail"
 ```
 
-**Env:** `E2E_EMAIL` / `E2E_PASSWORD` in `.env.local` for authed specs. Optional `E2E_RECIPE_ID` (default `seed-v2-mediterranean-greek-salad`).
+**Env:** `E2E_EMAIL` / `E2E_PASSWORD` in `.env.local` for authed specs. Optional `E2E_RECIPE_ID` (default `seed-v2-mediterranean-butter-bean-shakshuka`).
 
 **Threshold:** `maxDiffPixelRatio: 0.01` in `playwright.config.ts` for product shells. Public marketing/legal routes (`landing`, `pricing`, help, terms, etc.) use **0.10** per-spec to tolerate Linux vs macOS font raster drift in CI without masking real layout breaks.
 

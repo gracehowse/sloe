@@ -1,0 +1,344 @@
+{
+  "version": "sloe-kitchen-v1",
+  "creativeBaseline": "The generated Miso Salmon Rice Bowl photograph: realistic food, natural window light, tactile ceramics, restrained stone or linen, generous negative space, and no decorative clutter.",
+  "workflow": "Dish specification first; photograph generation and visual review second; recipe authoring against the accepted photograph third.",
+  "recipes": [
+    {
+      "slug": "butter-bean-shakshuka",
+      "title": "Butter Bean Shakshuka",
+      "cluster": "mediterranean",
+      "mealType": [
+        "breakfast",
+        "lunch"
+      ],
+      "culinaryBasis": "Shakshuka with eggs poached in a pepper and tomato sauce",
+      "visibleIngredients": [
+        "three baked eggs",
+        "tomato and red pepper sauce",
+        "butter beans",
+        "parsley",
+        "crumbled feta"
+      ],
+      "photoComposition": "Top-down view of a small iron skillet on warm stone; glossy sauce and softly set yolks."
+    },
+    {
+      "slug": "harissa-salmon-herb-couscous",
+      "title": "Harissa Salmon with Herb Couscous",
+      "cluster": "mediterranean",
+      "mealType": [
+        "dinner"
+      ],
+      "culinaryBasis": "Harissa-glazed roast salmon with lemony couscous",
+      "visibleIngredients": [
+        "harissa-glazed salmon fillet",
+        "fluffy couscous",
+        "parsley",
+        "mint",
+        "cucumber",
+        "lemon"
+      ],
+      "photoComposition": "Top-down shallow ceramic plate, salmon off-centre over a broad bed of jewelled herb couscous."
+    },
+    {
+      "slug": "halloumi-lentil-roast-veg-salad",
+      "title": "Halloumi, Lentil & Roast Veg Salad",
+      "cluster": "mediterranean",
+      "mealType": [
+        "lunch",
+        "dinner"
+      ],
+      "culinaryBasis": "Warm lentil salad with grilled halloumi and roasted vegetables",
+      "visibleIngredients": [
+        "charred halloumi slices",
+        "green lentils",
+        "roasted courgette",
+        "red pepper",
+        "rocket",
+        "lemon dressing"
+      ],
+      "photoComposition": "Wide shallow platter photographed overhead; ingredients remain distinct and abundant rather than finely mixed."
+    },
+    {
+      "slug": "tomato-butter-bean-orzo",
+      "title": "Tomato Butter Bean Orzo",
+      "cluster": "mediterranean",
+      "mealType": [
+        "lunch",
+        "dinner"
+      ],
+      "culinaryBasis": "One-pan tomato orzo with creamy white beans",
+      "visibleIngredients": [
+        "orzo in glossy tomato sauce",
+        "butter beans",
+        "burst cherry tomatoes",
+        "baby spinach",
+        "basil"
+      ],
+      "photoComposition": "Close three-quarter overhead in a low cream bowl with visible beans and orzo texture; no cheese garnish."
+    },
+    {
+      "slug": "prawn-saganaki-feta",
+      "title": "Prawn Saganaki with Feta",
+      "cluster": "mediterranean",
+      "mealType": [
+        "dinner"
+      ],
+      "culinaryBasis": "Greek prawn saganaki baked in tomato sauce with feta",
+      "visibleIngredients": [
+        "large pink prawns",
+        "rich tomato sauce",
+        "feta pieces",
+        "parsley",
+        "toasted bread"
+      ],
+      "photoComposition": "Top-down terracotta baking dish with six to eight prawns clearly visible and bread on a folded linen beside it."
+    },
+    {
+      "slug": "green-herb-falafel-bowl",
+      "title": "Green Herb Falafel Bowl",
+      "cluster": "mediterranean",
+      "mealType": [
+        "lunch",
+        "dinner"
+      ],
+      "culinaryBasis": "Chickpea falafel with tabbouleh-style grains and tahini",
+      "visibleIngredients": [
+        "four crisp falafel",
+        "bulgur parsley salad",
+        "cucumber",
+        "tomato",
+        "pickled red onion",
+        "tahini"
+      ],
+      "photoComposition": "Top-down divided bowl with falafel as the hero and fresh components arranged naturally, not symmetrically."
+    },
+    {
+      "slug": "miso-salmon-rice-bowl",
+      "title": "Miso Salmon Rice Bowl",
+      "cluster": "asian",
+      "mealType": [
+        "lunch",
+        "dinner"
+      ],
+      "culinaryBasis": "Miso-glazed salmon with rice and crisp vegetables",
+      "visibleIngredients": [
+        "miso-glazed salmon",
+        "jasmine rice",
+        "edamame",
+        "cucumber ribbons",
+        "pickled ginger",
+        "spring onion",
+        "sesame"
+      ],
+      "photoComposition": "Accepted creative baseline image: top-down handmade ceramic bowl on warm stone with restrained linen and sauce dish."
+    },
+    {
+      "slug": "gochujang-turkey-meatballs",
+      "title": "Gochujang Turkey Meatballs with Sesame Rice",
+      "cluster": "asian",
+      "mealType": [
+        "dinner"
+      ],
+      "culinaryBasis": "Turkey meatballs glazed with gochujang, soy and honey",
+      "visibleIngredients": [
+        "six glossy turkey meatballs",
+        "sesame rice",
+        "steamed broccoli",
+        "spring onion",
+        "sesame seeds"
+      ],
+      "photoComposition": "Three-quarter overhead stoneware bowl; meatballs grouped loosely over rice with sauce visibly clinging."
+    },
+    {
+      "slug": "ginger-chicken-udon",
+      "title": "Ginger Chicken Udon",
+      "cluster": "asian",
+      "mealType": [
+        "lunch",
+        "dinner"
+      ],
+      "culinaryBasis": "Stir-fried udon with ginger, soy, chicken and greens",
+      "visibleIngredients": [
+        "thick udon noodles",
+        "sliced browned chicken",
+        "pak choi",
+        "carrot ribbons",
+        "spring onion",
+        "sesame"
+      ],
+      "photoComposition": "Close three-quarter view in a dark shallow bowl; glossy noodles remain separate rather than soupy."
+    },
+    {
+      "slug": "crispy-tofu-peanut-noodles",
+      "title": "Crispy Tofu Peanut Noodles",
+      "cluster": "asian",
+      "mealType": [
+        "lunch",
+        "dinner"
+      ],
+      "culinaryBasis": "Rice noodles in peanut-lime sauce with crisp tofu",
+      "visibleIngredients": [
+        "golden tofu cubes",
+        "rice noodles",
+        "peanut-lime sauce",
+        "cucumber",
+        "carrot",
+        "coriander",
+        "crushed peanuts"
+      ],
+      "photoComposition": "Top-down low bowl with tofu piled over sauced noodles and fresh vegetables kept crisp and visible."
+    },
+    {
+      "slug": "thai-basil-beef-rice",
+      "title": "Thai Basil Beef with Rice",
+      "cluster": "asian",
+      "mealType": [
+        "dinner"
+      ],
+      "culinaryBasis": "Pad kra pao-style minced beef with basil, chilli and fried egg",
+      "visibleIngredients": [
+        "glossy minced beef",
+        "basil leaves",
+        "red chilli",
+        "jasmine rice",
+        "crisp-edged fried egg",
+        "cucumber"
+      ],
+      "photoComposition": "Three-quarter overhead plate; rice mound, beef and egg are clearly separated with the yolk intact."
+    },
+    {
+      "slug": "sesame-soba-edamame-salad",
+      "title": "Sesame Soba & Edamame Salad",
+      "cluster": "asian",
+      "mealType": [
+        "lunch"
+      ],
+      "culinaryBasis": "Cold soba noodle salad with sesame-soy dressing",
+      "visibleIngredients": [
+        "buckwheat soba noodles",
+        "edamame",
+        "shredded red cabbage",
+        "cucumber",
+        "spring onion",
+        "sesame"
+      ],
+      "photoComposition": "Top-down broad bowl; naturally tangled noodles with bright vegetables distributed throughout."
+    },
+    {
+      "slug": "coconut-lime-chicken-curry",
+      "title": "Coconut Lime Chicken Curry",
+      "cluster": "asian",
+      "mealType": [
+        "dinner"
+      ],
+      "culinaryBasis": "Thai-inspired coconut chicken curry with lime and green vegetables",
+      "visibleIngredients": [
+        "sliced chicken thigh",
+        "golden coconut curry sauce",
+        "green beans",
+        "red pepper",
+        "lime",
+        "coriander",
+        "rice"
+      ],
+      "photoComposition": "Three-quarter overhead with curry in a rounded bowl and rice in a separate low bowl; realistic sauce consistency."
+    },
+    {
+      "slug": "soy-ginger-cod-bok-choy",
+      "title": "Soy Ginger Cod with Bok Choy",
+      "cluster": "asian",
+      "mealType": [
+        "dinner"
+      ],
+      "culinaryBasis": "Steam-roasted cod with soy, ginger and greens",
+      "visibleIngredients": [
+        "flaky cod fillet",
+        "soy ginger glaze",
+        "baby bok choy",
+        "jasmine rice",
+        "spring onion",
+        "sesame"
+      ],
+      "photoComposition": "Top-down oval plate with cod centred over rice and bok choy alongside; no raw ginger pile."
+    },
+    {
+      "slug": "kimchi-fried-rice-eggs",
+      "title": "Kimchi Fried Rice with Eggs",
+      "cluster": "asian",
+      "mealType": [
+        "lunch",
+        "dinner"
+      ],
+      "culinaryBasis": "Kimchi bokkeumbap with fried eggs",
+      "visibleIngredients": [
+        "kimchi fried rice",
+        "two fried eggs",
+        "kimchi pieces",
+        "spring onion",
+        "sesame",
+        "nori"
+      ],
+      "photoComposition": "Top-down dark skillet with crisp-edged eggs resting over orange-red rice; natural steam but no haze."
+    },
+    {
+      "slug": "mango-prawn-rice-bowl",
+      "title": "Mango Prawn Rice Bowl",
+      "cluster": "asian",
+      "mealType": [
+        "lunch",
+        "dinner"
+      ],
+      "culinaryBasis": "Chilli-lime prawns with mango, rice and crunchy vegetables",
+      "visibleIngredients": [
+        "seared prawns",
+        "jasmine rice",
+        "ripe mango",
+        "cucumber",
+        "red cabbage",
+        "lime",
+        "coriander"
+      ],
+      "photoComposition": "Bright top-down bowl with ingredients in relaxed sections and prawns placed across the centre."
+    },
+    {
+      "slug": "huevos-rancheros-black-beans",
+      "title": "Huevos Rancheros with Black Beans",
+      "cluster": "latin",
+      "mealType": [
+        "breakfast",
+        "lunch"
+      ],
+      "culinaryBasis": "Fried eggs, tomato-chilli salsa and black beans over corn tortillas",
+      "visibleIngredients": [
+        "two fried eggs",
+        "corn tortillas",
+        "black beans",
+        "tomato salsa",
+        "avocado",
+        "coriander",
+        "lime"
+      ],
+      "photoComposition": "Three-quarter overhead ceramic plate with tortilla edges visible and yolks intact; components not buried."
+    },
+    {
+      "slug": "chicken-tinga-rice-bowl",
+      "title": "Chicken Tinga Rice Bowl",
+      "cluster": "latin",
+      "mealType": [
+        "lunch",
+        "dinner"
+      ],
+      "culinaryBasis": "Chipotle tomato braised shredded chicken",
+      "visibleIngredients": [
+        "shredded chicken tinga",
+        "brown rice",
+        "black beans",
+        "charred corn",
+        "avocado",
+        "pickled red onion"
+      ],
+      "photoComposition": "Top-down earthenware bowl with juicy chicken as the hero and modest fresh toppings."
+    }
+  ],
+  "selectionStatus": "18 founder-approved photographs; rejected and unreviewed concepts excluded"
+}

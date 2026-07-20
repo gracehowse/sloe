@@ -707,7 +707,7 @@ export default function RecipeDetailScreen() {
           author_id: null,
           creator_id: null,
           author: null,
-          allergens: [],
+          allergens: [...seed.allergens],
         } as FullRecipe);
         setIngredients(
           seed.ingredients.map((i) => ({
@@ -2410,7 +2410,7 @@ export default function RecipeDetailScreen() {
                 `src/lib/recipes/importSourceDisclaimer.ts`. Parity with web
                 `RecipeDetail.tsx` (recipe-import-disclaimer).
               */}
-              {isImportedRecipe({ sourceUrl: recipe.source_url, sourceName: recipe.source_name }) ? (
+              {!isSeedRecipeId(recipeId) && isImportedRecipe({ sourceUrl: recipe.source_url, sourceName: recipe.source_name }) ? (
                 <Text
                   style={styles.sourceDisclaimer}
                   accessibilityRole="text"

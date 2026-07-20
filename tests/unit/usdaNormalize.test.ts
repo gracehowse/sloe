@@ -31,6 +31,28 @@ describe("fdcFoodMacrosPer100g", () => {
     expect(macros.fiberG).toBe(0);
   });
 
+  it("skips amount-less USDA hierarchy rows before measured carbohydrate values", () => {
+    const food = makeFdcFood([
+      { nutrient: { name: "Carbohydrates", unitName: "g" } },
+      {
+        nutrient: { name: "Carbohydrate, by difference", unitName: "g" },
+        amount: 77.43,
+      },
+    ]);
+
+    expect(fdcFoodMacrosPer100g(food).carbs).toBe(77.43);
+  });
+
+  it("derives calories from a measured Foundation total-fat panel when Energy is absent", () => {
+    const food = makeFdcFood([
+      { nutrient: { name: "Total fat (NLEA)", unitName: "g" }, amount: 94.5 },
+    ]);
+
+    const macros = fdcFoodMacrosPer100g(food);
+    expect(macros.fat).toBe(94.5);
+    expect(macros.calories).toBeCloseTo(850.5, 1);
+  });
+
   it("handles kJ energy (converts to kcal)", () => {
     const food = makeFdcFood([
       { nutrientName: "Energy", unitName: "kJ", amount: 690 },
@@ -221,4 +243,3 @@ describe("fdcFoodMicrosPer100g", () => {
     expect(Object.keys(micros)).toHaveLength(0);
   });
 });
-

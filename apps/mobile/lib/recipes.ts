@@ -13,12 +13,16 @@ import type { NorthStarRecipe } from "@suppr/nutrition-core/northStarSuggestion"
 import { NEUTRAL_AVATAR_DATA_URI } from "@suppr/shared/ui/neutralAvatar";
 import { fetchPublicRecipeSaveCounts } from "@suppr/shared/recipes/fetchPublicRecipeSaveCounts";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
-import { SEED_RECIPES_V2 } from "@suppr/shared/recipes/seedRecipesV2";
+import {
+  SEED_RECIPES_V2,
+  isRetiredDiscoverSeedCard,
+} from "@suppr/shared/recipes/seedRecipesV2";
 import { seedsToRecipeCards } from "@suppr/shared/recipes/seedRecipesToCard";
 import {
   isRetiredStockImageUrl,
   pickHeroImageUrl,
 } from "@suppr/shared/recipes/heroImageFallback";
+import { isDiscoverReadyRecipeCard } from "@suppr/shared/recipes/discoverRecipeReadiness";
 import {
   addRecipeToCollection as addRecipeToCollectionShared,
   createRecipeCollection as createRecipeCollectionShared,
@@ -45,6 +49,10 @@ import { IMPORT_ERROR_COPY } from "@suppr/shared/recipes/importErrorCopy";
 // surface renders the deterministic `RecipeHeroFallback` (cuisine-tinted
 // gradient + glyph, §11.4) instead. Web parity: `src/context/AppDataContext.tsx`.
 const DEFAULT_AVATAR = NEUTRAL_AVATAR_DATA_URI;
+
+const DISCOVER_SEED_CARDS = (
+  seedsToRecipeCards(SEED_RECIPES_V2) as unknown as RecipeCard[]
+).filter(isDiscoverReadyRecipeCard);
 
 /**
  * Pre-ENG-1287 offline caches stored the fabricated pool URLs baked into
@@ -93,13 +101,11 @@ export function useDiscoverRecipes() {
     const DISCOVER_COUNTS_TIMEOUT_MS = 18_000;
     const DISCOVER_CACHE_READ_TIMEOUT_MS = 12_000;
 
-    // GW-03/GW-04 fix (audit 2026-04-28): the prior `.not("author_id",
-    // "is", null)` filter was a workaround for a long-resolved
-    // tombstoning behaviour. After 2026-04-28 the seeder writes
-    // `author_id = NULL` for platform-curated rows (per
-    // `supabase/migrations/20260503112000_unpoison_seed_author_ids.sql`
-    // + the patched `scripts/seed-discover-recipes.ts`). Keeping the
-    // filter would now hide every seeded recipe from Discover.
+    // Keep unauthored rows in the query because creator/community content can
+    // legitimately be unauthored. After mapping,
+    // `isRetiredDiscoverSeedCard` removes only superseded platform-catalogue
+    // rows; the current approved catalogue is always prepended from the shared
+    // static Sloe Kitchen source of truth.
     const queryOut = await raceDiscover(
       (async () =>
         await supabase
@@ -115,8 +121,7 @@ export function useDiscoverRecipes() {
     );
 
     if (queryOut === discoverRaceTimeout) {
-      const seeds = seedsToRecipeCards(SEED_RECIPES_V2) as unknown as RecipeCard[];
-      setRecipes(seeds);
+      setRecipes(DISCOVER_SEED_CARDS);
       return;
     }
 
@@ -184,7 +189,10 @@ export function useDiscoverRecipes() {
           allergens: Array.isArray(r.allergens) ? (r.allergens as string[]) : [],
           dietaryFlags: Array.isArray(r.dietary_flags) ? (r.dietary_flags as string[]) : [],
         };
-      });
+      }).filter(
+        (card: RecipeCard) =>
+          !isRetiredDiscoverSeedCard(card) && isDiscoverReadyRecipeCard(card),
+      );
       let enriched = mapped;
       try {
         const countsOut = await raceDiscover(
@@ -208,8 +216,7 @@ export function useDiscoverRecipes() {
       // they take stable precedence ahead of any DB-sourced rows.
       // Each seed entry carries `feedSource: "catalog"` so downstream
       // UI can distinguish them from community uploads when needed.
-      const seeds = seedsToRecipeCards(SEED_RECIPES_V2) as unknown as RecipeCard[];
-      const merged: RecipeCard[] = [...seeds, ...enriched];
+      const merged: RecipeCard[] = [...DISCOVER_SEED_CARDS, ...enriched];
       setRecipes(merged);
       if (merged.length > 0) {
         // Persist counts too so offline / cold-cache Popular matches online (P-P2-3).
@@ -228,9 +235,11 @@ export function useDiscoverRecipes() {
         "offline discover cache read",
       );
       const cached = cachedRaw === discoverRaceTimeout ? null : cachedRaw;
-      const seeds = seedsToRecipeCards(SEED_RECIPES_V2) as unknown as RecipeCard[];
       if (cached && Array.isArray(cached)) {
-        let list = sanitizeCachedCardImages(cached as RecipeCard[]);
+        let list = sanitizeCachedCardImages(cached as RecipeCard[]).filter(
+          (card) =>
+            !isRetiredDiscoverSeedCard(card) && isDiscoverReadyRecipeCard(card),
+        );
         // If we're online enough for Supabase RPC, refresh global save counts on top of cache.
         try {
           const ids = list.map((r) => r.id).filter(Boolean);
@@ -251,15 +260,15 @@ export function useDiscoverRecipes() {
         } catch (e) {
           console.warn("[useDiscoverRecipes] save counts on cache path failed:", e);
         }
-        // De-dupe — cached entries may already include seeds from a
-        // previous successful fetch.
-        const seedIds = new Set(seeds.map((s) => s.id));
+        // De-dupe current seeds after the retirement guard above has removed
+        // cached entries from older catalogues.
+        const seedIds = new Set(DISCOVER_SEED_CARDS.map((s) => s.id));
         const fromCache = list.filter((r) => !seedIds.has(r.id));
-        setRecipes([...seeds, ...fromCache]);
+        setRecipes([...DISCOVER_SEED_CARDS, ...fromCache]);
       } else {
         // No cache available — at least show the curated seeds so the
         // user never sees an empty Discover.
-        setRecipes(seeds);
+        setRecipes(DISCOVER_SEED_CARDS);
       }
     }
     } finally {

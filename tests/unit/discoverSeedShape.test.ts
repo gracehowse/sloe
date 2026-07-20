@@ -1,19 +1,6 @@
 /**
- * discoverSeedShape — pin the curated Discover seed contract.
- *
- * The seed populates Discover at the solo-tester stage so users
- * landing on the tab don't see a thin / empty grid. These tests pin
- * the structural contract every entry must satisfy. They do NOT
- * judge content quality — that's curation work.
- *
- * Wave 4 (2026-05-02): the seed is fixed at 50 recipes across 5
- * clusters (Mediterranean 10, Asian 10, Latin 8, Comfort 10, Healthy
- * bowls 12). Cluster sizes are pinned exactly so a future trim isn't
- * silent.
- *
- * Companion test: `discoverSeedCopyright.test.ts` — pins the legal /
- * IP attribution contract per `docs/decisions/2026-04-27-onboarding-
- * seed-copyright-review.md`.
+ * Structural and nutrition-trust contract for the founder-approved Sloe
+ * Kitchen Discover catalogue.
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -22,6 +9,7 @@ import {
   SEED_RECIPE_ID_PREFIX,
   findSeedRecipeById,
   getSeedRecipesByCluster,
+  isRetiredDiscoverSeedCard,
   isSeedRecipeId,
   type SeedCuisineCluster,
 } from "../../src/lib/recipes/seedRecipesV2";
@@ -30,165 +18,130 @@ const ACTIVE_CLUSTERS: ReadonlyArray<SeedCuisineCluster> = [
   "mediterranean",
   "asian",
   "latin",
-  "comfort",
-  "healthy-bowls",
 ];
 
-/** Wave-4 cluster size contract. Pinned exactly — adding or removing
- *  entries should be a deliberate edit to this map (which then forces
- *  an update to docs + the matching test). */
 const CLUSTER_SIZE_CONTRACT: Record<SeedCuisineCluster, number> = {
-  mediterranean: 10,
+  mediterranean: 6,
   asian: 10,
-  latin: 8,
-  comfort: 10,
-  "healthy-bowls": 12,
+  latin: 2,
 };
 
 describe("discoverSeedShape", () => {
-  it("ships exactly 50 recipes (Wave 4 contract)", () => {
-    expect(SEED_RECIPES_V2.length).toBe(50);
+  it("ships exactly the 18 founder-approved Sloe Kitchen recipes", () => {
+    expect(SEED_RECIPES_V2).toHaveLength(18);
   });
 
-  it("declares exactly 5 clusters in SEED_CLUSTERS", () => {
-    expect(SEED_CLUSTERS.length).toBe(5);
-    const ids = SEED_CLUSTERS.map((c) => c.id);
-    for (const cluster of ACTIVE_CLUSTERS) {
-      expect(ids).toContain(cluster);
+  it("declares only the three populated clusters in reading order", () => {
+    expect(SEED_CLUSTERS.map((cluster) => cluster.id)).toEqual(ACTIVE_CLUSTERS);
+    for (const cluster of SEED_CLUSTERS) {
+      expect(cluster.title.length).toBeGreaterThan(0);
+      expect(cluster.description.length).toBeGreaterThan(0);
     }
   });
 
-  it("SEED_CLUSTERS reading order is fixed (Mediterranean → Asian → Latin → Comfort → Healthy bowls)", () => {
-    expect(SEED_CLUSTERS.map((c) => c.id)).toEqual([
-      "mediterranean",
-      "asian",
-      "latin",
-      "comfort",
-      "healthy-bowls",
-    ]);
-  });
-
-  it("each cluster carries the contracted number of entries (8-12 each, exact pin)", () => {
+  it("pins the reviewed collection count in each cluster", () => {
     for (const cluster of ACTIVE_CLUSTERS) {
-      const items = getSeedRecipesByCluster(cluster);
-      expect(items.length, `${cluster} cluster size`).toBe(
+      expect(getSeedRecipesByCluster(cluster)).toHaveLength(
         CLUSTER_SIZE_CONTRACT[cluster],
       );
-      // Task contract — each cluster between 8 and 12 inclusive.
-      expect(items.length).toBeGreaterThanOrEqual(8);
-      expect(items.length).toBeLessThanOrEqual(12);
     }
   });
 
-  it("every recipe carries the required fields (no nulls)", () => {
-    for (const r of SEED_RECIPES_V2) {
-      expect(r.id, "id").toMatch(/^seed-v2-[a-z-]+-[a-z0-9-]+$/);
-      expect(r.title.length, `title for ${r.id}`).toBeGreaterThan(0);
-      expect(r.heroImageUrl, `heroImageUrl for ${r.id}`).toMatch(/^https:\/\//);
-      expect(r.servings, `servings for ${r.id}`).toBeGreaterThanOrEqual(1);
-      expect(r.kcalPerPortion, `kcal for ${r.id}`).toBeGreaterThan(0);
-      expect(r.totalTimeMin, `totalTime for ${r.id}`).toBeGreaterThan(0);
-      expect(r.shortDescription.length, `shortDescription for ${r.id}`).toBeGreaterThan(0);
-      expect(ACTIVE_CLUSTERS).toContain(r.cluster);
-    }
-  });
+  it("carries complete, executable recipe content", () => {
+    for (const recipe of SEED_RECIPES_V2) {
+      expect(recipe.id).toMatch(/^seed-v2-[a-z-]+-[a-z0-9-]+$/);
+      expect(recipe.title.length).toBeGreaterThan(0);
+      expect(recipe.servings).toBeGreaterThan(0);
+      expect(recipe.totalTimeMin).toBe(recipe.prepTimeMin + recipe.cookTimeMin);
+      expect(recipe.ingredients.length).toBeGreaterThanOrEqual(6);
+      expect(recipe.ingredients.length).toBeLessThanOrEqual(24);
+      expect(recipe.steps.length).toBeGreaterThanOrEqual(4);
+      expect(recipe.steps.length).toBeLessThanOrEqual(8);
+      expect(recipe.allergens).toBeInstanceOf(Array);
 
-  it("every recipe has 6-12 ingredients with positive grams", () => {
-    for (const r of SEED_RECIPES_V2) {
-      expect(r.ingredients.length, `ingredient count for ${r.id}`).toBeGreaterThanOrEqual(6);
-      expect(r.ingredients.length, `ingredient count for ${r.id}`).toBeLessThanOrEqual(12);
-      for (const ing of r.ingredients) {
-        expect(ing.name.length, `ingredient name in ${r.id}`).toBeGreaterThan(0);
-        expect(ing.grams, `ingredient grams for ${ing.name} in ${r.id}`).toBeGreaterThan(0);
+      for (const ingredient of recipe.ingredients) {
+        expect(ingredient.name.length).toBeGreaterThan(0);
+        expect(ingredient.grams).toBeGreaterThan(0);
       }
+      for (const step of recipe.steps) expect(step.length).toBeGreaterThan(0);
     }
   });
 
-  it("every recipe has 4-8 instruction steps", () => {
-    for (const r of SEED_RECIPES_V2) {
-      expect(r.steps.length, `steps for ${r.id}`).toBeGreaterThanOrEqual(4);
-      expect(r.steps.length, `steps for ${r.id}`).toBeLessThanOrEqual(8);
-      for (const s of r.steps) {
-        expect(s.length, `step in ${r.id}`).toBeGreaterThan(0);
-      }
-    }
-  });
-
-  it("recipe ids are unique", () => {
-    const ids = SEED_RECIPES_V2.map((r) => r.id);
-    expect(new Set(ids).size).toBe(ids.length);
-  });
-
-  it("totalTimeMin equals prepTimeMin + cookTimeMin", () => {
-    // Catches typos where prep+cook wouldn't add up to total — a
-    // common hand-edit mistake. Allow zero cook time (raw recipes).
-    for (const r of SEED_RECIPES_V2) {
-      expect(
-        r.prepTimeMin + r.cookTimeMin,
-        `total != prep+cook for ${r.id}`,
-      ).toBe(r.totalTimeMin);
-    }
-  });
-
-  it("getSeedRecipesByCluster returns only entries in that cluster", () => {
-    for (const cluster of ACTIVE_CLUSTERS) {
-      const items = getSeedRecipesByCluster(cluster);
-      for (const r of items) {
-        expect(r.cluster).toBe(cluster);
-      }
-    }
-  });
-
-  it("hero image URLs are https (never blob:/data:)", () => {
-    for (const r of SEED_RECIPES_V2) {
-      expect(r.heroImageUrl, r.id).not.toMatch(/^(blob:|data:)/);
-      expect(r.heroImageUrl, r.id).toMatch(/^https:\/\/[a-z0-9.-]+\//);
-    }
-  });
-
-  it("macro estimates are non-negative and present on every recipe", () => {
-    for (const r of SEED_RECIPES_V2) {
-      expect(r.proteinG, `protein for ${r.id}`).toBeGreaterThanOrEqual(0);
-      expect(r.carbsG, `carbs for ${r.id}`).toBeGreaterThanOrEqual(0);
-      expect(r.fatG, `fat for ${r.id}`).toBeGreaterThanOrEqual(0);
-      expect(r.fiberG, `fiber for ${r.id}`).toBeGreaterThanOrEqual(0);
-    }
-  });
-
-  it("isSeedRecipeId / findSeedRecipeById correctly identify seed entries", () => {
-    expect(isSeedRecipeId("seed-v2-mediterranean-greek-salad")).toBe(true);
-    expect(isSeedRecipeId("not-a-seed")).toBe(false);
-    expect(isSeedRecipeId(null)).toBe(false);
-    expect(isSeedRecipeId(undefined)).toBe(false);
-    expect(findSeedRecipeById("seed-v2-mediterranean-greek-salad")?.cluster).toBe("mediterranean");
-    expect(findSeedRecipeById("not-real")).toBeNull();
-  });
-
-  it("every seed id starts with the canonical prefix", () => {
-    for (const r of SEED_RECIPES_V2) {
-      expect(r.id.startsWith(SEED_RECIPE_ID_PREFIX), `id ${r.id}`).toBe(true);
-    }
-  });
-
-  it("seed ids embed the cluster slug (regex shape used by the carousel grouper)", () => {
-    // Mobile / web Discover both recover the cluster by reading the
-    // slug fragment after `seed-v2-`. This test pins the shape so a
-    // typo'd id (e.g. `seed-v2-mediteranean-...`) can't ship.
-    for (const r of SEED_RECIPES_V2) {
-      const after = r.id.slice(SEED_RECIPE_ID_PREFIX.length);
-      const matchesCluster = SEED_CLUSTERS.some((c) =>
-        after.startsWith(`${c.id}-`),
+  it("uses production-hosted Sloe Kitchen heroes", () => {
+    for (const recipe of SEED_RECIPES_V2) {
+      expect(recipe.heroImageUrl).toMatch(
+        /^https:\/\/[^/]+\.supabase\.co\/storage\/v1\/object\/public\/recipe-images\/sloe-kitchen\/v1\/[a-z0-9-]+\.jpg$/,
       );
-      expect(matchesCluster, `id ${r.id} should embed its cluster slug`).toBe(true);
+      expect(recipe.heroImageUrl).not.toMatch(/unsplash|blob:|data:/);
     }
   });
 
-  it("optional tags, when present, are non-empty strings", () => {
-    for (const r of SEED_RECIPES_V2) {
-      if (!r.tags) continue;
-      for (const tag of r.tags) {
-        expect(tag.length, `tag in ${r.id}`).toBeGreaterThan(0);
-      }
+  it("publishes only engine-verified headline nutrition", () => {
+    for (const recipe of SEED_RECIPES_V2) {
+      expect(recipe.kcalPerPortion).toBeGreaterThan(0);
+      expect(recipe.proteinG).toBeGreaterThan(0);
+      expect(recipe.carbsG).toBeGreaterThan(0);
+      expect(recipe.fatG).toBeGreaterThan(0);
+      expect(recipe.fiberG).toBeGreaterThanOrEqual(0);
+      expect(recipe.sugarG).toBeGreaterThanOrEqual(0);
+      expect(recipe.sodiumMg).toBeGreaterThanOrEqual(0);
+      expect(recipe.nutritionVerification.status).toBe("verified");
+      expect(recipe.nutritionVerification.engine).toBe("verifyIngredients");
+      expect(recipe.nutritionVerification.minIngredientConfidence).toBeGreaterThanOrEqual(0.55);
+    }
+  });
+
+  it("keeps ids, cluster lookup and prefix helpers coherent", () => {
+    const ids = SEED_RECIPES_V2.map((recipe) => recipe.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    const knownId = "seed-v2-mediterranean-butter-bean-shakshuka";
+    expect(isSeedRecipeId(knownId)).toBe(true);
+    expect(findSeedRecipeById(knownId)?.cluster).toBe("mediterranean");
+    expect(findSeedRecipeById("not-real")).toBeNull();
+    expect(isSeedRecipeId(null)).toBe(false);
+
+    for (const recipe of SEED_RECIPES_V2) {
+      expect(recipe.id.startsWith(SEED_RECIPE_ID_PREFIX)).toBe(true);
+      expect(recipe.id.slice(SEED_RECIPE_ID_PREFIX.length)).toMatch(
+        new RegExp(`^${recipe.cluster}-`),
+      );
+    }
+  });
+
+  it("retires cached and database-backed recipes from superseded catalogues", () => {
+    expect(
+      isRetiredDiscoverSeedCard({
+        id: "seed-v2-mediterranean-classic-greek-salad",
+        feedSource: "catalog",
+      }),
+    ).toBe(true);
+    expect(
+      isRetiredDiscoverSeedCard({
+        id: "19a30f80-7b97-4bf3-8722-262acd50db51",
+        creatorName: "Suppr Kitchen",
+        contentOrigin: "first_party",
+      }),
+    ).toBe(true);
+    expect(
+      isRetiredDiscoverSeedCard({
+        id: SEED_RECIPES_V2[0]!.id,
+        creatorName: "Sloe Kitchen",
+        feedSource: "catalog",
+      }),
+    ).toBe(false);
+    expect(
+      isRetiredDiscoverSeedCard({
+        id: "19a30f80-7b97-4bf3-8722-262acd50db51",
+        creatorName: "Sloe Kitchen",
+        authorId: "user-1",
+        contentOrigin: "first_party",
+      }),
+    ).toBe(false);
+  });
+
+  it("keeps tags non-empty", () => {
+    for (const recipe of SEED_RECIPES_V2) {
+      for (const tag of recipe.tags ?? []) expect(tag.length).toBeGreaterThan(0);
     }
   });
 });

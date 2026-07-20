@@ -34,9 +34,11 @@ test.describe("Cook mode", () => {
     }
     await page.getByPlaceholder(/search recipes/i).waitFor({ state: "visible", timeout: 25_000 });
 
+    // Use a current, founder-approved Sloe Kitchen catalogue recipe. The
+    // superseded seed catalogue (including Classic Greek Salad) is retired.
     const recipeCard = page
-      .getByRole("button", { name: /Classic Greek Salad|greek salad/i })
-      .or(page.getByRole("link", { name: /greek salad|recipe/i }))
+      .getByRole("button", { name: /Butter Bean Shakshuka/i })
+      .or(page.getByRole("link", { name: /Butter Bean Shakshuka|recipe/i }))
       .first();
     await recipeCard.click({ timeout: 15_000 });
 

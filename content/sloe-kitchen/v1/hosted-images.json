@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "storage": "Supabase Storage public recipe-images bucket",
+  "images": [
+    {
+      "slug": "butter-bean-shakshuka",
+      "bucket": "recipe-images",
+      "path": "sloe-kitchen/v1/butter-bean-shakshuka.jpg",
+      "url": "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipe-images/sloe-kitchen/v1/butter-bean-shakshuka.jpg"
+    },
+    {
+      "slug": "halloumi-lentil-roast-veg-salad",
+      "bucket": "recipe-images",
+      "path": "sloe-kitchen/v1/halloumi-lentil-roast-veg-salad.jpg",
+      "url": "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipe-images/sloe-kitchen/v1/halloumi-lentil-roast-veg-salad.jpg"
+    },
+    {
+      "slug": "harissa-salmon-herb-couscous",
+      "bucket": "recipe-images",
+      "path": "sloe-kitchen/v1/harissa-salmon-herb-couscous.jpg",
+      "url": "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipe-images/sloe-kitchen/v1/harissa-salmon-herb-couscous.jpg"
+    },
+    {
+      "slug": "miso-salmon-rice-bowl",
+      "bucket": "recipe-images",
+      "path": "sloe-kitchen/v1/miso-salmon-rice-bowl.jpg",
+      "url": "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipe-images/sloe-kitchen/v1/miso-salmon-rice-bowl.jpg"
+    },
+    {
+      "slug": "tomato-butter-bean-orzo",
+      "bucket": "recipe-images",
+      "path": "sloe-kitchen/v1/tomato-butter-bean-orzo.jpg",
+      "url": "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipe-images/sloe-kitchen/v1/tomato-butter-bean-orzo.jpg"
+    },
+    {
+      "slug": "prawn-saganaki-feta",
+      "bucket": "recipe-images",
+      "path": "sloe-kitchen/v1/prawn-saganaki-feta.jpg",
+      "url": "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipe-images/sloe-kitchen/v1/prawn-saganaki-feta.jpg"
+    },
+    {
+      "slug": "green-herb-falafel-bowl",
+      "bucket": "recipe-images",
+      "path": "sloe-kitchen/v1/green-herb-falafel-bowl.jpg",
+      "url": "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipe-images/sloe-kitchen/v1/green-herb-falafel-bowl.jpg"
+    },
+    {
+      "slug": "crispy-tofu-peanut-noodles",
+      "bucket": "recipe-images",
+      "path": "sloe-kitchen/v1/crispy-tofu-peanut-noodles.jpg",
+      "url": "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipe-images/sloe-kitchen/v1/crispy-tofu-peanut-noodles.jpg"
+    },
+    {
+      "slug": "ginger-chicken-udon",
+      "bucket": "recipe-images",
+      "path": "sloe-kitchen/v1/ginger-chicken-udon.jpg",
+      "url": "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipe-images/sloe-kitchen/v1/ginger-chicken-udon.jpg"
+    },
+    {
+      "slug": "gochujang-turkey-meatballs",
+      "bucket": "recipe-images",
+      "path": "sloe-kitchen/v1/gochujang-turkey-meatballs.jpg",
+      "url": "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipe-images/sloe-kitchen/v1/gochujang-turkey-meatballs.jpg"
+    },
+    {
+      "slug": "thai-basil-beef-rice",
+      "bucket": "recipe-images",
+      "path": "sloe-kitchen/v1/thai-basil-beef-rice.jpg",
+      "url": "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipe-images/sloe-kitchen/v1/thai-basil-beef-rice.jpg"
+    },
+    {
+      "slug": "sesame-soba-edamame-salad",
+      "bucket": "recipe-images",
+      "path": "sloe-kitchen/v1/sesame-soba-edamame-salad.jpg",
+      "url": "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipe-images/sloe-kitchen/v1/sesame-soba-edamame-salad.jpg"
+    },
+    {
+      "slug": "coconut-lime-chicken-curry",
+      "bucket": "recipe-images",
+      "path": "sloe-kitchen/v1/coconut-lime-chicken-curry.jpg",
+      "url": "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipe-images/sloe-kitchen/v1/coconut-lime-chicken-curry.jpg"
+    },
+    {
+      "slug": "soy-ginger-cod-bok-choy",
+      "bucket": "recipe-images",
+      "path": "sloe-kitchen/v1/soy-ginger-cod-bok-choy.jpg",
+      "url": "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipe-images/sloe-kitchen/v1/soy-ginger-cod-bok-choy.jpg"
+    },
+    {
+      "slug": "kimchi-fried-rice-eggs",
+      "bucket": "recipe-images",
+      "path": "sloe-kitchen/v1/kimchi-fried-rice-eggs.jpg",
+      "url": "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipe-images/sloe-kitchen/v1/kimchi-fried-rice-eggs.jpg"
+    },
+    {
+      "slug": "mango-prawn-rice-bowl",
+      "bucket": "recipe-images",
+      "path": "sloe-kitchen/v1/mango-prawn-rice-bowl.jpg",
+      "url": "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipe-images/sloe-kitchen/v1/mango-prawn-rice-bowl.jpg"
+    },
+    {
+      "slug": "huevos-rancheros-black-beans",
+      "bucket": "recipe-images",
+      "path": "sloe-kitchen/v1/huevos-rancheros-black-beans.jpg",
+      "url": "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipe-images/sloe-kitchen/v1/huevos-rancheros-black-beans.jpg"
+    },
+    {
+      "slug": "chicken-tinga-rice-bowl",
+      "bucket": "recipe-images",
+      "path": "sloe-kitchen/v1/chicken-tinga-rice-bowl.jpg",
+      "url": "https://fnfgxsignmuepshbebrl.supabase.co/storage/v1/object/public/recipe-images/sloe-kitchen/v1/chicken-tinga-rice-bowl.jpg"
+    }
+  ]
+}

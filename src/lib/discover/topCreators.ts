@@ -25,6 +25,24 @@ type TopCreatorRow = {
 };
 
 /**
+ * ENG-1535 — fixed IDs inserted by the retired "launch partners" migration.
+ * They were invented personas, not creators who consented to a public profile.
+ * Keep the trust guard in the shared loader until every environment has run the
+ * cleanup migration; real creators with different IDs remain eligible.
+ */
+const SYNTHETIC_DISCOVER_CREATOR_IDS = new Set([
+  "a1000001-0001-4000-8000-000000000001",
+  "a1000001-0001-4000-8000-000000000002",
+  "a1000001-0001-4000-8000-000000000003",
+  "a1000001-0001-4000-8000-000000000004",
+  "a1000001-0001-4000-8000-000000000005",
+]);
+
+export function isSyntheticDiscoverCreatorId(id: string): boolean {
+  return SYNTHETIC_DISCOVER_CREATOR_IDS.has(id);
+}
+
+/**
  * loadTopCreators — the Discover creator rail's data source (ENG-1225 #14):
  * creators ranked by total recipe saves, via the `top_creators_by_saves` RPC.
  * Returns `[]` on any error or when no creators exist (the rail then hides) —
@@ -40,7 +58,12 @@ export async function loadTopCreators(
     });
     if (error || !Array.isArray(data)) return [];
     return (data as TopCreatorRow[])
-      .filter((r) => r.id && (r.display_name ?? "").trim().length > 0)
+      .filter(
+        (r) =>
+          r.id &&
+          !isSyntheticDiscoverCreatorId(r.id) &&
+          (r.display_name ?? "").trim().length > 0,
+      )
       .map((r) => ({
         id: r.id,
         handle: r.handle ?? r.id,

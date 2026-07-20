@@ -283,10 +283,15 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // no-photo cards + Collections). Default-on; off → the legacy feed without
   // those sections (kill switch). Mobile + web.
   "sloe_v3_discover_editorial",
+  // ENG-1618 — photographic Discover first viewport. Quick Weeknight uses
+  // each recipe's real media and moves ahead of the creator/filter/import
+  // chrome on mobile-web. Default-on for the beta-window fix; off preserves
+  // the exact tint-card ordering as the kill switch. Mobile + web.
+  "discover_photographic_first_view_v1",
   // ENG-1225 #14 — the v3 Discover creator plane (creator rail + web featured
   // hero + mobile Following feed). RAMPED ON 2026-06-24 (ENG-1247, Grace's
-  // call); self-hides when the `creators` table is empty (seed fallback
-  // pre-launch), so it is safe on. Off → the legacy feed (kill switch). M+W.
+  // call). ENG-1535 removed the invented launch personas; the rail now
+  // self-hides until the RPC returns genuine creators. Off → legacy feed. M+W.
   "discover_creator_rail_v1",
   // ENG-1225 flag-collapse sweep (2026-06-22, "turn everything on") — the v3
   // Progress refinements that were built but dark-by-default. Each default-on

@@ -1,0 +1,4451 @@
+{
+  "version": 1,
+  "policy": "Calculated from weighed ingredients by Suppr's canonical verification pipeline; no hand-entered macro estimates.",
+  "recipes": [
+    {
+      "slug": "butter-bean-shakshuka",
+      "status": "verified",
+      "servings": 3,
+      "perServing": {
+        "calories": 342,
+        "protein": 16.9,
+        "carbs": 29.9,
+        "fat": 18.2,
+        "fiberG": 8.7,
+        "sugarG": 9.4,
+        "sodiumMg": 459
+      },
+      "verification": {
+        "engine": "verifyIngredients",
+        "primarySource": "USDA",
+        "sourceCounts": {
+          "USDA": 7,
+          "Edamam": 4,
+          "Suppr": 1,
+          "FatSecret": 1
+        },
+        "minIngredientConfidence": 0.63,
+        "avgIngredientConfidence": 0.8893589743589744,
+        "belowAcceptFloorCount": 0,
+        "ingredients": [
+          {
+            "input": "extra-virgin olive oil",
+            "grams": 14,
+            "matchedName": "Oil, olive, salad or cooking",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 124,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 14,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "red onion",
+            "grams": 120,
+            "matchedName": "Onions, red, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 53,
+              "protein": 1.1,
+              "carbs": 11.9,
+              "fat": 0.1,
+              "fiberG": 2.6,
+              "sugarG": 6.9,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "red pepper",
+            "grams": 180,
+            "matchedName": "Peppers, red, cooked",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 99,
+              "protein": 1.7,
+              "carbs": 12.1,
+              "fat": 5,
+              "fiberG": 2.2,
+              "sugarG": 7.6,
+              "sodiumMg": 227
+            }
+          },
+          {
+            "input": "garlic",
+            "grams": 8,
+            "matchedName": "Garlic, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 11,
+              "protein": 0.5,
+              "carbs": 2.3,
+              "fat": 0,
+              "fiberG": 0.2,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "ground cumin",
+            "grams": 2,
+            "matchedName": "Cumin",
+            "source": "Edamam",
+            "confidence": 0.85,
+            "accepted": true,
+            "macros": {
+              "calories": 8,
+              "protein": 0.4,
+              "carbs": 0.9,
+              "fat": 0.4,
+              "fiberG": 0.2,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "smoked paprika",
+            "grams": 2,
+            "matchedName": "Smoked Paprika",
+            "source": "Edamam",
+            "confidence": 0.92,
+            "accepted": true,
+            "macros": {
+              "calories": 6,
+              "protein": 0.3,
+              "carbs": 1.1,
+              "fat": 0.3,
+              "fiberG": 0.7,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "chilli flakes",
+            "grams": 1,
+            "matchedName": "Peppers, chili, green, canned",
+            "source": "USDA",
+            "confidence": 0.63,
+            "accepted": true,
+            "macros": {
+              "calories": 0,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 4
+            }
+          },
+          {
+            "input": "chopped tomatoes",
+            "grams": 400,
+            "matchedName": "Canned tomatoes (no salt added)",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 64,
+              "protein": 3.2,
+              "carbs": 14,
+              "fat": 1.2,
+              "fiberG": 7.6,
+              "sugarG": 10.4,
+              "sodiumMg": 40
+            }
+          },
+          {
+            "input": "butter beans",
+            "grams": 240,
+            "matchedName": "Lima beans, from canned",
+            "source": "USDA",
+            "confidence": 0.755,
+            "accepted": true,
+            "macros": {
+              "calories": 293,
+              "protein": 14.1,
+              "carbs": 44.6,
+              "fat": 6.9,
+              "fiberG": 12.2,
+              "sugarG": 3.1,
+              "sodiumMg": 895
+            }
+          },
+          {
+            "input": "medium eggs",
+            "grams": 150,
+            "matchedName": "Medium Eggs",
+            "source": "FatSecret",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 205,
+              "protein": 20.5,
+              "carbs": 0,
+              "fat": 13.6,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 205
+            }
+          },
+          {
+            "input": "feta",
+            "grams": 60,
+            "matchedName": "Feta",
+            "source": "Edamam",
+            "confidence": 0.92,
+            "accepted": true,
+            "macros": {
+              "calories": 159,
+              "protein": 8.5,
+              "carbs": 2.3,
+              "fat": 12.9,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "flat-leaf parsley",
+            "grams": 10,
+            "matchedName": "Parsley, fresh",
+            "source": "USDA",
+            "confidence": 0.7966666666666666,
+            "accepted": true,
+            "macros": {
+              "calories": 4,
+              "protein": 0.3,
+              "carbs": 0.6,
+              "fat": 0.1,
+              "fiberG": 0.3,
+              "sugarG": 0.1,
+              "sodiumMg": 6
+            }
+          },
+          {
+            "input": "fine sea salt",
+            "grams": 3,
+            "matchedName": "Fine Sea Salt",
+            "source": "Edamam",
+            "confidence": 0.92,
+            "accepted": true,
+            "macros": {
+              "calories": 0,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "slug": "halloumi-lentil-roast-veg-salad",
+      "status": "verified",
+      "servings": 2,
+      "perServing": {
+        "calories": 681,
+        "protein": 30.4,
+        "carbs": 26.2,
+        "fat": 52.1,
+        "fiberG": 5.9,
+        "sugarG": 15.4,
+        "sodiumMg": 1965
+      },
+      "verification": {
+        "engine": "verifyIngredients",
+        "primarySource": "USDA",
+        "sourceCounts": {
+          "USDA": 10,
+          "FatSecret": 1
+        },
+        "minIngredientConfidence": 0.605,
+        "avgIngredientConfidence": 0.9213636363636364,
+        "belowAcceptFloorCount": 0,
+        "ingredients": [
+          {
+            "input": "courgette",
+            "grams": 250,
+            "matchedName": "Squash, summer, zucchini, includes skin, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 43,
+              "protein": 3,
+              "carbs": 7.8,
+              "fat": 0.8,
+              "fiberG": 2.5,
+              "sugarG": 6.3,
+              "sodiumMg": 20
+            }
+          },
+          {
+            "input": "red pepper",
+            "grams": 180,
+            "matchedName": "Peppers, red, cooked",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 99,
+              "protein": 1.7,
+              "carbs": 12.1,
+              "fat": 5,
+              "fiberG": 2.2,
+              "sugarG": 7.6,
+              "sodiumMg": 227
+            }
+          },
+          {
+            "input": "extra-virgin olive oil",
+            "grams": 28,
+            "matchedName": "Oil, olive, extra virgin",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 236,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 26.2,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "fine sea salt",
+            "grams": 3,
+            "matchedName": "Salt, table",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 0,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 1163
+            }
+          },
+          {
+            "input": "black pepper",
+            "grams": 1,
+            "matchedName": "Spices, pepper, black",
+            "source": "USDA",
+            "confidence": 0.605,
+            "accepted": true,
+            "macros": {
+              "calories": 3,
+              "protein": 0.1,
+              "carbs": 0.6,
+              "fat": 0,
+              "fiberG": 0.3,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "cooked green lentils",
+            "grams": 250,
+            "matchedName": "Greens, canned, cooked",
+            "source": "USDA",
+            "confidence": 0.9633333333333333,
+            "accepted": true,
+            "macros": {
+              "calories": 103,
+              "protein": 3.3,
+              "carbs": 6.8,
+              "fat": 7.1,
+              "fiberG": 3.3,
+              "sugarG": 1,
+              "sodiumMg": 838
+            }
+          },
+          {
+            "input": "halloumi",
+            "grams": 225,
+            "matchedName": "Grilled Halloumi",
+            "source": "FatSecret",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 792,
+              "protein": 50,
+              "carbs": 3.3,
+              "fat": 64.4,
+              "fiberG": 0,
+              "sugarG": 1.1,
+              "sodiumMg": 1656
+            }
+          },
+          {
+            "input": "rocket",
+            "grams": 60,
+            "matchedName": "Arugula, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 15,
+              "protein": 1.5,
+              "carbs": 2.2,
+              "fat": 0.4,
+              "fiberG": 1,
+              "sugarG": 1.2,
+              "sodiumMg": 16
+            }
+          },
+          {
+            "input": "lemon",
+            "grams": 80,
+            "matchedName": "Lemon, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 23,
+              "protein": 0.9,
+              "carbs": 7.5,
+              "fat": 0.2,
+              "fiberG": 2.2,
+              "sugarG": 2,
+              "sodiumMg": 2
+            }
+          },
+          {
+            "input": "runny honey",
+            "grams": 14,
+            "matchedName": "Honey",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 43,
+              "protein": 0,
+              "carbs": 11.5,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 11.5,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "flat-leaf parsley",
+            "grams": 10,
+            "matchedName": "Parsley, fresh",
+            "source": "USDA",
+            "confidence": 0.7966666666666666,
+            "accepted": true,
+            "macros": {
+              "calories": 4,
+              "protein": 0.3,
+              "carbs": 0.6,
+              "fat": 0.1,
+              "fiberG": 0.3,
+              "sugarG": 0.1,
+              "sodiumMg": 6
+            }
+          }
+        ]
+      }
+    },
+    {
+      "slug": "harissa-salmon-herb-couscous",
+      "status": "verified",
+      "servings": 2,
+      "perServing": {
+        "calories": 754,
+        "protein": 39.6,
+        "carbs": 69.6,
+        "fat": 35,
+        "fiberG": 6.8,
+        "sugarG": 8.9,
+        "sodiumMg": 882
+      },
+      "verification": {
+        "engine": "verifyIngredients",
+        "primarySource": "USDA",
+        "sourceCounts": {
+          "USDA": 9,
+          "OFF": 1,
+          "Suppr": 1
+        },
+        "minIngredientConfidence": 0.605,
+        "avgIngredientConfidence": 0.9265151515151515,
+        "belowAcceptFloorCount": 0,
+        "ingredients": [
+          {
+            "input": "skinless salmon fillets",
+            "grams": 280,
+            "matchedName": "Fish, salmon, Atlantic, farmed, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 582,
+              "protein": 57.2,
+              "carbs": 0,
+              "fat": 37.6,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 165
+            }
+          },
+          {
+            "input": "rose harissa paste",
+            "grams": 25,
+            "matchedName": "Belazu Rose Harissa Paste",
+            "source": "OFF",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 115,
+              "protein": 0.8,
+              "carbs": 2.5,
+              "fat": 11,
+              "fiberG": 1.8,
+              "sugarG": 1,
+              "sodiumMg": 400
+            }
+          },
+          {
+            "input": "runny honey",
+            "grams": 14,
+            "matchedName": "Honey",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 43,
+              "protein": 0,
+              "carbs": 11.5,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 11.5,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "extra-virgin olive oil",
+            "grams": 21,
+            "matchedName": "Oil, olive, extra virgin",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 177,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 19.7,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "giant couscous",
+            "grams": 140,
+            "matchedName": "Couscous, dry",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 526,
+              "protein": 17.9,
+              "carbs": 108.4,
+              "fat": 0.9,
+              "fiberG": 7,
+              "sugarG": 0,
+              "sodiumMg": 14
+            }
+          },
+          {
+            "input": "cucumber",
+            "grams": 180,
+            "matchedName": "Cucumber",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 27,
+              "protein": 1.3,
+              "carbs": 6.5,
+              "fat": 0.2,
+              "fiberG": 0.9,
+              "sugarG": 3.1,
+              "sodiumMg": 4
+            }
+          },
+          {
+            "input": "flat-leaf parsley",
+            "grams": 20,
+            "matchedName": "Parsley, fresh",
+            "source": "USDA",
+            "confidence": 0.7966666666666666,
+            "accepted": true,
+            "macros": {
+              "calories": 7,
+              "protein": 0.6,
+              "carbs": 1.3,
+              "fat": 0.2,
+              "fiberG": 0.7,
+              "sugarG": 0.2,
+              "sodiumMg": 11
+            }
+          },
+          {
+            "input": "mint leaves",
+            "grams": 10,
+            "matchedName": "Spearmint, fresh",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 4,
+              "protein": 0.3,
+              "carbs": 0.8,
+              "fat": 0.1,
+              "fiberG": 0.7,
+              "sugarG": 0,
+              "sodiumMg": 3
+            }
+          },
+          {
+            "input": "lemon",
+            "grams": 80,
+            "matchedName": "Lemon, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 23,
+              "protein": 0.9,
+              "carbs": 7.5,
+              "fat": 0.2,
+              "fiberG": 2.2,
+              "sugarG": 2,
+              "sodiumMg": 2
+            }
+          },
+          {
+            "input": "fine sea salt",
+            "grams": 3,
+            "matchedName": "Salt, table",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 0,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 1163
+            }
+          },
+          {
+            "input": "black pepper",
+            "grams": 1,
+            "matchedName": "Spices, pepper, black",
+            "source": "USDA",
+            "confidence": 0.605,
+            "accepted": true,
+            "macros": {
+              "calories": 3,
+              "protein": 0.1,
+              "carbs": 0.6,
+              "fat": 0,
+              "fiberG": 0.3,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "slug": "miso-salmon-rice-bowl",
+      "status": "verified",
+      "servings": 2,
+      "perServing": {
+        "calories": 626,
+        "protein": 43.8,
+        "carbs": 45,
+        "fat": 30.5,
+        "fiberG": 6.4,
+        "sugarG": 12.6,
+        "sodiumMg": 1379
+      },
+      "verification": {
+        "engine": "verifyIngredients",
+        "primarySource": "USDA",
+        "sourceCounts": {
+          "Suppr": 2,
+          "USDA": 9
+        },
+        "minIngredientConfidence": 0.63,
+        "avgIngredientConfidence": 0.9175757575757576,
+        "belowAcceptFloorCount": 0,
+        "ingredients": [
+          {
+            "input": "jasmine rice",
+            "grams": 150,
+            "matchedName": "White rice (cooked)",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 195,
+              "protein": 4.1,
+              "carbs": 42.3,
+              "fat": 0.5,
+              "fiberG": 0.6,
+              "sugarG": 0.2,
+              "sodiumMg": 2
+            }
+          },
+          {
+            "input": "skinless salmon fillets",
+            "grams": 280,
+            "matchedName": "Fish, salmon, Atlantic, farmed, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 582,
+              "protein": 57.2,
+              "carbs": 0,
+              "fat": 37.6,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 165
+            }
+          },
+          {
+            "input": "white miso paste",
+            "grams": 30,
+            "matchedName": "Miso",
+            "source": "USDA",
+            "confidence": 0.7966666666666666,
+            "accepted": true,
+            "macros": {
+              "calories": 59,
+              "protein": 3.8,
+              "carbs": 7.6,
+              "fat": 1.8,
+              "fiberG": 1.6,
+              "sugarG": 1.9,
+              "sodiumMg": 1118
+            }
+          },
+          {
+            "input": "light soy sauce",
+            "grams": 18,
+            "matchedName": "Soy sauce",
+            "source": "USDA",
+            "confidence": 0.9633333333333333,
+            "accepted": true,
+            "macros": {
+              "calories": 10,
+              "protein": 1.5,
+              "carbs": 0.9,
+              "fat": 0.1,
+              "fiberG": 0.1,
+              "sugarG": 0.1,
+              "sodiumMg": 988
+            }
+          },
+          {
+            "input": "runny honey",
+            "grams": 20,
+            "matchedName": "Honey",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 61,
+              "protein": 0.1,
+              "carbs": 16.5,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 16.4,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "rice vinegar",
+            "grams": 30,
+            "matchedName": "Vinegar",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 6,
+              "protein": 0,
+              "carbs": 0.3,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0.1,
+              "sodiumMg": 2
+            }
+          },
+          {
+            "input": "toasted sesame oil",
+            "grams": 5,
+            "matchedName": "Oil, sesame, salad or cooking",
+            "source": "USDA",
+            "confidence": 0.9633333333333333,
+            "accepted": true,
+            "macros": {
+              "calories": 44,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 5,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "shelled edamame",
+            "grams": 160,
+            "matchedName": "Edamame, cooked",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 224,
+              "protein": 18.4,
+              "carbs": 13.8,
+              "fat": 12.1,
+              "fiberG": 8,
+              "sugarG": 3.4,
+              "sodiumMg": 203
+            }
+          },
+          {
+            "input": "cucumber",
+            "grams": 180,
+            "matchedName": "Cucumber",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 27,
+              "protein": 1.3,
+              "carbs": 6.5,
+              "fat": 0.2,
+              "fiberG": 0.9,
+              "sugarG": 3.1,
+              "sodiumMg": 4
+            }
+          },
+          {
+            "input": "pickled sushi ginger",
+            "grams": 30,
+            "matchedName": "Ginger root, pickled",
+            "source": "USDA",
+            "confidence": 0.63,
+            "accepted": true,
+            "macros": {
+              "calories": 6,
+              "protein": 0.1,
+              "carbs": 1.4,
+              "fat": 0,
+              "fiberG": 0.8,
+              "sugarG": 0,
+              "sodiumMg": 272
+            }
+          },
+          {
+            "input": "sesame seeds",
+            "grams": 6,
+            "matchedName": "Sesame seeds",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 38,
+              "protein": 1.2,
+              "carbs": 0.7,
+              "fat": 3.7,
+              "fiberG": 0.7,
+              "sugarG": 0,
+              "sodiumMg": 3
+            }
+          }
+        ]
+      }
+    },
+    {
+      "slug": "tomato-butter-bean-orzo",
+      "status": "verified",
+      "servings": 2,
+      "perServing": {
+        "calories": 618,
+        "protein": 23.3,
+        "carbs": 105.1,
+        "fat": 12.1,
+        "fiberG": 14.4,
+        "sugarG": 14.9,
+        "sodiumMg": 1489
+      },
+      "verification": {
+        "engine": "verifyIngredients",
+        "primarySource": "USDA",
+        "sourceCounts": {
+          "USDA": 12,
+          "Suppr": 1
+        },
+        "minIngredientConfidence": 0.605,
+        "avgIngredientConfidence": 0.9046153846153846,
+        "belowAcceptFloorCount": 0,
+        "ingredients": [
+          {
+            "input": "extra-virgin olive oil",
+            "grams": 14,
+            "matchedName": "Oil, olive, extra virgin",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 118,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 13.1,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "brown onion",
+            "grams": 100,
+            "matchedName": "Onions, raw",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 40,
+              "protein": 1.1,
+              "carbs": 9.3,
+              "fat": 0.1,
+              "fiberG": 1.7,
+              "sugarG": 4.2,
+              "sodiumMg": 4
+            }
+          },
+          {
+            "input": "garlic",
+            "grams": 8,
+            "matchedName": "Garlic, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 11,
+              "protein": 0.5,
+              "carbs": 2.3,
+              "fat": 0,
+              "fiberG": 0.2,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "chilli flakes",
+            "grams": 1,
+            "matchedName": "Peppers, chili, green, canned",
+            "source": "USDA",
+            "confidence": 0.63,
+            "accepted": true,
+            "macros": {
+              "calories": 0,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 4
+            }
+          },
+          {
+            "input": "cherry tomatoes",
+            "grams": 250,
+            "matchedName": "Tomatoes, red, ripe, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 45,
+              "protein": 2.2,
+              "carbs": 9.7,
+              "fat": 0.5,
+              "fiberG": 3,
+              "sugarG": 6.6,
+              "sodiumMg": 13
+            }
+          },
+          {
+            "input": "orzo",
+            "grams": 160,
+            "matchedName": "Pasta, dry, enriched",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 594,
+              "protein": 20.9,
+              "carbs": 119.5,
+              "fat": 2.4,
+              "fiberG": 5.1,
+              "sugarG": 4.3,
+              "sodiumMg": 10
+            }
+          },
+          {
+            "input": "tomato passata",
+            "grams": 200,
+            "matchedName": "Tomato, puree, canned",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 82,
+              "protein": 3.2,
+              "carbs": 16.1,
+              "fat": 0.5,
+              "fiberG": 3.9,
+              "sugarG": 8.6,
+              "sodiumMg": 59
+            }
+          },
+          {
+            "input": "low-salt vegetable stock",
+            "grams": 450,
+            "matchedName": "Soup, vegetable broth, ready to serve",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 23,
+              "protein": 1.1,
+              "carbs": 4.2,
+              "fat": 0.3,
+              "fiberG": 0,
+              "sugarG": 2.5,
+              "sodiumMg": 1332
+            }
+          },
+          {
+            "input": "butter beans",
+            "grams": 240,
+            "matchedName": "Lima beans, from canned",
+            "source": "USDA",
+            "confidence": 0.755,
+            "accepted": true,
+            "macros": {
+              "calories": 293,
+              "protein": 14.1,
+              "carbs": 44.6,
+              "fat": 6.9,
+              "fiberG": 12.2,
+              "sugarG": 3.1,
+              "sodiumMg": 895
+            }
+          },
+          {
+            "input": "baby spinach",
+            "grams": 100,
+            "matchedName": "Spinach",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 23,
+              "protein": 2.9,
+              "carbs": 3.6,
+              "fat": 0.4,
+              "fiberG": 2.2,
+              "sugarG": 0.4,
+              "sodiumMg": 79
+            }
+          },
+          {
+            "input": "basil leaves",
+            "grams": 12,
+            "matchedName": "Basil, fresh",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 3,
+              "protein": 0.4,
+              "carbs": 0.3,
+              "fat": 0.1,
+              "fiberG": 0.2,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "fine sea salt",
+            "grams": 1.5,
+            "matchedName": "Salt, table",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 0,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 581
+            }
+          },
+          {
+            "input": "black pepper",
+            "grams": 1,
+            "matchedName": "Spices, pepper, black",
+            "source": "USDA",
+            "confidence": 0.605,
+            "accepted": true,
+            "macros": {
+              "calories": 3,
+              "protein": 0.1,
+              "carbs": 0.6,
+              "fat": 0,
+              "fiberG": 0.3,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "slug": "prawn-saganaki-feta",
+      "status": "verified",
+      "servings": 2,
+      "perServing": {
+        "calories": 615,
+        "protein": 47.3,
+        "carbs": 56.8,
+        "fat": 22,
+        "fiberG": 7.5,
+        "sugarG": 9.9,
+        "sodiumMg": 1481
+      },
+      "verification": {
+        "engine": "verifyIngredients",
+        "primarySource": "USDA",
+        "sourceCounts": {
+          "USDA": 9,
+          "Suppr": 1,
+          "FatSecret": 2
+        },
+        "minIngredientConfidence": 0.605,
+        "avgIngredientConfidence": 0.840763888888889,
+        "belowAcceptFloorCount": 0,
+        "ingredients": [
+          {
+            "input": "raw peeled king prawns",
+            "grams": 300,
+            "matchedName": "Crustaceans, shrimp, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 255,
+              "protein": 60.3,
+              "carbs": 0,
+              "fat": 1.5,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 357
+            }
+          },
+          {
+            "input": "extra-virgin olive oil",
+            "grams": 21,
+            "matchedName": "Oil, olive, extra virgin",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 177,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 19.7,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "brown onion",
+            "grams": 120,
+            "matchedName": "Onions, raw",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 48,
+              "protein": 1.3,
+              "carbs": 11.2,
+              "fat": 0.1,
+              "fiberG": 2,
+              "sugarG": 5.1,
+              "sodiumMg": 5
+            }
+          },
+          {
+            "input": "garlic",
+            "grams": 12,
+            "matchedName": "Garlic, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 17,
+              "protein": 0.8,
+              "carbs": 3.4,
+              "fat": 0,
+              "fiberG": 0.3,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "chilli flakes",
+            "grams": 1,
+            "matchedName": "Peppers, chili, green, canned",
+            "source": "USDA",
+            "confidence": 0.63,
+            "accepted": true,
+            "macros": {
+              "calories": 0,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 4
+            }
+          },
+          {
+            "input": "dried oregano",
+            "grams": 2,
+            "matchedName": "Spices, oregano, dried",
+            "source": "USDA",
+            "confidence": 0.605,
+            "accepted": true,
+            "macros": {
+              "calories": 5,
+              "protein": 0.2,
+              "carbs": 1.4,
+              "fat": 0.1,
+              "fiberG": 0.9,
+              "sugarG": 0.1,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "chopped tomatoes",
+            "grams": 400,
+            "matchedName": "Canned tomatoes (no salt added)",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 64,
+              "protein": 3.2,
+              "carbs": 14,
+              "fat": 1.2,
+              "fiberG": 7.6,
+              "sugarG": 10.4,
+              "sodiumMg": 40
+            }
+          },
+          {
+            "input": "feta",
+            "grams": 100,
+            "matchedName": "Feta Cheese",
+            "source": "FatSecret",
+            "confidence": 0.6625,
+            "accepted": true,
+            "macros": {
+              "calories": 265,
+              "protein": 14.2,
+              "carbs": 4.1,
+              "fat": 21.3,
+              "fiberG": 0,
+              "sugarG": 4.1,
+              "sodiumMg": 1115
+            }
+          },
+          {
+            "input": "flat-leaf parsley",
+            "grams": 10,
+            "matchedName": "Parsley, fresh",
+            "source": "USDA",
+            "confidence": 0.7966666666666666,
+            "accepted": true,
+            "macros": {
+              "calories": 4,
+              "protein": 0.3,
+              "carbs": 0.6,
+              "fat": 0.1,
+              "fiberG": 0.3,
+              "sugarG": 0.1,
+              "sodiumMg": 6
+            }
+          },
+          {
+            "input": "sourdough bread",
+            "grams": 160,
+            "matchedName": "Sourdough Bread",
+            "source": "FatSecret",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 391,
+              "protein": 14.2,
+              "carbs": 78.2,
+              "fat": 0,
+              "fiberG": 3.6,
+              "sugarG": 0,
+              "sodiumMg": 853
+            }
+          },
+          {
+            "input": "fine sea salt",
+            "grams": 1.5,
+            "matchedName": "Salt, table",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 0,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 581
+            }
+          },
+          {
+            "input": "black pepper",
+            "grams": 1,
+            "matchedName": "Spices, pepper, black",
+            "source": "USDA",
+            "confidence": 0.605,
+            "accepted": true,
+            "macros": {
+              "calories": 3,
+              "protein": 0.1,
+              "carbs": 0.6,
+              "fat": 0,
+              "fiberG": 0.3,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "slug": "green-herb-falafel-bowl",
+      "status": "verified",
+      "servings": 4,
+      "perServing": {
+        "calories": 677,
+        "protein": 24,
+        "carbs": 89.4,
+        "fat": 26.5,
+        "fiberG": 18,
+        "sugarG": 11.8,
+        "sodiumMg": 735
+      },
+      "verification": {
+        "engine": "verifyIngredients",
+        "primarySource": "USDA",
+        "sourceCounts": {
+          "USDA": 17,
+          "FatSecret": 1,
+          "Suppr": 2,
+          "Edamam": 1
+        },
+        "minIngredientConfidence": 0.7966666666666666,
+        "avgIngredientConfidence": 0.9634920634920635,
+        "belowAcceptFloorCount": 0,
+        "ingredients": [
+          {
+            "input": "dried chickpeas",
+            "grams": 200,
+            "matchedName": "Chickpeas, mature seeds, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 756,
+              "protein": 40.9,
+              "carbs": 125.9,
+              "fat": 12.1,
+              "fiberG": 24.4,
+              "sugarG": 21.4,
+              "sodiumMg": 48
+            }
+          },
+          {
+            "input": "brown onion",
+            "grams": 100,
+            "matchedName": "Onions, raw",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 40,
+              "protein": 1.1,
+              "carbs": 9.3,
+              "fat": 0.1,
+              "fiberG": 1.7,
+              "sugarG": 4.2,
+              "sodiumMg": 4
+            }
+          },
+          {
+            "input": "garlic",
+            "grams": 12,
+            "matchedName": "Garlic, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 17,
+              "protein": 0.8,
+              "carbs": 3.4,
+              "fat": 0,
+              "fiberG": 0.3,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "flat-leaf parsley",
+            "grams": 30,
+            "matchedName": "Parsley, fresh",
+            "source": "USDA",
+            "confidence": 0.7966666666666666,
+            "accepted": true,
+            "macros": {
+              "calories": 11,
+              "protein": 0.9,
+              "carbs": 1.9,
+              "fat": 0.2,
+              "fiberG": 1,
+              "sugarG": 0.3,
+              "sodiumMg": 17
+            }
+          },
+          {
+            "input": "coriander",
+            "grams": 30,
+            "matchedName": "Coriander (cilantro) leaves, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 7,
+              "protein": 0.6,
+              "carbs": 1.1,
+              "fat": 0.2,
+              "fiberG": 0.8,
+              "sugarG": 0.3,
+              "sodiumMg": 14
+            }
+          },
+          {
+            "input": "ground cumin",
+            "grams": 5,
+            "matchedName": "Spices, cumin seed",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 19,
+              "protein": 0.9,
+              "carbs": 2.2,
+              "fat": 1.1,
+              "fiberG": 0.5,
+              "sugarG": 0.1,
+              "sodiumMg": 8
+            }
+          },
+          {
+            "input": "ground coriander",
+            "grams": 4,
+            "matchedName": "Spices, coriander seed",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 12,
+              "protein": 0.5,
+              "carbs": 2.2,
+              "fat": 0.7,
+              "fiberG": 1.7,
+              "sugarG": 0,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "baking powder",
+            "grams": 4,
+            "matchedName": "Leavening agents, baking powder, double-acting",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 2,
+              "protein": 0,
+              "carbs": 1.1,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 424
+            }
+          },
+          {
+            "input": "chickpea flour",
+            "grams": 30,
+            "matchedName": "Chickpea Flour",
+            "source": "FatSecret",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 120,
+              "protein": 5,
+              "carbs": 21,
+              "fat": 1.5,
+              "fiberG": 5,
+              "sugarG": 1,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "fine sea salt",
+            "grams": 6,
+            "matchedName": "Salt, table",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 0,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 2325
+            }
+          },
+          {
+            "input": "rapeseed oil",
+            "grams": 28,
+            "matchedName": "Oil, canola",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 248,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 28,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "bulgur wheat",
+            "grams": 180,
+            "matchedName": "Bulgur, dry, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 670,
+              "protein": 21.2,
+              "carbs": 136.6,
+              "fat": 4.4,
+              "fiberG": 21.1,
+              "sugarG": 0,
+              "sodiumMg": 4
+            }
+          },
+          {
+            "input": "flat-leaf parsley",
+            "grams": 20,
+            "matchedName": "Parsley, fresh",
+            "source": "USDA",
+            "confidence": 0.7966666666666666,
+            "accepted": true,
+            "macros": {
+              "calories": 7,
+              "protein": 0.6,
+              "carbs": 1.3,
+              "fat": 0.2,
+              "fiberG": 0.7,
+              "sugarG": 0.2,
+              "sodiumMg": 11
+            }
+          },
+          {
+            "input": "tomatoes",
+            "grams": 300,
+            "matchedName": "Tomato",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 54,
+              "protein": 2.7,
+              "carbs": 11.7,
+              "fat": 0.6,
+              "fiberG": 3.6,
+              "sugarG": 7.8,
+              "sodiumMg": 15
+            }
+          },
+          {
+            "input": "cucumber",
+            "grams": 250,
+            "matchedName": "Cucumber",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 38,
+              "protein": 1.8,
+              "carbs": 9,
+              "fat": 0.3,
+              "fiberG": 1.3,
+              "sugarG": 4.3,
+              "sodiumMg": 5
+            }
+          },
+          {
+            "input": "red onion",
+            "grams": 100,
+            "matchedName": "Onions, red, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 44,
+              "protein": 0.9,
+              "carbs": 9.9,
+              "fat": 0.1,
+              "fiberG": 2.2,
+              "sugarG": 5.8,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "red wine vinegar",
+            "grams": 30,
+            "matchedName": "Vinegar, red wine",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 6,
+              "protein": 0,
+              "carbs": 0.1,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 2
+            }
+          },
+          {
+            "input": "caster sugar",
+            "grams": 4,
+            "matchedName": "Caster Sugar",
+            "source": "Edamam",
+            "confidence": 0.92,
+            "accepted": true,
+            "macros": {
+              "calories": 15,
+              "protein": 0,
+              "carbs": 4,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "tahini",
+            "grams": 90,
+            "matchedName": "Tahini",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 627,
+              "protein": 17.7,
+              "carbs": 12.8,
+              "fat": 56.2,
+              "fiberG": 7.6,
+              "sugarG": 0.4,
+              "sodiumMg": 58
+            }
+          },
+          {
+            "input": "lemon juice",
+            "grams": 60,
+            "matchedName": "Lemon juice, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 13,
+              "protein": 0.2,
+              "carbs": 4.1,
+              "fat": 0.1,
+              "fiberG": 0.2,
+              "sugarG": 1.5,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "cold water",
+            "grams": 60,
+            "matchedName": "Water, tap, municipal",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 0,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "slug": "crispy-tofu-peanut-noodles",
+      "status": "verified",
+      "servings": 2,
+      "perServing": {
+        "calories": 846,
+        "protein": 31.3,
+        "carbs": 100.9,
+        "fat": 38.8,
+        "fiberG": 9,
+        "sugarG": 13.2,
+        "sodiumMg": 1058
+      },
+      "verification": {
+        "engine": "verifyIngredients",
+        "primarySource": "USDA",
+        "sourceCounts": {
+          "USDA": 10,
+          "Suppr": 3
+        },
+        "minIngredientConfidence": 0.95,
+        "avgIngredientConfidence": 0.9810256410256409,
+        "belowAcceptFloorCount": 0,
+        "ingredients": [
+          {
+            "input": "extra-firm tofu",
+            "grams": 280,
+            "matchedName": "Tofu, extra firm, prepared with nigari",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 232,
+              "protein": 27.9,
+              "carbs": 3.3,
+              "fat": 14.7,
+              "fiberG": 2.8,
+              "sugarG": 2,
+              "sodiumMg": 11
+            }
+          },
+          {
+            "input": "cornflour",
+            "grams": 20,
+            "matchedName": "Cornstarch",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 76,
+              "protein": 0.1,
+              "carbs": 18.3,
+              "fat": 0,
+              "fiberG": 0.2,
+              "sugarG": 0,
+              "sodiumMg": 2
+            }
+          },
+          {
+            "input": "rapeseed oil",
+            "grams": 21,
+            "matchedName": "Oil, canola",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 186,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 21,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "flat rice noodles",
+            "grams": 160,
+            "matchedName": "Rice noodles, dry",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 582,
+              "protein": 9.5,
+              "carbs": 128.3,
+              "fat": 0.9,
+              "fiberG": 2.6,
+              "sugarG": 0.2,
+              "sodiumMg": 291
+            }
+          },
+          {
+            "input": "smooth peanut butter",
+            "grams": 50,
+            "matchedName": "Peanut butter",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 294,
+              "protein": 12.6,
+              "carbs": 9.8,
+              "fat": 25.2,
+              "fiberG": 3,
+              "sugarG": 4.6,
+              "sodiumMg": 230
+            }
+          },
+          {
+            "input": "light soy sauce",
+            "grams": 27,
+            "matchedName": "Soy sauce",
+            "source": "USDA",
+            "confidence": 0.9633333333333333,
+            "accepted": true,
+            "macros": {
+              "calories": 14,
+              "protein": 2.2,
+              "carbs": 1.3,
+              "fat": 0.2,
+              "fiberG": 0.2,
+              "sugarG": 0.1,
+              "sodiumMg": 1482
+            }
+          },
+          {
+            "input": "lime",
+            "grams": 70,
+            "matchedName": "Lime, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 21,
+              "protein": 0.5,
+              "carbs": 7.4,
+              "fat": 0.1,
+              "fiberG": 2,
+              "sugarG": 1.2,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "maple syrup",
+            "grams": 14,
+            "matchedName": "Syrups, maple",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 36,
+              "protein": 0,
+              "carbs": 9.4,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 8.5,
+              "sodiumMg": 2
+            }
+          },
+          {
+            "input": "warm water",
+            "grams": 40,
+            "matchedName": "Water, tap, municipal",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 0,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "cucumber",
+            "grams": 150,
+            "matchedName": "Cucumber",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 23,
+              "protein": 1,
+              "carbs": 5.4,
+              "fat": 0.2,
+              "fiberG": 0.8,
+              "sugarG": 2.6,
+              "sodiumMg": 3
+            }
+          },
+          {
+            "input": "carrot",
+            "grams": 120,
+            "matchedName": "Carrot",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 49,
+              "protein": 1.1,
+              "carbs": 11.5,
+              "fat": 0.2,
+              "fiberG": 3.4,
+              "sugarG": 5.6,
+              "sodiumMg": 83
+            }
+          },
+          {
+            "input": "roasted peanuts",
+            "grams": 30,
+            "matchedName": "Peanuts, dry-roasted, without salt",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 176,
+              "protein": 7.3,
+              "carbs": 6.4,
+              "fat": 14.9,
+              "fiberG": 2.5,
+              "sugarG": 1.5,
+              "sodiumMg": 2
+            }
+          },
+          {
+            "input": "coriander",
+            "grams": 15,
+            "matchedName": "Coriander (cilantro) leaves, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 3,
+              "protein": 0.3,
+              "carbs": 0.6,
+              "fat": 0.1,
+              "fiberG": 0.4,
+              "sugarG": 0.1,
+              "sodiumMg": 7
+            }
+          }
+        ]
+      }
+    },
+    {
+      "slug": "ginger-chicken-udon",
+      "status": "verified",
+      "servings": 2,
+      "perServing": {
+        "calories": 630,
+        "protein": 48.1,
+        "carbs": 69.9,
+        "fat": 19,
+        "fiberG": 6.7,
+        "sugarG": 11.5,
+        "sodiumMg": 1689
+      },
+      "verification": {
+        "engine": "verifyIngredients",
+        "primarySource": "USDA",
+        "sourceCounts": {
+          "USDA": 12,
+          "Suppr": 1
+        },
+        "minIngredientConfidence": 0.88,
+        "avgIngredientConfidence": 0.9658974358974359,
+        "belowAcceptFloorCount": 0,
+        "ingredients": [
+          {
+            "input": "ready-cooked udon noodles",
+            "grams": 400,
+            "matchedName": "Noodles, cooked",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 548,
+              "protein": 18,
+              "carbs": 100,
+              "fat": 8.2,
+              "fiberG": 4.8,
+              "sugarG": 1.6,
+              "sodiumMg": 944
+            }
+          },
+          {
+            "input": "skinless chicken breast",
+            "grams": 300,
+            "matchedName": "Chicken, breast, boneless, skinless, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 318,
+              "protein": 67.6,
+              "carbs": 0,
+              "fat": 5.8,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 197
+            }
+          },
+          {
+            "input": "rapeseed oil",
+            "grams": 14,
+            "matchedName": "Oil, canola",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 124,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 14,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "pak choi",
+            "grams": 250,
+            "matchedName": "Cabbage, Chinese (pak-choi), raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 33,
+              "protein": 3.8,
+              "carbs": 5.5,
+              "fat": 0.5,
+              "fiberG": 2.5,
+              "sugarG": 2.9,
+              "sodiumMg": 163
+            }
+          },
+          {
+            "input": "carrot",
+            "grams": 120,
+            "matchedName": "Carrot",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 49,
+              "protein": 1.1,
+              "carbs": 11.5,
+              "fat": 0.2,
+              "fiberG": 3.4,
+              "sugarG": 5.6,
+              "sodiumMg": 83
+            }
+          },
+          {
+            "input": "spring onions",
+            "grams": 40,
+            "matchedName": "Onions, green, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 13,
+              "protein": 0.7,
+              "carbs": 2.9,
+              "fat": 0.1,
+              "fiberG": 1,
+              "sugarG": 0.9,
+              "sodiumMg": 6
+            }
+          },
+          {
+            "input": "fresh ginger",
+            "grams": 20,
+            "matchedName": "Ginger root, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 16,
+              "protein": 0.4,
+              "carbs": 3.6,
+              "fat": 0.2,
+              "fiberG": 0.4,
+              "sugarG": 0.3,
+              "sodiumMg": 3
+            }
+          },
+          {
+            "input": "garlic",
+            "grams": 8,
+            "matchedName": "Garlic, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 11,
+              "protein": 0.5,
+              "carbs": 2.3,
+              "fat": 0,
+              "fiberG": 0.2,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "light soy sauce",
+            "grams": 36,
+            "matchedName": "Soy sauce",
+            "source": "USDA",
+            "confidence": 0.9633333333333333,
+            "accepted": true,
+            "macros": {
+              "calories": 19,
+              "protein": 2.9,
+              "carbs": 1.8,
+              "fat": 0.2,
+              "fiberG": 0.3,
+              "sugarG": 0.1,
+              "sodiumMg": 1976
+            }
+          },
+          {
+            "input": "rice vinegar",
+            "grams": 15,
+            "matchedName": "Vinegar",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 3,
+              "protein": 0,
+              "carbs": 0.1,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0.1,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "runny honey",
+            "grams": 14,
+            "matchedName": "Honey",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 43,
+              "protein": 0,
+              "carbs": 11.5,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 11.5,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "toasted sesame oil",
+            "grams": 5,
+            "matchedName": "Oil, sesame, salad or cooking",
+            "source": "USDA",
+            "confidence": 0.9633333333333333,
+            "accepted": true,
+            "macros": {
+              "calories": 44,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 5,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "sesame seeds",
+            "grams": 6,
+            "matchedName": "Sesame seeds",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 38,
+              "protein": 1.2,
+              "carbs": 0.7,
+              "fat": 3.7,
+              "fiberG": 0.7,
+              "sugarG": 0,
+              "sodiumMg": 3
+            }
+          }
+        ]
+      }
+    },
+    {
+      "slug": "gochujang-turkey-meatballs",
+      "status": "verified",
+      "servings": 3,
+      "perServing": {
+        "calories": 678,
+        "protein": 59.4,
+        "carbs": 56.6,
+        "fat": 25.1,
+        "fiberG": 6.1,
+        "sugarG": 11.7,
+        "sodiumMg": 1322
+      },
+      "verification": {
+        "engine": "verifyIngredients",
+        "primarySource": "USDA",
+        "sourceCounts": {
+          "USDA": 10,
+          "Edamam": 3,
+          "Suppr": 2
+        },
+        "minIngredientConfidence": 0.85,
+        "avgIngredientConfidence": 0.9544444444444444,
+        "belowAcceptFloorCount": 0,
+        "ingredients": [
+          {
+            "input": "turkey mince",
+            "grams": 500,
+            "matchedName": "Turkey, Ground, cooked",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 1015,
+              "protein": 136.9,
+              "carbs": 0,
+              "fat": 52,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 390
+            }
+          },
+          {
+            "input": "panko breadcrumbs",
+            "grams": 40,
+            "matchedName": "Bread crumbs, dry, grated, plain",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 158,
+              "protein": 5.3,
+              "carbs": 28.8,
+              "fat": 2.1,
+              "fiberG": 1.8,
+              "sugarG": 2.5,
+              "sodiumMg": 293
+            }
+          },
+          {
+            "input": "medium egg",
+            "grams": 50,
+            "matchedName": "Boiled Egg",
+            "source": "Edamam",
+            "confidence": 0.85,
+            "accepted": true,
+            "macros": {
+              "calories": 78,
+              "protein": 6.3,
+              "carbs": 0.6,
+              "fat": 5.3,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "spring onions",
+            "grams": 30,
+            "matchedName": "Onions, green, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 10,
+              "protein": 0.5,
+              "carbs": 2.2,
+              "fat": 0.1,
+              "fiberG": 0.8,
+              "sugarG": 0.7,
+              "sodiumMg": 5
+            }
+          },
+          {
+            "input": "garlic",
+            "grams": 8,
+            "matchedName": "Garlic, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 11,
+              "protein": 0.5,
+              "carbs": 2.3,
+              "fat": 0,
+              "fiberG": 0.2,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "fresh ginger",
+            "grams": 15,
+            "matchedName": "Fresh Ginger",
+            "source": "Edamam",
+            "confidence": 0.92,
+            "accepted": true,
+            "macros": {
+              "calories": 12,
+              "protein": 0.3,
+              "carbs": 2.7,
+              "fat": 0.1,
+              "fiberG": 0.3,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "fine sea salt",
+            "grams": 3,
+            "matchedName": "Salt, table",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 0,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 1163
+            }
+          },
+          {
+            "input": "gochujang",
+            "grams": 45,
+            "matchedName": "Gochujang",
+            "source": "Edamam",
+            "confidence": 0.92,
+            "accepted": true,
+            "macros": {
+              "calories": 89,
+              "protein": 5.8,
+              "carbs": 11.4,
+              "fat": 2.7,
+              "fiberG": 2.4,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "light soy sauce",
+            "grams": 36,
+            "matchedName": "Soy sauce",
+            "source": "USDA",
+            "confidence": 0.9633333333333333,
+            "accepted": true,
+            "macros": {
+              "calories": 19,
+              "protein": 2.9,
+              "carbs": 1.8,
+              "fat": 0.2,
+              "fiberG": 0.3,
+              "sugarG": 0.1,
+              "sodiumMg": 1976
+            }
+          },
+          {
+            "input": "runny honey",
+            "grams": 30,
+            "matchedName": "Honey",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 91,
+              "protein": 0.1,
+              "carbs": 24.7,
+              "fat": 0,
+              "fiberG": 0.1,
+              "sugarG": 24.6,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "rice vinegar",
+            "grams": 15,
+            "matchedName": "Vinegar",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 3,
+              "protein": 0,
+              "carbs": 0.1,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0.1,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "toasted sesame oil",
+            "grams": 5,
+            "matchedName": "Oil, sesame, salad or cooking",
+            "source": "USDA",
+            "confidence": 0.9633333333333333,
+            "accepted": true,
+            "macros": {
+              "calories": 44,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 5,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "jasmine rice",
+            "grams": 240,
+            "matchedName": "White rice (cooked)",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 312,
+              "protein": 6.5,
+              "carbs": 67.7,
+              "fat": 0.7,
+              "fiberG": 1,
+              "sugarG": 0.2,
+              "sodiumMg": 2
+            }
+          },
+          {
+            "input": "broccoli",
+            "grams": 400,
+            "matchedName": "Broccoli",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 136,
+              "protein": 11.2,
+              "carbs": 26.4,
+              "fat": 1.6,
+              "fiberG": 10.4,
+              "sugarG": 6.8,
+              "sodiumMg": 132
+            }
+          },
+          {
+            "input": "sesame seeds",
+            "grams": 9,
+            "matchedName": "Sesame seeds",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 57,
+              "protein": 1.8,
+              "carbs": 1.1,
+              "fat": 5.5,
+              "fiberG": 1,
+              "sugarG": 0,
+              "sodiumMg": 4
+            }
+          }
+        ]
+      }
+    },
+    {
+      "slug": "thai-basil-beef-rice",
+      "status": "verified",
+      "servings": 2,
+      "perServing": {
+        "calories": 583,
+        "protein": 44.5,
+        "carbs": 40.3,
+        "fat": 26.6,
+        "fiberG": 2.5,
+        "sugarG": 10.2,
+        "sodiumMg": 1666
+      },
+      "verification": {
+        "engine": "verifyIngredients",
+        "primarySource": "USDA",
+        "sourceCounts": {
+          "Suppr": 3,
+          "USDA": 8,
+          "FatSecret": 1,
+          "OFF": 1
+        },
+        "minIngredientConfidence": 0.6319561378703704,
+        "avgIngredientConfidence": 0.940663292656695,
+        "belowAcceptFloorCount": 0,
+        "ingredients": [
+          {
+            "input": "jasmine rice",
+            "grams": 150,
+            "matchedName": "White rice (cooked)",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 195,
+              "protein": 4.1,
+              "carbs": 42.3,
+              "fat": 0.5,
+              "fiberG": 0.6,
+              "sugarG": 0.2,
+              "sodiumMg": 2
+            }
+          },
+          {
+            "input": "rapeseed oil",
+            "grams": 28,
+            "matchedName": "Oil, canola",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 248,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 28,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "medium eggs",
+            "grams": 100,
+            "matchedName": "Medium Eggs",
+            "source": "FatSecret",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 136,
+              "protein": 13.6,
+              "carbs": 0,
+              "fat": 9.1,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 136
+            }
+          },
+          {
+            "input": "beef mince",
+            "grams": 300,
+            "matchedName": "Beef mince (5% fat)",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 411,
+              "protein": 64.2,
+              "carbs": 0,
+              "fat": 15,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 198
+            }
+          },
+          {
+            "input": "banana shallot",
+            "grams": 80,
+            "matchedName": "Shallots, raw",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 58,
+              "protein": 2,
+              "carbs": 13.4,
+              "fat": 0.1,
+              "fiberG": 2.6,
+              "sugarG": 6.3,
+              "sodiumMg": 10
+            }
+          },
+          {
+            "input": "garlic",
+            "grams": 12,
+            "matchedName": "Garlic, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 17,
+              "protein": 0.8,
+              "carbs": 3.4,
+              "fat": 0,
+              "fiberG": 0.3,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "red chillies",
+            "grams": 16,
+            "matchedName": "Peppers, hot chili, red, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 6,
+              "protein": 0.3,
+              "carbs": 1.4,
+              "fat": 0.1,
+              "fiberG": 0.2,
+              "sugarG": 0.8,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "oyster sauce",
+            "grams": 20,
+            "matchedName": "Oyster sauce",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 10,
+              "protein": 0.3,
+              "carbs": 2.2,
+              "fat": 0.1,
+              "fiberG": 0.1,
+              "sugarG": 0,
+              "sodiumMg": 546
+            }
+          },
+          {
+            "input": "fish sauce",
+            "grams": 18,
+            "matchedName": "Fish sauce",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 6,
+              "protein": 0.9,
+              "carbs": 0.7,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0.7,
+              "sodiumMg": 1413
+            }
+          },
+          {
+            "input": "light soy sauce",
+            "grams": 18,
+            "matchedName": "Soy sauce",
+            "source": "USDA",
+            "confidence": 0.9633333333333333,
+            "accepted": true,
+            "macros": {
+              "calories": 10,
+              "protein": 1.5,
+              "carbs": 0.9,
+              "fat": 0.1,
+              "fiberG": 0.1,
+              "sugarG": 0.1,
+              "sodiumMg": 988
+            }
+          },
+          {
+            "input": "soft brown sugar",
+            "grams": 10,
+            "matchedName": "Sugars, brown",
+            "source": "USDA",
+            "confidence": 0.9633333333333333,
+            "accepted": true,
+            "macros": {
+              "calories": 38,
+              "protein": 0,
+              "carbs": 9.8,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 9.7,
+              "sodiumMg": 3
+            }
+          },
+          {
+            "input": "Thai basil leaves",
+            "grams": 30,
+            "matchedName": "Thai Taste · Thai Basil Leaves",
+            "source": "OFF",
+            "confidence": 0.6319561378703704,
+            "accepted": true,
+            "macros": {
+              "calories": 7,
+              "protein": 0.3,
+              "carbs": 1.1,
+              "fat": 0,
+              "fiberG": 0.3,
+              "sugarG": 0,
+              "sodiumMg": 31
+            }
+          },
+          {
+            "input": "cucumber",
+            "grams": 150,
+            "matchedName": "Cucumber",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 23,
+              "protein": 1,
+              "carbs": 5.4,
+              "fat": 0.2,
+              "fiberG": 0.8,
+              "sugarG": 2.6,
+              "sodiumMg": 3
+            }
+          }
+        ]
+      }
+    },
+    {
+      "slug": "sesame-soba-edamame-salad",
+      "status": "verified",
+      "servings": 2,
+      "perServing": {
+        "calories": 577,
+        "protein": 27.2,
+        "carbs": 91.1,
+        "fat": 15.7,
+        "fiberG": 6,
+        "sugarG": 8.1,
+        "sodiumMg": 1586
+      },
+      "verification": {
+        "engine": "verifyIngredients",
+        "primarySource": "USDA",
+        "sourceCounts": {
+          "USDA": 9,
+          "Suppr": 1,
+          "FatSecret": 1
+        },
+        "minIngredientConfidence": 0.85,
+        "avgIngredientConfidence": 0.9660606060606061,
+        "belowAcceptFloorCount": 0,
+        "ingredients": [
+          {
+            "input": "dried soba noodles",
+            "grams": 180,
+            "matchedName": "Noodles, Japanese, soba, dry",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 605,
+              "protein": 25.9,
+              "carbs": 134.3,
+              "fat": 1.3,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 1426
+            }
+          },
+          {
+            "input": "shelled edamame",
+            "grams": 180,
+            "matchedName": "Edamame, cooked",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 252,
+              "protein": 20.7,
+              "carbs": 15.5,
+              "fat": 13.6,
+              "fiberG": 9,
+              "sugarG": 3.8,
+              "sodiumMg": 229
+            }
+          },
+          {
+            "input": "red cabbage",
+            "grams": 150,
+            "matchedName": "Cabbage, red, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 51,
+              "protein": 1.9,
+              "carbs": 10.2,
+              "fat": 0.3,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 18
+            }
+          },
+          {
+            "input": "cucumber",
+            "grams": 150,
+            "matchedName": "Cucumber",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 23,
+              "protein": 1,
+              "carbs": 5.4,
+              "fat": 0.2,
+              "fiberG": 0.8,
+              "sugarG": 2.6,
+              "sodiumMg": 3
+            }
+          },
+          {
+            "input": "spring onions",
+            "grams": 40,
+            "matchedName": "Onions, green, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 13,
+              "protein": 0.7,
+              "carbs": 2.9,
+              "fat": 0.1,
+              "fiberG": 1,
+              "sugarG": 0.9,
+              "sodiumMg": 6
+            }
+          },
+          {
+            "input": "sesame seeds",
+            "grams": 9,
+            "matchedName": "Sesame seeds",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 57,
+              "protein": 1.8,
+              "carbs": 1.1,
+              "fat": 5.5,
+              "fiberG": 1,
+              "sugarG": 0,
+              "sodiumMg": 4
+            }
+          },
+          {
+            "input": "light soy sauce",
+            "grams": 27,
+            "matchedName": "Soy sauce",
+            "source": "USDA",
+            "confidence": 0.9633333333333333,
+            "accepted": true,
+            "macros": {
+              "calories": 14,
+              "protein": 2.2,
+              "carbs": 1.3,
+              "fat": 0.2,
+              "fiberG": 0.2,
+              "sugarG": 0.1,
+              "sodiumMg": 1482
+            }
+          },
+          {
+            "input": "rice vinegar",
+            "grams": 22,
+            "matchedName": "Vinegar",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 5,
+              "protein": 0,
+              "carbs": 0.2,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0.1,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "toasted sesame oil",
+            "grams": 10,
+            "matchedName": "Oil, sesame, salad or cooking",
+            "source": "USDA",
+            "confidence": 0.9633333333333333,
+            "accepted": true,
+            "macros": {
+              "calories": 88,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 10,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "maple syrup",
+            "grams": 14,
+            "matchedName": "Syrups, maple",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 36,
+              "protein": 0,
+              "carbs": 9.4,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 8.5,
+              "sodiumMg": 2
+            }
+          },
+          {
+            "input": "fresh ginger",
+            "grams": 10,
+            "matchedName": "Ginger",
+            "source": "FatSecret",
+            "confidence": 0.85,
+            "accepted": true,
+            "macros": {
+              "calories": 10,
+              "protein": 0.2,
+              "carbs": 1.8,
+              "fat": 0.1,
+              "fiberG": 0,
+              "sugarG": 0.2,
+              "sodiumMg": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "slug": "coconut-lime-chicken-curry",
+      "status": "verified",
+      "servings": 4,
+      "perServing": {
+        "calories": 505,
+        "protein": 40.2,
+        "carbs": 37.3,
+        "fat": 22.1,
+        "fiberG": 3.8,
+        "sugarG": 9.6,
+        "sodiumMg": 891
+      },
+      "verification": {
+        "engine": "verifyIngredients",
+        "primarySource": "USDA",
+        "sourceCounts": {
+          "Suppr": 1,
+          "USDA": 10,
+          "FatSecret": 1
+        },
+        "minIngredientConfidence": 0.88,
+        "avgIngredientConfidence": 0.972777777777778,
+        "belowAcceptFloorCount": 0,
+        "ingredients": [
+          {
+            "input": "jasmine rice",
+            "grams": 280,
+            "matchedName": "White rice (cooked)",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 364,
+              "protein": 7.6,
+              "carbs": 79,
+              "fat": 0.8,
+              "fiberG": 1.1,
+              "sugarG": 0.3,
+              "sodiumMg": 3
+            }
+          },
+          {
+            "input": "rapeseed oil",
+            "grams": 14,
+            "matchedName": "Oil, canola",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 124,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 14,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "Thai red curry paste",
+            "grams": 45,
+            "matchedName": "Thai Red Curry Paste",
+            "source": "FatSecret",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 28,
+              "protein": 0,
+              "carbs": 5.6,
+              "fat": 0,
+              "fiberG": 1.4,
+              "sugarG": 2.8,
+              "sodiumMg": 703
+            }
+          },
+          {
+            "input": "boneless skinless chicken thighs",
+            "grams": 600,
+            "matchedName": "Chicken, thigh, boneless, skinless, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 864,
+              "protein": 111.7,
+              "carbs": 0,
+              "fat": 47.5,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 374
+            }
+          },
+          {
+            "input": "full-fat coconut milk",
+            "grams": 400,
+            "matchedName": "Coconut milk",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 124,
+              "protein": 0.8,
+              "carbs": 11.7,
+              "fat": 8.3,
+              "fiberG": 0,
+              "sugarG": 10,
+              "sodiumMg": 76
+            }
+          },
+          {
+            "input": "chicken stock",
+            "grams": 150,
+            "matchedName": "Chicken, canned, meat only, with broth",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 248,
+              "protein": 32.7,
+              "carbs": 0,
+              "fat": 11.9,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 755
+            }
+          },
+          {
+            "input": "green beans",
+            "grams": 200,
+            "matchedName": "Green beans, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 80,
+              "protein": 3.9,
+              "carbs": 14.8,
+              "fat": 0.6,
+              "fiberG": 6,
+              "sugarG": 4.7,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "red pepper",
+            "grams": 180,
+            "matchedName": "Peppers, red, cooked",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 99,
+              "protein": 1.7,
+              "carbs": 12.1,
+              "fat": 5,
+              "fiberG": 2.2,
+              "sugarG": 7.6,
+              "sodiumMg": 227
+            }
+          },
+          {
+            "input": "fish sauce",
+            "grams": 18,
+            "matchedName": "Fish sauce",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 6,
+              "protein": 0.9,
+              "carbs": 0.7,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0.7,
+              "sodiumMg": 1413
+            }
+          },
+          {
+            "input": "soft brown sugar",
+            "grams": 10,
+            "matchedName": "Sugars, brown",
+            "source": "USDA",
+            "confidence": 0.9633333333333333,
+            "accepted": true,
+            "macros": {
+              "calories": 38,
+              "protein": 0,
+              "carbs": 9.8,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 9.7,
+              "sodiumMg": 3
+            }
+          },
+          {
+            "input": "limes",
+            "grams": 140,
+            "matchedName": "Limes, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 42,
+              "protein": 1,
+              "carbs": 14.8,
+              "fat": 0.3,
+              "fiberG": 3.9,
+              "sugarG": 2.4,
+              "sodiumMg": 3
+            }
+          },
+          {
+            "input": "coriander",
+            "grams": 15,
+            "matchedName": "Coriander (cilantro) leaves, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 3,
+              "protein": 0.3,
+              "carbs": 0.6,
+              "fat": 0.1,
+              "fiberG": 0.4,
+              "sugarG": 0.1,
+              "sodiumMg": 7
+            }
+          }
+        ]
+      }
+    },
+    {
+      "slug": "soy-ginger-cod-bok-choy",
+      "status": "verified",
+      "servings": 2,
+      "perServing": {
+        "calories": 392,
+        "protein": 35.1,
+        "carbs": 35.8,
+        "fat": 11.9,
+        "fiberG": 3.3,
+        "sugarG": 8.2,
+        "sodiumMg": 1144
+      },
+      "verification": {
+        "engine": "verifyIngredients",
+        "primarySource": "USDA",
+        "sourceCounts": {
+          "Suppr": 1,
+          "USDA": 10,
+          "FatSecret": 1
+        },
+        "minIngredientConfidence": 0.88,
+        "avgIngredientConfidence": 0.9747222222222222,
+        "belowAcceptFloorCount": 0,
+        "ingredients": [
+          {
+            "input": "jasmine rice",
+            "grams": 150,
+            "matchedName": "White rice (cooked)",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 195,
+              "protein": 4.1,
+              "carbs": 42.3,
+              "fat": 0.5,
+              "fiberG": 0.6,
+              "sugarG": 0.2,
+              "sodiumMg": 2
+            }
+          },
+          {
+            "input": "skinless cod fillets",
+            "grams": 320,
+            "matchedName": "Fish, cod, Atlantic, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 262,
+              "protein": 57,
+              "carbs": 0,
+              "fat": 2.1,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 173
+            }
+          },
+          {
+            "input": "light soy sauce",
+            "grams": 36,
+            "matchedName": "Soy sauce",
+            "source": "USDA",
+            "confidence": 0.9633333333333333,
+            "accepted": true,
+            "macros": {
+              "calories": 19,
+              "protein": 2.9,
+              "carbs": 1.8,
+              "fat": 0.2,
+              "fiberG": 0.3,
+              "sugarG": 0.1,
+              "sodiumMg": 1976
+            }
+          },
+          {
+            "input": "fresh ginger",
+            "grams": 20,
+            "matchedName": "Ginger root, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 16,
+              "protein": 0.4,
+              "carbs": 3.6,
+              "fat": 0.2,
+              "fiberG": 0.4,
+              "sugarG": 0.3,
+              "sodiumMg": 3
+            }
+          },
+          {
+            "input": "garlic",
+            "grams": 8,
+            "matchedName": "Garlic, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 11,
+              "protein": 0.5,
+              "carbs": 2.3,
+              "fat": 0,
+              "fiberG": 0.2,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "runny honey",
+            "grams": 14,
+            "matchedName": "Honey",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 43,
+              "protein": 0,
+              "carbs": 11.5,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 11.5,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "rice vinegar",
+            "grams": 15,
+            "matchedName": "Vinegar",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 3,
+              "protein": 0,
+              "carbs": 0.1,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0.1,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "toasted sesame oil",
+            "grams": 8,
+            "matchedName": "Oil, sesame, salad or cooking",
+            "source": "USDA",
+            "confidence": 0.9633333333333333,
+            "accepted": true,
+            "macros": {
+              "calories": 71,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 8,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "baby bok choy",
+            "grams": 300,
+            "matchedName": "Baby Bok Choy",
+            "source": "FatSecret",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 35,
+              "protein": 3.5,
+              "carbs": 7.1,
+              "fat": 0,
+              "fiberG": 3.5,
+              "sugarG": 3.5,
+              "sodiumMg": 124
+            }
+          },
+          {
+            "input": "rapeseed oil",
+            "grams": 9,
+            "matchedName": "Oil, canola",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 80,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 9,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "spring onions",
+            "grams": 30,
+            "matchedName": "Onions, green, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 10,
+              "protein": 0.5,
+              "carbs": 2.2,
+              "fat": 0.1,
+              "fiberG": 0.8,
+              "sugarG": 0.7,
+              "sodiumMg": 5
+            }
+          },
+          {
+            "input": "sesame seeds",
+            "grams": 6,
+            "matchedName": "Sesame seeds",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 38,
+              "protein": 1.2,
+              "carbs": 0.7,
+              "fat": 3.7,
+              "fiberG": 0.7,
+              "sugarG": 0,
+              "sodiumMg": 3
+            }
+          }
+        ]
+      }
+    },
+    {
+      "slug": "kimchi-fried-rice-eggs",
+      "status": "verified",
+      "servings": 2,
+      "perServing": {
+        "calories": 541,
+        "protein": 16.4,
+        "carbs": 66.9,
+        "fat": 23.3,
+        "fiberG": 4.6,
+        "sugarG": 4.2,
+        "sodiumMg": 1278
+      },
+      "verification": {
+        "engine": "verifyIngredients",
+        "primarySource": "USDA",
+        "sourceCounts": {
+          "USDA": 8,
+          "FatSecret": 2
+        },
+        "minIngredientConfidence": 0.88,
+        "avgIngredientConfidence": 0.9746666666666668,
+        "belowAcceptFloorCount": 0,
+        "ingredients": [
+          {
+            "input": "cooked jasmine rice",
+            "grams": 400,
+            "matchedName": "Rice, white, long-grain, cooked without salt",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 520,
+              "protein": 10.8,
+              "carbs": 112.7,
+              "fat": 1.1,
+              "fiberG": 1.6,
+              "sugarG": 0.2,
+              "sodiumMg": 4
+            }
+          },
+          {
+            "input": "vegan kimchi",
+            "grams": 200,
+            "matchedName": "Kimchi",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 30,
+              "protein": 2.2,
+              "carbs": 4.8,
+              "fat": 1,
+              "fiberG": 3.2,
+              "sugarG": 2.1,
+              "sodiumMg": 996
+            }
+          },
+          {
+            "input": "gochujang",
+            "grams": 20,
+            "matchedName": "Gochujang",
+            "source": "FatSecret",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 45,
+              "protein": 1,
+              "carbs": 10,
+              "fat": 0.5,
+              "fiberG": 1,
+              "sugarG": 5,
+              "sodiumMg": 350
+            }
+          },
+          {
+            "input": "light soy sauce",
+            "grams": 18,
+            "matchedName": "Soy sauce",
+            "source": "USDA",
+            "confidence": 0.9633333333333333,
+            "accepted": true,
+            "macros": {
+              "calories": 10,
+              "protein": 1.5,
+              "carbs": 0.9,
+              "fat": 0.1,
+              "fiberG": 0.1,
+              "sugarG": 0.1,
+              "sodiumMg": 988
+            }
+          },
+          {
+            "input": "toasted sesame oil",
+            "grams": 10,
+            "matchedName": "Oil, sesame, salad or cooking",
+            "source": "USDA",
+            "confidence": 0.9633333333333333,
+            "accepted": true,
+            "macros": {
+              "calories": 88,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 10,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "rapeseed oil",
+            "grams": 21,
+            "matchedName": "Oil, canola",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 186,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 21,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "medium eggs",
+            "grams": 100,
+            "matchedName": "Medium Eggs",
+            "source": "FatSecret",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 136,
+              "protein": 13.6,
+              "carbs": 0,
+              "fat": 9.1,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 136
+            }
+          },
+          {
+            "input": "spring onions",
+            "grams": 40,
+            "matchedName": "Onions, green, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 13,
+              "protein": 0.7,
+              "carbs": 2.9,
+              "fat": 0.1,
+              "fiberG": 1,
+              "sugarG": 0.9,
+              "sodiumMg": 6
+            }
+          },
+          {
+            "input": "nori",
+            "grams": 3,
+            "matchedName": "NORI",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 15,
+              "protein": 1.7,
+              "carbs": 1.7,
+              "fat": 0,
+              "fiberG": 1.7,
+              "sugarG": 0,
+              "sodiumMg": 73
+            }
+          },
+          {
+            "input": "sesame seeds",
+            "grams": 6,
+            "matchedName": "Sesame seeds",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 38,
+              "protein": 1.2,
+              "carbs": 0.7,
+              "fat": 3.7,
+              "fiberG": 0.7,
+              "sugarG": 0,
+              "sodiumMg": 3
+            }
+          }
+        ]
+      }
+    },
+    {
+      "slug": "mango-prawn-rice-bowl",
+      "status": "verified",
+      "servings": 2,
+      "perServing": {
+        "calories": 456,
+        "protein": 35.2,
+        "carbs": 64.7,
+        "fat": 9,
+        "fiberG": 5.3,
+        "sugarG": 27.4,
+        "sodiumMg": 786
+      },
+      "verification": {
+        "engine": "verifyIngredients",
+        "primarySource": "USDA",
+        "sourceCounts": {
+          "Suppr": 2,
+          "USDA": 9,
+          "FatSecret": 1
+        },
+        "minIngredientConfidence": 0.7666666666666666,
+        "avgIngredientConfidence": 0.9541666666666667,
+        "belowAcceptFloorCount": 0,
+        "ingredients": [
+          {
+            "input": "jasmine rice",
+            "grams": 150,
+            "matchedName": "White rice (cooked)",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 195,
+              "protein": 4.1,
+              "carbs": 42.3,
+              "fat": 0.5,
+              "fiberG": 0.6,
+              "sugarG": 0.2,
+              "sodiumMg": 2
+            }
+          },
+          {
+            "input": "raw peeled king prawns",
+            "grams": 300,
+            "matchedName": "Crustaceans, shrimp, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 255,
+              "protein": 60.3,
+              "carbs": 0,
+              "fat": 1.5,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 357
+            }
+          },
+          {
+            "input": "ripe mango flesh",
+            "grams": 250,
+            "matchedName": "Mango",
+            "source": "FatSecret",
+            "confidence": 0.7666666666666666,
+            "accepted": true,
+            "macros": {
+              "calories": 163,
+              "protein": 1.3,
+              "carbs": 42.5,
+              "fat": 0.7,
+              "fiberG": 4.5,
+              "sugarG": 37,
+              "sodiumMg": 5
+            }
+          },
+          {
+            "input": "cucumber",
+            "grams": 180,
+            "matchedName": "Cucumber",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 27,
+              "protein": 1.3,
+              "carbs": 6.5,
+              "fat": 0.2,
+              "fiberG": 0.9,
+              "sugarG": 3.1,
+              "sodiumMg": 4
+            }
+          },
+          {
+            "input": "red cabbage",
+            "grams": 140,
+            "matchedName": "Cabbage, red, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 48,
+              "protein": 1.7,
+              "carbs": 9.5,
+              "fat": 0.3,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 16
+            }
+          },
+          {
+            "input": "limes",
+            "grams": 140,
+            "matchedName": "Limes, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 42,
+              "protein": 1,
+              "carbs": 14.8,
+              "fat": 0.3,
+              "fiberG": 3.9,
+              "sugarG": 2.4,
+              "sodiumMg": 3
+            }
+          },
+          {
+            "input": "red chilli",
+            "grams": 10,
+            "matchedName": "Peppers, red, cooked",
+            "source": "USDA",
+            "confidence": 0.9633333333333333,
+            "accepted": true,
+            "macros": {
+              "calories": 6,
+              "protein": 0.1,
+              "carbs": 0.7,
+              "fat": 0.3,
+              "fiberG": 0.1,
+              "sugarG": 0.4,
+              "sodiumMg": 13
+            }
+          },
+          {
+            "input": "garlic",
+            "grams": 4,
+            "matchedName": "Garlic, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 6,
+              "protein": 0.3,
+              "carbs": 1.1,
+              "fat": 0,
+              "fiberG": 0.1,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "runny honey",
+            "grams": 14,
+            "matchedName": "Honey",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 43,
+              "protein": 0,
+              "carbs": 11.5,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 11.5,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "rapeseed oil",
+            "grams": 14,
+            "matchedName": "Oil, canola",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 124,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 14,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "coriander",
+            "grams": 15,
+            "matchedName": "Coriander (cilantro) leaves, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 3,
+              "protein": 0.3,
+              "carbs": 0.6,
+              "fat": 0.1,
+              "fiberG": 0.4,
+              "sugarG": 0.1,
+              "sodiumMg": 7
+            }
+          },
+          {
+            "input": "fine sea salt",
+            "grams": 3,
+            "matchedName": "Salt, table",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 0,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 1163
+            }
+          }
+        ]
+      }
+    },
+    {
+      "slug": "huevos-rancheros-black-beans",
+      "status": "verified",
+      "servings": 2,
+      "perServing": {
+        "calories": 539,
+        "protein": 16.5,
+        "carbs": 53.1,
+        "fat": 32.5,
+        "fiberG": 16,
+        "sugarG": 10.9,
+        "sodiumMg": 1110
+      },
+      "verification": {
+        "engine": "verifyIngredients",
+        "primarySource": "USDA",
+        "sourceCounts": {
+          "USDA": 11,
+          "Suppr": 1,
+          "FatSecret": 1
+        },
+        "minIngredientConfidence": 0.88,
+        "avgIngredientConfidence": 0.9715384615384616,
+        "belowAcceptFloorCount": 0,
+        "ingredients": [
+          {
+            "input": "rapeseed oil",
+            "grams": 21,
+            "matchedName": "Oil, canola",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 186,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 21,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "brown onion",
+            "grams": 100,
+            "matchedName": "Onions, raw",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 40,
+              "protein": 1.1,
+              "carbs": 9.3,
+              "fat": 0.1,
+              "fiberG": 1.7,
+              "sugarG": 4.2,
+              "sodiumMg": 4
+            }
+          },
+          {
+            "input": "garlic",
+            "grams": 4,
+            "matchedName": "Garlic, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 6,
+              "protein": 0.3,
+              "carbs": 1.1,
+              "fat": 0,
+              "fiberG": 0.1,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "jalapeño",
+            "grams": 20,
+            "matchedName": "Peppers, jalapeno, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 6,
+              "protein": 0.2,
+              "carbs": 1.3,
+              "fat": 0.1,
+              "fiberG": 0.6,
+              "sugarG": 0.8,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "chopped tomatoes",
+            "grams": 200,
+            "matchedName": "Canned tomatoes (no salt added)",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 32,
+              "protein": 1.6,
+              "carbs": 7,
+              "fat": 0.6,
+              "fiberG": 3.8,
+              "sugarG": 5.2,
+              "sodiumMg": 20
+            }
+          },
+          {
+            "input": "ground cumin",
+            "grams": 2,
+            "matchedName": "Spices, cumin seed",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 8,
+              "protein": 0.4,
+              "carbs": 0.9,
+              "fat": 0.4,
+              "fiberG": 0.2,
+              "sugarG": 0,
+              "sodiumMg": 3
+            }
+          },
+          {
+            "input": "black beans",
+            "grams": 240,
+            "matchedName": "Black bean salad",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 226,
+              "protein": 7.4,
+              "carbs": 30.2,
+              "fat": 9.2,
+              "fiberG": 8.2,
+              "sugarG": 8.5,
+              "sodiumMg": 840
+            }
+          },
+          {
+            "input": "corn tortillas",
+            "grams": 80,
+            "matchedName": "Tortilla, corn",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 174,
+              "protein": 4.6,
+              "carbs": 35.7,
+              "fat": 2.3,
+              "fiberG": 5,
+              "sugarG": 0.7,
+              "sodiumMg": 36
+            }
+          },
+          {
+            "input": "medium eggs",
+            "grams": 100,
+            "matchedName": "Medium Eggs",
+            "source": "FatSecret",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 136,
+              "protein": 13.6,
+              "carbs": 0,
+              "fat": 9.1,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 136
+            }
+          },
+          {
+            "input": "ripe avocado",
+            "grams": 150,
+            "matchedName": "Avocado, raw",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 240,
+              "protein": 3,
+              "carbs": 12.8,
+              "fat": 22,
+              "fiberG": 10.1,
+              "sugarG": 1,
+              "sodiumMg": 11
+            }
+          },
+          {
+            "input": "lime",
+            "grams": 70,
+            "matchedName": "Lime, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 21,
+              "protein": 0.5,
+              "carbs": 7.4,
+              "fat": 0.1,
+              "fiberG": 2,
+              "sugarG": 1.2,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "coriander",
+            "grams": 10,
+            "matchedName": "Coriander (cilantro) leaves, raw",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 2,
+              "protein": 0.2,
+              "carbs": 0.4,
+              "fat": 0.1,
+              "fiberG": 0.3,
+              "sugarG": 0.1,
+              "sodiumMg": 5
+            }
+          },
+          {
+            "input": "fine sea salt",
+            "grams": 3,
+            "matchedName": "Salt, table",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 0,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 1163
+            }
+          }
+        ]
+      }
+    },
+    {
+      "slug": "chicken-tinga-rice-bowl",
+      "status": "verified",
+      "servings": 4,
+      "perServing": {
+        "calories": 625,
+        "protein": 45,
+        "carbs": 64.8,
+        "fat": 24,
+        "fiberG": 15.3,
+        "sugarG": 16.4,
+        "sodiumMg": 1191
+      },
+      "verification": {
+        "engine": "verifyIngredients",
+        "primarySource": "USDA",
+        "sourceCounts": {
+          "USDA": 13,
+          "OFF": 1,
+          "Suppr": 2
+        },
+        "minIngredientConfidence": 0.605,
+        "avgIngredientConfidence": 0.9478125000000001,
+        "belowAcceptFloorCount": 0,
+        "ingredients": [
+          {
+            "input": "rapeseed oil",
+            "grams": 14,
+            "matchedName": "Oil, canola",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 124,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 14,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "brown onion",
+            "grams": 180,
+            "matchedName": "Onions, raw",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 72,
+              "protein": 2,
+              "carbs": 16.8,
+              "fat": 0.2,
+              "fiberG": 3.1,
+              "sugarG": 7.6,
+              "sodiumMg": 7
+            }
+          },
+          {
+            "input": "garlic",
+            "grams": 12,
+            "matchedName": "Garlic, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 17,
+              "protein": 0.8,
+              "carbs": 3.4,
+              "fat": 0,
+              "fiberG": 0.3,
+              "sugarG": 0,
+              "sodiumMg": 0
+            }
+          },
+          {
+            "input": "chipotle peppers in adobo",
+            "grams": 30,
+            "matchedName": "La Costeña Chipotle Peppers in Adobo Sauce",
+            "source": "OFF",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 20,
+              "protein": 0.9,
+              "carbs": 3.9,
+              "fat": 0,
+              "fiberG": 0.9,
+              "sugarG": 2,
+              "sodiumMg": 240
+            }
+          },
+          {
+            "input": "chopped tomatoes",
+            "grams": 400,
+            "matchedName": "Canned tomatoes (no salt added)",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 64,
+              "protein": 3.2,
+              "carbs": 14,
+              "fat": 1.2,
+              "fiberG": 7.6,
+              "sugarG": 10.4,
+              "sodiumMg": 40
+            }
+          },
+          {
+            "input": "dried oregano",
+            "grams": 2,
+            "matchedName": "Spices, oregano, dried",
+            "source": "USDA",
+            "confidence": 0.605,
+            "accepted": true,
+            "macros": {
+              "calories": 5,
+              "protein": 0.2,
+              "carbs": 1.4,
+              "fat": 0.1,
+              "fiberG": 0.9,
+              "sugarG": 0.1,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "ground cumin",
+            "grams": 2,
+            "matchedName": "Spices, cumin seed",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 8,
+              "protein": 0.4,
+              "carbs": 0.9,
+              "fat": 0.4,
+              "fiberG": 0.2,
+              "sugarG": 0,
+              "sodiumMg": 3
+            }
+          },
+          {
+            "input": "skinless chicken breasts",
+            "grams": 600,
+            "matchedName": "Chicken, breast, boneless, skinless, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 636,
+              "protein": 135.1,
+              "carbs": 0,
+              "fat": 11.6,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 395
+            }
+          },
+          {
+            "input": "fine sea salt",
+            "grams": 6,
+            "matchedName": "Salt, table",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 0,
+              "protein": 0,
+              "carbs": 0,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 2325
+            }
+          },
+          {
+            "input": "brown rice",
+            "grams": 280,
+            "matchedName": "Brown rice (cooked)",
+            "source": "Suppr",
+            "confidence": 0.95,
+            "accepted": true,
+            "macros": {
+              "calories": 344,
+              "protein": 7.6,
+              "carbs": 71.7,
+              "fat": 2.8,
+              "fiberG": 4.5,
+              "sugarG": 0.6,
+              "sodiumMg": 11
+            }
+          },
+          {
+            "input": "black beans",
+            "grams": 480,
+            "matchedName": "Black bean salad",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 451,
+              "protein": 14.8,
+              "carbs": 60.5,
+              "fat": 18.5,
+              "fiberG": 16.3,
+              "sugarG": 16.9,
+              "sodiumMg": 1680
+            }
+          },
+          {
+            "input": "sweetcorn",
+            "grams": 240,
+            "matchedName": "Corn, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 206,
+              "protein": 7.8,
+              "carbs": 44.9,
+              "fat": 3.2,
+              "fiberG": 4.8,
+              "sugarG": 15,
+              "sodiumMg": 36
+            }
+          },
+          {
+            "input": "ripe avocado",
+            "grams": 300,
+            "matchedName": "Avocado, raw",
+            "source": "USDA",
+            "confidence": 0.88,
+            "accepted": true,
+            "macros": {
+              "calories": 480,
+              "protein": 6,
+              "carbs": 25.6,
+              "fat": 44.1,
+              "fiberG": 20.1,
+              "sugarG": 2,
+              "sodiumMg": 21
+            }
+          },
+          {
+            "input": "red onion",
+            "grams": 120,
+            "matchedName": "Onions, red, raw",
+            "source": "USDA",
+            "confidence": 0.98,
+            "accepted": true,
+            "macros": {
+              "calories": 53,
+              "protein": 1.1,
+              "carbs": 11.9,
+              "fat": 0.1,
+              "fiberG": 2.6,
+              "sugarG": 6.9,
+              "sodiumMg": 1
+            }
+          },
+          {
+            "input": "red wine vinegar",
+            "grams": 30,
+            "matchedName": "Vinegar, red wine",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 6,
+              "protein": 0,
+              "carbs": 0.1,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 0,
+              "sodiumMg": 2
+            }
+          },
+          {
+            "input": "caster sugar",
+            "grams": 4,
+            "matchedName": "Sugars, granulated",
+            "source": "USDA",
+            "confidence": 1,
+            "accepted": true,
+            "macros": {
+              "calories": 15,
+              "protein": 0,
+              "carbs": 4,
+              "fat": 0,
+              "fiberG": 0,
+              "sugarG": 4,
+              "sodiumMg": 0
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

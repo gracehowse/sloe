@@ -7,18 +7,21 @@ import type { RecipeCard } from "../../../types/recipe";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { deriveQuickWeeknight } from "../../../lib/discover/quickWeeknight";
 import { creatorTintFor } from "../../../lib/discover/creatorChipPresentation";
+import { DiscoverRecipeImage } from "./discover-recipe-image";
 
 /**
  * DiscoverQuickWeeknight — the Sloe v3 Discover "Quick weeknight" section
  * (ENG-1225 Block 6), WEB twin of `apps/mobile/components/discover/
- * DiscoverQuickWeeknight.tsx`. Fast recipes as dense NO-PHOTO tint cards
- * (prototype `.w-rgrid` / `.w-rcard`, Sloe-App.html L7570). Self-gating on
- * `sloe_v3_discover_editorial` + non-empty; 2-col → 3-col (lg). Shares
- * `deriveQuickWeeknight` + `creatorTintFor` with mobile.
+ * DiscoverQuickWeeknight.tsx`. ENG-1618 makes the real recipe photo the
+ * default card media; the flag-off branch preserves the prototype's dense
+ * NO-PHOTO tint card. Self-gating on `sloe_v3_discover_editorial` + non-empty;
+ * 2-col → 3-col (lg). Shares `deriveQuickWeeknight` with mobile.
  */
 export interface DiscoverQuickWeeknightProps {
   recipes: RecipeCard[];
   onPressRecipe: (recipe: RecipeCard) => void;
+  /** Feed position; omitted when the component is rendered in isolation. */
+  placement?: "first" | "legacy";
 }
 
 function minutesOf(r: RecipeCard): number {
@@ -30,17 +33,36 @@ function minutesOf(r: RecipeCard): number {
 export function DiscoverQuickWeeknight({
   recipes,
   onPressRecipe,
+  placement,
 }: DiscoverQuickWeeknightProps) {
   const enabled = isFeatureEnabled("sloe_v3_discover_editorial");
+  const photographicFirstViewEnabled = isFeatureEnabled(
+    "discover_photographic_first_view_v1",
+  );
   const quick = React.useMemo(() => deriveQuickWeeknight(recipes), [recipes]);
-  if (!enabled || quick.length === 0) return null;
+  if (
+    !enabled ||
+    (placement === "first" && !photographicFirstViewEnabled) ||
+    quick.length === 0
+  ) {
+    return null;
+  }
+  const placementClass =
+    placement === "first"
+      ? "md:hidden"
+      : placement === "legacy" && photographicFirstViewEnabled
+        ? "hidden md:block"
+        : "";
 
   return (
     // ENG-1503 — standard mobile page inset (`px-4 md:px-0`, matching the
     // sibling cluster sections in DiscoverFeed): the host container carries
     // no `< md` horizontal padding, so a section without its own inset
     // renders flush to the viewport edge.
-    <section className="mt-6 px-4 md:px-0">
+    <section
+      className={`mt-6 px-4 md:px-0 ${placementClass}`}
+      data-testid={placement === "first" ? "discover-photographic-first-view" : undefined}
+    >
       <div className="mb-2">
         <h2 className="font-[family-name:var(--font-headline)] text-[18px] font-medium leading-[22px] text-foreground">
           Quick weeknight
@@ -68,10 +90,30 @@ export function DiscoverQuickWeeknight({
               className="group block text-left transition-transform active:scale-[0.99] focus-visible:outline-none"
             >
               <span
+                data-testid={
+                  photographicFirstViewEnabled
+                    ? `quick-weeknight-photo-${r.id}`
+                    : `quick-weeknight-tint-${r.id}`
+                }
                 className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg shadow-sm group-focus-visible:ring-2 group-focus-visible:ring-primary group-focus-visible:ring-offset-2"
-                style={{ backgroundColor: creatorTintFor(r.id) }}
+                style={
+                  photographicFirstViewEnabled
+                    ? undefined
+                    : { backgroundColor: creatorTintFor(r.id) }
+                }
               >
-                <UtensilsCrossed className="h-5 w-5 text-white opacity-50" />
+                {photographicFirstViewEnabled ? (
+                  <DiscoverRecipeImage
+                    id={r.id}
+                    title={r.title}
+                    image={r.image}
+                    aspectRatio="4 / 3"
+                    sizes="(min-width: 1024px) 20vw, 50vw"
+                    className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                  />
+                ) : (
+                  <UtensilsCrossed className="h-5 w-5 text-white opacity-50" />
+                )}
                 {mins > 0 ? (
                   <span
                     className="absolute left-2 top-2 rounded-full px-[9px] py-1 text-[10px] font-semibold"

@@ -129,9 +129,9 @@ export default function DiscoverScreen() {
   const userId = session?.user?.id ?? null;
 
   const { recipes, loading, refresh } = useDiscoverRecipes();
-  // ENG-1225 #14 — v3 creator rail + "Following" feed behind the NEW default-OFF
-  // `discover_creator_rail_v1` (dark pending Grace's SEE; real creators win, else
-  // a seeded set when the `creators` table is empty). Web parity: DiscoverFeed.tsx.
+  // ENG-1225 #14 — genuine-creator rail + Following feed. ENG-1535 retired the
+  // synthetic launch personas, so the rail self-hides until real rows exist.
+  // Web parity: DiscoverFeed.tsx.
   const creatorRailEnabled = isFeatureEnabled("discover_creator_rail_v1");
   const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
   const filterChipType = consistencyChrome ? Type.captionSmall : Type.body;
@@ -588,6 +588,8 @@ export default function DiscoverScreen() {
           />
         </View>
 
+        {showClusterCarousels ? <DiscoverQuickWeeknight placement="first" recipes={recipes} onPressRecipe={(r) => router.push(`/recipe/${r.id}`)} /> : null}
+
         {/* Creator rail (ENG-1225 #14) — self-hides when empty. */}
         <CreatorRail creators={topCreators} onSelect={(c) => router.push(`/creator/${c.id}`)} />
 
@@ -875,15 +877,7 @@ export default function DiscoverScreen() {
           </View>
         ) : (
           <>
-            {/* ENG-1225 Block 6 — v3 "Quick weeknight" no-photo quick-access
-                section ABOVE the cuisine clusters (default view; self-gating on
-                sloe_v3_discover_editorial + quick recipes). */}
-            {showClusterCarousels ? (
-              <DiscoverQuickWeeknight
-                recipes={recipes}
-                onPressRecipe={(r) => router.push(`/recipe/${r.id}`)}
-              />
-            ) : null}
+            {showClusterCarousels ? <DiscoverQuickWeeknight placement="legacy" recipes={recipes} onPressRecipe={(r) => router.push(`/recipe/${r.id}`)} /> : null}
             {/* ENG-1225 Block 6 — v3 "Collections" gradient tiles that deep-link
                 into the category pills (self-gating on sloe_v3_discover_editorial
                 + ≥1 non-empty tile). */}

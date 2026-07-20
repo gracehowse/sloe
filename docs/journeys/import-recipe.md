@@ -495,8 +495,8 @@ no overlay. Flag OFF (the shipped default) → zero visual change.
   import lives, and how it gets cooked
 - [Journey: Creator Platform](creator-platform.md) — attribution, DMCA
   takedown, and reporting for imported content; also the Discover creator
-  rail this doc's imports never populate (that surface's fabricated-seed
-  risk is documented there, not here)
+  rail this doc's imports never populate (ENG-1535 made that surface
+  real-only and self-hiding until genuine creators exist)
 - [Journey: Create a Recipe](create-recipe.md) — the adjacent "write my
   own" flow
 - [Journey: Import a Cookbook (PDF)](import-cookbook.md) — the parallel

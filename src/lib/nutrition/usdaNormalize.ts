@@ -46,6 +46,11 @@ function nutrientLabel(n: FdcNutrient): { name: string; unit: string; amount: nu
 function findAmount(food: FdcFood, matcher: (name: string) => boolean): { amount: number; unit: string } | null {
   const list = food.foodNutrients ?? [];
   for (const n of list) {
+    // Current FDC Foundation/SR payloads can include hierarchy rows such as
+    // `Carbohydrates` / `Lipids` with no amount immediately before the real
+    // measured nutrient. Treating that absent amount as zero makes us return
+    // early and silently drops the complete macro that follows.
+    if (n.amount == null || !Number.isFinite(Number(n.amount))) continue;
     const { name, unit, amount } = nutrientLabel(n);
     if (!name) continue;
     if (matcher(name.toLowerCase())) {
@@ -106,7 +111,10 @@ function toMg(amount: number, unit: string): number {
 export function fdcFoodMacrosPer100g(food: FdcFood): VerifiedMacros {
   const energy = findAmount(food, (n) => n === "energy" || n.includes("energy"));
   const protein = findAmount(food, (n) => n === "protein");
-  const fat = findAmount(food, (n) => n.includes("total lipid") || n === "fat");
+  const fat = findAmount(
+    food,
+    (n) => n.includes("total lipid") || n.includes("total fat") || n === "fat",
+  );
   const carbs = findAmount(food, (n) => n.includes("carbohydrate") || n === "carbohydrates");
   const fiber = findAmount(food, (n) => n.includes("fiber"));
   const sugar = findAmount(food, (n) => n.includes("sugars, total") || n === "sugars") ??
@@ -123,6 +131,16 @@ export function fdcFoodMacrosPer100g(food: FdcFood): VerifiedMacros {
   let kcal = energy ? energy.amount : 0;
   const eu = energy?.unit?.toLowerCase() ?? "";
   if (eu === "kj") kcal = kcal / 4.184;
+  // A small set of Foundation rows (notably cooking oils) publishes the
+  // measured macro panel but omits an Energy row. Derive energy from those
+  // published macros with the standard general Atwater factors rather than
+  // turning a 100%-fat food into 0 kcal.
+  if (!energy) {
+    kcal =
+      toGrams(protein?.amount ?? 0, protein?.unit ?? "g") * 4 +
+      toGrams(carbs?.amount ?? 0, carbs?.unit ?? "g") * 4 +
+      toGrams(fat?.amount ?? 0, fat?.unit ?? "g") * 9;
+  }
 
   return {
     calories: Math.max(0, kcal),
@@ -245,4 +263,3 @@ export function fdcFoodMicrosPer100g(food: FdcFood): Record<string, number> {
 
   return out;
 }
-

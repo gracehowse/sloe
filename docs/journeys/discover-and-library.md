@@ -31,9 +31,9 @@ and a short pointer into Creator profile browsing.
   "Add to shopping list" and Batch Cook's shopping hand-off
 - Logging food to the daily journal → [food-tracking.md](./food-tracking.md)
 - The full creator/social plane (follow graph, attribution, DMCA/report,
-  and the — currently fabricated — creator population itself) →
-  [creator-platform.md](./creator-platform.md), including an explicit,
-  prominent open risk about what actually populates the rail today
+  and the not-yet-built real-creator onboarding path) →
+  [creator-platform.md](./creator-platform.md). ENG-1535 removed the
+  fabricated creator population; the rail now hides until genuine rows exist.
 
 ## Where this sits in the loops
 
@@ -207,27 +207,46 @@ onboarding.
 
 **What the user sees, top to bottom (real, shipped):**
 
-1. **Seed recipes (`SEED_RECIPES_V2`)** — 50 curated recipes across 5
-   cuisine clusters (Mediterranean, Asian, Latin, Comfort, Healthy bowls),
-   always prepended ahead of published community rows. **Macros on these
-   cards are explicitly documented in-code as deliberate ROUND ESTIMATES**
-   ("production nutrition must come from ingredient resolution... the seed is
-   presentational") — displayed as a preview only. Logging a seed recipe
-   still runs the full ingredient-verification pipeline at log time, so the
-   card preview and the logged macros are not the same number by design.
-2. **Category pills** + a **"Following" feed-scope toggle** (filters to
+1. **A photographic first viewport on iOS and mobile-web.** After search,
+   the default Discover feed opens with Quick weeknight cards using each
+   recipe's real image. Creator, filter, and import chrome follows the food
+   rather than displacing it below the fold. Desktop retains its wider
+   featured-hero composition. This cross-platform behaviour is default-on
+   behind `discover_photographic_first_view_v1`; disabling it restores the
+   previous tint-only Quick weeknight cards and their original feed position.
+   Missing or failed media still uses the shared deterministic recipe fallback
+   and never substitutes an unrelated stock photo.
+2. **Seed recipes (`SEED_RECIPES_V2`)** — 18 founder-approved Sloe Kitchen
+   recipes across three populated clusters (Mediterranean, East & Southeast
+   Asian, Mexican-inspired), always prepended ahead of published community
+   rows. The previous 50-recipe Unsplash set is retired. Every current hero is
+   a selected first-party generated image hosted in the public
+   `recipe-images/sloe-kitchen/v1` storage path. Card macros are calculated
+   from the weighed recipe ingredients by `verifyIngredients`; the committed
+   verification manifest rejects any below-floor ingredient instead of
+   publishing a hand estimate. Saving a seed still materialises a private,
+   editable copy and keeps the normal log-time ingredient pipeline.
+   The shared catalogue-readiness gate also applies to every seed, live
+   community row, and mobile offline-cache row before it can enter Discover:
+   it requires a usable non-placeholder title, a real HTTP(S) photo, positive
+   servings and calories, numeric non-negative macros, and a positive prep or
+   cook duration. Incomplete authored/imported recipes remain recoverable in
+   Library; they are hidden only from the public editorial surface. Web and
+   mobile both use `discoverRecipeReadiness.ts`, so stale cached duds cannot
+   reappear on one platform.
+3. **Category pills** + a **"Following" feed-scope toggle** (filters to
    creators the user follows — see §7).
-3. **"Recipe ideas" hero cards** + a "More ideas" compact list, v3 editorial
+4. **"Recipe ideas" hero cards** + a "More ideas" compact list, v3 editorial
    blocks (Quick weeknight, Collections tiles, cuisine cluster carousels).
-4. **A permanent "Import from a link" card.**
-5. **Creator rail** + a **Following post feed** (flag `discover_creator_rail_v1`).
-6. **Eating out** — an Edamam-backed restaurant/branded search, fires at ≥3
+5. **A permanent "Import from a link" card.**
+6. **Creator rail** + a **Following post feed** (flag `discover_creator_rail_v1`).
+7. **Eating out** — an Edamam-backed restaurant/branded search, fires at ≥3
    typed characters.
-7. **Clipboard auto-detect** — on focus, checks the clipboard for a recipe
+8. **Clipboard auto-detect** — on focus, checks the clipboard for a recipe
    URL and offers to import it ("We noticed a recipe link on your clipboard.
    Would you like to import it?").
-8. **"My Library" jump rail** at the bottom.
-9. A slow-load hint after 5s with retry, and a seed-only fallback on
+9. **"My Library" jump rail** at the bottom.
+10. A slow-load hint after 5s with retry, and a seed-only fallback on
    timeout/error — Discover is never allowed to render fully empty.
 
 **Two sections are explicitly deferred, not built — do not describe these as
@@ -554,11 +573,9 @@ both, documented in the file header, not silently dropped.
 **This is a brief pointer, not the full picture.** The complete creator/
 social loop — attribution requirements on imported recipes, DMCA/report
 paths, the follow graph, and the (not yet built) real-creator-publishing
-plane — lives in [creator-platform.md](./creator-platform.md). Read that
-doc's Open risk section before treating this rail or any `/creator/[id]`
-page as populated by real people: today it is entirely five fabricated,
-verified-badged "launch-partner" personas seeded by migration, with zero
-real recipes and no way for a real user to become a creator.
+plane — lives in [creator-platform.md](./creator-platform.md). ENG-1535
+removed the five fabricated launch personas: the rail now self-hides until
+the RPC returns a genuine creator row.
 
 **What comes next:** tap a recipe → back to §4 (Recipe Detail). Tap
 Follow → the creator's recipes start appearing in Discover's Following scope
@@ -573,8 +590,8 @@ Follow → the creator's recipes start appearing in Discover's Following scope
 data source behind either (§3). Whether they're still planned or should be
 cut from the roadmap is unresolved.
 
-**No seed-content de-seed trigger.** `SEED_RECIPES_V2` is honestly labelled
-today as estimate-only, but nothing defines when or whether it should be
+**No seed-content de-seed trigger.** `SEED_RECIPES_V2` is a verified
+first-party editorial collection, but nothing defines when it should be
 demoted once real community content exists at volume — see §3 for the full
 picture.
 
@@ -594,13 +611,10 @@ needs removing.
 default-off pending a mobile simulator pass, with no committed ramp date
 yet (§2).
 
-**The creator platform is fabricated, not just under-documented.** The
-Discover rail and every creator profile page today show five invented,
-verified-badged personas seeded by migration, with no write path anywhere
-in the app for a real user to become a creator. Full detail, including the
-open risk this poses, lives in
-[creator-platform.md](./creator-platform.md). This needs a product and
-legal decision before the surface can be treated as ready for real users.
+**Real creator onboarding is not built.** The Discover rail now stays absent
+until genuine creator rows exist, but there is still no write/claim path for a
+real user to become one. Full detail lives in
+[creator-platform.md](./creator-platform.md).
 
 **A handful of stale in-code flag-default comments.** `recipe_detail_v3_conformance`
 (§4) and five `cook_*` flags (§5) are commented "default-OFF" in mobile
@@ -632,7 +646,7 @@ aren't misled.
 - [Mobile visual validation](../development/mobile-visual-validation.md) — the general `app/dev/*` / `apps/mobile/app/dev/*` internal harness pattern referenced in §4's recipe-detail dev page
 - [`docs/decisions/2026-04-30-cook-screen-paprika-parity.md`](../decisions/2026-04-30-cook-screen-paprika-parity.md) — Cook Mode scaling + history (§5)
 - [creator-platform.md](./creator-platform.md) — the full creator/social
-  loop (§7): follow graph, import attribution/DMCA/report, and the
-  fabricated-seed open risk
+  loop (§7): follow graph, import attribution/DMCA/report, and the real-only
+  creator-onboarding posture
 - [`docs/specs/2026-04-27-b5-discover-phase2.md`](../specs/2026-04-27-b5-discover-phase2.md) — the original build spec §7 is based on
 - [`docs/ux/redesign/recipes.md`](../ux/redesign/recipes.md) — the design-level spec this journey doc narrates the shipped behaviour of

@@ -128,5 +128,7 @@ describe("import source-card disclaimer parity (ENG-858 / ENG-1042)", () => {
   it("both platforms gate the disclaimer on isImportedRecipe (not shown on first-party)", () => {
     expect(MOBILE_SRC).toContain("isImportedRecipe");
     expect(WEB_DETAIL_SRC).toContain("isImportedRecipe");
+    expect(MOBILE_SRC).toMatch(/!isSeedRecipeId\(recipeId\)[\s\S]*isImportedRecipe/);
+    expect(WEB_DETAIL_SRC).toMatch(/!isCatalogRecipe[\s\S]*isImportedRecipe/);
   });
 });

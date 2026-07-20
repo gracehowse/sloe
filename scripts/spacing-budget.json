@@ -52,7 +52,6 @@
     "apps/mobile/components/discover/DiscoverCollections.tsx": 2,
     "apps/mobile/components/discover/DiscoverImportCard.tsx": 1,
     "apps/mobile/components/discover/DiscoverMoreIdeaRow.tsx": 1,
-    "apps/mobile/components/discover/DiscoverQuickWeeknight.tsx": 3,
     "apps/mobile/components/discover/FollowingFeed.tsx": 1,
     "apps/mobile/components/DuplicateDaySheet.tsx": 2,
     "apps/mobile/components/EmptyMealSlotRow.tsx": 1,

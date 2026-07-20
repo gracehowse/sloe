@@ -25,7 +25,7 @@ const viewports = [
 
 /** Default discover seed recipe — override with E2E_RECIPE_ID in .env.local. */
 const E2E_RECIPE_ID =
-  process.env.E2E_RECIPE_ID?.trim() || "seed-v2-mediterranean-greek-salad";
+  process.env.E2E_RECIPE_ID?.trim() || "seed-v2-mediterranean-butter-bean-shakshuka";
 
 test.describe("Visual regression — deep authenticated routes", () => {
   test.describe.configure({ mode: "serial" });
