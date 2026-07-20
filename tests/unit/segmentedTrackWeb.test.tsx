@@ -110,6 +110,16 @@ describe("SegmentedTrack (web)", () => {
     expect(track.className).toContain("p-0.5");
   });
 
+  // ENG-1608 — the shadowed active thumb collided with the track edge/an
+  // adjacent inactive segment because the track only padded its outer
+  // boundary and left zero gap between segments. Pin the fix: the same 2px
+  // rail sliver (`gap-0.5`, matching `p-0.5`) now separates every segment.
+  it("ENG-1608 — pads between segments the same amount as its outer edge (gap-0.5 matches p-0.5)", () => {
+    renderTrack("a");
+    const track = screen.getByTestId("seg-track");
+    expect(track.className).toContain("gap-0.5");
+  });
+
   // ENG-1532 amendment — optional per-option count badge (SubTabPill's badge
   // pill treatment: hidden at 0, "999+" cap).
   describe("count badge", () => {

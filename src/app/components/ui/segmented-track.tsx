@@ -10,7 +10,10 @@ import { cn } from "./utils";
  * 2026-07-10 (`docs/decisions/2026-07-10-chip-grammar-soft-tint.md`,
  * "Segmented controls" section):
  *
- *   - Track: `rounded-full bg-muted` rail with the 2px inner pad (`p-0.5`).
+ *   - Track: `rounded-full bg-muted` rail with the 2px inner pad (`p-0.5`),
+ *     and the same 2px gap between segments (`gap-0.5`, ENG-1608 — keeps the
+ *     rail sliver uniform on every edge of the active thumb, not just the
+ *     outer track boundary).
  *   - Active segment: card-white `rounded-full` thumb + `shadow-sm` (legal
  *     under the interactive-elevation carve-out in
  *     `2026-07-10-card-grammar-rounder-flat.md` — a thumb is feedback chrome,
@@ -90,8 +93,12 @@ export function SegmentedTrack<T extends string = string>({
       data-testid={testId}
       onKeyDown={onKeyDown}
       className={cn(
-        // §8 track: full-radius muted rail, 2px inner pad.
-        "rounded-full bg-muted p-0.5",
+        // §8 track: full-radius muted rail, 2px inner pad. ENG-1608: the
+        // matching 2px `gap-0.5` between segments keeps the rail sliver
+        // uniform on every edge of the active thumb — pre-fix, segments sat
+        // flush against each other and the shadowed thumb read as colliding
+        // with its neighbour.
+        "rounded-full bg-muted p-0.5 gap-0.5",
         fit === "stretch" ? "flex" : "inline-flex",
         className,
       )}

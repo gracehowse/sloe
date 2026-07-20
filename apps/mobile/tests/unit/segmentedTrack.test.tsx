@@ -162,6 +162,17 @@ describe("SegmentedTrack (mobile)", () => {
     expect(inactiveLabel.color).toBe("#666");
     expect(inactiveLabel.fontWeight).toBe("500");
   });
+
+  // ENG-1608 — the shadowed active thumb collided with the track edge/an
+  // adjacent inactive segment because the track only padded its outer
+  // boundary and left zero gap between segments. Pin the fix: the same 2px
+  // rail sliver now separates every segment, matching the track's own pad.
+  it("ENG-1608 — the track pads between segments the same amount as its outer edge, so the shadowed thumb never sits flush against a neighbour", () => {
+    const { getByTestId } = renderTrack("a");
+    const trackStyle = StyleFlat(getByTestId("seg-track").props.style);
+    expect(trackStyle.gap).toBe(trackStyle.padding);
+    expect(trackStyle.gap).toBeGreaterThan(0);
+  });
 });
 
 /** Flatten an RN style prop (arrays, nested arrays, falsy entries) into one object. */
