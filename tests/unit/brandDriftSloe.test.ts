@@ -51,13 +51,13 @@ describe("ENG-927 — Sloe brand copy (user-facing)", () => {
   });
 
   it("mobile settings membership banner says Sloe Pro", () => {
-    const settings = readFileSync(
-      join(ROOT, "apps/mobile/components/settings/SettingsBundleContent.tsx"),
+    const banner = readFileSync(
+      join(ROOT, "apps/mobile/components/settings/SettingsSloeProBanner.tsx"),
       "utf8",
     );
-    expect(settings).toContain("Get Sloe Pro");
-    expect(settings).toContain("Sloe Pro — active subscription");
-    expect(settings).not.toMatch(/Suppr Pro/);
+    expect(banner).toContain("Get Sloe Pro");
+    expect(banner).toContain("Sloe Pro — active subscription");
+    expect(banner).not.toMatch(/Suppr Pro/);
   });
 
   it("web signup terms checkbox says Sloe (not Suppr)", () => {
