@@ -159,7 +159,7 @@ function TodayPlannedMealsCardImpl({
               {/* "Log today" — compact aubergine OUTLINE pill (Sloe CTA weight
                   map, Spec 2, 2026-06-09). Was bare caps text; per-row primaries
                   read as accent lines, not bare text (bare text = dismissal only).
-                  Keeps the caps `Type.label`; 1.5px `accent.primarySolid` border;
+                  Keeps the caps `Type.label`; hairline `accent.primarySolid` border;
                   full radius. padH/padV snap to the scale (Spacing.dense/xs) — the
                   spec's literal 10/4 is off-token, write-discipline wins. */}
               <Pressable
@@ -171,7 +171,7 @@ function TodayPlannedMealsCardImpl({
                   paddingHorizontal: Spacing.dense,
                   paddingVertical: Spacing.xs,
                   borderRadius: Radius.full,
-                  borderWidth: 1.5,
+                  borderWidth: 1,
                   borderColor: accent.primarySolid,
                   backgroundColor: pressed ? accent.primarySoft : "transparent",
                 })}

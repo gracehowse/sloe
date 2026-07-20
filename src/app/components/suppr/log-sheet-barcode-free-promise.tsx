@@ -23,7 +23,7 @@ export function LogSheetBarcodeFreePromise({ onOpen }: { onOpen: () => void }) {
         type="button"
         data-testid="log-sheet-loud-barcode-cta"
         onClick={onOpen}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-primary bg-primary/10 px-4 py-3 text-[15px] font-semibold text-primary-solid hover:bg-primary/15 transition-colors"
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--accent-primary-soft-strong)] bg-primary/10 px-4 py-3 text-[15px] font-semibold text-primary-solid hover:bg-primary/15 transition-colors"
       >
         <ScanBarcode width={18} height={18} className="shrink-0" aria-hidden />
         <span>{BARCODE_LOUD_CTA_LABEL}</span>

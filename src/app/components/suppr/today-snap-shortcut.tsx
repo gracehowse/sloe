@@ -62,7 +62,7 @@ export function TodaySnapShortcut({
         {locked ? (
           <span
             data-testid="today-snap-shortcut-lock"
-            className="absolute -right-1 -top-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border-[1.5px] border-card bg-primary"
+            className="absolute -right-1 -top-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-card bg-primary"
           >
             <Icons.lock className="h-2 w-2 text-primary-foreground" aria-hidden />
           </span>

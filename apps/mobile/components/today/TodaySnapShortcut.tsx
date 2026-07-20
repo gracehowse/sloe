@@ -108,7 +108,7 @@ function TodaySnapShortcutImpl({
                 backgroundColor: accent.primary,
                 alignItems: "center",
                 justifyContent: "center",
-                borderWidth: 1.5,
+                borderWidth: 1,
                 borderColor: colors.card,
               }}
             >
