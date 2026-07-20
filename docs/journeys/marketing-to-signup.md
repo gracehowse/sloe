@@ -172,8 +172,23 @@ but there was no entitlement-grant path wired to a live paid rail to
 actually honour that promise, so the loop was switched off rather than left
 live making a commitment the product couldn't keep. The invite card, the
 `/g/<code>` landing page, and the redemption flow described above all still
-exist in the codebase and work correctly — they're simply unreachable by
-default until the flag is re-enabled alongside a working paid rail. See
+exist in the codebase and work correctly when the flag is on.
+
+The `/g/<code>` page is **public and reachable regardless of the flag**
+(it's a real Next.js route — there's no server-side gate on the URL itself),
+so the initial 2026-07-12 fix (removing the flag from `REDESIGN_DEFAULT_ON`)
+wasn't sufficient on its own: `ReferralLandingClient.tsx` and the
+capture/redemption pipeline in `src/lib/referrals/pendingReferral.ts` had no
+flag check and kept advertising "30 Pro reward days" / capturing the code /
+calling the redeem RPC to any visitor even after the default flipped off.
+**ENG-1541 (2026-07-20)** closed that: `ReferralLandingClient` now reads
+`isFeatureEnabled(REFERRAL_FLAG)` and renders neutral "You've been invited to
+Sloe" copy with no code capture when off; `storePendingReferralFromLocation`
+and `redeemPendingReferral` in `pendingReferral.ts` both check the same flag
+and no-op (no RPC call, no phantom referral-relationship recording) while
+it's off — a stale code captured before the flag flipped is left inert in
+`localStorage` rather than silently redeemed or discarded, so it resumes
+working if the flag is re-enabled. See
 [docs/product/referrals.md](../product/referrals.md) for the current status
 and the fraud safeguards added alongside the loop.
 
@@ -194,8 +209,9 @@ Redemption only works today if the invitee completes onboarding in the
 
 **Reward headline drift risk.** The "30 Pro reward days" copy in
 `ReferralLandingClient.tsx` ("Start with 30 Pro reward days" / "you both
-earn a 30-day Sloe Pro reward") is a hardcoded string rather than being
-sourced from the `REFERRAL_DAYS = 30` constant already exported by
+earn a 30-day Sloe Pro reward") — shown only when `referral_invite_loop_v1`
+is on — is a hardcoded string rather than being sourced from the
+`REFERRAL_DAYS = 30` constant already exported by
 `src/lib/referrals/referralClient.ts`. If the grant amount ever changes,
 this headline won't update with it automatically.
 
