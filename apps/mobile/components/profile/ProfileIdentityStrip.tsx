@@ -5,7 +5,9 @@ import { BookOpen, Flame } from "lucide-react-native";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { GradientAvatar } from "@/components/GradientAvatar";
 import { useCardElevation } from "@/hooks/useCardElevation";
+import { isFeatureEnabled } from "@/lib/analytics";
 
 export interface ProfileIdentityStripProps {
   monogramInitial: string;
@@ -40,13 +42,30 @@ function ProfileIdentityStripImpl({
     () => makeStyles(colors, accent, cardElevation),
     [colors, accent, cardElevation],
   );
+  // ENG-1593 — Rule 7 (DESIGN-CONSTITUTION.md): serif initial + frost-ring
+  // + the ONE canonical damson fill, default-OFF (see
+  // apps/mobile/lib/analytics.ts flag note). Flag-off leaves this
+  // monogram exactly as-is (accent.primarySolid).
+  const avatarFrostRingV1 = isFeatureEnabled("avatar_monogram_frost_ring_v1");
 
   return (
     <View style={{ gap: Spacing.md }}>
       <View style={styles.identityCard}>
-        <View style={styles.monogram} accessible={false}>
-          <Text style={styles.monogramInitial}>{monogramInitial}</Text>
-        </View>
+        {avatarFrostRingV1 ? (
+          <GradientAvatar
+            size={48}
+            initial={monogramInitial}
+            fontSize={Type.title.fontSize}
+            gradientIdSuffix="profile-identity-strip-monogram"
+            fill={Accent.purple}
+            textColor={colors.primaryForeground}
+            treatment="frostRing"
+          />
+        ) : (
+          <View style={styles.monogram} accessible={false}>
+            <Text style={styles.monogramInitial}>{monogramInitial}</Text>
+          </View>
+        )}
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.identityName} numberOfLines={1}>
             {displayName.trim() || "Your profile"}

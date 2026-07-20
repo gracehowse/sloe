@@ -497,7 +497,7 @@ function SidebarProfileEntry({
       {/* S5 avatar ruling (2026-07-10, ENG-1375): gradient retired — the ONE
           solid-damson identity disc (`AvatarDisc`), matching the mobile
           Today-header avatar (Figma 654:6). */}
-      <AvatarDisc initial={initial} size={36} />
+      <AvatarDisc initial={initial} size={36} treatment={isFeatureEnabled("avatar_monogram_frost_ring_v1") ? "frostRing" : "legacy"} />
       {!collapsed ? (
         <span className="min-w-0 flex-1 truncate text-left text-sm font-medium">
           {label}

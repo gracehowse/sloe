@@ -52,3 +52,51 @@ describe("AvatarDisc (ENG-1375 S5)", () => {
     }
   });
 });
+
+/**
+ * ENG-1593 — Rule 7 (DESIGN-CONSTITUTION.md) monogram treatment: "People may
+ * use serif initials only with the frost-ring treatment, as a stated
+ * placeholder until real photography lands." `treatment` defaults to
+ * `"legacy"` (today's unchanged sans-bold initial, no ring); `"frostRing"`
+ * is the new Rule 7-compliant render, gated at every call site behind
+ * `avatar_monogram_frost_ring_v1` (default-OFF). Mobile twin:
+ * `apps/mobile/tests/unit/gradientAvatar.test.tsx`.
+ */
+describe("AvatarDisc — Rule 7 frost-ring treatment (ENG-1593)", () => {
+  it("legacy treatment (default) stays sans-bold with no ring box-shadow", () => {
+    const { getByTestId } = render(<AvatarDisc initial="G" />);
+    const disc = getByTestId("avatar-disc");
+    expect(disc.className).toContain("font-bold");
+    expect(disc.className).not.toContain("font-medium");
+    expect(disc.style.boxShadow).toBeFalsy();
+  });
+
+  it("frostRing treatment renders the Newsreader serif, medium weight", () => {
+    const { getByTestId } = render(<AvatarDisc initial="G" treatment="frostRing" />);
+    const disc = getByTestId("avatar-disc");
+    expect(disc.className).toContain("font-[family-name:var(--font-headline)]");
+    expect(disc.className).toContain("font-medium");
+    expect(disc.className).not.toContain("font-bold");
+  });
+
+  it("frostRing treatment applies the prototype's exact double ring box-shadow", () => {
+    // `Sloe-App.html` L1728: `box-shadow: 0 0 0 2px var(--card), 0 0 0 3.5px
+    // var(--accent-frost)` — a 2px card-coloured gap, then a 3.5px frost ring.
+    const { getByTestId } = render(<AvatarDisc initial="G" treatment="frostRing" />);
+    expect(getByTestId("avatar-disc").style.boxShadow).toBe(
+      "0 0 0 2px var(--card), 0 0 0 3.5px var(--accent-frost)",
+    );
+  });
+
+  it("frostRing treatment still carries the ONE canonical damson identity fill", () => {
+    const { getByTestId } = render(<AvatarDisc initial="G" treatment="frostRing" />);
+    expect(getByTestId("avatar-disc").className).toContain("bg-[var(--avatar-identity)]");
+  });
+
+  it("a caller-supplied style still wins over the frostRing box-shadow default", () => {
+    const { getByTestId } = render(
+      <AvatarDisc initial="G" treatment="frostRing" style={{ boxShadow: "none" }} />,
+    );
+    expect(getByTestId("avatar-disc").style.boxShadow).toBe("none");
+  });
+});

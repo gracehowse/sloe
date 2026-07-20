@@ -2,11 +2,13 @@ import React, { memo, useMemo } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { Check, ChevronRight, Circle, Flame, Shield } from "lucide-react-native";
 
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { GradientAvatar } from "@/components/GradientAvatar";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { RecipeCardImage } from "@/components/library/RecipeCardImage";
+import { isFeatureEnabled } from "@/lib/analytics";
 import {
   type EditorialProfileBlockModel,
   type StreakDotState,
@@ -66,6 +68,13 @@ function EditorialProfileBlockImpl({
   const colors = useThemeColors();
   const accent = useAccent();
   const styles = useMemo(() => makeStyles(colors, accent), [colors, accent]);
+  // ENG-1593 — Rule 7 (DESIGN-CONSTITUTION.md): serif initial + frost-ring
+  // + the ONE canonical damson fill, default-OFF (see
+  // apps/mobile/lib/analytics.ts flag note). Flag-off leaves this
+  // monogram exactly as-is (accent.primarySolid — the theme-variable fill
+  // the ENG-1593 audit traced as the "two different plum shades" gap
+  // against the Today header's already-canonical Accent.purple).
+  const avatarFrostRingV1 = isFeatureEnabled("avatar_monogram_frost_ring_v1");
 
   const gridRecipes = recipes.slice(0, RECIPE_GRID_LIMIT);
   const freezeCount = model.freezesAvailable;
@@ -80,9 +89,21 @@ function EditorialProfileBlockImpl({
     <View style={styles.wrap}>
       {/* Identity — monogram + name + tier·joined + tier pill. */}
       <View style={styles.identityCard}>
-        <View style={styles.monogram} accessible={false}>
-          <Text style={styles.monogramInitial}>{monogramInitial}</Text>
-        </View>
+        {avatarFrostRingV1 ? (
+          <GradientAvatar
+            size={48}
+            initial={monogramInitial}
+            fontSize={Type.title.fontSize}
+            gradientIdSuffix="editorial-profile-monogram"
+            fill={Accent.purple}
+            textColor={colors.primaryForeground}
+            treatment="frostRing"
+          />
+        ) : (
+          <View style={styles.monogram} accessible={false}>
+            <Text style={styles.monogramInitial}>{monogramInitial}</Text>
+          </View>
+        )}
         <View style={styles.identityBody}>
           <Text style={styles.identityName} numberOfLines={1}>
             {displayName.trim() || "Your profile"}

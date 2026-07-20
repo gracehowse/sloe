@@ -5,6 +5,7 @@ import { Icons } from "../ui/icons";
 import { AvatarDisc } from "../ui/avatar-disc";
 import { DayStrip } from "../DayStrip";
 import { StreakPip } from "./streak-pip";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { todayKey, formatDateLabel } from "../../../lib/nutrition/trackerDate";
 
 export interface TodayDateHeaderProps {
@@ -69,6 +70,9 @@ export function TodayDateHeader({
 }: TodayDateHeaderProps) {
   const calmDateNav = hideDayStrip && viewMode === "day";
   const isToday = selectedDateKey === todayKey();
+  // ENG-1593 — Rule 7 (DESIGN-CONSTITUTION.md): serif initial + frost-ring,
+  // default-OFF (see src/lib/analytics/track.ts flag note).
+  const avatarFrostRingV1 = isFeatureEnabled("avatar_monogram_frost_ring_v1");
 
   // ENG-1504 — mobile-canonical fresh-day nudge (premium-bar audit DC8):
   // the streak-reset supportive line renders in the date-header block,
@@ -169,7 +173,11 @@ export function TodayDateHeader({
             className="md:hidden shrink-0 rounded-full"
             aria-label="Open settings"
           >
-            <AvatarDisc initial={avatarLetter} size={36} />
+            <AvatarDisc
+              initial={avatarLetter}
+              size={36}
+              treatment={avatarFrostRingV1 ? "frostRing" : "legacy"}
+            />
           </button>
         </div>
         {streakResetCopyVisible ? streakResetLine : null}
@@ -264,7 +272,11 @@ export function TodayDateHeader({
             className="md:hidden shrink-0 rounded-full"
             aria-label="Open settings"
           >
-            <AvatarDisc initial={avatarLetter} size={36} />
+            <AvatarDisc
+              initial={avatarLetter}
+              size={36}
+              treatment={avatarFrostRingV1 ? "frostRing" : "legacy"}
+            />
           </button>
         </div>
       </div>

@@ -171,6 +171,16 @@ function flagForceOverride(flag: string): boolean | null {
  *   validation landed in this change (see
  *   docs/decisions/2026-07-19-fits-your-day-verdict-chip.md); flag-off keeps
  *   the SOLID banner as the kill switch. Keep in sync with mobile.
+ * - `avatar_monogram_frost_ring_v1` (ENG-1593) — the persistent user/
+ *   household identity monogram (sidebar, Today header, Profile identity
+ *   card) in Rule 7's serif-initial + frost-ring treatment
+ *   (`docs/ux/redesign/v3/DESIGN-CONSTITUTION.md` Rule 7). The canonical
+ *   damson fill (`--avatar-identity`) was already unified across every
+ *   `AvatarDisc` call site by the S5 ruling (2026-07-10, ENG-1375) — this
+ *   flag only adds the serif + ring, no fill change on web. DEFAULT-OFF:
+ *   this is app-wide chrome and no device/sim visual pass landed in this
+ *   change. Flag-off keeps every monogram render byte-identical as the
+ *   kill switch. Keep in sync with mobile.
  *
  * (The 5 cook-mode flags moved to `REDESIGN_DEFAULT_ON` in the 2026-06-22
  *  flag-collapse sweep, after the ENG-1230 swipe-surface render bug was fixed

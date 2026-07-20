@@ -4,6 +4,7 @@ import { memo } from "react";
 import { Check, ChevronRight, Circle, Flame, Shield } from "lucide-react";
 import { AvatarDisc } from "../ui/avatar-disc";
 import { RecipeHeroFallback } from "../suppr/RecipeHeroFallback";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
 import { useFallbackScheme } from "../../../lib/theme/useFallbackScheme";
 import {
@@ -74,6 +75,9 @@ function EditorialProfileBlockImpl({
   const gridRecipes = recipes.slice(0, RECIPE_GRID_LIMIT);
   const fallbackScheme = useFallbackScheme(); // ENG-1528 — dark ramp underlay on dark cards
   const freezeCount = model.freezesAvailable;
+  // ENG-1593 — Rule 7 (DESIGN-CONSTITUTION.md): serif initial + frost-ring,
+  // default-OFF (see src/lib/analytics/track.ts flag note).
+  const avatarFrostRingV1 = isFeatureEnabled("avatar_monogram_frost_ring_v1");
 
   return (
     <div className="flex flex-col gap-4" data-testid="editorial-profile-block">
@@ -83,7 +87,11 @@ function EditorialProfileBlockImpl({
       <div className="flex items-center gap-4 rounded-xl bg-card p-4 card-slab">
         {/* S5 avatar ruling (2026-07-10, ENG-1375): the ad-hoc bg-primary
             monogram → the ONE solid-damson identity disc (`AvatarDisc`). */}
-        <AvatarDisc initial={monogramInitial} size={52} />
+        <AvatarDisc
+          initial={monogramInitial}
+          size={52}
+          treatment={avatarFrostRingV1 ? "frostRing" : "legacy"}
+        />
         <div className="min-w-0 flex-1">
           <p className="truncate font-[family-name:var(--font-headline)] text-lg font-medium leading-tight text-foreground">
             {displayName.trim() ? displayName : "Your profile"}
