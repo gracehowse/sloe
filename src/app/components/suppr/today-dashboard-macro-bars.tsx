@@ -132,7 +132,9 @@ export function TodayDashboardMacroBars({
   return (
     // Design Direction 2026 (ENG-795): canonical SupprCard — soft elevation +
     // border-drop under `design_system_elevation`, flat byte-for-byte when OFF.
-    // `rounded-2xl` → radius="xl"; `p-3` → padding="md".
+    // `rounded-2xl` → radius="xl"; padding="md" → 16px (ENG-1590 — was p-3/12px
+    // pre-realignment; now matches mobile's Spacing.md, same as this screen's
+    // mobile counterpart `TodayDashboardMacroBars.tsx`).
     <SupprCard
       elevation="card"
       radius="xl"

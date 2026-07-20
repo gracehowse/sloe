@@ -15,6 +15,12 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
  * Subscribe / Open App Store), so no behaviour changed.
  *
  * `arrow` appends the frame's "→" affordance (trial state only).
+ *
+ * Radius/label parity (ENG-1590, 2026-07-20): this file's `Radius.full` pill +
+ * 16px label is the reference spec — web's `upgrade-paywall-dialog.tsx`
+ * primary CTA previously rendered as a 10px rounded-rect with a 13px label
+ * and was realigned to match (`rounded-full` + `text-base`/15px, the nearest
+ * legal step on web's type ramp).
  */
 export function PaywallCta({
   label,

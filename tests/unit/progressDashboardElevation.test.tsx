@@ -184,7 +184,9 @@ describe("ProgressDashboard page-ground cards take the soft lift (2026-06-09)", 
     const card = await screen.findByTestId("progress-maintenance-card");
     expect(card.className).toContain("mb-6");
     expect(card.className).toContain("mt-6");
-    expect(card.className).toContain("p-4");
+    // ENG-1590: padding="lg" realigned p-4(16px)→p-5(20px), matching mobile's
+    // Spacing.lg — see supprPrimitivesCrossPlatformParity.test.ts.
+    expect(card.className).toContain("p-5");
   });
 
   it("keeps the loading-skeleton tile FLAT (previews the flat demoted chips, not a page-ground content card)", async () => {
