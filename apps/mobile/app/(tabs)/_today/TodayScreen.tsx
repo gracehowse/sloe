@@ -42,6 +42,7 @@ import { useTodayStreakAndFreezes } from "@/hooks/useTodayStreakAndFreezes";
 import { useTodayFoodFavorites } from "@/hooks/useTodayFoodFavorites";
 import { useTodayActivationNudges } from "@/hooks/useTodayActivationNudges";
 import { useTodayUsualMealHint } from "@/hooks/useTodayUsualMealHint";
+import { useTodayWeeklyCheckin } from "@/hooks/useTodayWeeklyCheckin";
 import { useOutOfWindowJournalDay } from "@/hooks/useOutOfWindowJournalDay";
 import {
   dateKeyFromDate,
@@ -244,14 +245,10 @@ import { TodayScrollSectionHeader } from "@/components/today/TodayScrollSectionH
 import { TodayCompleteDayModal } from "@/components/today/TodayCompleteDayModal";
 // Weekly check-in ritual (PR claude/weekly-checkin-ritual-v2, 2026-05-02 —
 // rebuild of #26). MacroFactor-style soft prompt that surfaces the
-// adaptive-vs-formula TDEE delta + a suggested new daily target.
+// adaptive-vs-formula TDEE delta + a suggested new daily target. State +
+// gating + accept/dismiss handlers moved to `useTodayWeeklyCheckin`
+// (ENG-1594) — this screen only renders the modal now.
 import { WeeklyCheckinModal } from "@/components/today/WeeklyCheckinModal";
-import {
-  buildWeeklyCheckinContent,
-  shouldShowWeeklyCheckin,
-  type WeeklyCheckinContent,
-  type WeeklyCheckinConfidence,
-} from "@/lib/weeklyCheckin";
 // Phase 3 (B2.1, 2026-04-27) — TodayFabSheet replaced by LogSheet.
 // The component file remains for any deep test references (sweep
 // docs/journeys/log-sheet.md for migration notes).
@@ -763,25 +760,12 @@ export default function TrackerScreen() {
   const [measuredTdee, setMeasuredTdee] = useState<number | null>(null);
   const [measuredTdeeConfidence, setMeasuredTdeeConfidence] = useState<string | null>(null);
   const [measuredTdeeUpdatedAt, setMeasuredTdeeUpdatedAt] = useState<string | null>(null);
-  // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
-  // 2026-05-02 — rebuild of #26). The MacroFactor-style modal that
-  // surfaces the adaptive-vs-formula TDEE delta once a week. Gating +
-  // content build live in `src/lib/nutrition/weeklyCheckin.ts`. State
-  // is hydrated alongside the other profile fields below; the show
-  // effect runs once on first eligible Today first-load. Modal NEVER
-  // blocks — every dismiss path persists the decision and clears the
-  // open state.
-  const [weeklyCheckinShownAt, setWeeklyCheckinShownAt] = useState<string | null>(null);
-  const [weeklyCheckinOpen, setWeeklyCheckinOpen] = useState(false);
-  const [weeklyCheckinContent, setWeeklyCheckinContent] =
-    useState<WeeklyCheckinContent | null>(null);
-  // ENG-805 (Redesign — Design Direction 2026): when `redesign_winmoment` is
-  // ON the weekly check-in is NOT auto-opened as a cold-open blocking modal —
-  // the in-feed `WeeklyCheckinBanner` (→ /weekly-recap) is the non-blocking
-  // entry point. Flag-OFF preserves the auto-opening modal (both the gate at
-  // the eligibility effect and the modal render below are guarded by this).
-  const checkinAsCard = isFeatureEnabled("redesign_winmoment");
-  const weeklyCheckinHandledRef = useRef(false);
+  // ENG-1594 (Today extract, slice 1) — the weekly TDEE check-in ritual's
+  // state + gating effect + accept/dismiss handlers now live in
+  // `useTodayWeeklyCheckin` (see the call site below, after `weekData` /
+  // `resolvedMaintenance` / `targets` are computed — the hook needs all
+  // three as inputs). Only `setWeeklyCheckinShownAt` (exposed by the hook)
+  // is still called from here, inside `loadProfileTargets`.
   const [profileWeightKgByDay, setProfileWeightKgByDay] = useState<Record<string, number>>({});
   const targetHitPrevByDayRef = useRef<Record<string, boolean>>({});
   /** Once we celebrate (or user was already at goal on first load), do not celebrate again that calendar day if they dip and re-hit. */
@@ -2212,166 +2196,31 @@ export default function TrackerScreen() {
     });
   }, []);
 
-  // Weekly check-in ritual gate (PR claude/weekly-checkin-ritual-v2,
-  // 2026-05-02 — rebuild of #26). Runs once per Today first-load —
-  // `weeklyCheckinHandledRef` suppresses re-fires for the rest of the
-  // session even if `weekData` recomputes. Honest weight delta: we pass
-  // `null` for `weightDeltaKg` until a downstream change wires real
-  // weigh-in data through (`profileWeightKgByDay` + a 7-day window
-  // resolver). The modal suppresses the row rather than fabricate
-  // "+0.0 kg". // deferred: see ENG-1585
-  useEffect(() => {
-    if (!isToday) return;
-    if (weeklyCheckinHandledRef.current) return;
-    if (!userId) return;
-    // build-45 bug fix (2026-05-08): when the user navigates to
-    // /meal-nutrition then taps Edit, the host route returns with
-    // `editMealId` and TodayEditMealModal opens. The weekly check-in
-    // useEffect re-fires on the same focus event and opens its modal
-    // ON TOP of the edit modal — both are presented at the same RN
-    // Modal level and iOS blocks input on the back one → page freezes.
-    //
-    // build-47 follow-up (2026-05-08): the original guard returned
-    // early WITHOUT setting `weeklyCheckinHandledRef.current = true`,
-    // so the moment the edit modal closed the gate re-ran with the
-    // guard cleared and the check-in popped immediately after every
-    // edit ("This keeps popping up every time I edit an item"). Fix:
-    // when we observe the edit flow, ALSO mark the check-in as
-    // handled for the rest of this session. The check-in is once-per-
-    // week server-side; deferring to the next app launch is fine.
-    if (
-      editingMeal != null ||
-      (typeof params.editMealId === "string" && params.editMealId.length > 0)
-    ) {
-      weeklyCheckinHandledRef.current = true;
-      return;
-    }
-    // Map adaptive confidence string into the gate's typed enum. Any
-    // unrecognised value (legacy / null / future addition) routes to
-    // null which the gate treats as "math hasn't resolved" → no fire.
-    const conf: WeeklyCheckinConfidence | null =
-      profileMaintenanceConfidence === "medium" || profileMaintenanceConfidence === "high"
-        ? profileMaintenanceConfidence
-        : profileMaintenanceConfidence === "low"
-          ? "low"
-          : null;
-    const daysLoggedThisWeek = weekData.days.filter(
-      (d) => d.totals.calories > 0,
-    ).length;
-    const eligible = shouldShowWeeklyCheckin({
-      adaptiveTdeeConfidence: conf,
-      adaptiveTdee: profileMaintenanceTdeeKcal,
-      daysLoggedThisWeek,
-      lastShownAt: weeklyCheckinShownAt,
-    });
-    if (!eligible) return;
-    if (!Number.isFinite(targets.calories) || targets.calories <= 0) return;
-    weeklyCheckinHandledRef.current = true;
-
-    const content = buildWeeklyCheckinContent({
-      adaptiveTdee: profileMaintenanceTdeeKcal as number,
-      // Prefer the shared `formulaKcal` resolver output as the prior
-      // baseline. When the user's profile is incomplete the resolver
-      // returns null; the content builder honestly suppresses the
-      // delta line.
-      priorTdee: resolvedMaintenance?.formulaKcal ?? null,
-      currentTargetKcal: targets.calories,
-      avgCaloriesThisWeek: weekData.weekAvg.calories,
-      // weightDeltaKg follow-up: honest null until wired. Tracked as ENG-1585.
-      weightDeltaKg: null,
-      // ENG-1027 — sex-aware suggested-target floor (never suggest a man
-      // below 1,500 / a woman below 1,200).
-      sex: profileSex,
-    });
-    setWeeklyCheckinContent(content);
-    // ENG-805 — never cold-open the blocking modal; the in-feed banner is
-    // the only entry point (matches web + redesign_winmoment default-on).
-
-    // Optimistically stamp the shown-at on the row so we don't re-fire
-    // on a hot reload, even if the analytics emit fails. Server is
-    // source of truth — refetch on next loadProfileTargets() will
-    // overwrite with the canonical value.
-    const nowIso = new Date().toISOString();
-    setWeeklyCheckinShownAt(nowIso);
-    void supabase
-      .from("profiles")
-      .update({ last_weekly_checkin_shown_at: nowIso } as never)
-      .eq("id", userId);
-
-    try {
-      track(AnalyticsEvents.weekly_checkin_shown, {
-        confidence: conf,
-        tdeeDeltaKcal: content.tdeeDeltaKcal,
-        daysLoggedThisWeek,
-        platform: "ios",
-      });
-    } catch {
-      /* noop */
-    }
-  }, [
-    isToday,
+  // ENG-1594 (Today extract, slice 1) — weekly TDEE check-in ritual.
+  // Placed here (after `weekData` / `resolvedMaintenance` / `targets`,
+  // before their first downstream consumer) since the hook needs all
+  // three as inputs. See the hook's own doc comment for the full "why"
+  // + the dependency-identity note on `weekData` / `resolvedMaintenance`.
+  const {
+    weeklyCheckinOpen,
+    weeklyCheckinContent,
+    checkinAsCard,
+    handleWeeklyCheckinAccept,
+    handleWeeklyCheckinDismiss,
+    setWeeklyCheckinShownAt,
+  } = useTodayWeeklyCheckin({
     userId,
+    isToday,
+    editingMeal,
+    params,
     profileMaintenanceTdeeKcal,
     profileMaintenanceConfidence,
     weekData,
-    targets.calories,
+    targetCalories: targets.calories,
     resolvedMaintenance,
-    weeklyCheckinShownAt,
-    editingMeal,
-    params.editMealId,
-  ]);
-
-  const handleWeeklyCheckinAccept = useCallback(() => {
-    if (!userId || !weeklyCheckinContent) {
-      setWeeklyCheckinOpen(false);
-      return;
-    }
-    const newTarget = weeklyCheckinContent.suggestedTargetKcal;
-    const previous = targets.calories;
-    setWeeklyCheckinOpen(false);
-    try {
-      track(AnalyticsEvents.weekly_checkin_accepted, {
-        tdeeDeltaKcal: weeklyCheckinContent.tdeeDeltaKcal,
-        previousTargetKcal: previous,
-        suggestedTargetKcal: newTarget,
-        platform: "ios",
-      });
-    } catch {
-      /* noop */
-    }
-    // Optimistic local update so the rings reflect the new target
-    // without waiting for the round-trip.
-    setProfileTargets((prev) => ({ ...prev, calories: newTarget }));
-    void supabase
-      .from("profiles")
-      .update({
-        target_calories: newTarget,
-        target_calories_set_at: new Date().toISOString(),
-        // Same enum value the maintenance-recalibration suggestion
-        // already uses, so the existing 21-day Rule 2 cooldown
-        // works correctly.
-        target_calories_source: "digest_recalibration",
-        last_weekly_checkin_decision: "accepted",
-      } as never)
-      .eq("id", userId);
-  }, [userId, weeklyCheckinContent, targets.calories]);
-
-  const handleWeeklyCheckinDismiss = useCallback(() => {
-    setWeeklyCheckinOpen(false);
-    try {
-      track(AnalyticsEvents.weekly_checkin_dismissed, {
-        reason: "kept_current",
-        platform: "ios",
-      });
-    } catch {
-      /* noop */
-    }
-    if (!userId) return;
-    void supabase
-      .from("profiles")
-      .update({ last_weekly_checkin_decision: "kept_current" } as never)
-      .eq("id", userId);
-  }, [userId]);
+    profileSex,
+    setProfileTargets,
+  });
 
   // ENG-1361 — the log-a-meal → macros-update contract. Math lives in
   // `computeDayMacroTotals` (nutrition-core/microNutrientDisplay) so it's
