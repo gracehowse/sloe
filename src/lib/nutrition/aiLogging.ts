@@ -103,8 +103,16 @@ export type ConfidenceLevel = "low" | "medium" | "high";
 /**
  * Bucket a 0–1 confidence into low / medium / high.
  *
- * Thresholds mirror the existing web `ConfidenceDot` and the
- * `verifyIngredients` tier classifier:
+ * This is the AI-logging-specific bucket boundary (voice + photo commit
+ * flows) — its own domain, not mirrored from another classifier. (ENG-1432/
+ * conf-3, 2026-07-20: this comment previously claimed the thresholds
+ * "mirror... the verifyIngredients tier classifier"; no such 0.75/0.5 tier
+ * classifier exists in `verifyIngredients.ts` — its only nearby constant is
+ * an unrelated retry heuristic, `MIN_MATCH_CONFIDENCE * 0.75`. The claim was
+ * stale/false; the boundary below was never actually shared with anything.)
+ * See `verifyConfidencePolicy.ts`'s own header note that it is "distinct
+ * from `classifyConfidence` in `aiLogging.ts` (logging buckets — different
+ * domain)" — same conclusion from the other side.
  *  - >= 0.75 → high
  *  - >= 0.5  → medium
  *  - else    → low

@@ -394,13 +394,39 @@ describe("measureToGrams", () => {
     expect(foodSpecificCountGramsEach("strawberries")).toBe(12);
   });
 
-  it("coarse catch-alls still yield a weight (olive 5g, shrimp 15g) but are non-confident", () => {
+  // ── ENG-1432/count-to-weight-3 — split the two widest-range single-food
+  // outliers (shallot, portobello) out of their catch-alls into their own
+  // HIGH single-food references; the catch-alls left behind get a real
+  // MEDIUM tier instead of the ENG-1544 binary confident/not-confident. ──
+
+  it("whole shallot = 25g and is HIGH confidence — split out of the misc pickled/allium bucket", () => {
+    expect(foodSpecificCountGramsEach("shallot")).toBe(25);
+    expect(foodSpecificCountRef("shallot")?.confidence).toBe("high");
+  });
+
+  it("portobello mushroom = 100g and is HIGH confidence — split out of the flat 'any mushroom' rule", () => {
+    // Distinct from the 20g button/cremini/chestnut default: a portobello cap
+    // is 4-7x heavier, so lumping it into the flat rule meant "1 large
+    // portobello" landed on button-mushroom weight at HIGH confidence.
+    expect(foodSpecificCountGramsEach("portobello mushroom")).toBe(100);
+    expect(foodSpecificCountGramsEach("portabella")).toBe(100);
+    expect(foodSpecificCountRef("large portobello")?.confidence).toBe("high");
+    // Non-portobello mushrooms are unaffected.
+    expect(foodSpecificCountGramsEach("cremini mushroom")).toBe(20);
+  });
+
+  it("coarse catch-alls still yield a weight (olive 5g, shrimp 15g) but are MEDIUM, not HIGH", () => {
     // The resolver must still return a number so downstream grams math works;
-    // it's measureToGramsConfidence that keeps these off the HIGH tier.
+    // it's measureToGramsConfidence that keeps these off the HIGH tier. These
+    // are MEDIUM (a real food-specific class matched, just an imprecise one)
+    // — not LOW, which is reserved for no food-specific rule at all.
     expect(foodSpecificCountGramsEach("olive")).toBe(5);
-    expect(foodSpecificCountGramsEach("shallot")).toBe(5);
     expect(foodSpecificCountGramsEach("shrimp")).toBe(15);
-    expect(foodSpecificCountRef("olive")?.confident).toBe(false);
-    expect(foodSpecificCountRef("almond")?.confident).toBe(true);
+    expect(foodSpecificCountRef("olive")?.confidence).toBe("medium");
+    expect(foodSpecificCountRef("shrimp")?.confidence).toBe("medium");
+    expect(foodSpecificCountRef("almond")?.confidence).toBe("high");
+    // A genuinely unmatched food gets no ref at all (the LOW tier lives in
+    // measureToGramsConfidence's fallback, not here).
+    expect(foodSpecificCountRef("widget")).toBeNull();
   });
 });

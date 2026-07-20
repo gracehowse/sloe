@@ -141,7 +141,28 @@ For ingredient matching:
 - generate multiple candidate matches
 - validate nutrition plausibility
 - reject low-confidence matches
-- only ask for clarification when uncertainty materially affects nutrition
+- "Ask for clarification only when uncertainty materially affects nutrition
+  accuracy" — **the shipped mechanism is flag-and-review, not a blocking
+  prompt** (ENG-1432/ntr-2, 2026-07-20 — this line used to read as if a
+  synchronous "ask the user a question" interaction existed; it doesn't, and
+  none is planned). In practice: ambiguous/low-confidence ingredient matches
+  are flagged, excluded from headline nutrition totals, and surfaced for
+  user verification via the review/verify flow
+  (`verifyIngredients.ts` accept-floor exclusion +
+  `ingredientVerifyNeedsReview` recipe-level nudge +
+  the per-row Verify CTA / `RecipeVerifyModal`) — never via a mid-flow
+  interrupt. "Ask for clarification" means "route it through that
+  flag-and-review path", not "block the flow to ask a question." If a
+  synchronous pre-log disambiguation UX is ever wanted, that is new product
+  work, not an implementation of this rule.
+- **AI free-text logging carve-out** (voice + photo commit flows,
+  `src/lib/nutrition/aiLogging.ts`): low-confidence items are **flagged, not
+  rejected/dropped** (ENG-1432/conf-3, 2026-07-20 — intentional design, not a
+  gap). There is no fallback candidate list for a free-text AI parse the way
+  there is for database ingredient matching, so silently dropping a
+  low-confidence item would silently under-count the meal — worse than
+  logging it with a visible low-confidence flag. This is the one place the
+  "reject low-confidence matches" rule above does not apply, by design.
 
 ## PR hygiene — non-negotiable
 

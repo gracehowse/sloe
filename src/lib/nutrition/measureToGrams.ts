@@ -74,23 +74,35 @@ const COUNT_WEIGHT_G: Record<string, number> = {
 
 /**
  * Result of {@link foodSpecificCountRef}: the grams ONE countable piece weighs,
- * plus whether that weight is defensible enough to surface as HIGH confidence.
+ * plus the confidence tier that weight is defensible at.
  */
 export type CountPieceRef = {
   /** Grams one countable piece weighs. */
   grams: number;
   /**
-   * True when `grams` is a defensible single-food reference weight (a specific
-   * USDA FoodData Central / Handbook per-piece value). False when it is a
-   * coarse multi-food catch-all bucket whose per-piece weight varies too widely
-   * to trust — those must NOT be surfaced as HIGH confidence (ENG-1544).
+   * Confidence tier for `grams` as a per-piece reference weight:
+   *  - `"high"` — a defensible SINGLE-FOOD reference (a specific USDA
+   *    FoodData Central / Handbook per-piece value, e.g. "one almond",
+   *    "one medium onion"). Ordinary within-food size variance is tolerated
+   *    at this tier (the file already does this for onion/potato/tomato/etc).
+   *  - `"medium"` — a coarse MULTI-FOOD catch-all bucket: a food-specific
+   *    match still exists (this isn't a blind guess), but the bucket spans
+   *    several genuinely different foods whose per-piece weight varies too
+   *    widely to trust as a specific value (a caper ≈ 0.3 g vs a gherkin
+   *    ≈ 10 g; a shrimp ≈ 3 g vs an oyster ≈ 50 g). Visible as its own tier
+   *    (ENG-1432/count-to-weight-3) rather than collapsed into "low" so the
+   *    coarseness doesn't hide behind the same label a total unknown gets.
+   * Neither tier may be surfaced as HIGH confidence by
+   * {@link measureToGramsConfidence} unless it actually is `"high"` here
+   * (ENG-1544 / ENG-1432 — "if nutrition is uncertain, do not guess").
    */
-  confident: boolean;
+  confidence: "high" | "medium";
 };
 
 /**
- * ENG-701 / ENG-1544 — food-specific per-piece ("count") reference for a
- * discrete, countable ingredient, or `null` when no food-specific rule applies.
+ * ENG-701 / ENG-1544 / ENG-1432 — food-specific per-piece ("count") reference
+ * for a discrete, countable ingredient, or `null` when no food-specific rule
+ * applies.
  *
  * This is the single source of truth for "what does ONE of this food weigh?"
  * It is consulted FIRST by both the count/no-unit path AND the generic size
@@ -102,9 +114,13 @@ export type CountPieceRef = {
  * Handbook values (nuts = one shelled kernel or half; produce/stone fruit =
  * one medium). ENG-1544 replaced the old coarse buckets — "any nut = 5 g" (≈4×
  * too heavy for almonds) and "any small stone fruit = 15 g" (60–77% too light
- * for apricots/plums) — with these single-food references, and marks the two
- * remaining catch-all buckets (misc small pickled/allium bits; misc small
- * shellfish) `confident: false` so a coarse guess never rides on the HIGH tier.
+ * for apricots/plums) — with these single-food references, and demoted the
+ * remaining catch-all buckets off the HIGH tier. ENG-1432/count-to-weight-3
+ * went further: split the two remaining widest-range single-food outliers
+ * (whole shallot; portobello mushroom) OUT of their multi-food catch-alls
+ * into their own single-food HIGH references, and gave the catch-alls that
+ * are left a real `"medium"` tier (see {@link CountPieceRef.confidence})
+ * instead of the binary confident/not-confident ENG-1544 shipped with.
  *
  * Only covers DISCRETE pieces (proteins, nuts, small/medium produce, etc.).
  * Bulk staples (rice/pasta/herbs/sauces) return null here because "one large
@@ -113,8 +129,8 @@ export type CountPieceRef = {
  */
 export function foodSpecificCountRef(ingredientName: string): CountPieceRef | null {
   const name = ingredientName.trim().toLowerCase();
-  const ref = (grams: number): CountPieceRef => ({ grams, confident: true });
-  const coarse = (grams: number): CountPieceRef => ({ grams, confident: false });
+  const ref = (grams: number): CountPieceRef => ({ grams, confidence: "high" });
+  const coarse = (grams: number): CountPieceRef => ({ grams, confidence: "medium" });
 
   // ── Meat cuts — realistic per-piece weights (raw/cooked aware for poultry).
   if (/(?:chicken|turkey).{0,24}breast|breast.{0,24}(?:chicken|turkey)|chicken breast/.test(name)) {
@@ -134,6 +150,11 @@ export function foodSpecificCountRef(ingredientName: string): CountPieceRef | nu
   if (/carrot|onion|potato|sweet potato|tomato|lemon|lime|apple|banana|avocado|courgette|zucchini|aubergine|eggplant/.test(name)) {
     return ref(110);
   }
+  // Whole shallot bulb — split out of the misc pickled/allium catch-all
+  // (ENG-1432/count-to-weight-3): a shallot (~25-35 g) shares nothing with a
+  // caper (~0.3 g) or gherkin (~10 g) beyond "small savoury bit"; it gets the
+  // same single-food HIGH treatment as onion/potato/tomato above.
+  if (/\bshallots?\b/.test(name)) return ref(25);
 
   // ── Nuts — one shelled kernel / half (USDA FDC single-unit portions). The
   //    old coarse "any nut = 5 g" bucket was ~4× too heavy for almonds and
@@ -155,7 +176,14 @@ export function foodSpecificCountRef(ingredientName: string): CountPieceRef | nu
   if (/prune/.test(name)) return ref(9.5);
   if (/\bdates?\b/.test(name)) return ref(7);
 
-  // ── Mushroom (button) / strawberry — single-piece USDA references.
+  // ── Mushroom / strawberry — single-piece USDA references. Portobello is
+  //    split out from the generic "button/cremini/chestnut" mushroom weight
+  //    (ENG-1432/count-to-weight-3): a portobello cap (~80-150 g) is 4-7×
+  //    heavier than a button mushroom (~18-20 g) — the old flat "any
+  //    mushroom = 20 g" rule meant "1 large portobello" still landed on
+  //    button-mushroom weight at HIGH confidence. Checked before the generic
+  //    mushroom match below.
+  if (/portobello|portabella/.test(name)) return ref(100);
   if (/mushroom/.test(name)) return ref(20);
   if (/strawberr/.test(name)) return ref(12);
 
@@ -163,11 +191,15 @@ export function foodSpecificCountRef(ingredientName: string): CountPieceRef | nu
   if (/sausage|biscuit|cookie|cracker|tortilla|wrap|pitta|naan/.test(name)) return ref(50);
 
   // ── Coarse catch-alls — a weight is still returned so the resolver yields a
-  //    number, but per-piece varies too widely to trust for aggregation (a
-  //    caper ≈ 0.3 g vs a shallot ≈ 30 g; a mussel vs an oyster), so these are
-  //    NOT confident and stay off the HIGH tier (ENG-1544 — "if nutrition is
-  //    uncertain, do not guess").
-  if (/anchov|olive|caper|cornichon|gherkin|radish|shallot/.test(name)) return coarse(5);
+  //    number, but per-piece varies too widely across the DIFFERENT foods in
+  //    each bucket to trust as a specific value (a caper ≈ 0.3 g vs a
+  //    gherkin ≈ 10 g; a shrimp ≈ 3 g vs an oyster ≈ 50 g). These are
+  //    MEDIUM confidence, not HIGH (shallot was split out above into its own
+  //    single-food reference, ENG-1432/count-to-weight-3) — never LOW either,
+  //    since a real food-specific class did match, just an imprecise one
+  //    ("if nutrition is uncertain, do not guess" cuts both ways: don't
+  //    overclaim HIGH, but don't discard the match info either).
+  if (/anchov|olive|caper|cornichon|gherkin|radish/.test(name)) return coarse(5);
   if (/prawn|shrimp|mussel|clam|scallop|oyster/.test(name)) return coarse(15);
 
   return null;
@@ -177,7 +209,7 @@ export function foodSpecificCountRef(ingredientName: string): CountPieceRef | nu
  * ENG-701 — grams ONE countable piece of a food weighs, or `null` when no
  * food-specific rule applies. Thin wrapper over {@link foodSpecificCountRef}:
  * the resolver only needs the weight, while confidence is read separately by
- * {@link measureToGramsConfidence} via the ref's `confident` flag.
+ * {@link measureToGramsConfidence} via the ref's `confidence` field.
  */
 export function foodSpecificCountGramsEach(ingredientName: string): number | null {
   return foodSpecificCountRef(ingredientName)?.grams ?? null;
@@ -370,24 +402,37 @@ const HIGH_CONFIDENCE_WEIGHT_UNITS = new Set([
 ]);
 
 /**
- * ENG-943 — confidence read on a measure → grams conversion, for the shopping-
- * list count-to-weight normaliser. We must NEVER aggregate a count ("2 onions")
- * into a weight row ("400 g onions") on a guessed per-piece weight; the
- * generator only cross-converts when this returns `"high"`.
+ * ENG-943 / ENG-1432 — confidence read on a measure → grams conversion, for
+ * the shopping-list count-to-weight normaliser. We must NEVER aggregate a
+ * count ("2 onions") into a weight row ("400 g onions") on a guessed
+ * per-piece weight; the generator only cross-converts when this returns
+ * `"high"` — `"medium"` and `"low"` are both refused identically by that
+ * gate today (`tryCountToWeightGrams` in `shoppingMergePrimitives.ts`).
+ * The three-tier split (ENG-1432/count-to-weight-3; ENG-1544 shipped a
+ * binary high/low) exists so a caller that DOES want to distinguish "a
+ * real but coarse food match" from "no match at all" — e.g. a future
+ * confidence label in the UI — can, without the coarseness hiding behind
+ * the same "low" a total unknown gets.
  *
  * `"high"` — the unit is a mass/volume unit, OR an explicit egg, OR a count/size
  *   of a food with a DEFENSIBLE single-food per-piece weight
- *   (`foodSpecificCountRef(...).confident`), OR a recognised discrete unit in
- *   `COUNT_WEIGHT_G` / the tin/pack branches — AND the conversion did not fall
- *   back to a defaulted cup density.
- * `"low"` — a bare count / size word with no food-specific rule (the generic
- *   80/110/180 g fallback) OR one that only resolves to a COARSE catch-all
- *   bucket (`confident: false` — misc pickled/allium bits, misc shellfish;
- *   ENG-1544), an unrecognised unit, or a cup/mug converted with a defaulted
- *   density. The caller keeps the count and weight as separate rows in this case
- *   (never guesses a weight on a low-confidence read).
+ *   (`foodSpecificCountRef(...).confidence === "high"`), OR a recognised
+ *   discrete unit in `COUNT_WEIGHT_G` / the tin/pack branches — AND the
+ *   conversion did not fall back to a defaulted cup density.
+ * `"medium"` — a count/size word that only resolves to a COARSE multi-food
+ *   catch-all bucket (`foodSpecificCountRef(...).confidence === "medium"` —
+ *   misc pickled/allium bits, misc shellfish; ENG-1432/count-to-weight-3).
+ *   A real food-specific class matched, but per-piece weight varies too
+ *   widely within it to trust as a specific value.
+ * `"low"` — a bare count / size word with NO food-specific rule at all (the
+ *   generic 80/110/180 g fallback), an unrecognised unit, or a cup/mug
+ *   converted with a defaulted density.
+ *
+ * Both `"medium"` and `"low"` fail the `!== "high"` cross-convert gate the
+ * same way — the caller keeps the count and weight as separate rows in
+ * either case (never guesses a weight on anything less than high confidence).
  */
-export function measureToGramsConfidence(input: MeasureInput): "high" | "low" {
+export function measureToGramsConfidence(input: MeasureInput): "high" | "medium" | "low" {
   const name = input.name.trim().toLowerCase();
   const u = input.unit.trim().toLowerCase();
 
@@ -401,10 +446,9 @@ export function measureToGramsConfidence(input: MeasureInput): "high" | "low" {
   // Egg size/count is well-characterised (per-egg weights by size).
   if (/\begg(?:s)?\b/.test(name)) return "high";
 
-  // A count / size word is only high-confidence with a DEFENSIBLE single-food
-  // per-piece weight. A coarse catch-all bucket (confident:false) or no rule at
-  // all lands on a guess → LOW, so the count and weight stay separate rows
-  // rather than aggregating on a guessed per-piece weight (ENG-1544).
+  // A count / size word reads its tier straight off the food-specific ref:
+  // high (single-food reference), medium (coarse multi-food catch-all), or
+  // low (no food-specific rule at all — the generic 80/110/180 g guess).
   if (
     u === "count" ||
     u === "" ||
@@ -413,7 +457,7 @@ export function measureToGramsConfidence(input: MeasureInput): "high" | "low" {
     u === "medium" ||
     u === "large"
   ) {
-    return foodSpecificCountRef(name)?.confident === true ? "high" : "low";
+    return foodSpecificCountRef(name)?.confidence ?? "low";
   }
 
   // Recognised discrete units (clove, slice, rasher, stalk, …) have

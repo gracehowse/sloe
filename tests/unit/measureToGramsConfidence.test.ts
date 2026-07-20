@@ -44,12 +44,38 @@ describe("measureToGramsConfidence — count-to-weight safety gate (ENG-943)", (
     }
   });
 
-  it("rates a count that only hits a COARSE catch-all bucket LOW (not HIGH)", () => {
-    // olive/caper/shallot (misc pickled/allium) and shrimp/mussel/scallop (misc
-    // shellfish) resolve to a rough weight but per-piece varies too widely to
-    // aggregate on — must stay off the HIGH tier so the count/weight rows split.
-    for (const name of ["olive", "caper", "shallot", "cornichon", "shrimp", "mussel", "scallop"]) {
-      expect(measureToGramsConfidence({ name, amount: 5, unit: "" })).toBe("low");
+  // ── ENG-1432/count-to-weight-3 — split the two widest-range single-food
+  // outliers out of their catch-alls; give the catch-alls left a MEDIUM tier
+  // instead of collapsing them into the same LOW an unmatched food gets. ──
+
+  it("rates a whole shallot and a portobello mushroom HIGH — split out of their old catch-alls", () => {
+    // Shallot used to share the misc pickled/allium 5g bucket with capers;
+    // portobello used to fall through to the flat "any mushroom = 20g" rule
+    // (a 4-7x undercount for a large cap). Both now have their own
+    // single-food reference, same tier as onion/potato/tomato.
+    expect(measureToGramsConfidence({ name: "shallot", amount: 2, unit: "" })).toBe("high");
+    expect(measureToGramsConfidence({ name: "portobello mushroom", amount: 1, unit: "large" })).toBe("high");
+  });
+
+  it("rates a count that only hits a COARSE catch-all bucket MEDIUM (not HIGH, not LOW)", () => {
+    // olive/caper/cornichon (misc pickled/allium) and shrimp/mussel/scallop
+    // (misc shellfish) resolve to a rough weight but per-piece varies too
+    // widely across the different foods in the bucket to trust as a specific
+    // value — MEDIUM, not HIGH, so the count/weight rows still split at the
+    // `!== "high"` cross-convert gate. Not LOW either: a real food-specific
+    // class did match (unlike a genuinely unknown food), so the coarseness
+    // stays visible as its own tier rather than reading identically to a
+    // total unknown.
+    for (const name of ["olive", "caper", "cornichon", "shrimp", "mussel", "scallop"]) {
+      expect(measureToGramsConfidence({ name, amount: 5, unit: "" })).toBe("medium");
     }
+  });
+
+  it("still refuses to cross-convert a MEDIUM-confidence count (same gate as LOW)", () => {
+    // Regression guard: `tryCountToWeightGrams` in shoppingMergePrimitives.ts
+    // gates on `!== "high"`, so MEDIUM must fail it exactly like LOW — a
+    // three-tier confidence read must not accidentally loosen the
+    // never-guess-a-weight contract.
+    expect(measureToGramsConfidence({ name: "olive", amount: 5, unit: "" })).not.toBe("high");
   });
 });

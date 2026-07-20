@@ -56,7 +56,12 @@ export function formatAmount(value: number): string {
  * at HIGH confidence (`measureToGramsConfidence`). If it is a guessed weight
  * (bare count of an unknown food, defaulted cup density, …) we DO NOT guess —
  * the caller keeps the two rows separate (the safe default). This honours the
- * non-negotiable "never guess a weight if confidence is low".
+ * non-negotiable "never guess a weight if confidence is low". `measureToGramsConfidence`
+ * also returns a `"medium"` tier (ENG-1432/count-to-weight-3 — a coarse
+ * multi-food catch-all match, e.g. "olive"/"shrimp") for callers that want to
+ * distinguish it from "low"; this gate treats `"medium"` exactly like `"low"`
+ * (`!== "high"` refuses both) — a coarse per-piece guess never gets aggregated
+ * into a weight row here, regardless of tier.
  */
 export function tryCountToWeightGrams(
   name: string,
