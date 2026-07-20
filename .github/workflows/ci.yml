@@ -114,6 +114,16 @@ jobs:
         # in scripts/spacing-budget.json and may only shrink; any new
         # off-scale value (or a pinned file gaining one) fails.
         run: npm run check:spacing-scale
+      - name: Web spacing scale ratchet (ENG-1592)
+        # The web leg ENG-1007's own code comment promised and never built.
+        # Flags off-scale Tailwind p-*/m-*/gap-* spacing on web `.tsx`
+        # (src/app, app) — arbitrary rounded-[Npx] brackets AND off-scale
+        # numeric Tailwind steps (p-7 = 28px is off-scale; p-6 = 24px is
+        # legal), against the same 4/8/12/16/20/24/32/40 scale. Legacy
+        # offenders are pinned in scripts/web-spacing-budget.json and may
+        # only shrink; any new off-scale value (or a pinned file gaining
+        # one) fails.
+        run: npm run check:web-spacing-scale
       - name: Token scale ratchet (ENG-1007)
         # Gives teeth to "Tokens only" — flags raw hexes, raw Tailwind palette
         # colour classes, and off-scale borderRadius across web + mobile.

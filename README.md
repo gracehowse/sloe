@@ -35,6 +35,7 @@ Copy environment variables from your team vault or Vercel. See [`docs/environmen
 | `npm run check:type-scale` | Ratchet: off-ladder web `text-[Npx]` classes (ENG-119) |
 | `npm run check:type-scale-mobile` | Ratchet: raw mobile `fontSize: N` literals off the `Type` ramp (ENG-1002) |
 | `npm run check:spacing-scale` | Ratchet: off-scale mobile spacing literals (ENG-1007) |
+| `npm run check:web-spacing-scale` | Ratchet: off-scale web Tailwind `p-*/m-*/gap-*` spacing (ENG-1592, the web leg of ENG-1007) |
 | `npm run check:token-scale` | Ratchet: raw hexes / off-scale Tailwind colours / border-radius, web + mobile (ENG-1007) |
 | `npm run check:screen-budget` | Ratchet: no screen file over the pinned 400-line budget (ENG-717) |
 | `npm run mobile:lint` | ESLint for `apps/mobile` |

@@ -60,10 +60,18 @@ contract: "Design craft contract" in `.claude/agents/_project-context.md`.
 - **Tokens only.** Colour, spacing, radius, type, and shadow values come from
   `apps/mobile/constants/theme.ts` (mobile) / `src/styles/theme.css` + the
   Tailwind theme (web). No literal hexes, no off-scale numbers. If the value
-  you need doesn't exist, add the token first, then use it. **Enforced by two
-  only-shrink ratchets** (ENG-1007, in `npm run ci` + CI): `check:spacing-scale`
-  (`scripts/check-spacing-scale.mjs` — off-scale mobile spacing literals, pinned
-  in `scripts/spacing-budget.json`) and `check:token-scale`
+  you need doesn't exist, add the token first, then use it. **Enforced by
+  three only-shrink ratchets** (ENG-1007, in `npm run ci` + CI):
+  `check:spacing-scale` (`scripts/check-spacing-scale.mjs` — off-scale mobile
+  spacing literals, pinned in `scripts/spacing-budget.json`),
+  `check:web-spacing-scale` (`scripts/check-web-spacing-scale.mjs`, ENG-1592
+  — the web leg ENG-1007's own code comment promised and never built until
+  2026-07-21: off-scale Tailwind `p-*/m-*/gap-*` spacing on web `.tsx`
+  (`src/app`, `app`) — arbitrary `p-[Npx]` brackets AND off-scale numeric
+  Tailwind steps, mapped step→px via Tailwind's `step * 4px` convention
+  (`p-6` = 24px is legal, `p-7` = 28px is not); pinned in
+  `scripts/web-spacing-budget.json`, 259 files / 1018 legacy instances at
+  2026-07-21 baseline) and `check:token-scale`
   (`scripts/check-token-scale.mjs` — raw hexes, raw `rgb()`/`rgba()` hue
   literals (ENG-1520; pure black/white scrims carved out), raw Tailwind
   palette colour classes, off-scale `borderRadius` across web + mobile, AND
@@ -79,10 +87,11 @@ contract: "Design craft contract" in `.claude/agents/_project-context.md`.
   scoping ENG-1521 used on mobile); the 308-site accent population pinned
   2026-07-20 is tracked for migration under ENG-1624,
   pinned in `scripts/token-budget.json`; the web `rounded-[Npx]` bracket
-  namespace is gated separately by `check:web-radius`, ENG-1499). Both read
-  the legal scales from `theme.ts`; a
+  namespace is gated separately by `check:web-radius`, ENG-1499). All three
+  read the legal scales from `theme.ts`; a
   new off-scale/off-token value fails CI. Re-pin a legitimately-shrunk file with
-  `npm run check:spacing-scale:write` / `npm run check:token-scale:write`.
+  `npm run check:spacing-scale:write` / `npm run check:web-spacing-scale:write` /
+  `npm run check:token-scale:write`.
 - **Spacing snaps to the scale:** 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40
   (12 adopted 2026-06-10, ENG-1012 — the dense chip/row step). An 18px
   padding or 10px gap is a bug even if it looks fine.

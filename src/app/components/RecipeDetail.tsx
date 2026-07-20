@@ -1860,7 +1860,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
 
   if (!isCatalogRecipe && dbLoading) {
     return (
-      <div className="max-w-4xl mx-auto px-6 py-10 space-y-4">
+      <div className="product-shell py-10 space-y-4">
         <div className="h-8 w-48 rounded-md bg-skeleton animate-pulse" />
         <div className="aspect-video w-full rounded-xl bg-skeleton animate-pulse" />
         <div className="space-y-2">
@@ -1875,7 +1875,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
 
   if (!isCatalogRecipe && dbFetchFailed) {
     return (
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="product-shell py-8">
         <button
           type="button"
           onClick={onBack}
