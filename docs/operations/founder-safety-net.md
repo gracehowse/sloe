@@ -55,8 +55,8 @@ A single trusted person who can (a) reach the physical recovery key and (b) is b
 TestFlight builds **auto-expire after 90 days** ([DR runbook S6](../runbooks/disaster-recovery.md)). If the only green build expires with no replacement, there is no install path and (for a wider cohort) no rollback target.
 
 - **Policy:** always keep a build no older than ~75 days promoted. Ship or re-archive before the cliff.
-- **Reminder:** recurring calendar event "Suppr TestFlight build-expiry check" set 2026-06-02 (every 60 days) — re-up the build well inside the 90-day window.
-- **Better (later):** automate via the App Store Connect API (`GET /v1/builds` → `expirationDate`) in a weekly cron that pings if the newest build expires within 21 days. Tracked as a follow-up, not blocking.
+- **Reminder:** recurring calendar event "Suppr TestFlight build-expiry check" set 2026-06-02 (every 60 days) — re-up the build well inside the 90-day window. **Keep this reminder active** — see the note below.
+- **Automated (2026-07-20, ENG-1414/PRA-015):** the "later" plan below is now built — `POST /api/cron/testflight-expiry-check`, polled weekly (Monday 09:00 UTC) by `.github/workflows/scheduled-crons.yml`, alerts to Sentry (`level: "error"`, routes to `gracehowse@outlook.com` via the existing Alarm 1 Sentry rule — see [alerting runbook, Alarm 10](alerting.md#alarm-10--testflight-build-expiry)) when the newest build's `expirationDate` is under 21 days out. **Not yet armed**: the four App Store Connect API credentials (`ASC_KEY_ID` / `ASC_ISSUER_ID` / `ASC_PRIVATE_KEY` / `ASC_APP_ID`) are not provisioned in Vercel production yet — until they are, the cron clean-skips every week rather than alerting. Provisioning steps: [`docs/decisions/2026-07-20-eng1414-production-readiness-hardening-tail.md`](../decisions/2026-07-20-eng1414-production-readiness-hardening-tail.md). **Keep the calendar reminder above running until the alarm is confirmed armed and has fired a clean test run** — the cron is not yet a substitute for it.
 
 ---
 
@@ -100,6 +100,7 @@ The bet: the product **degrades gracefully on its own** for the four most likely
 - [ ] Recovery codes stored in a documented vault (Grace — §1)
 - [ ] Trusted contact identified, briefed, conditional access (Grace — §2)
 - [x] TestFlight build-expiry calendar reminder set — 2026-06-02 (§3)
+- [x] TestFlight build-expiry system alarm built — 2026-07-20, ENG-1414/PRA-015 (§3) — [ ] **not yet armed**, needs Grace to provision the App Store Connect API key (§3)
 - [x] One-page "Grace offline 7 days" playbook (§4)
 
 When the two Grace-only boxes are ticked, Blocker 6 can flip to **Closed** in the [audit verdict](../decisions/2026-05-14-production-readiness-audit-verdict.md).
