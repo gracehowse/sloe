@@ -213,7 +213,6 @@
     "src/app/components/suppr/today-hero-stats.tsx": 1,
     "src/app/components/suppr/today-meals-section.tsx": 3,
     "src/app/components/suppr/today-snap-shortcut.tsx": 2,
-    "src/app/components/suppr/today-streak-insight-card.tsx": 1,
     "src/app/components/suppr/today-week-view.tsx": 1,
     "src/app/components/suppr/upgrade-paywall-dialog.tsx": 5,
     "src/app/components/suppr/voice-log-dialog.tsx": 5,
