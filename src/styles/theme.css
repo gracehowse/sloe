@@ -47,11 +47,28 @@
   --space-xxl: 2rem;      /* 32px ↔ Spacing.xxl  */
   --space-xxxl: 2.5rem;   /* 40px ↔ Spacing.xxxl */
 
-  /** Radius — Canonical 2026-05-22 lock (tighter ladder).
-   *  Previous 12/16 read as consumer wellness app. Tightened to 6/8
-   *  to match Linear / Stripe / Things 3 / Notion premium tier.
-   *  --radius-sm/md/lg/xl derive from these below. */
-  --radius: 0.375rem;         /* 6px base */
+  /** Radius — Canonical 2026-05-22 lock (tighter ladder), re-pinned
+   *  ENG-1589 (2026-07-20). `--radius-sm/md/lg/xl` used to derive by
+   *  `calc()`-offsetting the single `--radius` base below, which silently
+   *  resolved sm/xl to illegal 2px/10px (off the legal 4/6/8/12/24/full
+   *  scale) across ~236 `rounded-xl` + ~36 `rounded-sm` call sites —
+   *  undetected because `check-web-radius.mjs` allowlisted these by class
+   *  NAME, not resolved value. Each step is now an independent pinned
+   *  value on the legal ladder, matching mobile `Radius.sm/md/lg/xl` in
+   *  apps/mobile/constants/theme.ts (4/6/8/12) so web and mobile share one
+   *  ladder. `check-web-radius.mjs` now parses these `:root` declarations
+   *  and fails CI if a resolved value drifts off-ladder again, regardless
+   *  of the var name. */
+  --radius-sm: 0.25rem;        /* 4px  ↔ mobile Radius.sm */
+  --radius-md: 0.375rem;       /* 6px  ↔ mobile Radius.md */
+  --radius-lg: 0.5rem;         /* 8px  ↔ mobile Radius.lg */
+  --radius-xl: 0.75rem;        /* 12px ↔ mobile Radius.xl */
+  /** Base radius used directly (not via the Tailwind `rounded-*` ladder) by
+   *  the marketing/landing utility classes (`.btn-primary`, `.btn-secondary`
+   *  below) — kept equal to `--radius-md` (6px, already legal) rather than
+   *  retired, since those raw `border-radius: var(--radius)` declarations
+   *  still read it. */
+  --radius: 0.375rem;          /* 6px base — legal, == --radius-md */
   /* ENG-1497 (2026-07-10, Grace's card-grammar ruling): the legacy 8px
    * tight-ladder card radius is retired — `rounded-card` now resolves to
    * the ONE canonical 24px card corner, moving all its legacy card
@@ -925,11 +942,13 @@
   --color-ring-bg: var(--ring-bg);
   --color-ring-track: var(--ring-track);
 
-  /* Radius */
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* Radius — ENG-1589 (2026-07-20): maps straight through to the pinned
+   * `:root` values above (no calc() derivation) so `rounded-sm/md/lg/xl`
+   * resolve to the legal 4/6/8/12 ladder. */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
   --radius-card: var(--radius-card);
   --radius-card-lg: var(--radius-card-lg);
 

@@ -1,9 +1,9 @@
 /**
- * ENG-1363 — Shared scaffolding for the four pin-based only-shrink ratchets:
+ * ENG-1363 — Shared scaffolding for the pin-based only-shrink ratchets:
  *   check-screen-line-budget.mjs, check-spacing-scale.mjs,
- *   check-token-scale.mjs, check-type-scale-mobile.mjs.
+ *   check-token-scale.mjs, check-type-scale-mobile.mjs, check-web-radius.mjs.
  *
- * Those four scripts were >85% line-for-line duplicates of one skeleton:
+ * Those scripts were >85% line-for-line duplicates of one skeleton:
  * `stripComments()`, `walk()`, `loadBudget()`/`writeBudget()`, the
  * `{failures, shrinks, droppedOut, badAllow}` evaluator, and the `--write`
  * CLI. This module is that skeleton, extracted once. Each checker keeps
@@ -14,14 +14,21 @@
  * files — do not change either):
  *   - "keyed"     — `{ pins: { "<path>": <count> }, allow: { "<path>":
  *                    "<rationale>" } }`. Used by the spacing/token/
- *                    type-scale-mobile budgets. `evaluate()` takes an
- *                    `allow` map and returns `badAllow` (rationale-less
- *                    carve-outs) in addition to the other fields.
+ *                    type-scale-mobile/web-radius budgets. `evaluate()`
+ *                    takes an `allow` map and returns `badAllow`
+ *                    (rationale-less carve-outs) in addition to the other
+ *                    fields.
  *   - "flat"      — `{ "<path>": <count> }` with no `allow` concept. Used
  *                    by screen-line-budget.json. `evaluate()` is called
  *                    with no `allow` argument and never returns `badAllow`.
  *
- * Nothing here changes ratchet semantics — it is a pure extraction.
+ * `readLegalRadius()` (ENG-1589) is the one non-ratchet-harness export here:
+ * both `check-token-scale.mjs` (mobile `borderRadius` literals) and
+ * `check-web-radius.mjs` (web `--radius-*` custom properties) read the same
+ * canonical scale from `apps/mobile/constants/theme.ts`'s `Radius` so web
+ * and mobile can never grade different values as "legal".
+ *
+ * Nothing else here changes ratchet semantics — it is a pure extraction.
  */
 
 import { readFileSync, writeFileSync, readdirSync, existsSync, statSync } from "node:fs";
@@ -71,6 +78,31 @@ export function walk(dir, acc, extensions) {
 
 export function nearestLegal(value, legal) {
   return [...legal].sort((a, b) => Math.abs(a - value) - Math.abs(b - value))[0];
+}
+
+/** Mobile's canonical `Radius` scale (`apps/mobile/constants/theme.ts`) —
+ *  the single legal radius ladder both `check-token-scale.mjs` (mobile
+ *  `borderRadius` literals) and `check-web-radius.mjs` (web `--radius-*`
+ *  custom properties, ENG-1589) read, so the two platforms can never drift
+ *  apart on what counts as a legal radius. */
+const THEME_FILE = join(REPO_ROOT, "apps", "mobile", "constants", "theme.ts");
+
+/** Read the canonical legal radius values from `theme.ts` (`Radius`). */
+export function readLegalRadius(themeSrc = readFileSync(THEME_FILE, "utf8")) {
+  const block = themeSrc.match(/export const Radius\s*=\s*\{([\s\S]*?)\}/);
+  if (!block) {
+    throw new Error("readLegalRadius — could not find `export const Radius` in theme.ts");
+  }
+  const values = new Set([0]); // 0 = square, always legal
+  const valRe = /:\s*(\d+(?:\.\d+)?)\s*,/g;
+  let m;
+  while ((m = valRe.exec(block[1])) !== null) {
+    values.add(parseFloat(m[1]));
+  }
+  if (values.size <= 1) {
+    throw new Error("readLegalRadius — parsed an empty Radius scale from theme.ts");
+  }
+  return values;
 }
 
 /** Load a "keyed" budget file (`{ pins, allow }`). Missing file → empty. */

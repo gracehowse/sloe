@@ -16,7 +16,10 @@
  *      token utility, not a raw palette step.
  *   3. A `borderRadius` numeric literal that is not on the canonical `Radius`
  *      scale (mobile), read at runtime from `apps/mobile/constants/theme.ts`
- *      (`Radius` = 4/6/8/12/9999) — never hardcoded.
+ *      via the shared `readLegalRadius()` in `scripts/lib/ratchet.mjs`
+ *      (`Radius` = 4/6/8/12/24/9999) — never hardcoded. `check-web-radius.mjs`
+ *      (ENG-1589) reads the same scale for web's `--radius-*` custom
+ *      properties, so the two platforms can't grade different values legal.
  *   4. A raw `rgb()` / `rgba()` colour literal with numeric channels
  *      (ENG-1520 blind spot), e.g. `rgba(139, 92, 246, 0.5)` — a hue that
  *      dodges HEX_RE. Pure black / white (`rgb(0,0,0)` / `rgb(255,255,255)`,
@@ -59,9 +62,10 @@
  * report otherwise. Wired into `npm run check:token-scale` and CI.
  *
  * The `stripComments`/`walk`/`loadBudget`/`writeBudget`/`evaluate`/CLI
- * scaffolding is shared with the spacing, type-scale-mobile, and
- * screen-line-budget gates — see `scripts/lib/ratchet.mjs` (ENG-1363).
- * Only the token-specific regex + theme parsing lives here.
+ * scaffolding, plus `readLegalRadius()`, is shared with the spacing,
+ * type-scale-mobile, screen-line-budget, and web-radius gates — see
+ * `scripts/lib/ratchet.mjs` (ENG-1363, ENG-1589). Only the token-specific
+ * regex lives here.
  */
 
 import { readFileSync } from "node:fs";
@@ -75,10 +79,10 @@ import {
   evaluateKeyed as evaluate,
   runKeyedCli,
   isInvokedDirectly,
+  readLegalRadius,
 } from "./lib/ratchet.mjs";
 
 const BUDGET_FILE = join(REPO_ROOT, "scripts", "token-budget.json");
-const THEME_FILE = join(REPO_ROOT, "apps", "mobile", "constants", "theme.ts");
 
 /** Dirs the token rule targets (relative to repo root). Web + mobile, same
  *  surfaces as the screen-line ratchet. */
@@ -134,25 +138,7 @@ function isScrimBlackWhite(r, g, b) {
   return (r === 0 && g === 0 && b === 0) || (r === 255 && g === 255 && b === 255);
 }
 
-/** Read the canonical legal radius values from `theme.ts` (`Radius`). */
-export function readLegalRadius(themeSrc = readFileSync(THEME_FILE, "utf8")) {
-  const block = themeSrc.match(/export const Radius\s*=\s*\{([\s\S]*?)\}/);
-  if (!block) {
-    throw new Error("check:token-scale — could not find `export const Radius` in theme.ts");
-  }
-  const values = new Set([0]); // 0 = square, always legal
-  const valRe = /:\s*(\d+(?:\.\d+)?)\s*,/g;
-  let m;
-  while ((m = valRe.exec(block[1])) !== null) {
-    values.add(parseFloat(m[1]));
-  }
-  if (values.size <= 1) {
-    throw new Error("check:token-scale — parsed an empty Radius scale from theme.ts");
-  }
-  return values;
-}
-
-export { stripComments };
+export { stripComments, readLegalRadius };
 
 /**
  * Scan a single source file's text and return its token findings as
