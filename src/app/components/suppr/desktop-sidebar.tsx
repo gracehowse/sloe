@@ -69,8 +69,7 @@ export type SidebarView =
   | "notifications"
   | "create"
   | "import"
-  | "plan-import"
-  | "cookbook-import"
+  | "plan-import" | "cookbook-import"
   | "household-settings"
   | "targets";
 
