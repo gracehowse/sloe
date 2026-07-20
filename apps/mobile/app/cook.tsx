@@ -1351,15 +1351,6 @@ export default function CookModeScreen() {
       width: "100%",
       marginTop: Spacing.xl,
     },
-    navBtn: {
-      flex: 1,
-      paddingVertical: 16,
-      borderRadius: Radius.md,
-      backgroundColor: colors.card,
-      alignItems: "center",
-    },
-    navBtnText: { color: colors.text, fontWeight: "600", fontSize: 16 },
-    navBtnDisabled: { opacity: 0.4 },
 
     // Layout-only override on `SupprButton variant="primary"` (the done
     // state's ONE solid CTA) — just the top margin off the card. Solid
@@ -1693,15 +1684,21 @@ export default function CookModeScreen() {
             )}
           </View>
 
-          {/* Navigation */}
+          {/* Navigation — ENG-1613: Previous was a raw `<Pressable>` at
+              `Radius.md` sitting next to the `Radius.full` "Next Step"
+              pill (one row, two shapes). Now a GHOST `SupprButton` so it
+              shares the exact pill geometry + `PressableScale` feedback —
+              one shape per row, matching the scaler chips/step pills. */}
           <View style={styles.navRow}>
-            <Pressable
-              style={[styles.navBtn, current === 0 && styles.navBtnDisabled]}
+            <SupprButton
+              variant="ghost"
+              style={{ flex: 1 }}
               onPress={goPrev}
               disabled={current === 0}
-            >
-              <Text style={styles.navBtnText}>Previous</Text>
-            </Pressable>
+              haptic="selection"
+              accessibilityLabel="Previous step"
+              label="Previous"
+            />
             <SupprButton
               variant="primary"
               style={{ flex: 1 }}

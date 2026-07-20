@@ -23,6 +23,19 @@ Mobile took a focused subset of this spec on 2026-04-30 ahead of the full visual
 
 Items not yet shipped (canonical spec target): force-dark default, gradient IconBox, multi-timer active rail, `expo-notifications` backgrounded reminders, web parity for the same completion polish, `recipe_ratings` schema + persistence, "Plated." rebrand of headline copy.
 
+- **§5 nav button states — superseded, not pending.** The 44pt circular
+  icon-only Prev (mobile) and the "retire the web trailing forward button"
+  call never shipped; the later `docs/decisions/2026-06-12-button-system-solid-primary.md`
+  ruling (ratified after this spec) put Cook Mode's nav row on the shared
+  `SupprButton primary | ghost` grammar instead, with "Next Step"/"Done!"
+  labels (not this spec's "Next"/"Finish"). ENG-1613 (2026-07-19) finished
+  that migration — mobile's Previous moved off a raw `Radius.md` `Pressable`
+  onto `SupprButton variant="ghost"` (a text pill, matching "Next Step",
+  not a circular icon). Web's two `rounded-xl` icon buttons flanking the
+  primary pill were reviewed in the same change and left as-is — they match
+  the app-wide icon-button convention, not the mobile shape bug. §5 is
+  historical record of a direction not taken; do not implement it.
+
 ---
 
 ## 1. Design intent
