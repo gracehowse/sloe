@@ -5,9 +5,17 @@ import { ChevronLeft, ChevronRight, LayoutGrid, Sun } from "lucide-react-native"
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import DayStrip from "@/components/charts/DayStrip";
-import { GradientAvatar } from "@/components/GradientAvatar";
+import { GradientAvatar, type AvatarMonogramTreatment } from "@/components/GradientAvatar";
 import { StreakPip } from "@/components/today/StreakPip";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { settingsRoute } from "@/lib/settingsRoute";
+
+/** Settings avatar — de-duped (was inlined twice) so ENG-1593's `treatment` prop lands once. */
+function TodayHeaderAvatar(props: { avatarLetter: string; textColor: string; treatment: AvatarMonogramTreatment }) {
+  return (
+    <GradientAvatar size={36} initial={props.avatarLetter} fontSize={13} gradientIdSuffix="today-header" fill={Accent.purple} textColor={props.textColor} treatment={props.treatment} />
+  );
+}
 
 /**
  * TodayDateHeader — day/week nav buttons, title, view-mode toggle, avatar,
@@ -88,6 +96,8 @@ function TodayDateHeaderImpl({
   const router = useRouter();
   const accent = useAccent();
   const calmDateNav = hideDayStrip && viewMode === "day";
+  // ENG-1593 — Rule 7 monogram treatment, default-OFF (analytics.ts note).
+  const avatarFrostRingV1 = isFeatureEnabled("avatar_monogram_frost_ring_v1");
 
   const navChromeStyle = {
     width: 32,
@@ -225,14 +235,7 @@ function TodayDateHeaderImpl({
             hitSlop={8}
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1, marginLeft: 2 })}
           >
-            <GradientAvatar
-              size={36}
-              initial={avatarLetter}
-              fontSize={13}
-              gradientIdSuffix="today-header"
-              fill={Accent.purple}
-              textColor={primaryForegroundColor}
-            />
+            <TodayHeaderAvatar avatarLetter={avatarLetter} textColor={primaryForegroundColor} treatment={avatarFrostRingV1 ? "frostRing" : "legacy"} />
           </Pressable>
         </View>
 
@@ -359,14 +362,7 @@ function TodayDateHeaderImpl({
             hitSlop={8}
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >
-            <GradientAvatar
-              size={36}
-              initial={avatarLetter}
-              fontSize={13}
-              gradientIdSuffix="today-header"
-              fill={Accent.purple}
-              textColor={primaryForegroundColor}
-            />
+            <TodayHeaderAvatar avatarLetter={avatarLetter} textColor={primaryForegroundColor} treatment={avatarFrostRingV1 ? "frostRing" : "legacy"} />
           </Pressable>
         </View>
       </View>

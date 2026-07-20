@@ -361,6 +361,19 @@ export function reset(): void {
  *   validation landed in this change (see
  *   docs/decisions/2026-07-19-fits-your-day-verdict-chip.md); flag-off keeps
  *   the SOLID banner as the kill switch. Keep in sync with web.
+ * - `avatar_monogram_frost_ring_v1` (ENG-1593) — the persistent user/
+ *   household identity monogram (Today header, Profile identity card) in
+ *   Rule 7's serif-initial + frost-ring treatment
+ *   (`docs/ux/redesign/v3/DESIGN-CONSTITUTION.md` Rule 7), with the single
+ *   canonical damson fill (`Accent.purple`) everywhere it renders — the
+ *   Profile identity monogram previously drew from the theme-variable
+ *   `accent.primarySolid` (deep-plum light / lilac dark), which is the
+ *   source of the audit's "two different plum shades" finding, not the
+ *   Today header (already on the canonical fill). DEFAULT-OFF: this is
+ *   app-wide chrome and no device/sim visual pass landed in this change
+ *   (ios-simulator MCP unavailable). Flag-off keeps every current
+ *   monogram render (sans initial, no ring, existing per-site fill)
+ *   byte-identical as the kill switch. Keep in sync with web.
  *
  * (The 5 cook-mode flags moved to `REDESIGN_DEFAULT_ON` in the 2026-06-22
  *  flag-collapse sweep, after the ENG-1230 swipe-surface render bug was

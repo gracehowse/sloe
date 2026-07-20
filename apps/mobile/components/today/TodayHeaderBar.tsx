@@ -6,6 +6,7 @@ import { GradientAvatar } from "@/components/GradientAvatar";
 import { SloeHeaderWordmark } from "@/components/SloeHeaderWordmark";
 import { Accent, IconSize, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { useUnreadNotificationsCount } from "@/lib/notifications";
 
 export interface TodayHeaderBarProps {
@@ -34,6 +35,9 @@ function TodayHeaderBarImpl({
 }: TodayHeaderBarProps) {
   const colors = useThemeColors();
   const unread = useUnreadNotificationsCount(userId);
+  // ENG-1593 — Rule 7 (DESIGN-CONSTITUTION.md): serif initial + frost-ring,
+  // default-OFF (see apps/mobile/lib/analytics.ts flag note).
+  const avatarFrostRingV1 = isFeatureEnabled("avatar_monogram_frost_ring_v1");
   return (
     <View
       testID="today-hydrated"
@@ -87,6 +91,7 @@ function TodayHeaderBarImpl({
             // Figma `654:6` — damson fill + white initial (not the grey ink default).
             fill={Accent.purple}
             textColor={colors.primaryForeground}
+            treatment={avatarFrostRingV1 ? "frostRing" : "legacy"}
           />
         </Pressable>
       </View>
