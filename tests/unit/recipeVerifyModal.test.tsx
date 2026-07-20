@@ -29,6 +29,7 @@ import { resolve } from "node:path";
 
 import { RecipeVerifyModal } from "../../src/app/components/suppr/recipe-verify-modal";
 import { deriveIngredientVerificationTier } from "../../src/lib/recipe-ingredients/ingredientVerificationStatus";
+import { ING_TIER_COLOR, ING_TIER_LABEL } from "../../src/lib/recipe-ingredients/ingredientTierDisplay";
 import type { IngredientRow } from "../../src/types/recipe";
 
 void React;
@@ -126,11 +127,14 @@ describe("RecipeVerifyModal (ENG-1333)", () => {
     expect(screen.getAllByTestId(/recipe-verify-row-fix-/)).not.toHaveLength(0);
   });
 
-  it("renders the amount·status line with the prototype status words", () => {
+  it("renders the amount·status line using the canonical ING_TIER_LABEL words (ENG-1432/tl-F4) — same tier, same label as the inline grid", () => {
     renderModal();
-    // Verified (row 0) → "Matched"; low-confidence untrusted (row 4) → "Needs input".
-    expect(screen.getByText(/450 g · Matched/i)).toBeInTheDocument();
-    expect(screen.getByText(/^Needs input$/i)).toBeInTheDocument();
+    // Verified (row 0) → "Structured"; unverified untrusted (row 4) → "Unverified".
+    // These now come from the SAME `ING_TIER_LABEL` map the inline recipe-detail
+    // grid uses, so the modal can no longer drift to its own wording ("Matched"/
+    // "Needs input") for an identical tier.
+    expect(screen.getByText(/450 g · Structured/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Unverified$/i)).toBeInTheDocument();
   });
 
   it("fires onFixRow with the row index when a Fix button is tapped", async () => {
@@ -159,6 +163,27 @@ describe("RecipeVerifyModal (ENG-1333)", () => {
     expect(cta).toHaveTextContent("Calculate nutrition");
     cta.click();
     expect(onCalculate).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders every row's dot colour + status word from the canonical ING_TIER_COLOR/ING_TIER_LABEL maps (ENG-1432/tl-F4)", () => {
+    // Regression guard for the tl-F4/label-F4 finding: the modal used to keep
+    // its own TIER_DOT_VAR/TIER_STATUS_LABEL copies which had drifted from the
+    // inline recipe-detail grid (same orange dot, different words; "estimated"
+    // even wore a different colour — destructive-red here vs the grid's
+    // amber). Asserting against the canonical maps directly means any future
+    // reintroduction of a local, divergent copy fails this test.
+    renderModal();
+    ROWS.forEach((row, i) => {
+      const tier = deriveIngredientVerificationTier({
+        isVerified: row.isVerified,
+        confidence: row.confidence ?? null,
+        source: row.source,
+      });
+      const dot = screen.getByTestId(`recipe-verify-row-dot-${i}`);
+      expect(dot).toHaveStyle({ backgroundColor: ING_TIER_COLOR[tier] });
+      const row_ = screen.getByTestId(`recipe-verify-row-${i}`);
+      expect(within(row_).getByText(new RegExp(ING_TIER_LABEL[tier]))).toBeInTheDocument();
+    });
   });
 
   it("renders an empty-state row when there are no ingredients", () => {
@@ -220,6 +245,21 @@ describe("RecipeVerifyModal — shared-status-source + flag-gate parity (source 
       /import\s*\{[\s\S]*?deriveIngredientVerificationTier[\s\S]*?\}\s*from\s*["'][^"']*ingredientVerificationStatus/,
     );
     expect(DETAIL_SRC).toContain("deriveIngredientVerificationTier({");
+  });
+
+  it("the modal and the inline grid both import the canonical ING_TIER_LABEL/ING_TIER_COLOR maps — no local divergent copy (ENG-1432/tl-F4)", () => {
+    expect(MODAL_SRC).toMatch(
+      /import\s*\{\s*ING_TIER_COLOR,\s*ING_TIER_LABEL\s*\}\s*from\s*["'][^"']*ingredientTierDisplay/,
+    );
+    expect(DETAIL_SRC).toMatch(
+      /import\s*\{\s*ING_TIER_COLOR,\s*ING_TIER_LABEL\s*\}\s*from\s*["'][^"']*ingredientTierDisplay/,
+    );
+    // The old locally-defined maps must not come back as actual declarations
+    // (a historical mention in the explanatory comment above the import is
+    // fine — it's the `const TIER_DOT_VAR = {...}` / `const TIER_STATUS_LABEL
+    // = {...}` re-declarations that would reintroduce the drift).
+    expect(MODAL_SRC).not.toMatch(/const\s+TIER_DOT_VAR\s*[:=]/);
+    expect(MODAL_SRC).not.toMatch(/const\s+TIER_STATUS_LABEL\s*[:=]/);
   });
 
   it("the import banner's onVerify opens the modal only when the v3 flag is on, else keeps the tab-switch", () => {

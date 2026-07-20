@@ -42,8 +42,8 @@ import type { IngredientRow } from "../../../types/recipe";
 import {
   deriveIngredientVerificationTier,
   ingredientShouldShowVerifyCta,
-  type IngredientVerificationTier,
 } from "../../../lib/recipe-ingredients/ingredientVerificationStatus";
+import { ING_TIER_COLOR, ING_TIER_LABEL } from "../../../lib/recipe-ingredients/ingredientTierDisplay.ts";
 import { mapMealSourceToDot } from "../../../lib/nutrition/sourceMap";
 import { cleanIngredientDisplayName } from "../../../lib/recipe/cleanIngredientDisplayName";
 import { formatIngredientAmountUnit } from "../../../lib/recipe-ingredients/formatIngredientAmount";
@@ -71,21 +71,17 @@ export type RecipeVerifyModalProps = {
   onCalculate: () => void;
 };
 
-/** Status dot colour token per tier — identical mapping to the inline grid. */
-const TIER_DOT_VAR: Record<IngredientVerificationTier, string> = {
-  verified: "var(--success)",
-  partial: "var(--warning)",
-  estimated: "var(--destructive)",
-  unverified: "var(--foreground-tertiary)",
-};
-
-/** User-facing status word per tier — prototype copy (WebVerify L8479). */
-const TIER_STATUS_LABEL: Record<IngredientVerificationTier, string> = {
-  verified: "Matched",
-  partial: "Estimated",
-  estimated: "Estimated",
-  unverified: "Needs input",
-};
+// Dot colour + status word both come from the canonical
+// `ingredientTierDisplay.ts` maps (ENG-1432/tl-F4, 2026-07-20) — this file
+// used to define its own TIER_DOT_VAR/TIER_STATUS_LABEL copies, which had
+// drifted from the inline recipe-detail grid on both axes: "estimated" wore
+// destructive-red here vs the grid's amber (a stale red the grid dropped in
+// the 2026-07-01 red-retirement pass, ENG-1296/ENG-1431, that this file
+// never picked up), and "partial"/"verified"/"unverified" all read
+// different words here ("Estimated"/"Matched"/"Needs input") than the grid
+// ("Partial match"/"Structured"/"Unverified") despite representing the
+// identical tier. Importing the shared maps makes that drift structurally
+// impossible instead of relying on comments to keep two copies in sync.
 
 export function RecipeVerifyModal({
   open,
@@ -140,7 +136,7 @@ export function RecipeVerifyModal({
                     ingredient.unit,
                   )
                 : ingredient.unit;
-              const statusLabel = TIER_STATUS_LABEL[tier];
+              const statusLabel = ING_TIER_LABEL[tier];
 
               return (
                 <li
@@ -151,7 +147,7 @@ export function RecipeVerifyModal({
                 >
                   <span
                     className="size-2.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: TIER_DOT_VAR[tier] }}
+                    style={{ backgroundColor: ING_TIER_COLOR[tier] }}
                     aria-hidden
                     data-testid={`recipe-verify-row-dot-${index}`}
                   />
