@@ -22,9 +22,11 @@ const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
 const M_HEADLINE = read("apps/mobile/components/today/ProgressHeadline.tsx");
 const M_GATE = read("apps/mobile/components/today/ProgressStoryGate.tsx");
 const M_SETTINGS = read("apps/mobile/components/settings/SettingsBundleContent.tsx");
+const M_PRO_BANNER = read("apps/mobile/components/settings/SettingsSloeProBanner.tsx");
 const W_HEADLINE = read("src/app/components/suppr/progress-headline.tsx");
 const W_GATE = read("src/app/components/suppr/progress-story-gate.tsx");
 const W_SETTINGS = read("src/app/components/Settings.tsx");
+const W_PRO_BANNER = read("src/app/components/settings/settings-sloe-pro-banner.tsx");
 
 const FLAG = /isFeatureEnabled\("card_cohesion_white_v1"\)/;
 const COHESION_WHITE_VAR = /\bcohesionWhite\b/;
@@ -61,12 +63,9 @@ describe("ENG-1081 — Settings 'Sloe Pro' banner is an unconditional white slab
   it("mobile Pro banner: white slab + hairline, no flag / aubergine-tint else", () => {
     expect(M_SETTINGS).not.toMatch(FLAG);
     expect(M_SETTINGS).not.toMatch(COHESION_WHITE_VAR);
-    expect(M_SETTINGS).toMatch(
-      /testID="settings-sloe-pro-banner"[\s\S]{0,700}backgroundColor:\s*statTileElevation\.liftBg \?\? colors\.card/,
-    );
-    expect(M_SETTINGS).toMatch(
-      /testID="settings-sloe-pro-banner"[\s\S]{0,800}borderColor:\s*colors\.cardBorder/,
-    );
+    expect(M_PRO_BANNER).toContain('testID="settings-sloe-pro-banner"');
+    expect(M_PRO_BANNER).toMatch(/backgroundColor:\s*elevation\.liftBg \?\? colors\.card/);
+    expect(M_PRO_BANNER).toMatch(/borderColor:\s*colors\.cardBorder/);
   });
 
   it("web Pro banner: white card-slab shell, no flag / primary-tint else", () => {
@@ -75,7 +74,7 @@ describe("ENG-1081 — Settings 'Sloe Pro' banner is an unconditional white slab
     expect(W_SETTINGS).not.toMatch(/color-mix\(in srgb, var\(--primary\) 16%/);
     // ENG-1500: the bespoke inline `var(--card)` fill + 0.5px hairline moved
     // to the standard `.card-slab` treatment (white fill + 1px `--border`).
-    expect(W_SETTINGS).toMatch(
+    expect(W_PRO_BANNER).toMatch(
       /data-testid="settings-sloe-pro-banner"[\s\S]{0,400}rounded-card-lg card-slab/,
     );
   });

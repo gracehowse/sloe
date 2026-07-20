@@ -22,6 +22,7 @@ import { describe, expect, it } from "vitest";
 
 const REPO = process.cwd();
 const SETTINGS = readFileSync(resolve(REPO, "src/app/components/Settings.tsx"), "utf8");
+const PRO_BANNER = readFileSync(resolve(REPO, "src/app/components/settings/settings-sloe-pro-banner.tsx"), "utf8");
 const DIALOG = readFileSync(
   resolve(REPO, "src/app/components/suppr/goal-pace-editor-dialog.tsx"),
   "utf8",
@@ -49,11 +50,12 @@ describe("Web settings lane — Sloe button canon (ghost secondaries)", () => {
   it("the Sloe Pro banner Upgrade is a ghost pill for free users; Pro shows Active status (ENG-1615)", () => {
     // Pro users: plain Active status — manage lives in SubscriptionCard.
     // Free users: decorative Upgrade ghost pill on the Link row.
-    expect(SETTINGS).toMatch(
-      /data-testid="settings-sloe-pro-banner"[\s\S]{0,1400}rounded-full px-3\.5 py-1\.5[\s\S]{0,200}Upgrade/,
+    expect(SETTINGS).toContain("SettingsSloeProBanner");
+    expect(PRO_BANNER).toMatch(
+      /data-testid="settings-sloe-pro-banner"[\s\S]{0,1400}rounded-full px-3 py-1[\s\S]{0,200}Upgrade/,
     );
-    expect(SETTINGS).toMatch(/>\s*Active\s*</);
-    expect(SETTINGS).not.toMatch(
+    expect(PRO_BANNER).toMatch(/>\s*Active\s*</);
+    expect(PRO_BANNER).not.toMatch(
       /data-testid="settings-sloe-pro-banner"[\s\S]{0,1400}border-\[1\.5px\][\s\S]{0,200}Manage/,
     );
   });
