@@ -6,11 +6,12 @@
  * affordance. ENG-1615: manage/cancel lives only in the Membership card
  * (groups with promo-code redemption).
  */
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { Sparkles } from "lucide-react-native";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -80,10 +81,11 @@ export function SettingsSloeProBanner({
   }
 
   return (
-    <Pressable
+    <PressableScale
       testID="settings-sloe-pro-banner"
       accessibilityRole="button"
       accessibilityLabel="Get Sloe Pro"
+      haptic="confirm"
       onPress={onUpgrade}
       style={rowStyle}
     >
@@ -107,6 +109,6 @@ export function SettingsSloeProBanner({
           Upgrade
         </Text>
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
