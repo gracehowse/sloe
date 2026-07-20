@@ -32,7 +32,11 @@ import { readSeedRecipeUrls } from "./_lib/seedRecipeUrls";
 // a real UUID has been removed in the same release; platform-
 // curated rows can now safely be NULL-authored.
 const SEED_AUTHOR_ID: string | null = null;
-const USER_AGENT = "SupprBot/1.0 (+https://suppr-club.com/bot)";
+// ENG-1570 — canonical UA +URL. Was pointed at the legacy suppr-club
+// domain (no bot page there either); getsloe.com/bot is the one production
+// paths (app/api/recipe-import/route.ts, extractSocialRecipe.ts) advertise
+// and the one that now resolves (app/bot/page.tsx).
+const USER_AGENT = "SupprBot/1.0 (+https://getsloe.com/bot)";
 
 function loadEnvLocal(): void {
   const p = ".env.local";

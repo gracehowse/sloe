@@ -74,7 +74,9 @@ function buildSections(email: string): Section[] {
           <p className="mt-3">
             When we read a public web page, we identify ourselves honestly as Sloe&rsquo;s importer &mdash; an
             identified, rate-limited fetcher (<code className="text-xs bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded">SupprBot</code>)
-            that links to a public bot page, respects access controls, and takes only the facts. See the{" "}
+            that links to a{" "}
+            <Link href="/bot" className="text-primary-solid underline">public bot page</Link>, respects access
+            controls, and takes only the facts. See the{" "}
             <Link href="/terms" className="text-primary-solid underline">Terms of service</Link>{" "}
             for the full posture.
           </p>

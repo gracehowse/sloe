@@ -1,0 +1,16 @@
+# getsloe.com — crawler policy.
+#
+# No crawler restrictions today: this file exists to document a bot
+# identity, not to change what's indexable (see "Allow: /" below, which
+# matches the site's behaviour before this file existed).
+#
+# SupprBot is Sloe's identified, user-initiated recipe-import fetcher. It
+# does NOT crawl getsloe.com — this file has no effect on it. SupprBot makes
+# one-off, on-demand fetches of OTHER sites when a Sloe user asks to import
+# a recipe from them, using the User-Agent string
+# "SupprBot/1.0 (+https://getsloe.com/bot)". If that string has shown up in
+# your own logs, see https://getsloe.com/bot for what it is, how to block
+# it, and how to reach us.
+
+User-agent: *
+Allow: /

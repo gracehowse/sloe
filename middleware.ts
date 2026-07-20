@@ -41,6 +41,12 @@ const PUBLIC_ROUTES = new Set([
   // onboarding route without being intercepted.
   "/onboarding",
   "/onboarding/v2",
+  // `/bot` MUST be public — it's the bot-contact page promised by name in
+  // `/terms` (Acceptable use) and `/help`. A webmaster investigating the
+  // `SupprBot` User-Agent is by definition not a signed-in Sloe user; gating
+  // it behind auth would 307 them to /login, recreating the exact ENG-1570
+  // gap (an unreachable "public bot contact page") one level down.
+  "/bot",
 ]);
 
 /** Dev-only preview routes. Reachable without auth in development,
