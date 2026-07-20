@@ -14,6 +14,23 @@
  *
  * See `docs/decisions/2026-04-19-pricing-v1.md` for the pricing
  * decisions these values encode.
+ *
+ * **Currency guard (ENG-1442):** this file is GBP-only in practice —
+ * `displayByCurrency.EUR` is unset on every tier — but the `PricingTier`
+ * type carries a `displayByCurrency` per-currency slot so the SSOT
+ * *can* render another currency once one is actually priced. Before
+ * setting `STRIPE_PRICE_PRO_MONTHLY_EUR` / `STRIPE_PRICE_PRO_ANNUAL_EUR`
+ * (`src/lib/stripe/resolveProStripePrice.ts`) in any environment:
+ *   1. Decide the real EUR price (a pricing call, not an FX conversion)
+ *      and populate `displayByCurrency.EUR` on the Pro tier below.
+ *   2. Wire `PricingTiersGrid` (and any other price-rendering call site)
+ *      to read `resolveTierDisplay(tier, currency)` instead of the flat
+ *      GBP fields.
+ * `assertEurSkuDisplayReadiness()` (`src/lib/stripe/eurSkuDisplayGuard.ts`,
+ * wired into `scripts/verify-production-env.ts` + `src/instrumentation.ts`)
+ * refuses to let the app boot if a EUR SKU env var is ever set while step
+ * 1 hasn't happened — see
+ * `docs/decisions/2026-07-20-eng1442-currency-display-guard.md`.
  */
 
 import { FREE_SAVE_LIMIT } from "../../context/appData/constants";
@@ -22,10 +39,32 @@ export type PricingTierName = "Free" | "Pro";
 
 export type BillingPeriod = "monthly" | "annual";
 
+/**
+ * Display currencies the pricing SSOT is aware of. `GBP` is the only
+ * one with real numbers today — see `displayByCurrency` below.
+ */
+export type CurrencyCode = "GBP" | "EUR";
+
+/**
+ * Per-currency rendering strings for a tier — same shape as the legacy
+ * flat `price`/`period`/`annualPrice`/`annualPeriod` fields, so a
+ * currency-aware renderer can do `resolveTierDisplay(tier, currency)`
+ * instead of a second parallel schema.
+ */
+export type CurrencyPriceDisplay = {
+  price: string;
+  period: string;
+  annualPrice?: string;
+  annualPeriod?: string;
+};
+
 export type PricingTier = {
   name: PricingTierName;
   tag: string;
-  /** Monthly-view price (e.g. "£7.99"). Free shows "£0". */
+  /** Monthly-view price (e.g. "£7.99"). Free shows "£0". GBP only —
+   *  kept as the flat legacy field every existing call site reads.
+   *  New currency-aware call sites should read `displayByCurrency`
+   *  (via `resolveTierDisplay`) instead. */
   price: string;
   /** Monthly-view period suffix (e.g. "/month"). Free shows "forever". */
   period: string;
@@ -49,6 +88,29 @@ export type PricingTier = {
   featHead?: string;
   features: string[];
   highlighted: boolean;
+  /**
+   * ENG-1442 (MP-10/LEGAL-009) — per-currency display SSOT.
+   *
+   * `GBP` is always populated (it mirrors the flat `price`/`period`/
+   * `annualPrice`/`annualPeriod` fields above — same numbers, one
+   * source). `EUR` is deliberately **absent** on every tier today: no
+   * real EUR-denominated price has been decided (this is a pricing
+   * call, not a mechanical FX-rate conversion of the GBP numbers, and
+   * this fix does not make that call — see the file-level doc block
+   * below).
+   *
+   * This field's job is narrow: make the SSOT *capable* of carrying a
+   * currency-correct display string once EUR is actually priced, so a
+   * future renderer can call `resolveTierDisplay(tier, "EUR")` instead
+   * of inventing a second schema. It does not, by itself, change what
+   * `/pricing` renders — `PricingTiersGrid` still reads the flat GBP
+   * fields today.
+   *
+   * Optional (not every fixture/test construction of `PricingTier`
+   * sets it) — `resolveTierDisplay` and `isEurPricingDisplayReady`
+   * both treat a missing/undefined entry as "not ready", never throw.
+   */
+  displayByCurrency?: Partial<Record<CurrencyCode, CurrencyPriceDisplay>>;
 };
 
 /**
@@ -104,6 +166,13 @@ export const PRICING_TIERS: PricingTier[] = [
     tag: "Track meals and see verified macros.",
     price: "£0",
     period: "forever",
+    // ENG-1442 — Free has no Stripe charge, so there's no shown/charged
+    // mismatch risk here; EUR is still left unset for consistency with
+    // Pro rather than inventing a "€0" that implies the other EUR
+    // fields are ready.
+    displayByCurrency: {
+      GBP: { price: "£0", period: "forever" },
+    },
     checkoutTier: null,
     nutritionNote: "Sourced from USDA FoodData Central",
     features: [
@@ -153,6 +222,21 @@ export const PRICING_TIERS: PricingTier[] = [
     period: "/month",
     annualPrice: "£59.99",
     annualPeriod: "/year",
+    // ENG-1442 (MP-10/LEGAL-009) — the tier that actually charges
+    // through Stripe. EUR is intentionally left unset: no EUR price
+    // has been decided, and `resolveProStripePriceId` (checkout route)
+    // already resolves a EUR Stripe Price the instant
+    // STRIPE_PRICE_PRO_{MONTHLY,ANNUAL}_EUR env vars are set — if this
+    // stayed unset while those env vars were populated, a EU visitor
+    // would see "£7.99" here and get charged the Stripe Price's EUR
+    // amount, which is exactly the shown-£/charged-€ bug this ticket
+    // fixes. `assertEurSkuDisplayReadiness()`
+    // (`src/lib/stripe/eurSkuDisplayGuard.ts`) refuses to let the app
+    // boot if that env/display combination ever occurs — see
+    // docs/decisions/2026-07-20-eng1442-currency-display-guard.md.
+    displayByCurrency: {
+      GBP: { price: "£7.99", period: "/month", annualPrice: "£59.99", annualPeriod: "/year" },
+    },
     // Audit P04 (2026-05-05) — derived at render time from `price` +
     // `annualPrice` via `computeAnnualSavingsPct`. Was hardcoded
     // `"Save 37%"` in two places; on any price change the literal
@@ -218,4 +302,57 @@ export function computeAnnualSavingsBadge(tier: PricingTier): string | null {
   const pct = Math.round((1 - annual / (monthly * 12)) * 100);
   if (pct <= 0) return null;
   return `Save ${pct}%`;
+}
+
+/**
+ * ENG-1442 — resolve the display strings for a tier in a given
+ * currency. Falls back to GBP when the requested currency isn't
+ * populated (mirrors the GBP-fallback pattern `resolveProStripePriceId`
+ * already uses for the Stripe Price id itself, in
+ * `src/lib/stripe/resolveProStripePrice.ts` — "unconfigured currency
+ * degrades to GBP" stays one consistent rule across the checkout-id
+ * resolver and the display layer), then to the tier's flat legacy
+ * fields for any `PricingTier` that predates `displayByCurrency`
+ * (test fixtures, mainly — `tests/**` isn't covered by
+ * `tsconfig.json`'s `include`, so nothing enforces the field there).
+ *
+ * Not called from `PricingTiersGrid` today — `/pricing` still reads
+ * the flat GBP fields directly, unconditionally, because EUR has no
+ * real display data to switch to yet. This exists so a future
+ * currency-aware renderer has one correct function to call instead of
+ * re-deriving the fallback chain inline.
+ */
+export function resolveTierDisplay(
+  tier: PricingTier,
+  currency: CurrencyCode,
+): CurrencyPriceDisplay {
+  const requested = tier.displayByCurrency?.[currency];
+  if (requested) return requested;
+  const gbp = tier.displayByCurrency?.GBP;
+  if (gbp) return gbp;
+  return {
+    price: tier.price,
+    period: tier.period,
+    annualPrice: tier.annualPrice,
+    annualPeriod: tier.annualPeriod,
+  };
+}
+
+/**
+ * ENG-1442 (MP-10/LEGAL-009) — the single readiness signal the EUR-SKU
+ * startup guard checks (`checkEurSkuDisplayReadiness` in
+ * `src/lib/stripe/eurSkuDisplayGuard.ts`). True once every
+ * checkout-eligible tier (`checkoutTier !== null` — i.e. Pro, the only
+ * tier a Stripe charge can actually happen on) has a populated
+ * `displayByCurrency.EUR` entry.
+ *
+ * Free is deliberately excluded from the check: it never reaches
+ * Stripe, so a missing EUR string there is a cosmetic gap, not a
+ * billing-safety one — gating boot on it would block real EUR launches
+ * on an unrelated, harmless omission.
+ */
+export function isEurPricingDisplayReady(): boolean {
+  return PRICING_TIERS.filter((tier) => tier.checkoutTier !== null).every((tier) =>
+    Boolean(tier.displayByCurrency?.EUR),
+  );
 }

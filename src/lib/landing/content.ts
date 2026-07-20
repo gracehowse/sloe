@@ -98,6 +98,8 @@ export type {
   PricingTierName,
   BillingPeriod,
   PricingTier,
+  CurrencyCode,
+  CurrencyPriceDisplay,
 } from "./pricingTiers";
 export {
   PRICING_TIERS,
@@ -105,6 +107,8 @@ export {
   FREE_CUSTOM_MACROS_FEATURE,
   FREE_ADAPTIVE_TDEE_FEATURE_PLAIN,
   FREE_ADAPTIVE_TDEE_FEATURE_GLOSS,
+  resolveTierDisplay,
+  isEurPricingDisplayReady,
 } from "./pricingTiers";
 
 /**
