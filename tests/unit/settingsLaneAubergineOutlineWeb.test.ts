@@ -7,7 +7,7 @@
  * favour of two SupprButton variants: `primary` (solid aubergine pill, white
  * label — a surface's ONE main action) and `ghost` (transparent, no border,
  * plum label — secondaries / inline Save / Manage). On the Settings surfaces
- * the name Save + the Sloe Pro banner Manage are GHOST. The segmented
+ * the name Save + the Sloe Pro banner Upgrade are GHOST. The segmented
  * control's active label still carries the aubergine solid
  * (`text-primary-solid`). This is a source-level structural pin (mirrors
  * `settingsYourNameParity` / `settingsMacroTokens`); it breaks if a CTA
@@ -46,12 +46,13 @@ describe("Web settings lane — Sloe button canon (ghost secondaries)", () => {
     );
   });
 
-  it("the Sloe Pro banner Manage reads as a ghost pill (no border)", () => {
-    // The whole banner is the <Link>; the Manage pill is a decorative
-    // <span> carrying the ghost grammar — transparent, NO border, plum label.
+  it("the Sloe Pro banner Upgrade is a ghost pill for free users; Pro shows Active status (ENG-1615)", () => {
+    // Pro users: plain Active status — manage lives in SubscriptionCard.
+    // Free users: decorative Upgrade ghost pill on the Link row.
     expect(SETTINGS).toMatch(
-      /data-testid="settings-sloe-pro-banner"[\s\S]{0,1400}rounded-full px-3\.5 py-1\.5[\s\S]{0,200}Manage/,
+      /data-testid="settings-sloe-pro-banner"[\s\S]{0,1400}rounded-full px-3\.5 py-1\.5[\s\S]{0,200}Upgrade/,
     );
+    expect(SETTINGS).toMatch(/>\s*Active\s*</);
     expect(SETTINGS).not.toMatch(
       /data-testid="settings-sloe-pro-banner"[\s\S]{0,1400}border-\[1\.5px\][\s\S]{0,200}Manage/,
     );

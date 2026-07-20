@@ -120,10 +120,13 @@ describe("Wave D (web) — Settings CTAs", () => {
     );
   });
 
-  it("the Sloe Pro banner Manage reads as a GHOST pill (no border)", () => {
+  it("the Sloe Pro banner Upgrade is a ghost pill for free users; Pro shows Active status (ENG-1615)", () => {
+    // Pro users: plain Active status — manage lives in SubscriptionCard.
+    // Free users: decorative Upgrade ghost pill on the Link row.
     expect(SETTINGS).toMatch(
-      /data-testid="settings-sloe-pro-banner"[\s\S]{0,1400}rounded-full px-3\.5 py-1\.5[\s\S]{0,200}Manage/,
+      /data-testid="settings-sloe-pro-banner"[\s\S]{0,1400}rounded-full px-3\.5 py-1\.5[\s\S]{0,200}Upgrade/,
     );
+    expect(SETTINGS).toMatch(/>\s*Active\s*</);
     expect(SETTINGS).not.toMatch(
       /data-testid="settings-sloe-pro-banner"[\s\S]{0,1400}border-\[1\.5px\][\s\S]{0,200}Manage/,
     );

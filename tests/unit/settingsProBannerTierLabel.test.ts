@@ -1,18 +1,12 @@
 /**
- * ENG-1297 — the Sloe Pro banner's visible pill label is tier-conditional
- * on BOTH platforms, matching the accessibility label + routing that were
- * already tier-aware.
+ * ENG-1297 / ENG-1615 — the Sloe Pro banner's visible affordance is
+ * tier-conditional on BOTH platforms:
+ *   - pro  → plain "Active" status (no manage pill — manage lives in Membership)
+ *   - free → "Upgrade" ghost pill (paywall / /pricing)
  *
- * The 2026-07-01 full-sweep found a free account seeing "Sloe Pro — Manage"
- * (settings-logbox-error.png) while its accessibilityLabel said "Get Sloe
- * Pro" and the press routed to the paywall/pricing. A sighted free user was
- * promised subscription management; VoiceOver users and the router got the
- * truth. The visible label now follows the same tier branch:
- *   - pro  → "Manage"  (RevenueCat customer center / /account/billing)
- *   - free → "Upgrade" (paywall / /pricing)
- *
- * Source-level structural check — no React rendering (pattern:
- * settingsProfileHeaderCardParity.test.ts).
+ * ENG-1297 fixed free users seeing "Manage" while routing to paywall.
+ * ENG-1615 removed the pro-tier Manage pill from the banner so it doesn't
+ * compete with the Membership "Manage subscription" row.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -28,32 +22,39 @@ const mobileBundle = readFileSync(
   "utf8",
 );
 
-describe("ENG-1297 — Pro banner pill label matches the tier-aware a11y label", () => {
-  it("web pill label branches on tier (Manage for pro, Upgrade for free)", () => {
-    expect(webSettings).toContain(
-      '{userTier === "pro" ? "Manage" : "Upgrade"}',
+describe("ENG-1297 / ENG-1615 — Pro banner affordance matches tier", () => {
+  it("web free users see an Upgrade pill linking to /pricing", () => {
+    expect(webSettings).toContain('href="/pricing"');
+    expect(webSettings).toMatch(/userTier === "pro" \? \(/);
+    expect(webSettings).toMatch(/>\s*Upgrade\s*</);
+    expect(webSettings).not.toMatch(
+      /userTier === "pro" \? "\/account\/billing" : "\/pricing"/,
     );
   });
 
-  it("mobile pill label branches on tier (Manage for pro, Upgrade for free)", () => {
-    expect(mobileBundle).toContain(
-      '{profileData.userTier === "pro" ? "Manage" : "Upgrade"}',
+  it("mobile free users see an Upgrade pill routing to the paywall", () => {
+    expect(mobileBundle).toMatch(/>\s*Upgrade\s*</);
+    expect(mobileBundle).toContain('accessibilityLabel="Get Sloe Pro"');
+    expect(mobileBundle).not.toMatch(
+      /profileData\.userTier === "pro" \? "Manage" : "Upgrade"/,
+    );
+  });
+
+  it("pro users see Active status, not a Manage pill, on either platform", () => {
+    expect(webSettings).toMatch(/>\s*Active\s*</);
+    expect(webSettings).toContain('aria-label="Sloe Pro — active subscription"');
+    expect(webSettings).not.toMatch(
+      /data-testid="settings-sloe-pro-banner"[\s\S]{0,1400}>\s*Manage\s*</,
+    );
+    expect(mobileBundle).toMatch(/>\s*Active\s*</);
+    expect(mobileBundle).toContain('"Sloe Pro — active subscription"');
+    expect(mobileBundle).not.toMatch(
+      /testID="settings-sloe-pro-banner"[\s\S]{0,1400}>\s*Manage\s*</,
     );
   });
 
   it("neither platform ships an unconditional visible 'Manage' pill on the banner", () => {
-    // The bug shape: a bare >Manage< text node in the banner while the
-    // a11y label branches. A literal unconditional label would reintroduce
-    // the free-user "Manage" promise.
     expect(webSettings).not.toMatch(/>\s*Manage\s*<\/span>/);
     expect(mobileBundle).not.toMatch(/>\s*Manage\s*<\/Text>/);
-  });
-
-  it("both platforms keep the tier-aware accessibility labels", () => {
-    expect(webSettings).toContain(
-      'aria-label={userTier === "pro" ? "Manage your Sloe Pro subscription" : "Get Sloe Pro"}',
-    );
-    expect(mobileBundle).toContain('"Manage your Sloe Pro subscription"');
-    expect(mobileBundle).toContain('"Get Sloe Pro"');
   });
 });

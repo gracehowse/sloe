@@ -1405,77 +1405,98 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         </View>
       </Pressable>
 
-      {/* Sloe Pro upsell banner — Figma 09 Settings `335:2` / `335:23`.
-          Full-width aubergine soft-tint rounded card: sparkle + "Sloe Pro"
-          on the left, a "Manage" OUTLINE pill on the right. For free/base
-          users "Manage" routes to the paywall (upgrade); for Pro users it
-          opens the existing manage-subscription flow (RevenueCat customer
-          center). The detailed upgrade/manage/promo rows still live in the
-          Membership card below — this banner is the at-a-glance entry.
-          2026-06-08: the card tint moved off the hardcoded clay rgba to
-          `accent.primarySoft` (Pro = the brand aubergine, treatment #9).
-          2026-06-12 (Sloe button canon): the "Manage" pill dropped its
-          aubergine outline for the GHOST grammar — transparent, no border,
-          plum label. Matches the web banner (`Settings.tsx`). */}
-      <Pressable
-        testID="settings-sloe-pro-banner"
-        accessibilityRole="button"
-        accessibilityLabel={
-          profileData.userTier === "pro"
-            ? "Manage your Sloe Pro subscription"
-            : "Get Sloe Pro"
-        }
-        onPress={() => {
-          if (profileData.userTier === "pro") {
-            void handleManageSubscription();
-          } else {
-            router.push("/paywall?from=settings" as any);
-          }
-        }}
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          paddingVertical: 16,
-          paddingHorizontal: 16,
-          borderRadius: SETTINGS_CARD_RADIUS,
-          backgroundColor: statTileElevation.liftBg ?? colors.card,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: colors.cardBorder,
-          marginTop: 18,
-        }}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <Sparkles size={18} color={accent.primarySolid} strokeWidth={1.75} />
-          <Text
-            style={{
-              fontFamily: Type.bodyLarge.fontFamily,
-              fontSize: Type.bodyLarge.fontSize,
-              lineHeight: Type.bodyLarge.lineHeight,
-              fontWeight: "600",
-              color: accent.primarySolid,
-            }}
-          >
-            Sloe Pro
-          </Text>
-        </View>
-        {/* Manage / Upgrade — decorative ghost pill (canon 2026-06-12; the
-            whole banner row is the Pressable). ENG-1297: visible label is
-            tier-conditional to match the a11y label + onPress routing —
-            free → "Upgrade" (paywall), pro → "Manage" (customer center).
-            Mirrors the web Pro-banner pill. */}
+      {/* Sloe Pro banner — Figma 09 Settings `335:2` / `335:23`.
+          Free users: sparkle + "Sloe Pro" + an Upgrade ghost pill; the row
+          routes to the paywall. Pro users: a plain at-a-glance status slab
+          (sparkle + "Sloe Pro" + "Active") with NO manage affordance —
+          ENG-1615: manage/cancel lives only in the Membership card below
+          (groups with promo-code redemption). 2026-06-08: flat white slab
+          via `statTileElevation.liftBg`. 2026-06-12: free-tier Upgrade pill
+          uses the GHOST grammar (transparent, no border, plum label). */}
+      {profileData.userTier === "pro" ? (
         <View
+          testID="settings-sloe-pro-banner"
+          accessibilityRole="text"
+          accessibilityLabel="Sloe Pro — active subscription"
           style={{
-            paddingHorizontal: 14,
-            paddingVertical: 7,
-            borderRadius: Radius.full,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingVertical: 16,
+            paddingHorizontal: 16,
+            borderRadius: SETTINGS_CARD_RADIUS,
+            backgroundColor: statTileElevation.liftBg ?? colors.card,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: colors.cardBorder,
+            marginTop: 18,
           }}
         >
-          <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primarySolid }}>
-            {profileData.userTier === "pro" ? "Manage" : "Upgrade"}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <Sparkles size={18} color={accent.primarySolid} strokeWidth={1.75} />
+            <Text
+              style={{
+                fontFamily: Type.bodyLarge.fontFamily,
+                fontSize: Type.bodyLarge.fontSize,
+                lineHeight: Type.bodyLarge.lineHeight,
+                fontWeight: "600",
+                color: accent.primarySolid,
+              }}
+            >
+              Sloe Pro
+            </Text>
+          </View>
+          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textSecondary }}>
+            Active
           </Text>
         </View>
-      </Pressable>
+      ) : (
+        <Pressable
+          testID="settings-sloe-pro-banner"
+          accessibilityRole="button"
+          accessibilityLabel="Get Sloe Pro"
+          onPress={() => {
+            router.push("/paywall?from=settings" as any);
+          }}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingVertical: 16,
+            paddingHorizontal: 16,
+            borderRadius: SETTINGS_CARD_RADIUS,
+            backgroundColor: statTileElevation.liftBg ?? colors.card,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: colors.cardBorder,
+            marginTop: 18,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <Sparkles size={18} color={accent.primarySolid} strokeWidth={1.75} />
+            <Text
+              style={{
+                fontFamily: Type.bodyLarge.fontFamily,
+                fontSize: Type.bodyLarge.fontSize,
+                lineHeight: Type.bodyLarge.lineHeight,
+                fontWeight: "600",
+                color: accent.primarySolid,
+              }}
+            >
+              Sloe Pro
+            </Text>
+          </View>
+          <View
+            style={{
+              paddingHorizontal: 14,
+              paddingVertical: 7,
+              borderRadius: Radius.full,
+            }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primarySolid }}>
+              Upgrade
+            </Text>
+          </View>
+        </Pressable>
+      )}
 
       {/* Stats strip — Recipes / Streak.
           Audit 2026-05-22 subtractive: hide tiles whose value is zero

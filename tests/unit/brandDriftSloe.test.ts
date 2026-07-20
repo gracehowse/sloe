@@ -56,7 +56,7 @@ describe("ENG-927 — Sloe brand copy (user-facing)", () => {
       "utf8",
     );
     expect(settings).toContain("Get Sloe Pro");
-    expect(settings).toContain("Manage your Sloe Pro subscription");
+    expect(settings).toContain("Sloe Pro — active subscription");
     expect(settings).not.toMatch(/Suppr Pro/);
   });
 

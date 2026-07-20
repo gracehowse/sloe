@@ -103,16 +103,16 @@ describe("Wave D (mobile) — SettingsBundleContent CTAs", () => {
     );
   });
 
-  it("the Sloe Pro banner Manage/Upgrade is a GHOST pill (decorative — plum label, no border)", () => {
-    // The whole banner row is the Pressable, so Manage/Upgrade stays a decorative
-    // pill carrying the ghost grammar by hand (transparent, no border, plum
-    // label). ENG-1297 made the label tier-conditional (was a bare "Manage").
+  it("the Sloe Pro banner Upgrade is a GHOST pill for free users only (ENG-1615)", () => {
+    // Pro users see a plain Active status — no Manage pill on the banner.
+    // Free users: decorative Upgrade ghost pill on the pressable row.
     expect(BUNDLE).toMatch(
-      /Manage \/ Upgrade — decorative ghost pill[\s\S]{0,600}color:\s*accent\.primarySolid\s*\}\}>\s*\{profileData\.userTier/,
+      /color:\s*accent\.primarySolid[\s\S]{0,120}>\s*Upgrade\s*</,
     );
     expect(BUNDLE).not.toMatch(
-      /Manage \/ Upgrade — decorative ghost pill[\s\S]{0,600}borderWidth:\s*1\.5[\s\S]{0,120}profileData\.userTier/,
+      /testID="settings-sloe-pro-banner"[\s\S]{0,1400}borderWidth:\s*1\.5[\s\S]{0,120}Upgrade/,
     );
+    expect(BUNDLE).toMatch(/>\s*Active\s*</);
   });
 
   it("the promo-code Apply is a SOLID primary (the promo card's own action)", () => {
