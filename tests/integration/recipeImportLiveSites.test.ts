@@ -30,7 +30,9 @@ describeLive("live recipe URL smoke (ENG-1055)", () => {
       const fetched = await followWithSsrfGuard(site.url, {
         headers: {
           Accept: "text/html",
-          "User-Agent": "SupprBot/1.0 (+https://suppr-club.com/bot)",
+          // ENG-1570 — canonical UA +URL, matching production
+          // (app/api/recipe-import/route.ts, extractSocialRecipe.ts).
+          "User-Agent": "SupprBot/1.0 (+https://getsloe.com/bot)",
         },
       });
       expect(fetched, "SSRF guard blocked URL").not.toBeNull();
