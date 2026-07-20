@@ -13,6 +13,7 @@
 import { Plus } from "lucide-react";
 import { cn } from "../ui/utils";
 import { FoodFallbackThumb } from "./food-fallback-thumb";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { type SourceDotSource } from "../ui/source-dot";
 import type { LogSheetLibraryRecipe } from "./log-sheet";
 
@@ -36,8 +37,11 @@ export function LibraryRow({
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
       )}
     >
-      <FoodFallbackThumb title={recipe.title} slot={slotName} imageUrl={recipe.thumbnail} />
-      <div className="ml-2 flex-1 min-w-0">
+      {/* ENG-1611 — foods/ingredients render as text: no tiles on log-sheet rows. */}
+      {isFeatureEnabled("ingredient_text_rows_v1") ? null : (
+        <FoodFallbackThumb title={recipe.title} slot={slotName} imageUrl={recipe.thumbnail} />
+      )}
+      <div className={cn("flex-1 min-w-0", isFeatureEnabled("ingredient_text_rows_v1") ? "" : "ml-2")}>
         <p className="truncate text-[13px] text-foreground">{recipe.title}</p>
         <div className="mt-0.5 flex items-center gap-1.5">
           <span className="text-[11px] tabular-nums text-muted-foreground">
@@ -71,12 +75,15 @@ export function BrowseRow({
 }) {
   return (
     <div className="flex items-center gap-3 border-b border-border py-3 last:border-0">
-      <FoodFallbackThumb
-        title={title}
-        slot={slotName}
-        size={44}
-        className="size-11 shrink-0 rounded-xl border border-border"
-      />
+      {/* ENG-1611 — text-only food rows (see LibraryRow note). */}
+      {isFeatureEnabled("ingredient_text_rows_v1") ? null : (
+        <FoodFallbackThumb
+          title={title}
+          slot={slotName}
+          size={44}
+          className="size-11 shrink-0 rounded-xl border border-border"
+        />
+      )}
       <div className="min-w-0 flex-1">
         <p className="truncate text-[15px] leading-tight text-foreground">{title}</p>
         <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">

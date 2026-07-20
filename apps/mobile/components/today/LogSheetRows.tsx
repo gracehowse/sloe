@@ -14,6 +14,7 @@ import { FoodFallbackThumb } from "@/components/imagery/FoodFallbackThumb";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { type SourceDotSource } from "@/components/ui/SourceDot";
 import type { LogSheetLibraryRecipe } from "./LogSheet";
 
@@ -27,6 +28,9 @@ export function LibraryRow({
   slotName?: string | null;
 }) {
   const colors = useThemeColors();
+  // ENG-1611 — foods/ingredients render as text: no glyph/photo tiles on
+  // log-sheet rows (whole sheet converges on the search-row grammar).
+  const textRows = isFeatureEnabled("ingredient_text_rows_v1");
   return (
     <PressableScale
       accessibilityRole="button"
@@ -35,6 +39,7 @@ export function LibraryRow({
       onPress={onPick}
       style={styles.resultRow}
     >
+      {textRows ? null : (
       <FoodFallbackThumb
         title={recipe.title}
         slot={slotName}
@@ -42,7 +47,8 @@ export function LibraryRow({
         size={44}
         style={styles.resultThumb}
       />
-      <View style={{ flex: 1, marginLeft: Spacing.sm, minWidth: 0 }}>
+      )}
+      <View style={{ flex: 1, marginLeft: textRows ? 0 : Spacing.sm, minWidth: 0 }}>
         <Text style={[Type.body, { color: colors.text }]} numberOfLines={1}>
           {recipe.title}
         </Text>
@@ -94,18 +100,22 @@ export function BrowseRow({
   slotName?: string | null;
 }) {
   const colors = useThemeColors();
+  // ENG-1611 — text-only food rows (see LibraryRow note).
+  const textRows = isFeatureEnabled("ingredient_text_rows_v1");
   return (
     <View
       style={[styles.resultRow, { borderBottomColor: colors.border }]}
       accessibilityRole="none"
     >
+      {textRows ? null : (
       <FoodFallbackThumb
         title={title}
         slot={slotName}
         size={44}
         style={[styles.resultThumb, { borderColor: colors.border, borderWidth: StyleSheet.hairlineWidth }]}
       />
-      <View style={{ flex: 1, marginLeft: Spacing.sm, minWidth: 0 }}>
+      )}
+      <View style={{ flex: 1, marginLeft: textRows ? 0 : Spacing.sm, minWidth: 0 }}>
         <Text style={[Type.body, { color: colors.text, fontSize: 15 }]} numberOfLines={1}>
           {title}
         </Text>
@@ -113,7 +123,7 @@ export function BrowseRow({
           style={[
             Type.caption,
             {
-              color: colors.textTertiary,
+              color: textRows ? colors.textSecondary : colors.textTertiary,
               marginTop: Spacing.xs,
               fontVariant: ["tabular-nums"],
             },

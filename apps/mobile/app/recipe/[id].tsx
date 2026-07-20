@@ -148,6 +148,8 @@ import {
   RecipeIngredientGrid,
   type RecipeGridIngredient,
 } from "../../components/recipe/RecipeIngredientGrid";
+import { RecipeIngredientRows } from "../../components/recipe/RecipeIngredientRows";
+import { postIngredientImage, EMPTY_ALIAS_SOURCES } from "@/lib/recipe/postIngredientImage";
 import { RecipeMethodSteps } from "../../components/recipe/RecipeMethodSteps";
 import { AddToShoppingListButton } from "../../components/recipe/AddToShoppingListButton";
 import { RecipeImportReviewBanner } from "../../components/recipe/RecipeImportReviewBanner";
@@ -242,22 +244,6 @@ type Ingredient = {
       matches only). Feeds the ingredient-image alias fallback. */
   matched_alias_key?: string | null;
 };
-
-/** Mobile transport for the ingredient-image lazy generate-on-miss endpoint —
- *  module-level + stable so `useIngredientTileImages`'s effect deps can safely
- *  exclude it. No-ops (resolves) when the API base is unset. */
-async function postIngredientImage(body: {
-  names: string[];
-  aliases?: Array<{ name: string; aliasKey: string }>;
-}): Promise<unknown> {
-  const apiBase = getSupprApiBase();
-  if (!apiBase) return undefined;
-  return authedFetch(`${apiBase}/api/ingredient-image`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
 
 export default function RecipeDetailScreen() {
   const { id, portion, autoLog, logServings, cook } = useLocalSearchParams<{
@@ -1081,9 +1067,12 @@ export default function RecipeDetailScreen() {
       })),
     [ingredientsForIngredientsTab],
   );
+  // ENG-1611 — text rows need no tile images: pass an empty source list so
+  // the hook neither reads ingredient_images nor enqueues generation.
+  const ingredientTextRows = isFeatureEnabled("ingredient_text_rows_v1");
   const ingredientImageMap = useIngredientTileImages(
     supabase,
-    ingredientAliasSources,
+    ingredientTextRows ? EMPTY_ALIAS_SOURCES : ingredientAliasSources,
     postIngredientImage,
   );
 
@@ -2313,17 +2302,28 @@ export default function RecipeDetailScreen() {
             </View>
           ) : null}
 
-          {/* 6. Ingredients thumbnail grid. */}
-          <RecipeIngredientGrid
-            recipeId={recipeId}
-            ingredients={gridIngredients}
-            forServings={viewServings}
-            viewMultiplier={viewMultiplier}
-            onIngredientPress={onIngredientPress}
-            onViewAll={() => setIngredientsExpanded((v) => !v)}
-            expanded={ingredientsExpanded}
-            imageMap={ingredientImageMap}
-          />
+          {/* 6. Ingredients — ENG-1611 text rows when ON; legacy grid in the else. */}
+          {ingredientTextRows ? (
+            <RecipeIngredientRows
+              ingredients={gridIngredients}
+              forServings={viewServings}
+              viewMultiplier={viewMultiplier}
+              onIngredientPress={onIngredientPress}
+              onViewAll={() => setIngredientsExpanded((v) => !v)}
+              expanded={ingredientsExpanded}
+            />
+          ) : (
+            <RecipeIngredientGrid
+              recipeId={recipeId}
+              ingredients={gridIngredients}
+              forServings={viewServings}
+              viewMultiplier={viewMultiplier}
+              onIngredientPress={onIngredientPress}
+              onViewAll={() => setIngredientsExpanded((v) => !v)}
+              expanded={ingredientsExpanded}
+              imageMap={ingredientImageMap}
+            />
+          )}
 
           {/* FatSecret attribution (ToS) when any line is FatSecret-sourced. */}
           {hasFatSecretIngredients ? (
