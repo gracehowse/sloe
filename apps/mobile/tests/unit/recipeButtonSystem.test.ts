@@ -176,16 +176,16 @@ describe("create-recipe quick-action row — three GHOST peers (none is the prim
   });
 });
 
-describe("cook.tsx step navigation — solid primary Next / ghost Previous (ENG-945)", () => {
+describe("cook.tsx step navigation — solid primary Next / ghost SupprButton Previous (ENG-1613)", () => {
   it("imports the shared SupprButton primitive (@/ path)", () => {
     expect(COOK_MODE).toMatch(
       /import\s*\{\s*SupprButton\s*\}\s*from\s*"@\/components\/ui\/SupprButton"/,
     );
   });
 
-  it("cook nav Next Step is the solid primary; Previous is a ghost-style Pressable", () => {
+  it("cook nav Next Step is the solid primary; Previous is a ghost SupprButton (same pill geometry)", () => {
     expect(COOK_MODE).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,200}label=\{current === totalSteps - 1 \? "Done!" : "Next Step"\}/);
-    expect(COOK_MODE).toMatch(/<Text style=\{styles\.navBtnText\}>Previous<\/Text>/);
+    expect(COOK_MODE).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,300}label="Previous"/);
   });
 });
 

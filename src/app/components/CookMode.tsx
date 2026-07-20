@@ -1200,7 +1200,7 @@ export function CookMode({ recipe, instructionSteps, ingredients, servings, base
                 </div>
               )}
 
-              {/* Navigation */}
+              {/* Navigation. ENG-1613 parity check: NOT the mobile bug (rect Previous vs pill Next) — these two `rounded-xl` bordered icon buttons match each other + the app-wide icon-button convention (NotificationsBell.tsx, RecipeUpload.tsx); left as-is. */}
               <div className="flex items-center gap-4">
                 <button
                   type="button"

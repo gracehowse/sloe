@@ -85,15 +85,21 @@ describe("create-recipe quick-action row — three GHOST peers (Wave C-clean 202
   });
 });
 
-describe("cook.tsx step navigation — SOLID primary Next / Pressable Previous (ENG-945)", () => {
+describe("cook.tsx step navigation — SOLID primary Next / GHOST Previous (ENG-1613)", () => {
   it("imports the shared SupprButton primitive (@/ path)", () => {
     expect(COOK_MODE).toMatch(
       /import\s*\{\s*SupprButton\s*\}\s*from\s*"@\/components\/ui\/SupprButton"/,
     );
   });
 
-  it("cook nav Next Step is the SOLID primary, Previous is a Pressable label", () => {
+  it("cook nav Next Step is the SOLID primary, Previous is a GHOST SupprButton (one pill shape per row)", () => {
     expect(COOK_MODE).toMatch(/<SupprButton\s+variant="primary"[\s\S]{0,200}label=\{current === totalSteps - 1 \? "Done!" : "Next Step"\}/);
-    expect(COOK_MODE).toMatch(/<Text style=\{styles\.navBtnText\}>Previous<\/Text>/);
+    expect(COOK_MODE).toMatch(/<SupprButton\s+variant="ghost"[\s\S]{0,300}label="Previous"/);
+  });
+
+  it("the hand-rolled 'navBtn' rect styles are gone (Previous is a bare SupprButton ghost)", () => {
+    expect(COOK_MODE).not.toContain("navBtn:");
+    expect(COOK_MODE).not.toContain("navBtnText:");
+    expect(COOK_MODE).not.toContain("navBtnDisabled:");
   });
 });
