@@ -57,6 +57,16 @@ describe("routeImport (web)", () => {
     expect(r.push).not.toHaveBeenCalled();
   });
 
+  it("a saved IG/TikTok collection → no nav, returns import-each-post hint (ENG-1581)", () => {
+    const r = router();
+    const raw = "https://www.instagram.com/chef/saved/recipes/1234567890/";
+    const res = routeImport(classifyImport(raw), raw, r);
+    expect(res.routed).toBe(false);
+    expect(res.hint).toContain("collection");
+    expect(res.hint).toContain("one recipe at a time");
+    expect(r.push).not.toHaveBeenCalled();
+  });
+
   it("empty → no nav, no hint", () => {
     const r = router();
     expect(routeImport(classifyImport("  "), "  ", r)).toEqual({ routed: false });

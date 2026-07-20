@@ -1,4 +1,4 @@
-import type { ImportClassification } from "./classifyImport";
+import { COLLECTION_IMPORT_HINT, type ImportClassification } from "./classifyImport";
 import { setPendingImportText } from "./pendingImportText";
 
 /**
@@ -51,7 +51,13 @@ export function routeImport(
         routed: false,
         hint: "To import a nutrition export (MyFitnessPal / Cronometer CSV), open Settings → Your data.",
       };
+    case "collection":
+      return { routed: false, hint: COLLECTION_IMPORT_HINT };
     case "empty":
       return { routed: false };
+    default: {
+      const _exhaustive: never = c.kind;
+      return _exhaustive;
+    }
   }
 }

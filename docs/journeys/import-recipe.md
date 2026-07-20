@@ -483,6 +483,13 @@ no overlay. Flag OFF (the shipped default) → zero visual change.
 - **No JSON-LD** — error with clear message: "No Recipe JSON-LD found"
 - **Rate limited** — 20 imports per minute per user
 - **Not signed in** — shows sign-in prompt, preserves URL
+- **Saved IG/TikTok collection URLs** — the unified Import sheet's
+  `classifyImport` recognises saved-collection links (Instagram
+  `/{user}/saved/…`, TikTok `/collection/…`) as their own `collection`
+  kind (ENG-1581). Import does **not** attempt to parse the whole
+  collection as one recipe; it shows guidance to share or paste each post
+  link separately. A full bulk-collection import experience is out of
+  scope for this pass.
 - **`verifyIngredients` throws mid-import** — the import still persists,
   with ingredient + recipe macros at zero and the honest under-count note
   surfaced on review (documented behaviour, not a crash path) — see

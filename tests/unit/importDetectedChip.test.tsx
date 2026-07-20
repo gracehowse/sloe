@@ -26,6 +26,15 @@ describe("ImportDetectedChip", () => {
     expect(getByTestId("import-detected-chip").textContent).toContain("Nutrition export");
   });
 
+  it("labels a saved Instagram collection", () => {
+    const { getByTestId } = render(
+      <ImportDetectedChip input="https://www.instagram.com/chef/saved/recipes/123/" />,
+    );
+    const chip = getByTestId("import-detected-chip");
+    expect(chip.getAttribute("data-kind")).toBe("collection");
+    expect(chip.textContent).toContain("Instagram saved collection");
+  });
+
   it("renders nothing for empty input", () => {
     const { queryByTestId } = render(<ImportDetectedChip input="   " />);
     expect(queryByTestId("import-detected-chip")).toBeNull();
