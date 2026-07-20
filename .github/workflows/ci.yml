@@ -36,6 +36,15 @@ jobs:
         id: filter
         uses: dorny/paths-filter@v3
         with:
+          # predicate-quantifier: every is required for the negation idiom
+          # below to work. paths-filter's default (`some` = OR) treats a
+          # multi-pattern filter as "matches ANY pattern" — with '**' listed
+          # first, that OR is satisfied by every file regardless of the `!`
+          # negations, so `code` always evaluated true (ENG-1627 follow-up,
+          # caught live: a pure docs-only PR still ran dep-audit and failed
+          # it). `every` makes it AND: a file only counts as "code" if it
+          # matches '**' AND is NOT '**.md' AND is NOT 'docs/**'.
+          predicate-quantifier: every
           filters: |
             code:
               - '**'
