@@ -12,7 +12,9 @@
     "updates": {
       "url": "https://u.expo.dev/16ff0460-233f-4126-b40e-4b5ad54057df",
       "fallbackToCacheTimeout": 0,
-      "checkAutomatically": "ON_LOAD"
+      "checkAutomatically": "ON_ERROR_RECOVERY",
+      "useEmbeddedUpdate": true,
+      "disableAntiBrickingMeasures": false
     },
     "ios": {
       "supportsTablet": true,
@@ -110,6 +112,14 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "buildReactNativeFromSource": true
+          }
+        }
+      ],
       "expo-apple-authentication",
       "expo-speech-recognition",
       [

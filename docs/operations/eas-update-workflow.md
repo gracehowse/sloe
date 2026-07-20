@@ -7,19 +7,24 @@
 ## What this is
 
 EAS Update lets us ship JavaScript-only changes to the iOS app without
-going through TestFlight. A `eas update --branch production` push lands on
-user devices in seconds (next app launch / background fetch), bypassing
-the 15-25 minute TestFlight build + processing cycle.
+going through TestFlight. Production binaries intentionally do not fetch
+updates during normal cold launch after ENG-1564, so use this as a
+controlled forward-roll / rollback tool until a safer post-first-render
+updater exists.
 
 The wiring lives in:
 
-- `apps/mobile/app.json` — `expo.runtimeVersion.policy = "appVersion"`,
+- `apps/mobile/app.json` — `expo.runtimeVersion` matches `expo.version`,
   `expo.updates.url`, `expo.updates.fallbackToCacheTimeout = 0`,
-  `expo.updates.checkAutomatically = "ON_LOAD"`.
+  `expo.updates.checkAutomatically = "ON_ERROR_RECOVERY"`,
+  `expo.updates.useEmbeddedUpdate = true`,
+  `expo.updates.disableAntiBrickingMeasures = false`, and
+  `expo-build-properties` sets `ios.buildReactNativeFromSource = true`.
 - `apps/mobile/eas.json` — each build profile (`development`, `preview`,
   `production`) declares a matching `channel`. The channel is the EAS
   Update routing key.
-- `apps/mobile/package.json` — `expo-updates` (SDK-aligned version).
+- `apps/mobile/package.json` — `expo-updates` (SDK-aligned version) and
+  `expo-build-properties` for EAS prebuild.
 
 ## When OTA is safe
 
@@ -51,6 +56,16 @@ production --auto-submit`) when:
 If you're unsure whether a change is OTA-safe, ship a fresh build. The
 incremental cost of a TestFlight build is far smaller than the cost of
 a broken OTA update bricking sessions until the next launch.
+
+## Production build hardening
+
+Production iOS builds intentionally compile React Native from source via
+`expo-build-properties` (`ios.buildReactNativeFromSource: true`). This is
+slower than using SDK 54's precompiled React Native XCFrameworks, but it keeps
+Hermes, React Native Core, and the app bundle built from one source tree. That
+cost is acceptable for production because ENG-1564 traced launch crashes to
+the class of stale prebuilt-framework / embedded-bundle skew that a fast build
+path can hide.
 
 ## Publishing an OTA update
 
@@ -89,8 +104,10 @@ After `eas update` exits successfully:
 
    The newest entry should match the message and runtime version you
    just published.
-4. **On device** — relaunch the app twice. The first cold launch fetches
-   the new bundle in the background; the second cold launch runs it.
+4. **On device** — install or use a build intentionally configured to fetch
+   updates for validation, then confirm first render still succeeds. Do not
+   assume a production cold launch will fetch the update automatically; that
+   was disabled to prevent launch bricking.
 
 ## Rollback
 
@@ -103,10 +120,11 @@ eas update:list --branch production
 eas update:republish --group <good-group-id> --branch production
 ```
 
-The republished update lands on devices the same way as a normal
-publish. If the bad update has caused crashes that prevent the app from
-ever booting and fetching the next update, an OTA cannot save you — ship
-a fresh build.
+The republished update is available to matching-runtime builds the same way
+as a normal publish, but production cold launch does not fetch it
+automatically after ENG-1564. If the bad update has caused crashes that
+prevent the app from ever reaching a deliberate update check / error-recovery
+path, an OTA cannot save you — ship a fresh build.
 
 ## Safety rules — non-negotiable
 

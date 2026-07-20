@@ -5,8 +5,9 @@
  *   1. `expo-updates` installed at the SDK-aligned version.
  *   2. `app.json` declaring a `runtimeVersion` that matches `version`
  *      (so OTA updates only ship to binaries with the same native
- *      code), and `updates.url` pointing at the EAS Update endpoint
- *      for this project's `extra.eas.projectId`.
+ *      code), `updates.url` pointing at the EAS Update endpoint
+ *      for this project's `extra.eas.projectId`, and launch-time
+ *      update checks disabled so OTA cannot brick cold start.
  *   3. `eas.json` declaring a `channel` for every build profile so
  *      published updates route to the right binaries.
  *
@@ -40,7 +41,20 @@ type AppJson = {
       url?: string;
       fallbackToCacheTimeout?: number;
       checkAutomatically?: string;
+      useEmbeddedUpdate?: boolean;
+      disableAntiBrickingMeasures?: boolean;
     };
+    plugins?: Array<
+      | string
+      | [
+          string,
+          {
+            ios?: {
+              buildReactNativeFromSource?: boolean;
+            };
+          },
+        ]
+    >;
     extra?: {
       eas?: {
         projectId?: string;
@@ -87,6 +101,25 @@ describe("expo-updates package", () => {
     // Must be a runtime dep — expo-updates ships native code that
     // expo-cli wires into the iOS/Android build at prebuild time.
     expect(packageJson.dependencies?.["expo-updates"]).toBeDefined();
+  });
+
+  it("uses the SDK 54 bugfix tag that supersedes the 29.0.18 launch-crash build", () => {
+    expect(packageJson.dependencies?.["expo-updates"]).toBe("~29.0.19");
+    expect(
+      packageLockJson.packages?.["node_modules/expo-updates"]?.version,
+    ).toBe("29.0.19");
+  });
+});
+
+describe("expo-build-properties package", () => {
+  it("is installed so EAS prebuild can resolve the build-properties config plugin", () => {
+    expect(packageJson.dependencies?.["expo-build-properties"]).toBe(
+      "~1.0.10",
+    );
+    expect(
+      packageLockJson.packages?.["node_modules/expo-build-properties"]
+        ?.version,
+    ).toBe("1.0.10");
   });
 });
 
@@ -142,9 +175,31 @@ describe("app.json — updates block", () => {
     expect(appJson.expo.updates?.fallbackToCacheTimeout).toBe(0);
   });
 
-  it("sets checkAutomatically to ON_LOAD", () => {
-    // Default, but explicit. Every cold launch checks for an update.
-    expect(appJson.expo.updates?.checkAutomatically).toBe("ON_LOAD");
+  it("only auto-checks for updates during error recovery, never on cold launch", () => {
+    // ENG-1564: ON_LOAD can attempt a relaunch before first render and made a
+    // bad OTA / corrupt embedded update able to hard-crash every launch.
+    expect(appJson.expo.updates?.checkAutomatically).toBe("ON_ERROR_RECOVERY");
+  });
+
+  it("keeps the embedded update and anti-bricking fallback enabled", () => {
+    expect(appJson.expo.updates?.useEmbeddedUpdate).toBe(true);
+    expect(appJson.expo.updates?.disableAntiBrickingMeasures).toBe(false);
+  });
+});
+
+describe("app.json — iOS native build hardening", () => {
+  it("builds React Native from source on iOS to avoid stale prebuilt RN/Hermes skew", () => {
+    const buildPropertiesPlugin = appJson.expo.plugins?.find(
+      (plugin) =>
+        Array.isArray(plugin) && plugin[0] === "expo-build-properties",
+    );
+
+    expect(buildPropertiesPlugin).toBeTruthy();
+    expect(
+      Array.isArray(buildPropertiesPlugin)
+        ? buildPropertiesPlugin[1]?.ios?.buildReactNativeFromSource
+        : undefined,
+    ).toBe(true);
   });
 });
 
