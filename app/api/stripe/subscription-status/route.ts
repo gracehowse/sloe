@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getUserIdFromAuthHeader, createSupabaseServiceRoleClient } from "@/lib/supabase/serverAnonClient";
+import { rateLimit } from "@/lib/server/rateLimit";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import type {
   ManagedVia,
@@ -147,6 +148,38 @@ export async function GET(req: Request) {
     return json(
       { ok: false, subscription: null, managedVia: "none", taxEnabled, error: "unauthorized" },
       401,
+    );
+  }
+
+  // SEC-07 (ENG-1389): per-user rate limit. Authenticate first so the
+  // bucket is scoped per-user (mirrors app/api/stripe/checkout). Each
+  // request behind a Stripe customer id fans out to a Stripe
+  // customers.retrieve — an unbounded status poll would burn Stripe's
+  // own API quota + our egress. 10/min/user is the sibling checkout
+  // limit and is ample for a Settings card that refreshes on mount /
+  // focus, while blocking scripted hammering.
+  const limited = await rateLimit({
+    keyPrefix: "api:stripe-subscription-status",
+    userId,
+    limit: 10,
+    windowMs: 60_000,
+  });
+  if (!limited.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        subscription: null,
+        managedVia: "none" as ManagedVia,
+        taxEnabled,
+        error: "rate_limited",
+      },
+      {
+        status: 429,
+        headers: {
+          "Cache-Control": "no-store, max-age=0",
+          "Retry-After": String(limited.retryAfterSec),
+        },
+      },
     );
   }
 

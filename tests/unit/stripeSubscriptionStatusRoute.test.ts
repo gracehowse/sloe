@@ -44,6 +44,14 @@ vi.mock("@/lib/observability/captureRouteError", () => ({
   captureRouteError: vi.fn(),
 }));
 
+// --- Rate limiter mock ------------------------------------------------------
+
+const rateLimitMock = vi.fn();
+
+vi.mock("@/lib/server/rateLimit", () => ({
+  rateLimit: (opts: unknown) => rateLimitMock(opts),
+}));
+
 // --- helpers ----------------------------------------------------------------
 
 async function loadRoute() {
@@ -115,6 +123,9 @@ beforeEach(() => {
   serviceRoleClientMock.mockReset();
 
   getUserIdFromAuthHeaderMock.mockResolvedValue("user-1");
+
+  rateLimitMock.mockReset();
+  rateLimitMock.mockResolvedValue({ ok: true, remaining: 9, resetAtMs: 0 });
 });
 
 afterEach(() => {
@@ -333,5 +344,57 @@ describe("GET /api/stripe/subscription-status — failure degradation", () => {
     expect(body.ok).toBe(false);
     expect(body.error).toBe("stripe_not_configured");
     expect(body.managedVia).toBe("stripe");
+  });
+});
+
+
+// --- rate limiting (SEC-07, ENG-1389) ---------------------------------------
+
+describe("GET /api/stripe/subscription-status — rate limiting", () => {
+  it("scopes the bucket per authenticated user (mirrors checkout)", async () => {
+    stubProfile({ stripe_customer_id: null, user_tier: "free" });
+    const GET = await loadRoute();
+    await GET(makeReq());
+    expect(rateLimitMock).toHaveBeenCalledTimes(1);
+    expect(rateLimitMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        keyPrefix: "api:stripe-subscription-status",
+        userId: "user-1",
+        limit: 10,
+        windowMs: 60_000,
+      }),
+    );
+  });
+
+  it("returns 429 with Retry-After and does NOT touch Supabase/Stripe when limited", async () => {
+    rateLimitMock.mockResolvedValueOnce({
+      ok: false,
+      remaining: 0,
+      resetAtMs: 0,
+      retryAfterSec: 42,
+      ip: null,
+    });
+    const GET = await loadRoute();
+    const res = await GET(makeReq());
+    expect(res.status).toBe(429);
+    expect(res.headers.get("retry-after")).toBe("42");
+    expect(res.headers.get("cache-control")).toContain("no-store");
+    const body = await res.json();
+    expect(body.ok).toBe(false);
+    expect(body.error).toBe("rate_limited");
+    expect(body.subscription).toBeNull();
+    // The limiter short-circuits before any billing lookup.
+    expect(serviceRoleClientMock).not.toHaveBeenCalled();
+    expect(customersRetrieveMock).not.toHaveBeenCalled();
+  });
+
+  it("does NOT rate-limit before authenticating (401 path skips the limiter)", async () => {
+    getUserIdFromAuthHeaderMock.mockResolvedValueOnce(null);
+    const GET = await loadRoute();
+    const res = await GET(makeReq());
+    expect(res.status).toBe(401);
+    // Auth is checked first so an unauthenticated flood can't be scoped to a
+    // user bucket — and we don't spend a limiter round-trip on it.
+    expect(rateLimitMock).not.toHaveBeenCalled();
   });
 });
