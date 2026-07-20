@@ -113,7 +113,6 @@
     "apps/mobile/components/recipe/CreateRecipeActionSheet.tsx": 4,
     "apps/mobile/components/recipe/CreateRecipeActionSheetGrid.tsx": 1,
     "apps/mobile/components/recipe/CreateRecipeWizard.tsx": 3,
-    "apps/mobile/components/recipe/RecipeDetailHero.tsx": 3,
     "apps/mobile/components/recipe/RecipeImportReviewBanner.tsx": 1,
     "apps/mobile/components/recipe/RecipeMethodSteps.tsx": 2,
     "apps/mobile/components/recipe/ReportRecipeSheet.tsx": 1,

@@ -181,6 +181,10 @@ function flagForceOverride(flag: string): boolean | null {
  *   this is app-wide chrome and no device/sim visual pass landed in this
  *   change. Flag-off keeps every monogram render byte-identical as the
  *   kill switch. Keep in sync with mobile.
+ * - `recipe_estimated_cost_v1` (ENG-1274) — per-serving grocery cost estimate
+ *   in the v3 recipe-detail hero meta row (Pro signal; static UK reference
+ *   prices, honest range). DEFAULT-OFF until Grace ramps in PostHog after a
+ *   web + mobile glance. Keep in sync with mobile.
  *
  * (The 5 cook-mode flags moved to `REDESIGN_DEFAULT_ON` in the 2026-06-22
  *  flag-collapse sweep, after the ENG-1230 swipe-surface render bug was fixed
@@ -665,6 +669,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "recipe_sparse_media_v1", // ENG-1575 — 0/1/2/many Library composition + one recipe fallback policy.
   "semantic_stat_roles_v1", // ENG-1578 — sibling stats stay ink; state lives in sanctioned indicators.
   "library_single_filter_row_v1", // ENG-1607 — Cookbook single provenance chip row (v3); off = legacy two-row stack (kill switch). Web + mobile.
+  "recipe_estimated_cost_v1", // ENG-1274 — per-serving grocery cost estimate (Pro) on recipe-detail hero meta; off = hidden (kill switch). Web + mobile.
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

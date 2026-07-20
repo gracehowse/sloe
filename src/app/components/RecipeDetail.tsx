@@ -120,6 +120,7 @@ import {
   computeFitsYourDayVerdict,
   shouldRenderTimeStats,
 } from "../../lib/recipe/recipeDetailLayout.ts";
+import { RecipeHeroMetaRow } from "./recipe/RecipeHeroMetaRow.tsx";
 import { webRecipeDeepLink } from "../../lib/share/recipeDeepLink.ts";
 import {
   buildRecipeShareCardMessage,
@@ -2003,25 +2004,16 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
                   >
                     {normaliseRecipeDisplayTitle(recipe.title)}
                   </h1>
-                  <div className="flex flex-wrap items-center gap-4 text-[13px] font-medium text-white/90">
-                    <span className="inline-flex items-center gap-1.5">
-                      <Icons.timer className="w-3.5 h-3.5" aria-hidden />
-                      {(() => {
-                        const total = (dbPrepMin ?? 0) + (dbCookMin ?? 0);
-                        return total > 0 ? `${total} min` : "—";
-                      })()}
-                    </span>
-                    {Math.round(scaledMacros.calories) > 0 ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Icons.calories className="w-3.5 h-3.5" aria-hidden />
-                        {Math.round(scaledMacros.calories)} kcal
-                      </span>
-                    ) : null}
-                    <span className="inline-flex items-center gap-1.5">
-                      <Icons.dinner className="w-3.5 h-3.5" aria-hidden />
-                      Serves {servings}
-                    </span>
-                  </div>
+                  <RecipeHeroMetaRow
+                    prepMin={dbPrepMin}
+                    cookMin={dbCookMin}
+                    kcal={scaledMacros.calories}
+                    servings={servings}
+                    ingredients={ingredients}
+                    baseServings={baseServings}
+                    isPro={userTier === "pro"}
+                    onUpgrade={onUpgrade}
+                  />
                 </div>
               </>
             ) : null}
