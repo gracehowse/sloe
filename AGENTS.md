@@ -78,6 +78,13 @@ contract: "Design craft contract" in `.claude/agents/_project-context.md`.
   (ENG-1521 — soft tints come from the named `*Soft`/`*SoftStrong` tokens,
   Soft 12/18 · SoftStrong 20/28; ruled-exempt translucent-solid sites are
   pinned per the census `docs/audits/2026-07-17-eng1521-soft-tint-census.json`),
+  PLUS web Tailwind slash-opacity on an accent token — `bg-/text-/border-`
+  + `primary`/`success`/`warning`/`destructive` + `/<NN>` (ENG-1591, the web
+  sibling of ENG-1521's alpha-concat detector: `bg-primary/10` duplicates the
+  same soft-tint scale ad-hoc). `bg-muted`/`muted-foreground` slash-opacity is
+  DELIBERATELY exempt (neutral/structural fill, not an accent tint — same
+  scoping ENG-1521 used on mobile); the 308-site accent population pinned
+  2026-07-20 is tracked for migration under ENG-1624,
   pinned in `scripts/token-budget.json`; the web `rounded-[Npx]` bracket
   namespace is gated separately by `check:web-radius`, ENG-1499). Both read
   the legal scales from `theme.ts`; a

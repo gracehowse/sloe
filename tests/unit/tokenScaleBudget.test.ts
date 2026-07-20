@@ -6,8 +6,10 @@
  *     (4/6/8/12/full) and always allows `0`.
  *  2. findViolations() flags raw 6-digit hexes, raw Tailwind palette colour
  *     classes, off-scale borderRadius literals, call-site alpha-concat +
- *     call-site withAlpha() (ENG-1521); ignores 3-digit hexes (the
- *     Apple-brand carve-out), comments, and on-scale radii.
+ *     call-site withAlpha() (ENG-1521), and web Tailwind slash-opacity on an
+ *     accent semantic token (ENG-1591); ignores 3-digit hexes (the
+ *     Apple-brand carve-out), comments, on-scale radii, and slash-opacity on
+ *     `muted`/other neutral tokens.
  *  3. evaluate() flags a new (un-pinned) file, a grown pin, passes a held pin,
  *     treats a shrink as a non-fatal notice, and rejects a silent allow entry.
  *  4. Self-check: the committed budget passes the live repo tree (exit 0).
@@ -118,6 +120,53 @@ describe("findViolations", () => {
       { line: 1, kind: "with-alpha", token: "withAlpha(…)" },
     ]);
     expect(findViolations("// withAlpha(x, 0.12) in a comment\nconst x = 1;", legal)).toEqual([]);
+  });
+
+  it("flags web Tailwind slash-opacity on an accent semantic token (ENG-1591 — web sibling of ENG-1521)", () => {
+    expect(findViolations('className="bg-primary/10"', legal)).toEqual([
+      { line: 1, kind: "slash-opacity", token: "bg-primary/10" },
+    ]);
+    expect(findViolations('className="text-warning/15"', legal)).toEqual([
+      { line: 1, kind: "slash-opacity", token: "text-warning/15" },
+    ]);
+    const hits = findViolations(
+      'className="border-destructive/30 bg-success/10 bg-primary/5"',
+      legal,
+    );
+    expect(hits.map((h) => h.token).sort()).toEqual([
+      "bg-primary/5",
+      "bg-success/10",
+      "border-destructive/30",
+    ]);
+    expect(hits.every((h) => h.kind === "slash-opacity")).toBe(true);
+  });
+
+  it("does NOT flag muted slash-opacity (ENG-1591 neutral carve-out — muted has no Soft target)", () => {
+    expect(findViolations('className="bg-muted/60"', legal)).toEqual([]);
+    expect(findViolations('className="text-muted-foreground/80"', legal)).toEqual([]);
+    expect(findViolations('className="border-muted/40"', legal)).toEqual([]);
+  });
+
+  it("does NOT flag other neutral/structural slash-opacity idioms (ENG-1572's already-settled hairline/scrim category — out of scope for this accent-only detector)", () => {
+    expect(findViolations('className="border-border/60"', legal)).toEqual([]);
+    expect(findViolations('className="bg-card/80"', legal)).toEqual([]);
+    expect(findViolations('className="bg-black/50"', legal)).toEqual([]);
+    expect(findViolations('className="bg-white/70"', legal)).toEqual([]);
+    expect(findViolations('className="bg-secondary/80"', legal)).toEqual([]);
+    expect(findViolations('className="bg-accent/50"', legal)).toEqual([]);
+    expect(findViolations('className="bg-input/30"', legal)).toEqual([]);
+  });
+
+  it("does NOT double-count a raw Tailwind palette class that also carries a slash-opacity suffix", () => {
+    // bg-blue-500/50 is already caught once as "tailwind" (kind #2) — the
+    // slash-opacity detector (kind #6) is scoped to semantic accent names
+    // only, so a numeric palette step never also lands a "slash-opacity" hit.
+    const hits = findViolations('className="bg-blue-500/50"', legal);
+    expect(hits).toEqual([{ line: 1, kind: "tailwind", token: "bg-blue-500" }]);
+  });
+
+  it("ignores slash-opacity that lives in a comment", () => {
+    expect(findViolations("// mirrors bg-primary/10 on mobile\nconst x = 1;", legal)).toEqual([]);
   });
 
   it("ignores a hex that lives in a comment", () => {
