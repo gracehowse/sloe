@@ -547,7 +547,7 @@ export function UpgradePaywallDialog({
             type="button"
             onClick={handleStartCheckout}
             disabled={busy}
-            className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-[13px] font-bold hover:opacity-95 disabled:opacity-60 transition-opacity shadow-sm"
+            className="w-full py-3 rounded-full bg-primary text-primary-foreground text-base font-bold hover:opacity-95 disabled:opacity-60 transition-opacity shadow-sm"
           >
             {busy ? "Opening checkout..." : primaryCtaLabel}
           </button>

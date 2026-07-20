@@ -15,7 +15,10 @@
  *     same radius/padding. Replaces BOTH the old outline AND the beige
  *     `colors.card` fill secondary.
  *
- * Web mirror: `src/app/components/ui/button.tsx` (`variant="primary" | "ghost"`).
+ * Web mirror: `src/app/components/suppr/suppr-button.tsx` (`variant="primary"
+ * | "ghost"`, `size="md" | "sm"` — web gained the `size` prop in ENG-1590,
+ * 2026-07-20, matching this file's `md`/`sm` exactly so compact CTAs no
+ * longer need call-site Tailwind height overrides on web).
  *
  * Wraps `PressableScale` (which owns the scale + haptic micro-interaction) so
  * every CTA gets identical press feedback. Disabled reduces opacity + blocks

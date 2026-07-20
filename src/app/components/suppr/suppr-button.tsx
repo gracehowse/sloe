@@ -22,6 +22,17 @@
  * disabled-opacity, and svg sizing. The new variants live here rather than in
  * `button.tsx` so the existing shadcn `default`/`ghost` toolbar semantics used
  * across the web app keep their meaning; this primitive carries the CTA grammar.
+ *
+ * `size` (ENG-1590, 2026-07-20): mirrors mobile `SupprButton`'s `size` prop,
+ * which web previously had no equivalent for — every call site that wanted a
+ * compact CTA hand-rolled its own `h-N px-N` Tailwind override instead (e.g.
+ * `quick-log-button.tsx`'s old `className="h-9 px-4"`), each landing on a
+ * slightly different footprint. `sm` now gives ONE canonical compact size,
+ * padding-driven (no fixed height) exactly like mobile's `size="sm"`
+ * (`paddingVertical: Spacing.sm` / `paddingHorizontal: Spacing.md` = 8/16px).
+ * `md` (default) is unchanged from the pre-ENG-1590 behaviour (fixed 40px
+ * height, 20px horizontal padding) — not part of the confirmed drift, so left
+ * as-is rather than blast-radius-changed across every consumer.
  */
 import * as React from "react";
 import { Loader2 } from "lucide-react";
@@ -31,9 +42,15 @@ import { cn } from "../ui/utils";
 
 export type SupprButtonVariant = "primary" | "ghost";
 
+/** `md` (default) — unchanged 40px-tall CTA. `sm` — compact, padding-driven
+ *  (mirrors mobile `size="sm"`: 8px vertical / 16px horizontal). */
+export type SupprButtonSize = "md" | "sm";
+
 export interface SupprButtonProps
   extends Omit<React.ComponentProps<"button">, "children"> {
   variant: SupprButtonVariant;
+  /** Compact CTA for dense card/row surfaces. Default `md`. */
+  size?: SupprButtonSize;
   loading?: boolean;
   /** Convenience text label. Ignored if `children` is provided. */
   label?: string;
@@ -49,8 +66,18 @@ const VARIANT_CLASSES: Record<SupprButtonVariant, string> = {
     "rounded-full border-0 bg-transparent text-primary-solid shadow-none hover:bg-primary-solid/10 active:bg-primary-solid/15",
 };
 
+// ENG-1590 — `sm` mirrors mobile's `size="sm"` padding (Spacing.sm=8 vertical /
+// Spacing.md=16 horizontal, `py-2 px-4`), with `h-auto` so padding (not a
+// fixed height) drives the box — same model as RN's padding-only Pressable.
+// `md` keeps the pre-existing `px-5` + the base Button's `size="lg"` (h-10).
+const SIZE_CLASSES: Record<SupprButtonSize, string> = {
+  md: "px-5",
+  sm: "h-auto py-2 px-4",
+};
+
 export function SupprButton({
   variant,
+  size = "md",
   loading = false,
   disabled = false,
   label,
@@ -68,6 +95,7 @@ export function SupprButton({
       variant="ghost"
       size="lg"
       data-variant={variant}
+      data-size={size}
       disabled={blocked}
       aria-busy={loading || undefined}
       onClick={(e) => {
@@ -77,7 +105,7 @@ export function SupprButton({
         }
         onClick?.(e);
       }}
-      className={cn("px-5 font-semibold", VARIANT_CLASSES[variant], className)}
+      className={cn("font-semibold", SIZE_CLASSES[size], VARIANT_CLASSES[variant], className)}
       {...rest}
     >
       {loading ? (

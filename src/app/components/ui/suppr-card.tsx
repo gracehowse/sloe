@@ -32,8 +32,13 @@
  *                 (transient surfaces — keep shadow)
  *  - `gradient`: bool — applies the north-star gradient when `tone='primary'`
  *  - `border`: bool (default true)
- *  - `padding`: token key — `sm` (8px) / `md` (12px) / `lg` (16px) /
- *                `xl` (20px) / `none`. Default `md`.
+ *  - `padding`: token key — `sm` (8px) / `md` (16px) / `lg` (20px) /
+ *                `xl` (24px) / `none`. Default `md`. Values are the mobile
+ *                `Spacing.sm/md/lg/xl` scale (ENG-1590, 2026-07-20): web
+ *                previously mapped these a full tier low (8/12/16/20 —
+ *                consecutive `p-2..p-5`, not the named `--space-*` scale);
+ *                realigned to match mobile's `paddingValues` + web's own
+ *                `--space-sm/md/lg/xl` tokens in `theme.css` exactly.
  *  - `radius`: token key — `sm` / `md` / `lg` (default — matches
  *               `var(--radius-card-lg)` 24px, the Sloe warm-slab corner;
  *               mirrors mobile `CARD_RADIUS`/`TILE_RADIUS = 24`) / `xl`.
@@ -64,12 +69,18 @@ export interface SupprCardProps extends React.ComponentProps<"div"> {
   radius?: SupprCardRadius;
 }
 
+// ENG-1590 — realigned to the mobile `Spacing.sm/md/lg/xl` scale (8/16/20/24).
+// Previously sm/md/lg/xl mapped to consecutive p-2/p-3/p-4/p-5 (8/12/16/20) —
+// a full tier low vs mobile's paddingValues below, confirmed drifting at
+// TodayDashboardMacroBars (padding="md": was 12px web vs 16px mobile) and
+// ProgressTrajectoryHero (padding="lg": was 16px web vs 20px mobile). Parity
+// pinned by tests/unit/supprPrimitivesCrossPlatformParity.test.ts.
 const paddingClasses: Record<SupprCardPadding, string> = {
   none: "",
   sm: "p-2",
-  md: "p-3",
-  lg: "p-4",
-  xl: "p-5",
+  md: "p-4",
+  lg: "p-5",
+  xl: "p-6",
 };
 
 const radiusClasses: Record<SupprCardRadius, string> = {

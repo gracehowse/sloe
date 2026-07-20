@@ -79,11 +79,12 @@ export function QuickLogButton({
   return (
     <SupprButton
       variant="ghost"
+      size="sm"
       data-testid={testID}
       aria-label={ariaLabel}
       loading={logging}
       onClick={() => void handleClick()}
-      className={cn("h-9 px-4 self-start", className)}
+      className={cn("self-start", className)}
     >
       Log
     </SupprButton>

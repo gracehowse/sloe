@@ -20,7 +20,11 @@ import { useCardElevation } from "@/hooks/useCardElevation";
  * fix lands in ONE place and the cards can never drift apart again (the
  * recurring "each card looks slightly different" bug, Grace 2026-06-04).
  *
- * Mirror: `src/app/components/ui/suppr-card.tsx` (same prop names + variants).
+ * Mirror: `src/app/components/ui/suppr-card.tsx` (same prop names + variants,
+ * same `padding` scale — realigned ENG-1590, 2026-07-20: web's paddingClasses
+ * had drifted a tier below this file's `paddingValues`; web now maps its
+ * `p-2/p-4/p-5/p-6` Tailwind classes onto the exact same 8/16/20/24 this file
+ * uses. Parity pinned by tests/unit/supprPrimitivesCrossPlatformParity.test.ts).
  *
  * ── The Sloe card shell (the look this encapsulates) ──
  *   - fill `colors.card` (#F6F5F2 light) — the warm-grey card on the white page
