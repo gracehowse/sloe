@@ -206,24 +206,30 @@ describe("mobile recipe-detail — macro summary is the ENG-920 flat Figma 332:2
   });
 });
 
-describe("mobile recipe-detail — 'Fits your day' verdict chip (Figma 332:2 §2)", () => {
-  // Superseded ENG-818: the flag-gated win-amber chip / `fitsYourDayChipStyle`
-  // helper is gone. The canonical chip is a SINGLE (unflagged) verdict pill in
-  // `RecipeTitleBlock`, tinted from `verdict.tone` (sage fits / amber over-half
-  // / red over-a-day). The verdict itself is the shared
-  // `computeFitsYourDayVerdict`.
+/**
+ * 'Fits your day' verdict — re-pinned 2026-07-19 (ENG-1612). Grace flagged
+ * the ENG-1085 confident SOLID full-width banner as "too big and agressive"
+ * (annotated screenshot, Soothing Chicken Congee). ENG-1612 supersedes the
+ * ENG-1085/ENG-1356 ruling that kept the banner SOLID — canon is the
+ * prototype `.rd-fits` inline soft pill (11px semibold, `*Soft` tone tint,
+ * 4/12 padding, full radius), same scale as the card-level `.fit-tag`. Ships
+ * behind `recipe_verdict_chip_v1` (default-OFF): flag-on renders the soft
+ * chip, flag-off keeps the ENG-1085 solid banner as the kill switch — see
+ * docs/decisions/2026-07-19-fits-your-day-verdict-chip.md.
+ */
+describe("mobile recipe-detail — 'Fits your day' verdict (ENG-1612, flag-gated chip)", () => {
   it("verdict logic delegates to the shared `computeFitsYourDayVerdict` helper", () => {
     expect(SRC).toMatch(/computeFitsYourDayVerdict\(\{/);
   });
 
-  it("verdict banner is unconditional (ENG-1085, fit_verdict_banner_v1 collapsed ENG-1356) — exactly one block", () => {
-    // ENG-1085's confident SOLID banner was flag-gated (legacy 10%-wash pill in
-    // the `else`, ENG-1356's target). The always-on flag was collapsed in
-    // ENG-1356 — only the confident banner block remains.
+  it("rendering is gated on `recipe_verdict_chip_v1` — exactly two source blocks (chip + legacy banner)", () => {
+    // Both branches of the ternary render the same testID; only one mounts at
+    // runtime depending on the flag. Two textual occurrences, not one — the
+    // ENG-1356 "unconditional, exactly one block" pin no longer holds.
     const matches = TITLE_BLOCK.match(/testID="recipe-fits-your-day"/g) ?? [];
-    expect(matches.length).toBe(1);
-    expect(TITLE_BLOCK).not.toMatch(/isFeatureEnabled\("fit_verdict_banner_v1"\)/);
-    expect(TITLE_BLOCK).not.toMatch(/bannerOn/);
+    expect(matches.length).toBe(2);
+    expect(TITLE_BLOCK).toMatch(/isFeatureEnabled\("recipe_verdict_chip_v1"\)/);
+    expect(TITLE_BLOCK).toMatch(/const verdictChipV1 = isFeatureEnabled/);
   });
 
   it("the chip palette is tinted from `verdict.tone`, not an inline win-amber lookup", () => {
@@ -236,9 +242,29 @@ describe("mobile recipe-detail — 'Fits your day' verdict chip (Figma 332:2 §2
     expect(TITLE_BLOCK).toMatch(/Accent\.destructiveSolid/);
   });
 
-  it("verdict renders as a confident solid banner (ENG-1085); legacy 10%-wash pill is gone (ENG-1356)", () => {
+  it("flag-ON path renders an inline soft chip — 11px semibold, *Soft tone tint, 4/12 padding, full radius", () => {
+    const chipIdx = TITLE_BLOCK.indexOf('testID="recipe-fits-your-day"');
+    expect(chipIdx).toBeGreaterThan(0);
+    const chip = TITLE_BLOCK.slice(chipIdx, chipIdx + 700);
+    expect(chip).toMatch(/paddingHorizontal:\s*Spacing\.dense/);
+    expect(chip).toMatch(/paddingVertical:\s*Spacing\.xs/);
+    expect(chip).toMatch(/borderRadius:\s*Radius\.full/);
+    expect(chip).toMatch(/fontSize:\s*11/);
+    expect(chip).toMatch(/fontWeight:\s*"600"/);
+    expect(chip).toMatch(/backgroundColor:\s*chipTone\.bg/);
+    expect(chip).not.toMatch(/alignSelf:\s*"stretch"/);
+  });
+
+  it("chip tone pairs `*Soft` bg with AA-safe text — warning reads `warningSolid`, not the 2.96:1 base tone", () => {
+    expect(TITLE_BLOCK).toMatch(/\{ bg: Accent\.successSoft, fg: Accent\.success \}/);
+    expect(TITLE_BLOCK).toMatch(/\{ bg: Accent\.warningSoft, fg: Accent\.warningSolid \}/);
+    expect(TITLE_BLOCK).toMatch(/\{ bg: Accent\.destructiveSoft, fg: Accent\.destructive \}/);
+  });
+
+  it("flag-OFF path keeps the ENG-1085 confident full-bleed solid banner (kill switch)", () => {
     // A full-bleed (alignSelf stretch) Radius.xl banner filled with the SOLID
-    // tone token + white text — not the legacy 10%-wash pill.
+    // tone token + white text — not the legacy 10%-wash pill (ENG-1356), and
+    // not the new ENG-1612 soft chip.
     expect(TITLE_BLOCK).toMatch(/alignSelf:\s*"stretch"/);
     expect(TITLE_BLOCK).toMatch(/borderRadius:\s*Radius\.xl,\s*\n\s*backgroundColor:\s*bannerBg/);
     expect(TITLE_BLOCK).toMatch(/color:\s*Accent\.primaryForeground/);
@@ -246,8 +272,13 @@ describe("mobile recipe-detail — 'Fits your day' verdict chip (Figma 332:2 §2
     expect(TITLE_BLOCK).not.toMatch(/verdictTone/);
   });
 
-  it("a11y contract preserved — accessibilityLabel from the verdict", () => {
-    expect(TITLE_BLOCK).toMatch(/accessibilityLabel=\{verdict\.a11y\}/);
+  it("a11y contract preserved — accessibilityLabel from the verdict on both branches", () => {
+    const uses = TITLE_BLOCK.match(/accessibilityLabel=\{verdict\.a11y\}/g) ?? [];
+    expect(uses.length).toBe(2);
+  });
+
+  it("the win-moment haptic fires on `fits` regardless of chip/banner treatment", () => {
+    expect(TITLE_BLOCK).toMatch(/if \(fits\) \{\s*\n\s*haptics\.success\(\);/);
   });
 });
 

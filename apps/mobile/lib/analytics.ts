@@ -355,6 +355,12 @@ export function reset(): void {
  *   deliberately excluded from the ENG-1225 flag-collapse sweep (not a
  *   built-but-dark v3 surface). Mirror of the web note in
  *   `src/lib/analytics/track.ts`.
+ * - `recipe_verdict_chip_v1` (ENG-1612) — recipe-detail "Fits your day"
+ *   verdict as a prototype-scale inline soft pill instead of the ENG-1085
+ *   confident SOLID full-width banner. DEFAULT-OFF: no device/sim
+ *   validation landed in this change (see
+ *   docs/decisions/2026-07-19-fits-your-day-verdict-chip.md); flag-off keeps
+ *   the SOLID banner as the kill switch. Keep in sync with web.
  *
  * (The 5 cook-mode flags moved to `REDESIGN_DEFAULT_ON` in the 2026-06-22
  *  flag-collapse sweep, after the ENG-1230 swipe-surface render bug was

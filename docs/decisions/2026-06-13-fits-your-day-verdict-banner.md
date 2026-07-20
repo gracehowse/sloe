@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-13
 **Area:** Recipes tab / recipe detail (web + mobile)
-**Status:** Resolved
+**Status:** SUPERSEDED 2026-07-19 by [ENG-1612](./2026-07-19-fits-your-day-verdict-chip.md) — Grace: "fits your day is too big and agressive." The confident SOLID banner ruled here is now the default-OFF kill-switch path; the prototype-scale soft chip is the flagged replacement. This doc is kept for history.
 **Flag:** `fit_verdict_banner_v1` (in `REDESIGN_DEFAULT_ON` on both platforms; PostHog row survives only as a kill switch via `isFeatureDisabled`)
 
 ## Context

@@ -284,8 +284,8 @@ export default function RecipeDetailScreen() {
   // title OVERLAY, serif standfirst headnote, consolidated sticky CTA bar
   // (yield · Cook Mode · Log filled); legacy title-below + Log-in-pills +
   // Cook-only footer stays in the `else`. Web twin: `RecipeDetail.tsx`.
-  // Carve-out: "Fits your day" verdict banner keeps its tri-state SOLID
-  // treatment (docs/decisions/2026-06-13-fits-your-day-verdict-banner.md).
+  // The prior verdict-banner carve-out is SUPERSEDED by ENG-1612 — see
+  // docs/decisions/2026-07-19-fits-your-day-verdict-chip.md (own flag).
   const recipeDetailV3 = isFeatureEnabled("recipe_detail_v3_conformance");
   // ENG-949 — in-cook A−/A+ text-size control, behind a flag (default-OFF).
   // Flag-off keeps the overlay byte-identical and skips re-applying a
