@@ -35,22 +35,16 @@ the [Plan tab journey](meal-planning.md) — but that doc doesn't yet document
 the Plan Import entry point; the only written spec today is the planning doc
 linked above.
 
+> **Web parity (ENG-1582):** `/cookbook-import` renders the batch PDF import
+> surface when `cookbook_import_enabled` is on — same extract/parse/commit
+> pipeline as mobile. Entry: Import recipe → **From a PDF**, or direct
+> `/cookbook-import`.
+
 ## Entry points
 
-1. **Library** → **+ Create** → **Import cookbook (PDF)**
-2. Direct route: `/cookbook-import`
-
-> **Mobile-only today; the API itself is platform-neutral.**
-> `/api/cookbook-import/extract` and `/api/cookbook-import/parse` are plain
-> REST routes with nothing mobile-specific about their request/response shape
-> — only `apps/mobile/app/cookbook-import.tsx` calls them. Web has no batch-PDF
-> affordance at all: web's "cookbook" copy on `RecipeUpload` routes users to
-> the **single-photo OCR** path (`/api/recipe-import/image`) instead. Whether
-> PDF cookbook import should stay **permanent mobile-only** (a "sit down and
-> digitise a book once" task some would argue is fine as a phone-only
-> affordance) or get a proper web equivalent is an open product question — the
-> current mobile-only shape reflects where the feature happens to be, not a
-> deliberate platform decision.
+1. **Library** → **+ Create** → **Import cookbook (PDF)** (mobile)
+2. **Web Import recipe** → **From a PDF** when `cookbook_import_enabled` is on
+3. Direct route: `/cookbook-import`
 
 ## Flow
 

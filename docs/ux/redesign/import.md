@@ -566,8 +566,10 @@ The DS-compliance pass on `apps/mobile/app/cookbook-import.tsx` fixed the follow
 - Button: CTA routes through `FontFamily.sansSemibold` (Inter 600) + `accent.primaryForeground` token. `Radius.xl(12)`. Min-height 48pt.
 - Components extracted to `apps/mobile/components/cookbook/`: `CookbookParsingView`, `CookbookSuccessView`, `CookbookReviewRow`. Reduces screen complexity (toward ENG-621 target).
 
+**Fixed (ENG-1582, web parity):**
+- **Web cookbook-import surface** — `/cookbook-import` + `CookbookImport` component: batch PDF parse, per-recipe exclude, author-vs-match nutrition mode, partial-save on free tier. Gated on `cookbook_import_enabled` (same as mobile). Entry on web Import recipe surface when flag is on.
+
 **Deferred (not fixed in this pass):**
-- **Web cookbook-import surface** (sev 5 parity gap): no web UI exists for the batch-cookbook-import journey (multi-recipe parse, per-recipe exclude, author-vs-match, partial-save). The API routes exist but no web page/component. Building a correct web surface is >80 lines and blocked on the `recipe-import-redesign` import-screen parity work (gaps #3/#4 from §5 above must land first). // deferred: see ENG-1582
 - **Sweep harness hard-fail for flag-gated routes** (sev 5 functionality): the sweep that produced the false positive `cookbook-import.png` (byte-identical to plan.png) captured the Plan fallback because `cookbook_import_enabled` was off. The harness should detect `router.back()` on mount and fail the sweep. This is a test-infra fix, not a cookbook-import code fix. // deferred: see ENG-1583
 
 ---

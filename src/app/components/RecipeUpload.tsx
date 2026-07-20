@@ -248,6 +248,9 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   );
   // ENG-1283 — import review honesty (flag-off = today's silent-success render).
   const [importReviewHonesty] = useState(() => isFeatureEnabled("import_review_flagged_ingredients_v1"));
+  // ENG-1582 — batch cookbook PDF import entry (mobile parity:
+  // `cookbook_import_enabled`). Off → no affordance on the import surface.
+  const [cookbookImportEnabled] = useState(() => isFeatureEnabled("cookbook_import_enabled"));
   const importQueue = useImportQueue("web", track);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -1836,6 +1839,27 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
             ? "Bring in recipes you have access to—cookbooks, blogs, or scans—for your private library. These stay personal copies; you don't publish them as your own work."
             : "Build an original recipe (typed or from your own photo). Publishing is optional—say when it's your content. Scanning a cookbook page you bought belongs under Import, not here."}
         </p>
+        {mode === "import" && cookbookImportEnabled ? (
+          <div className="mt-4 rounded-[var(--radius-card-lg)] border border-border bg-card p-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-[family-name:var(--font-headline)] text-[15px] text-foreground-brand">
+                Import cookbook (PDF)
+              </p>
+              <p className="text-[13px] text-muted-foreground mt-1">
+                Digitise a whole book — review every recipe before saving to Library.
+              </p>
+            </div>
+            <SupprButton
+              variant="ghost"
+              type="button"
+              data-testid="import-cookbook-entry"
+              onClick={() => router.push("/cookbook-import")}
+            >
+              <Icons.navPlan className="w-4 h-4" aria-hidden />
+              From a PDF
+            </SupprButton>
+          </div>
+        ) : null}
       </div>
 
       {mode === "create" && onSwitchToImport ? (
