@@ -31,15 +31,20 @@ vi.mock("@/lib/nutrition/verifyIngredients", () => ({
     perServing: { calories: 420, protein: 32, carbs: 18, fat: 14, fiberG: 4 },
     verified: [],
   })),
+  acceptedLineCount: (result: {
+    verified: Array<{ macros?: unknown; belowAcceptFloor?: boolean }>;
+  }) => result.verified.filter((row) => row.macros != null && !row.belowAcceptFloor).length,
 }));
 
 import { POST } from "../../app/api/plan-import/parse/route";
 import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
 import { callAiText } from "@/lib/server/aiProvider";
+import { verifyIngredients } from "@/lib/nutrition/verifyIngredients";
 import { MEAL_PREP_WEEK1_PARSED } from "@/lib/planning/planImport/fixtures/mealPrepWeek1";
 
 const mockUserId = getUserIdFromRequest as ReturnType<typeof vi.fn>;
 const mockCallAiText = callAiText as ReturnType<typeof vi.fn>;
+const mockVerifyIngredients = verifyIngredients as ReturnType<typeof vi.fn>;
 
 function req(body: unknown): Request {
   return new Request("http://localhost/api/plan-import/parse", {
@@ -100,5 +105,72 @@ describe("POST /api/plan-import/parse", () => {
     expect(json.slots.length).toBeGreaterThan(0);
     expect(json.stats.recipeCount).toBe(MEAL_PREP_WEEK1_PARSED.recipes.length);
     expect(mockCallAiText).toHaveBeenCalledOnce();
+  });
+
+  it("counts unmatched rows as excluded and caps incomplete nutrition to low confidence", async () => {
+    mockUserId.mockResolvedValue("u1");
+    mockCallAiText.mockResolvedValue({
+      ok: true,
+      text: JSON.stringify({
+        planName: "Incomplete recipe",
+        recipes: [
+          {
+            key: "bowl",
+            title: "Bowl",
+            serves: 2,
+            ingredients: ["100 g rice", "150 g chicken", "sauce to taste", "handful of herbs"],
+          },
+        ],
+        schedule: [
+          {
+            dayLabel: "Mon",
+            dayIndex: 0,
+            slots: [{ slot: "Lunch", label: "Bowl", recipeKeys: ["bowl"] }],
+          },
+        ],
+      }),
+    });
+    mockVerifyIngredients.mockResolvedValue({
+      avgIngredientConfidence: 0.95,
+      perServing: { calories: 230, protein: 15, carbs: 20, fat: 5, fiberG: 1 },
+      belowAcceptFloorCount: 0,
+      verified: [
+        {
+          input: { name: "rice", amount: "100", unit: "g" },
+          macros: { calories: 130 },
+          source: "USDA",
+          confidence: 0.95,
+        },
+        {
+          input: { name: "chicken", amount: "150", unit: "g" },
+          macros: { calories: 100 },
+          source: "USDA",
+          confidence: 0.95,
+        },
+        {
+          input: { name: "sauce to taste", amount: "", unit: "" },
+          macros: null,
+          source: "Unverified",
+          confidence: 0,
+        },
+        {
+          input: { name: "handful of herbs", amount: "", unit: "" },
+          macros: null,
+          source: "Unverified",
+          confidence: 0,
+        },
+      ],
+    });
+
+    const res = await POST(req({ text: "Bowl recipe" }));
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.recipes[0]).toMatchObject({
+      confidence: "low",
+      confidenceTier: "low",
+      excludedLineCount: 2,
+    });
+    expect(json.stats.excludedLineCount).toBe(2);
   });
 });

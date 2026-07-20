@@ -11,8 +11,8 @@ Plan Import computes a per-recipe confidence tier from
 `VerifyResult.avgIngredientConfidence`. Since ENG-1305 that average describes
 the **accepted rows only** — the rows that cleared `MIN_ACCEPT_CONFIDENCE`
 (0.55) and were summed into the Sloe-calc totals. Below-floor rows
-(`belowAcceptFloor: true`, counted in `belowAcceptFloorCount`) are excluded
-from both the totals and the average.
+(`belowAcceptFloor: true`) and no-match rows (`macros: null`) are excluded from
+both the totals and the average.
 
 That made the tier an **inverted trust signal**: dropping more junk/unmatched
 lines can *raise* the surviving average, so a **more incomplete** recipe reads
@@ -29,7 +29,7 @@ excluded-line surfacing at all — the tier was the only signal, and it lied.
 
 ### 1. Cap the displayed tier on the excluded-line count
 
-New shared helper `recipeConfidenceTierWithExclusions(avg, belowAcceptFloorCount,
+New shared helper `recipeConfidenceTierWithExclusions(avg, excludedLineCount,
 acceptedLineCount)` in `src/lib/nutrition/verifyConfidencePolicy.ts`, called by
 both Plan-Import verify paths (`app/api/plan-import/parse/route.ts` and the
 shared `src/lib/planning/planImport/verifyImportRecipe.ts`, which cookbook
@@ -43,14 +43,16 @@ import also uses):
   earn better than the floor.
 
 **Invariant** (at a fixed accepted-average and accepted-line count): the tier
-is monotonically **non-increasing** in `belowAcceptFloorCount` — more excluded
+is monotonically **non-increasing** in `excludedLineCount` — more excluded
 lines can only hold or lower it, never raise it. With a three-value ladder the
 step can't be strictly-distinct per count, so the guarantee is "never higher",
 not "always strictly lower". That is enough to kill the inversion.
 
 `acceptedLineCount` is shared with the stats computation via
 `acceptedLineCount(result)` in `verifyIngredients.ts` — one definition of
-"accepted rows" for both the average and the cap, so they can't drift.
+"accepted rows" for both the average and the cap, so they can't drift. The
+excluded count is the complement (`verified.length - acceptedLineCount`) so it
+includes both below-floor and no-match rows.
 
 ### 2. Surface the excluded-line count to the user
 
@@ -85,7 +87,7 @@ only gates whether the client renders it.
 ## Explicitly out of scope
 
 - The accept floor `MIN_ACCEPT_CONFIDENCE = 0.55` and the exclusion mechanism
-  (ENG-691 / ENG-1305) are unchanged — this only reads `belowAcceptFloorCount`.
+  (ENG-691 / ENG-1305) are unchanged.
 - No parser/extractor/nutrition recompute.
 - The recipe-verify and voice/photo-log tiers keep the raw
   `recipeConfidenceTier` (they surface exclusions through the review nudge
@@ -97,6 +99,8 @@ only gates whether the client renders it.
   boundary + monotonicity + half-excluded → low + non-finite-count pins.
 - `tests/unit/verifyImportRecipe.test.ts` — cap + `excludedLineCount` surfacing
   through the shared verify path.
+- `tests/integration/planImportParseRoute.test.ts` — the live API route counts
+  no-match rows and returns the capped tier + aggregate exclusion count.
 - `tests/unit/planImportCompile.test.ts` — `stats.excludedLineCount` summed
   once per recipe.
 - `tests/unit/planImportSurface.test.tsx` — web advisory renders (plural +

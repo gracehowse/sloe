@@ -164,7 +164,7 @@ export function recipeConfidenceTier(avgConfidence: number): RecipeConfidenceTie
  *     any better than the floor.
  *
  * Invariant (at a fixed accepted-average AND fixed accepted-line count): the
- * returned tier is monotonically NON-INCREASING in `belowAcceptFloorCount` —
+ * returned tier is monotonically NON-INCREASING in `excludedLineCount` —
  * more excluded lines can only hold or lower the displayed tier, never raise
  * it. With a three-value ladder the step can't be strictly-distinct per count,
  * so the guarantee is "never higher", not "always strictly lower".
@@ -175,13 +175,13 @@ export function recipeConfidenceTier(avgConfidence: number): RecipeConfidenceTie
  */
 export function recipeConfidenceTierWithExclusions(
   avgConfidence: number,
-  belowAcceptFloorCount: number,
+  excludedLineCount: number,
   acceptedLineCount: number,
 ): RecipeConfidenceTier {
   const base = recipeConfidenceTier(avgConfidence);
   const excluded =
-    Number.isFinite(belowAcceptFloorCount) && belowAcceptFloorCount > 0
-      ? Math.floor(belowAcceptFloorCount)
+    Number.isFinite(excludedLineCount) && excludedLineCount > 0
+      ? Math.floor(excludedLineCount)
       : 0;
   if (excluded <= 0) return base;
   const accepted =

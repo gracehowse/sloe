@@ -57,9 +57,10 @@ async function verifyRecipe(recipe: PlanImportParsedRecipe): Promise<PlanImportV
   });
   // ENG-1422 — cap the displayed tier on excluded lines so a more incomplete
   // recipe can't read at a higher confidence than a fully-matched one.
+  const excludedLineCount = result.verified.length - acceptedLineCount(result);
   const tier = recipeConfidenceTierWithExclusions(
     result.avgIngredientConfidence,
-    result.belowAcceptFloorCount,
+    excludedLineCount,
     acceptedLineCount(result),
   );
   const ingredientMacros = result.verified.map((v) => ({
@@ -89,7 +90,7 @@ async function verifyRecipe(recipe: PlanImportParsedRecipe): Promise<PlanImportV
     confidence: confidenceFromTier(tier),
     confidenceTier: confidenceFromTier(tier),
     ingredientCount: rows.length,
-    excludedLineCount: result.belowAcceptFloorCount,
+    excludedLineCount,
     ingredientMacros,
   };
 }
