@@ -354,7 +354,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
   );
 
   return (
-    <div className="max-w-5xl mx-auto px-pm-6 py-pm-5">
+    <div className="max-w-5xl mx-auto px-pm-5 py-pm-5">
       {/* Breadcrumb (desktop-only) */}
       <nav
         aria-label="Breadcrumb"

@@ -216,8 +216,8 @@ GitHub Actions (`.github/workflows/ci.yml`):
   against the same 4/8/12/16/20/24/32/40 scale `check:spacing-scale` reads.
   `*-pm-N` semantic token classes (`px-pm-6`) are never flagged, the same
   way a `Spacing.*` reference is clean on mobile. Per-file off-scale
-  counts are pinned in `scripts/web-spacing-budget.json` (259 files /
-  1018 instances at the 2026-07-21 baseline); only-shrink. Re-pin with
+  counts are pinned in `scripts/web-spacing-budget.json` (261 files /
+  1033 instances at the 2026-07-21 baseline); only-shrink. Re-pin with
   `npm run check:web-spacing-scale:write`.
 - `check:token-scale` (ENG-1007) — raw 6-digit `#RRGGBB` hexes + raw Tailwind
   palette colour classes (`bg-/text-/border-<hue>-<NNN>`) + off-scale

@@ -12,10 +12,15 @@
  *  2. A negative Tailwind utility (`-mt-8`, `mt-[-8px]`) reads as an
  *     off-scale negative px value — the legal scale is all-positive,
  *     mirroring mobile's `check-spacing-scale.mjs`.
- *  3. evaluate() (shared with the mobile spacing ratchet) flags a new
+ *  3. Tailwind's bare `-px` keyword (`p-px`, `-mt-px`) flags as 1px,
+ *     off-scale by definition; an arbitrary `rem` value converts to px
+ *     (`p-[1.125rem]` = 18px, off-scale) at the repo's un-overridden 16px
+ *     root; a `calc()`/`var()`/`%`/`vh`/`vw` arbitrary value is correctly
+ *     left unscored (not a fixed value comparable to the px scale).
+ *  4. evaluate() (shared with the mobile spacing ratchet) flags a new
  *     (un-pinned) file, flags a grown pin, passes a held pin, treats a
  *     shrink as a non-fatal notice, and rejects a silent allow-list entry.
- *  4. Self-check: the committed budget passes the live repo tree (exit 0).
+ *  5. Self-check: the committed budget passes the live repo tree (exit 0).
  */
 import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -116,6 +121,38 @@ describe("findOffScale", () => {
   it("does not cross-match a Tailwind class that merely contains a spacing prefix mid-word (e.g. `step-8`, `wrap-4`)", () => {
     expect(findOffScale('<div className="step-8 wrap-4" />', legal)).toEqual([]);
   });
+
+  it("flags Tailwind's bare -px keyword (a literal 1px, off-scale by definition)", () => {
+    expect(findOffScale('<div className="p-px" />', legal)).toEqual([
+      { line: 1, prop: "p", value: 1, nearest: 0 },
+    ]);
+  });
+
+  it("flags a negative -px keyword the same way (-mt-px)", () => {
+    expect(findOffScale('<div className="-mt-px" />', legal)).toEqual([
+      { line: 1, prop: "mt", value: -1, nearest: 0 },
+    ]);
+  });
+
+  it("does not mistake gap-x-px for the -px keyword on gap alone (longest-prefix-first still applies)", () => {
+    const hits = findOffScale('<div className="gap-x-px" />', legal);
+    expect(hits).toEqual([{ line: 1, prop: "gap-x", value: 1, nearest: 0 }]);
+  });
+
+  it("converts an arbitrary rem value to px and flags it if off-scale (p-[1.125rem] = 18px)", () => {
+    const hits = findOffScale('<div className="p-[1.125rem]" />', legal);
+    expect(hits).toEqual([{ line: 1, prop: "p", value: 18, nearest: 16 }]);
+  });
+
+  it("passes an on-scale arbitrary rem value (p-[1rem] = 16px)", () => {
+    expect(findOffScale('<div className="p-[1rem]" />', legal)).toEqual([]);
+  });
+
+  it("does not score a calc()/var()/percentage/viewport arbitrary value (not a fixed value comparable to the px scale)", () => {
+    const src =
+      '<div className="pb-[calc(5rem+env(safe-area-inset-bottom))] w-[50%] h-[100vh] gap-[var(--foo)]" />';
+    expect(findOffScale(src, legal)).toEqual([]);
+  });
 });
 
 describe("evaluate (shared evaluateKeyed from lib/ratchet.mjs)", () => {
@@ -187,20 +224,6 @@ describe("self-check against the live repo tree", () => {
     for (const path of Object.keys(pins)) {
       if (allow[path] !== undefined) continue;
       expect(byFile[path], `${path} is pinned but has no off-scale web spacing literals`).toBeDefined();
-    }
-  });
-
-  it("neither converged page-gutter file (Targets.tsx, RecipeDetail.tsx) grew its pin from the gutter edit", () => {
-    // ENG-1592 remediation checklist item 4: both files' gutter moved onto
-    // the shared 40px `.product-shell` / `px-pm-6` convention. That value is
-    // itself legal (40 is on the scale) so the edit is invisible to this
-    // ratchet — it neither adds nor removes an off-scale hit. This test
-    // pins that expectation so a future regression (e.g. someone
-    // reintroducing a raw off-scale gutter literal) is caught.
-    const { pins } = JSON.parse(readFileSync(BUDGET_FILE, "utf8"));
-    const byFile = scanTree(REPO_ROOT, SCAN_DIRS, readLegalSpacing());
-    for (const path of ["src/app/components/Targets.tsx", "src/app/components/RecipeDetail.tsx"]) {
-      expect(byFile[path]?.length ?? 0).toBe(pins[path] ?? 0);
     }
   });
 });

@@ -10,13 +10,23 @@
  * What it flags (a "web-spacing violation"), in web `.tsx`:
  *   1. An arbitrary bracket value on a padding/margin/gap Tailwind utility —
  *      `p-[Npx]`, `mt-[Npx]`, `gap-x-[Npx]`, etc. (any directional variant) —
- *      whose N is NOT on the legal 4/8/12/16/20/24/32/40 scale.
+ *      whose N is NOT on the legal 4/8/12/16/20/24/32/40 scale. `rem` values
+ *      are also scored, converted at the repo's un-overridden 16px root
+ *      (`p-[1.125rem]` = 18px, off-scale) — verified no `html`/`:root`
+ *      font-size override exists in `src/styles/theme.css`. `%`/`vw`/`vh`/
+ *      `calc()`/`var()` arbitrary values are NOT scored (not a fixed value
+ *      comparable to a px scale — e.g. `App.tsx`'s
+ *      `pb-[calc(5rem+env(safe-area-inset-bottom))]` safe-area expression is
+ *      correctly out of scope, not a missed catch).
  *   2. An off-scale NUMERIC Tailwind spacing step on the same utility family
  *      — `p-7`, `mb-9`, `gap-11`, etc. Tailwind's default spacing scale is
  *      `step * 0.25rem` (`step * 4px`); the legal scale is exactly the steps
  *      whose px value lands on 4/8/12/16/20/24/32/40 (steps 1/2/3/4/5/6/8/10).
  *      `p-6` (24px, step 6) is legal; `p-7` (28px, step 7) is not — this is
  *      the ENG-1592 census's own worked example.
+ *   3. Tailwind's bare `-px` keyword step (`p-px`, `-mt-px`, `gap-x-px`) —
+ *      a literal 1px, off-scale by definition. Caught separately from (2)
+ *      since `px` isn't a digit sequence the numeric-step regex matches.
  *   Utility family scanned: `p*` / `m*` / `gap*` (padding, margin, gap and
  *   all directional variants: x/y/t/b/l/r/s/e for padding+margin,
  *   x/y for gap) — the exact families ENG-1592 scoped this gate to. Other
@@ -119,21 +129,40 @@ const SPACING_PREFIXES = [
 
 const PREFIX_ALT = SPACING_PREFIXES.join("|");
 
-/** `p-[14px]`, `-mt-[8px]`, `gap-x-[10px]`, `mt-[-8px]` — an arbitrary
- *  bracket value on a spacing utility. Captures: (1) optional outer minus
- *  (the `-mt-…` negative-utility prefix), (2) prop, (3) optional inner
- *  minus (a signed value inside the brackets, `mt-[-8px]`), (4) magnitude. */
+/** `p-[14px]`, `-mt-[8px]`, `gap-x-[10px]`, `mt-[-8px]`, `p-[1.125rem]` — an
+ *  arbitrary bracket value on a spacing utility, in `px` OR `rem` (the two
+ *  units this repo ever hand-writes for a fixed spacing value). Captures:
+ *  (1) optional outer minus (the `-mt-…` negative-utility prefix), (2) prop,
+ *  (3) optional inner minus (a signed value inside the brackets,
+ *  `mt-[-8px]`), (4) magnitude, (5) unit. A `%`/`vw`/`vh`/`calc(`/`var(`
+ *  arbitrary value simply doesn't match this pattern (no bare px/rem
+ *  literal), so it's correctly left unscored rather than mis-scored. */
 const ARBITRARY_RE = new RegExp(
-  `(-)?\\b(${PREFIX_ALT})-\\[(-?)(\\d+(?:\\.\\d+)?)px\\]`,
+  `(-)?\\b(${PREFIX_ALT})-\\[(-?)(\\d+(?:\\.\\d+)?)(px|rem)\\]`,
   "g",
 );
+
+/** `p-px`, `-mt-px`, `gap-x-px` — Tailwind's built-in "hairline" keyword
+ *  step, a literal 1px. Matched separately from the arbitrary-bracket form
+ *  above (no brackets here) and from the numeric-step form below (`px` is
+ *  not a digit sequence, so `NUMERIC_RE` never sees it). Always off-scale —
+ *  1px is not on the legal scale by construction, same as any other
+ *  arbitrary sub-4px value would be. */
+const PX_KEYWORD_RE = new RegExp(`(-)?\\b(${PREFIX_ALT})-px\\b`, "g");
 
 /** `p-7`, `-mb-9`, `gap-x-11` — a numeric Tailwind spacing step. Never
  *  collides with the bracket form above: the character immediately after
  *  the prop's `-` would be `[`, not a digit, so `-(\d+...)` fails to match
- *  bracket classes at all. Token references like `px-pm-6` are excluded the
- *  same way — `pm-6` starts with a letter, not a digit. */
+ *  bracket classes at all. Also never collides with the `-px` keyword form:
+ *  `p` in `px` isn't a digit, so `\d+` fails to match there either. Token
+ *  references like `px-pm-6` are excluded the same way — `pm-6` starts with
+ *  a letter, not a digit. */
 const NUMERIC_RE = new RegExp(`(-)?\\b(${PREFIX_ALT})-(\\d+(?:\\.\\d+)?)\\b`, "g");
+
+/** Tailwind's implicit root font-size — verified no `html`/`:root`
+ *  `font-size` override exists in `src/styles/theme.css`, so `1rem` really
+ *  is the browser default 16px here, not a repo-specific value. */
+const REM_TO_PX = 16;
 
 export { stripComments, readLegalSpacing };
 
@@ -141,7 +170,8 @@ export { stripComments, readLegalSpacing };
  * Scan a single source file's text and return its off-scale findings as
  * `[{ line, prop, value, nearest }]`. Pure (no filesystem) so tests can
  * drive it with synthetic source. `value` is the resolved signed px value
- * (arbitrary: the literal px; numeric: step * 4).
+ * (arbitrary px: the literal; arbitrary rem: literal * 16; numeric step:
+ * step * 4; the `-px` keyword: always 1).
  */
 export function findOffScale(src, legal) {
   const code = stripComments(src);
@@ -153,9 +183,19 @@ export function findOffScale(src, legal) {
     ARBITRARY_RE.lastIndex = 0;
     let m;
     while ((m = ARBITRARY_RE.exec(line)) !== null) {
-      const [, outerNeg, prop, innerNeg, magnitude] = m;
+      const [, outerNeg, prop, innerNeg, magnitude, unit] = m;
       const negative = Boolean(outerNeg) !== Boolean(innerNeg); // XOR — both signs cancel out
-      const value = (negative ? -1 : 1) * parseFloat(magnitude);
+      const px = unit === "rem" ? parseFloat(magnitude) * REM_TO_PX : parseFloat(magnitude);
+      const value = (negative ? -1 : 1) * px;
+      if (!legal.has(value)) {
+        hits.push({ line: i + 1, prop, value, nearest: nearestLegal(value, legal) });
+      }
+    }
+
+    PX_KEYWORD_RE.lastIndex = 0;
+    while ((m = PX_KEYWORD_RE.exec(line)) !== null) {
+      const [, outerNeg, prop] = m;
+      const value = outerNeg ? -1 : 1;
       if (!legal.has(value)) {
         hits.push({ line: i + 1, prop, value, nearest: nearestLegal(value, legal) });
       }
