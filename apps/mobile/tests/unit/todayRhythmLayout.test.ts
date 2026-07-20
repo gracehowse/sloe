@@ -38,3 +38,29 @@ describe("Today rhythm layout (ENG-871)", () => {
     expect(Layout.macroTileGridGap).toBe(12);
   });
 });
+
+describe("Today rhythm layout — strip→hero dead band (ENG-1609)", () => {
+  const src = readFileSync(
+    join(ROOT, "app/(tabs)/_today/TodayScreen.tsx"),
+    "utf8",
+  );
+
+  it("no longer double-stacks a marginBottom wrapper on top of the scroll gap before the week strip", () => {
+    // Grace, 2026-07-19 (annotated screenshot): "too much space here" between
+    // the week strip and the Coach chip + kcal dial. The wrapper was added by
+    // the 2026-06-11 rhythm sweep (ENG-1032) back when `styles.scroll`'s base
+    // gap was 8px (16 + 8 = a deliberate 24pt break). The ENG-1356 flag
+    // collapse (2026-07-06) later made the scroll gap unconditionally
+    // `Spacing.xl` (24) everywhere, so the un-revisited 16px wrapper silently
+    // doubled the seam to 40px. Removed — the strip→hero gap is now the same
+    // single 24px `Spacing.xl` scroll gap every other Today section break
+    // uses (Meals / Activity / Hydration / Planned).
+    expect(src).not.toMatch(/marginBottom:\s*Spacing\.md\s*}}>\s*<TodayDateHeader/);
+    expect(src).toMatch(/<TodayDateHeader\s/);
+  });
+
+  it("renders the extracted <TodayGreetingHero> ahead of the week strip (boy-scout shrink, ENG-1609)", () => {
+    expect(src).toMatch(/import \{ TodayGreetingHero \} from "@\/components\/today\/TodayGreetingHero"/);
+    expect(src).toMatch(/<TodayGreetingHero\s+viewMode=\{viewMode\}\s+isToday=\{isToday\}\s+selectedDate=\{selectedDate\}\s*\/>/);
+  });
+});
