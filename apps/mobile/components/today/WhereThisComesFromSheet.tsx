@@ -186,7 +186,7 @@ function WhereThisComesFromSheetImpl({
 
           {primaryCta ? (
             // Sloe treatment system (2026-06-08): primary inline CTA →
-            // aubergine outline (transparent fill + 1.5px primarySolid
+            // aubergine outline (transparent fill + hairline primarySolid
             // border + primarySolid label/glyph), not a filled slab.
             <PressableScale
               onPress={primaryCta.onPress}
@@ -200,7 +200,7 @@ function WhereThisComesFromSheetImpl({
                 paddingVertical: Spacing.md,
                 borderRadius: Radius.full,
                 backgroundColor: "transparent",
-                borderWidth: 1.5,
+                borderWidth: 1,
                 borderColor: accent.primarySolid,
                 flexDirection: "row",
                 alignItems: "center",

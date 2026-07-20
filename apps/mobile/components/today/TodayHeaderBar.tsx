@@ -70,7 +70,7 @@ function TodayHeaderBarImpl({
                 height: 8,
                 borderRadius: Radius.full,
                 backgroundColor: Accent.purple,
-                borderWidth: 1.5,
+                borderWidth: 1,
                 borderColor: colors.background,
               }}
             />

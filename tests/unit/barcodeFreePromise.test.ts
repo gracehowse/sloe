@@ -62,4 +62,41 @@ describe("barcodeFreePromise (ENG-932 / ENG-973)", () => {
       expect(src).toContain("LogSheetBarcodeFreePromise");
     }
   });
+
+  it("LogSheet loud barcode CTA uses hairline border grammar (ENG-1610)", () => {
+    const root = process.cwd();
+    const mobile = readFileSync(
+      join(root, "apps/mobile/components/today/LogSheetBarcodeFreePromise.tsx"),
+      "utf8",
+    );
+    const web = readFileSync(
+      join(root, "src/app/components/suppr/log-sheet-barcode-free-promise.tsx"),
+      "utf8",
+    );
+    expect(mobile).toMatch(/borderWidth:\s*1\b/);
+    expect(mobile).toContain("accent.primarySoftStrong");
+    expect(mobile).not.toMatch(/borderWidth:\s*(1\.5|2)\b/);
+    expect(web).toMatch(/\bborder\b/);
+    expect(web).not.toMatch(/\bborder-2\b/);
+    expect(web).toContain("--accent-primary-soft-strong");
+  });
+
+  it("Today tab census has no 1.5px/2px emphasis borders (ENG-1610)", () => {
+    const root = process.cwd();
+    const census = [
+      "apps/mobile/components/today/TodayEditMealModal.tsx",
+      "apps/mobile/components/today/TodayHeaderBar.tsx",
+      "apps/mobile/components/today/TodayPlannedMealsCard.tsx",
+      "apps/mobile/components/today/TodaySnapShortcut.tsx",
+      "apps/mobile/components/today/WhereThisComesFromSheet.tsx",
+      "apps/mobile/components/today/PostOnboardingPushExplainer.tsx",
+      "src/app/components/suppr/today-snap-shortcut.tsx",
+    ];
+    for (const rel of census) {
+      const src = readFileSync(join(root, rel), "utf8");
+      expect(src, rel).not.toMatch(/borderWidth:\s*(1\.5|2)\b/);
+      expect(src, rel).not.toMatch(/\bborder-2\b/);
+      expect(src, rel).not.toMatch(/border-\[1\.5px\]/);
+    }
+  });
 });

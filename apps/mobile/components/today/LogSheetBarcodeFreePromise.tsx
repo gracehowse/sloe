@@ -37,8 +37,8 @@ export function LogSheetBarcodeFreePromise({ onOpen }: { onOpen: () => void }) {
           paddingHorizontal: Spacing.md,
           paddingVertical: Spacing.md,
           borderRadius: Radius.xl,
-          borderWidth: 2,
-          borderColor: accent.primary,
+          borderWidth: 1,
+          borderColor: accent.primarySoftStrong,
           backgroundColor: accent.primarySoft,
           opacity: pressed ? 0.85 : 1,
         })}

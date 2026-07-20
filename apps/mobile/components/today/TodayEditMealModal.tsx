@@ -528,9 +528,9 @@ const v2 = StyleSheet.create({
   },
   deleteBtn: { flex: 1, alignItems: "center", justifyContent: "center", borderRadius: Radius.md, borderWidth: 1, height: 48 },
   // Sloe treatment system (2026-06-08): primary inline CTA → aubergine
-  // outline (transparent fill + 1.5px primarySolid border + primarySolid
-  // label), not a filled slab.
-  saveBtn: { flex: 2, alignItems: "center", justifyContent: "center", borderRadius: Radius.md, backgroundColor: "transparent", borderWidth: 1.5, height: 48 },
+  // outline (transparent fill + hairline primarySolid border + primarySolid
+  // label), not a filled slab. ENG-1610 — 1px only on Today surfaces.
+  saveBtn: { flex: 2, alignItems: "center", justifyContent: "center", borderRadius: Radius.md, backgroundColor: "transparent", borderWidth: 1, height: 48 },
 });
 
 /**
