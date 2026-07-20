@@ -6,8 +6,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { isFeatureEnabled } from "@/lib/analytics";
-import { Icons } from "../ui/icons";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
+import { Icons } from "../ui/icons.ts";
 import { SupprButton } from "../suppr/suppr-button.tsx";
 
 export function ImportCookbookPdfEntry() {
