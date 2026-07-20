@@ -307,9 +307,14 @@ overlay on `/discover`); the return trip from a Cook Mode auto-log.
   curated (creator-attached recipes only; imports/user creations don't carry
   a `creator_id`)
 - **Macro strip**
-- **"Fits your day" verdict banner** — a tri-state (success/warning/
-  destructive) SOLID banner computed by `computeFitsYourDayVerdict` against
-  the user's remaining macros for the day
+- **"Fits your day" verdict** — a tri-state (success/warning/destructive)
+  computed by `computeFitsYourDayVerdict` against the user's remaining
+  macros for the day. Default treatment is an inline soft chip (prototype
+  `.rd-fits` scale); behind `recipe_verdict_chip_v1` (default-OFF pending a
+  device/sim visual pass — see
+  [ENG-1612](../decisions/2026-07-19-fits-your-day-verdict-chip.md)), so the
+  confident full-width SOLID banner from ENG-1085 is still what ships until
+  the flag ramps
 - **Ingredient grid** — each line shows a verification tier, tap-to-open info
   sheet, and a **Verify CTA** for anything not yet confidently matched
 - **Method steps**

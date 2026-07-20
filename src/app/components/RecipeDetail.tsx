@@ -93,6 +93,7 @@ import {
 import { type RecipePortionSelection } from "../../lib/nutrition/recipeYield.ts";
 import { CookIngredientChecklist } from "./cook/CookIngredientChecklist.tsx";
 import { AddToShoppingListAction } from "./recipe/AddToShoppingListAction.tsx";
+import { RecipeFitsYourDayVerdict } from "./recipe/RecipeFitsYourDayVerdict.tsx";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -429,8 +430,11 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
   // ENG-1247 — v3 recipe-detail prototype conformance (default-OFF). ON → hero
   // title OVERLAY, serif standfirst headnote, consolidated sticky CTA bar
   // (yield · Cook Mode outline · Log filled), and a REAL journal write on Log.
-  // Carve-out: "Fits your day" verdict banner keeps its tri-state SOLID
-  // treatment (docs/decisions/2026-06-13-fits-your-day-verdict-banner.md).
+  // The former carve-out ("Fits your day" verdict banner keeps its tri-state
+  // SOLID treatment) is SUPERSEDED by ENG-1612 (2026-07-19) — see
+  // docs/decisions/2026-07-19-fits-your-day-verdict-chip.md. The verdict now
+  // renders as a soft inline chip behind its own flag, `recipe_verdict_chip_v1`,
+  // independent of `recipeDetailV3` (computed in the title-block IIFE below).
   const recipeDetailV3 = isFeatureEnabled("recipe_detail_v3_conformance");
   const [loggingRecipe, setLoggingRecipe] = useState(false);
   // Commit-CTA press payoff (web analog of the mobile confirm haptic). A subtle
@@ -2245,17 +2249,6 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
             kcal: scaledMacros.calories,
             targetCals: nutritionTargets.calories,
           });
-          // ENG-1085 — confident SOLID verdict banner (white on a scheme-constant
-          // dark tone, AA-safe in both schemes; mirrors mobile RecipeTitleBlock).
-          const [verdictHead, ...verdictRest] = (verdict?.label ?? "").split(" · ");
-          const verdictTail = verdictRest.join(" · ");
-          const verdictBannerBg = verdict
-            ? verdict.tone === "success"
-              ? "var(--verdict-banner-success)"
-              : verdict.tone === "warning"
-                ? "var(--verdict-banner-warning)"
-                : "var(--verdict-banner-destructive)"
-            : null;
           return (
             <div className="space-y-3" data-testid="recipe-title-block">
               {/* ENG-1247 — when the v3 hero overlay shows the title, hide the
@@ -2334,25 +2327,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
                   </button>
                 </div>
               ) : null}
-              {verdict ? (
-                <div
-                  data-testid="recipe-fits-your-day"
-                  role="status"
-                  aria-label={verdict.a11y}
-                  className="flex w-full items-center gap-2 rounded-xl px-4 py-3 text-white animate-in fade-in zoom-in-95 duration-300"
-                  style={{ backgroundColor: verdictBannerBg ?? "var(--verdict-banner-success)" }}
-                >
-                  {verdict.fits ? (
-                    <Icons.check className="w-[18px] h-[18px]" strokeWidth={3} aria-hidden />
-                  ) : null}
-                  <span className="text-[15px] font-bold">{verdictHead}</span>
-                  {verdictTail ? (
-                    <span className="ml-auto text-[13px] font-medium text-white/80">
-                      {verdictTail}
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
+              <RecipeFitsYourDayVerdict verdict={verdict} />
               {kcalForLine > 0 && hasScaledAway && totalKcalForView > 0 ? (
                 <div
                   className="text-xs text-muted-foreground tabular-nums"

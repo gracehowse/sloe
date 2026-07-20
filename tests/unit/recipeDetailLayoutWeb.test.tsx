@@ -33,6 +33,14 @@ import { normaliseRecipeDisplayTitle } from "../../src/lib/recipe/normaliseDispl
 
 const WEB_RECIPE = resolve(__dirname, "../../src/app/components/RecipeDetail.tsx");
 const SRC = readFileSync(WEB_RECIPE, "utf8");
+// ENG-1612 — the "Fits your day" verdict was extracted out of RecipeDetail.tsx
+// into its own component so the new chip treatment didn't push the monolith
+// past its `check:screen-budget` pin (mirrors mobile's already-extracted
+// `RecipeTitleBlock.tsx`).
+const VERDICT = readFileSync(
+  resolve(__dirname, "../../src/app/components/recipe/RecipeFitsYourDayVerdict.tsx"),
+  "utf8",
+);
 
 describe("web recipe-detail — title block + kcal in the CAL strip column (Figma 332:2)", () => {
   // Re-pinned 2026-06-09 to the canonical 332:2 structure (mobile
@@ -191,47 +199,70 @@ describe("web recipe-detail v3 — Fix 5 (Fits your day softened)", () => {
 });
 
 /**
- * 'Fits your day' verdict chip (Figma 332:2 §2). Re-pinned 2026-06-09 to the
- * canonical structure (mobile `recipeDetailV3SourcePins.test.ts` is the
- * reference). The intermediate ENG-818 flag-gated win-amber chip + the shared
- * `fitsYourDayChipStyle` palette helper are SUPERSEDED: the canonical frame
- * renders a SINGLE (unflagged) verdict pill in the title block, tinted INLINE
- * from `verdict.tone` (sage fits / amber over-half / destructive over-a-day),
- * with the verdict itself coming from the shared `computeFitsYourDayVerdict`.
+ * 'Fits your day' verdict — re-pinned 2026-07-19 (ENG-1612). Grace flagged
+ * the ENG-1085 confident SOLID full-width banner as "too big and agressive"
+ * (annotated screenshot, Soothing Chicken Congee). ENG-1612 supersedes the
+ * ENG-1085/ENG-1356 ruling that kept the banner SOLID — canon is the
+ * prototype `.rd-fits` inline soft pill (11px semibold, `*-soft` tone tint,
+ * 4/12 padding, full radius), same scale as the card-level `.fit-tag`. Ships
+ * behind `recipe_verdict_chip_v1` (default-OFF): flag-on renders the soft
+ * chip, flag-off keeps the ENG-1085 solid banner as the kill switch — see
+ * docs/decisions/2026-07-19-fits-your-day-verdict-chip.md.
  */
-describe("web recipe-detail — 'Fits your day' verdict chip (Figma 332:2 §2)", () => {
-  it("verdict logic delegates to the shared `computeFitsYourDayVerdict` helper", () => {
+describe("web recipe-detail — 'Fits your day' verdict (ENG-1612, flag-gated chip)", () => {
+  it("verdict logic delegates to the shared `computeFitsYourDayVerdict` helper, wired into the extracted component", () => {
     expect(SRC).toMatch(/computeFitsYourDayVerdict\(\{/);
+    // ENG-1612 — extracted out of the monolith (screen-line-budget pin);
+    // RecipeDetail.tsx computes the verdict and hands it to the component.
+    expect(SRC).toMatch(/import \{ RecipeFitsYourDayVerdict \} from "\.\/recipe\/RecipeFitsYourDayVerdict\.tsx"/);
+    expect(SRC).toMatch(/<RecipeFitsYourDayVerdict verdict=\{verdict\} \/>/);
   });
 
-  it("verdict banner is unconditional (ENG-1085, fit_verdict_banner_v1 collapsed ENG-1356) — exactly one block", () => {
-    // ENG-1085's confident SOLID banner was flag-gated (legacy 10%-wash pill
-    // in the `else`, ENG-1356's target). The always-on flag was collapsed in
-    // ENG-1356 — only the confident banner block remains in source.
-    const matches = SRC.match(/data-testid="recipe-fits-your-day"/g) ?? [];
-    expect(matches.length).toBe(1);
-    expect(SRC).not.toMatch(/isFeatureEnabled\("fit_verdict_banner_v1"\)/);
-    expect(SRC).not.toMatch(/verdictBannerOn/);
-    // Still NOT wrapped in a design_system_colours branch.
-    expect(SRC).not.toMatch(/if \(redesignColours\) \{[\s\S]{0,400}recipe-fits-your-day/);
+  it("rendering is gated on `recipe_verdict_chip_v1` — exactly two source blocks (chip + legacy banner)", () => {
+    // Both branches render the same testID; only one mounts at runtime
+    // depending on the flag. Two textual occurrences, not one — the
+    // ENG-1356 "unconditional, exactly one block" pin no longer holds.
+    const matches = VERDICT.match(/data-testid="recipe-fits-your-day"/g) ?? [];
+    expect(matches.length).toBe(2);
+    expect(VERDICT).toMatch(/isFeatureEnabled\("recipe_verdict_chip_v1"\)/);
+    expect(VERDICT).toMatch(/const verdictChipV1 = isFeatureEnabled/);
   });
 
-  it("verdict renders as a confident full-width solid banner (ENG-1085); legacy 10%-wash pill is gone (ENG-1356)", () => {
-    const fitsIdx = SRC.indexOf('data-testid="recipe-fits-your-day"');
-    expect(fitsIdx).toBeGreaterThan(0);
+  it("flag-ON path renders an inline soft chip — 11px semibold, *-soft tone tint, 4/12 padding, full radius", () => {
+    const chipIdx = VERDICT.indexOf('data-testid="recipe-fits-your-day"');
+    expect(chipIdx).toBeGreaterThan(0);
+    const chip = VERDICT.slice(chipIdx, chipIdx + 420);
+    expect(chip).toMatch(/rounded-full/);
+    expect(chip).toMatch(/px-3\s+py-1/);
+    expect(chip).toMatch(/text-\[11px\]\s+font-semibold/);
+    expect(chip).toMatch(/verdictChipClass/);
+    expect(chip).not.toMatch(/w-full/);
+  });
+
+  it("chip tone maps success/warning/destructive to the `*-soft` tint pair (AA-safe text)", () => {
+    expect(VERDICT).toMatch(/"bg-success-soft text-success"/);
+    expect(VERDICT).toMatch(/"bg-warning-soft text-warning-solid"/);
+    expect(VERDICT).toMatch(/"bg-destructive-soft text-destructive"/);
+  });
+
+  it("flag-OFF path keeps the ENG-1085 confident full-width solid banner (kill switch)", () => {
+    const bannerIdx = VERDICT.lastIndexOf('data-testid="recipe-fits-your-day"');
+    const chipIdx = VERDICT.indexOf('data-testid="recipe-fits-your-day"');
+    expect(bannerIdx).toBeGreaterThan(chipIdx);
     // Full-width, rounded-xl, solid scheme-constant tone fill, white text —
-    // not the legacy 10%-wash pill.
-    const banner = SRC.slice(fitsIdx, fitsIdx + 420);
+    // not the legacy 10%-wash pill (ENG-1356), and not the ENG-1612 chip.
+    const banner = VERDICT.slice(bannerIdx, bannerIdx + 420);
     expect(banner).toMatch(/w-full/);
     expect(banner).toMatch(/rounded-xl/);
     expect(banner).toMatch(/verdictBannerBg/);
     expect(banner).toMatch(/text-white/);
-    // Legacy 10%-wash pill (verdictChip) is fully removed.
-    expect(SRC).not.toMatch(/verdictChip/);
+    // Legacy 10%-wash pill (verdictChip, the pre-ENG-1085 helper) stays gone.
+    expect(VERDICT).not.toMatch(/fitsYourDayChipStyle/);
   });
 
-  it("a11y contract preserved — role='status' + aria-label from the verdict", () => {
-    expect(SRC).toMatch(/role="status"[\s\S]{0,160}aria-label=\{verdict\.a11y\}/);
+  it("a11y contract preserved — role='status' + aria-label from the verdict on both branches", () => {
+    const uses = VERDICT.match(/role="status"\s*\n\s*aria-label=\{verdict\.a11y\}/g) ?? [];
+    expect(uses.length).toBe(2);
   });
 });
 
