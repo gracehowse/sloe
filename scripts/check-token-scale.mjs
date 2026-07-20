@@ -34,6 +34,21 @@
  *      `*Soft` / `*SoftStrong` tokens (12/20% light, 18/28% dark) — an
  *      ad-hoc alpha is off-scale by construction, and `withAlpha` is the
  *      token-file-internal derivation helper only.
+ *   6. Web Tailwind slash-opacity on an accent semantic token (ENG-1591 —
+ *      the web sibling of #5 / ENG-1521): `bg-`/`text-`/`border-` +
+ *      `primary`/`success`/`warning`/`destructive` + `/<NN>`
+ *      (`bg-primary/10`, `text-warning/15`, `border-destructive/30`).
+ *      Tailwind's slash-opacity modifier manufactures the exact same
+ *      ad-hoc tint ENG-1521 retired on mobile — just spelled `/NN` instead
+ *      of `+ "1F"`. `muted` / `muted-foreground` are DELIBERATELY left out
+ *      of this regex (not merely allow-listed — see the constant below):
+ *      `--muted` is a neutral/structural fill, not an accent colour, and
+ *      mobile's Soft/SoftStrong family never covered it either for the
+ *      same reason — there is no Soft token for `muted` slash-opacity to
+ *      migrate to, so it isn't a finding. (Other neutral slash-opacity
+ *      idioms — `border-border/NN`, `bg-card/NN`, `bg-black/NN` scrims,
+ *      etc. — are the same already-settled hairline/scrim category
+ *      ENG-1572 explicitly left untouched, and stay out of scope here too.)
  *
  * Exclusions: token-definition files (`apps/mobile/constants/theme.ts`,
  * `src/styles/theme.css`, the Tailwind theme config), `node_modules`, and
@@ -133,6 +148,41 @@ const ALPHA_CONCAT_RE =
 // which scanTree skips) — call sites consume the named `*Soft` tokens.
 const WITH_ALPHA_RE = /\bwithAlpha\s*\(/g;
 
+// Web Tailwind slash-opacity on an ACCENT semantic token (ENG-1591 — web
+// sibling of the ENG-1521 alpha-concat detector above): `bg-primary/10`,
+// `text-warning/15`, `border-destructive/30`. Constrained to the accent
+// family that ENG-1521 gave a Soft/SoftStrong scale to on mobile —
+// `primary`/`success`/`warning`/`destructive` — the same duplication-of-a-
+// sanctioned-scale problem, just spelled with Tailwind's `/NN` opacity
+// modifier instead of a `+ "1F"` string concat.
+//
+// Detect + pin only (this ticket): migrating the 308 currently-pinned sites
+// to a web Soft/SoftStrong token family is real follow-up work, deliberately
+// NOT bundled here — see ENG-1624 (not a silent deferral: tracked, scoped,
+// numbered against the exact population this scan pinned on 2026-07-20).
+//
+// `muted` / `muted-foreground` are deliberately NOT in this list (ENG-1591
+// carve-out decision): `--muted` is a neutral/structural fill (the plain
+// grey wash for chips/pressed states), not an accent colour, and mobile's
+// Soft/SoftStrong family never covered `muted` for the exact same reason —
+// there's no Soft token for `muted` slash-opacity to migrate to, so it
+// isn't a finding here. This is an intentional scope boundary, not an
+// oversight: it is enforced by never appearing in TW_SLASH_ACCENT_NAMES,
+// not by a separate allow-list entry (nothing to allow-list — no violation
+// is ever generated for it). Other neutral/structural slash-opacity idioms
+// (`border-border/NN`, `bg-card/NN`, `bg-black/NN` scrims, `bg-white/NN`
+// overlays, `bg-input/NN`, `bg-accent/NN`, `bg-secondary/NN`) are the same
+// already-settled "hairline/scrim" category ENG-1572 explicitly left
+// untouched ("a different, already-settled category") and are out of
+// scope for this accent-only detector too — a much larger, structurally
+// different problem that would need its own audit, not a silent sweep-in
+// here.
+const TW_SLASH_ACCENT_NAMES = "primary|success|warning|destructive";
+const TW_SLASH_RE = new RegExp(
+  `\\b(?:bg|text|border)-(?:${TW_SLASH_ACCENT_NAMES})/\\d{1,3}\\b`,
+  "g",
+);
+
 /** Pure black / pure white channels — the carved-out scrim/shadow idiom. */
 function isScrimBlackWhite(r, g, b) {
   return (r === 0 && g === 0 && b === 0) || (r === 255 && g === 255 && b === 255);
@@ -187,6 +237,10 @@ export function findViolations(src, legalRadius) {
     while ((m = WITH_ALPHA_RE.exec(line)) !== null) {
       hits.push({ line: i + 1, kind: "with-alpha", token: "withAlpha(…)" });
     }
+    TW_SLASH_RE.lastIndex = 0;
+    while ((m = TW_SLASH_RE.exec(line)) !== null) {
+      hits.push({ line: i + 1, kind: "slash-opacity", token: m[0] });
+    }
   }
   return hits;
 }
@@ -215,6 +269,8 @@ function describeHit(h) {
     return `${h.token} → named *Soft / *SoftStrong token (ENG-1521 soft-tint scale)`;
   if (h.kind === "with-alpha")
     return `withAlpha() at a call site → named *Soft token (ENG-1521 — helper is theme.ts-internal)`;
+  if (h.kind === "slash-opacity")
+    return `${h.token} → named *Soft / *SoftStrong token (ENG-1591 — web mirror of ENG-1521)`;
   return `${h.token} → semantic token`;
 }
 
@@ -237,7 +293,9 @@ function main() {
       `Colour + radius come from tokens: a literal hex / Tailwind palette class is a finding;\n` +
       `borderRadius snaps to ${sortedRadius} (\`Radius.*\`).\n` +
       `Soft tints come from the named *Soft / *SoftStrong tokens (ENG-1521: 12/20% light,\n` +
-      `18/28% dark) — alpha-concat (\`hue + "18"\`) and call-site withAlpha() are findings.\n` +
+      `18/28% dark) — alpha-concat (\`hue + "18"\`) and call-site withAlpha() are findings, and so\n` +
+      `is web Tailwind slash-opacity on an accent token (ENG-1591: \`bg-primary/10\` etc. — \n` +
+      `\`bg-muted/NN\` is exempt, a neutral fill, not an accent tint).\n` +
       `Route the value to a semantic token (theme.ts / theme.css / the Tailwind theme). The gate\n` +
       `is a ratchet — it can only ever tighten. If you are legitimately shrinking a pinned file,\n` +
       `re-pin it lower with:\n` +
