@@ -7,13 +7,7 @@ on:
   # same-repo PR push.
   push:
     branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
   pull_request:
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
 
 # Cancel older runs when a new commit lands (avoids zombie jobs stuck on E2E, etc.)
 concurrency:
@@ -21,7 +15,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ENG-1627 (2026-07-20): `test`/`mobile` are required status checks on
+  # `main`'s branch protection. This used to be a top-level `paths-ignore`
+  # on the whole workflow, which meant a docs-only PR never triggered the
+  # workflow at all — so GitHub never received ANY status for the "test"/
+  # "mobile" contexts, and the PR was permanently BLOCKED (a required check
+  # that never reports can never be satisfied; this is different from a
+  # *skipped* job, which GitHub treats as passed). Fix: always trigger the
+  # workflow, but gate the expensive jobs on this cheap up-front diff check
+  # so they report a fast "skipped" (= satisfied) instead of never running.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Detect non-docs changes
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            code:
+              - '**'
+              - '!**.md'
+              - '!docs/**'
+
   test:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     env:
       # Baked into the Next client bundle at build; set repo secrets for real Supabase auth in E2E.
@@ -171,6 +194,8 @@ jobs:
           retention-days: 7
 
   mobile:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -286,6 +311,8 @@ jobs:
   # that ships to no user (vitest, playwright, eslint, etc.).
   # Allow-list mechanism: docs/operations/security-allowlist.md
   dep-audit:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
