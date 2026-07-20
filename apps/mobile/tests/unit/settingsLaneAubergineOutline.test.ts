@@ -46,6 +46,7 @@ const HEALTH = read("app/health-sync.tsx");
 const GOAL_CONTROLS = read("components/recap/GoalPaceControls.tsx");
 const GOAL_RETUNE = read("components/recap/GoalPaceRetuneSheet.tsx");
 const BUNDLE = read("components/settings/SettingsBundleContent.tsx");
+const PRO_BANNER = read("components/settings/SettingsSloeProBanner.tsx");
 
 describe("Settings lane — aubergine OUTLINE primary CTAs", () => {
   it("Targets Recalculate is a SupprButton ghost (2026-06-12 canon), not an outline", () => {
@@ -171,12 +172,11 @@ describe("Settings lane — aubergine OUTLINE primary CTAs", () => {
     // the banner is a flat WHITE slab. Was flag-gated behind
     // card_cohesion_white_v1 (aubergine tint in the else); the always-on flag
     // was collapsed in ENG-1356 — only the white-slab path remains.
-    expect(BUNDLE).toMatch(/testID="settings-sloe-pro-banner"/);
+    expect(BUNDLE).toContain("SettingsSloeProBanner");
+    expect(PRO_BANNER).toMatch(/testID="settings-sloe-pro-banner"/);
     expect(BUNDLE).not.toMatch(/card_cohesion_white_v1/);
     expect(BUNDLE).not.toMatch(/cohesionWhite/);
-    expect(BUNDLE).toMatch(
-      /testID="settings-sloe-pro-banner"[\s\S]{0,700}backgroundColor:\s*statTileElevation\.liftBg \?\? colors\.card/,
-    );
+    expect(PRO_BANNER).toMatch(/backgroundColor:\s*elevation\.liftBg \?\? colors\.card/);
     // Off-token clay rgba never returns either way.
     expect(BUNDLE).not.toContain("rgba(200, 121, 78, 0.16)");
   });

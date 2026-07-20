@@ -305,12 +305,22 @@ describe("Settings — Figma `335:2` frame reskin", () => {
     expect(bundle).toMatch(/"Pro plan"\s*:\s*"Free plan"/);
   });
 
-  it("renders the peach Sloe Pro upsell banner with a tier-conditional Manage/Upgrade affordance", () => {
-    // ENG-1297: label is tier-conditional (free → "Upgrade", pro → "Manage")
-    // to match the a11y label + onPress routing — was a bare "Manage" string.
-    expect(bundle).toContain('testID="settings-sloe-pro-banner"');
-    expect(bundle).toMatch(/>\s*Sloe Pro\s*</);
-    expect(bundle).toMatch(/profileData\.userTier === "pro" \? "Manage" : "Upgrade"/);
+  it("renders the Sloe Pro banner: free users get an Upgrade affordance; Pro users get a plain Active status (ENG-1615)", () => {
+    // ENG-1615: Pro manage lives only in the Membership card — the banner
+    // is status-only for pro (no competing Manage pill).
+    // Markup lives in SettingsSloeProBanner.tsx (screen-budget extract).
+    expect(bundle).toContain("SettingsSloeProBanner");
+    const banner = readFileSync(
+      resolve(__dirname, "../../components/settings/SettingsSloeProBanner.tsx"),
+      "utf8",
+    );
+    expect(banner).toContain('testID="settings-sloe-pro-banner"');
+    expect(banner).toMatch(/>\s*Sloe Pro\s*</);
+    expect(banner).toMatch(/accessibilityLabel="Sloe Pro — active subscription"/);
+    expect(banner).toMatch(/accessibilityLabel="Get Sloe Pro"/);
+    expect(banner).toMatch(/>\s*Active\s*</);
+    expect(banner).toMatch(/>\s*Upgrade\s*</);
+    expect(banner).not.toMatch(/isPro\s*\?\s*"Manage"\s*:\s*"Upgrade"/);
   });
 
   it("groups reminder rows under a dedicated REMINDERS section", () => {

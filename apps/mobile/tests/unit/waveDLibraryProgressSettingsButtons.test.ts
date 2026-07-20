@@ -26,6 +26,7 @@ const read = (p: string) => readFileSync(resolve(__dirname, "..", "..", p), "utf
 const LIBRARY = read("app/(tabs)/library.tsx");
 const PROGRESS = read("app/(tabs)/progress.tsx");
 const BUNDLE = read("components/settings/SettingsBundleContent.tsx");
+const PRO_BANNER = read("components/settings/SettingsSloeProBanner.tsx");
 
 describe("Wave D (mobile) — Library CTAs", () => {
   it("imports the shared mobile SupprButton primitive", () => {
@@ -103,16 +104,17 @@ describe("Wave D (mobile) — SettingsBundleContent CTAs", () => {
     );
   });
 
-  it("the Sloe Pro banner Manage/Upgrade is a GHOST pill (decorative — plum label, no border)", () => {
-    // The whole banner row is the Pressable, so Manage/Upgrade stays a decorative
-    // pill carrying the ghost grammar by hand (transparent, no border, plum
-    // label). ENG-1297 made the label tier-conditional (was a bare "Manage").
-    expect(BUNDLE).toMatch(
-      /Manage \/ Upgrade — decorative ghost pill[\s\S]{0,600}color:\s*accent\.primarySolid\s*\}\}>\s*\{profileData\.userTier/,
+  it("the Sloe Pro banner Upgrade is a GHOST pill for free users only (ENG-1615)", () => {
+    // Pro users see a plain Active status — no Manage pill on the banner.
+    // Free users: decorative Upgrade ghost pill on the pressable row.
+    expect(BUNDLE).toContain("SettingsSloeProBanner");
+    expect(PRO_BANNER).toMatch(
+      /color:\s*accent\.primarySolid[\s\S]{0,120}>\s*Upgrade\s*</,
     );
-    expect(BUNDLE).not.toMatch(
-      /Manage \/ Upgrade — decorative ghost pill[\s\S]{0,600}borderWidth:\s*1\.5[\s\S]{0,120}profileData\.userTier/,
+    expect(PRO_BANNER).not.toMatch(
+      /testID="settings-sloe-pro-banner"[\s\S]{0,1400}borderWidth:\s*1\.5[\s\S]{0,120}Upgrade/,
     );
+    expect(PRO_BANNER).toMatch(/>\s*Active\s*</);
   });
 
   it("the promo-code Apply is a SOLID primary (the promo card's own action)", () => {

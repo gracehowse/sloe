@@ -30,6 +30,7 @@ const PROGRESS_LOG_ROW = read("src/app/components/suppr/progress-weight-log-row.
 // Steps + Body-Fat inputs extracted into ProgressActivitySection (ENG-1225 #21).
 const PROGRESS_ACTIVITY = read("src/app/components/suppr/progress-activity-section.tsx");
 const SETTINGS = read("src/app/components/Settings.tsx");
+const PRO_BANNER = read("src/app/components/settings/settings-sloe-pro-banner.tsx");
 const HYDRATION = read("src/app/components/suppr/hydration-stimulants-card.tsx");
 
 // The retired everyday aubergine-OUTLINE primary.
@@ -120,11 +121,15 @@ describe("Wave D (web) — Settings CTAs", () => {
     );
   });
 
-  it("the Sloe Pro banner Manage reads as a GHOST pill (no border)", () => {
-    expect(SETTINGS).toMatch(
-      /data-testid="settings-sloe-pro-banner"[\s\S]{0,1400}rounded-full px-3\.5 py-1\.5[\s\S]{0,200}Manage/,
+  it("the Sloe Pro banner Upgrade is a ghost pill for free users; Pro shows Active status (ENG-1615)", () => {
+    // Pro users: plain Active status — manage lives in SubscriptionCard.
+    // Free users: decorative Upgrade ghost pill on the Link row.
+    expect(SETTINGS).toContain("SettingsSloeProBanner");
+    expect(PRO_BANNER).toMatch(
+      /data-testid="settings-sloe-pro-banner"[\s\S]{0,1400}rounded-full px-3 py-1[\s\S]{0,200}Upgrade/,
     );
-    expect(SETTINGS).not.toMatch(
+    expect(PRO_BANNER).toMatch(/>\s*Active\s*</);
+    expect(PRO_BANNER).not.toMatch(
       /data-testid="settings-sloe-pro-banner"[\s\S]{0,1400}border-\[1\.5px\][\s\S]{0,200}Manage/,
     );
   });

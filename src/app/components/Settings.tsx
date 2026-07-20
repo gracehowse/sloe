@@ -77,6 +77,7 @@ import { MACRO_COLOR_VARS } from "../../lib/theme/macroColors.ts";
 import { MfpCsvImportCard } from "./imports/MfpCsvImportCard";
 import { SubscriptionCard } from "./settings/SubscriptionCard";
 import { SettingsProfileHeaderCard } from "./settings/SettingsProfileHeaderCard";
+import { SettingsSloeProBanner } from "./settings/settings-sloe-pro-banner.tsx";
 import { useMacroDisplayStyle } from "../../lib/preferences/useMacroDisplayStyle";
 import { useCalmMode } from "../../lib/preferences/useCalmMode";
 import { TrendOnlyWeightToggle } from "./settings/TrendOnlyWeightToggle.tsx";
@@ -873,36 +874,8 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     />
   );
 
-  // Sloe Pro upsell banner — Sloe DS (Figma 09 Settings `335:2`/`335:23`).
-  // Free users route to /pricing; Pro users route to /account/billing.
-  // Mirrors the mobile Pro banner in SettingsBundleContent.tsx.
-  // ENG-1081 (Grace 2026-06-13): flat white slab — was flag-gated behind
-  // card_cohesion_white_v1 (a ~16% primary tint in the else); the always-on
-  // flag was collapsed in ENG-1356.
-  const proBanner = (
-      <Link
-        href={userTier === "pro" ? "/account/billing" : "/pricing"}
-        data-testid="settings-sloe-pro-banner"
-        aria-label={userTier === "pro" ? "Manage your Sloe Pro subscription" : "Get Sloe Pro"}
-        // Standard card hairline (ENG-1500) — the one-card-grammar 1px
-        // `--border` treatment via `.card-slab`, not a bespoke 0.5px inline.
-        className="mb-6 flex items-center justify-between rounded-card-lg card-slab px-4 py-4 transition-colors"
-      >
-        <span className="flex items-center gap-2.5">
-          <Icons.sparkles className="w-[18px] h-[18px]" style={{ color: "var(--accent-primary-solid)" }} aria-hidden />
-          <span className="text-[15px] font-semibold" style={{ color: "var(--accent-primary-solid)" }}>
-            Sloe Pro
-          </span>
-        </span>
-        {/* Manage / Upgrade ghost pill — tier label matches aria + href (ENG-1297). */}
-        <span
-          className="rounded-full px-3.5 py-1.5 text-sm font-semibold"
-          style={{ color: "var(--accent-primary-solid)" }}
-        >
-          {userTier === "pro" ? "Manage" : "Upgrade"}
-        </span>
-      </Link>
-  );
+  // Sloe Pro banner — see settings-sloe-pro-banner.tsx (ENG-1615).
+  const proBanner = <SettingsSloeProBanner isPro={userTier === "pro"} />;
 
   // Current plan card.
   const planCard = (

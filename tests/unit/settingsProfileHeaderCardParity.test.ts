@@ -33,6 +33,10 @@ const HEADER_CARD_PATH = resolve(
   ROOT,
   "src/app/components/settings/SettingsProfileHeaderCard.tsx",
 );
+const PRO_BANNER_PATH = resolve(
+  ROOT,
+  "src/app/components/settings/settings-sloe-pro-banner.tsx",
+);
 const SIDEBAR_PATH = resolve(
   ROOT,
   "src/app/components/suppr/desktop-sidebar.tsx",
@@ -66,17 +70,18 @@ describe("Settings — profile header card (Group G IA Batch C)", () => {
 });
 
 describe("Settings — Figma `335:2` frame reskin (web parity)", () => {
-  it("renders the peach Sloe Pro upsell banner with a tier-conditional pill label", () => {
-    // Mirrors the mobile banner (frame `335:23`). Free → /pricing,
-    // Pro → /account/billing. ENG-1297: visible pill is Manage (pro) or Upgrade (free).
-    expect(settings).toContain('data-testid="settings-sloe-pro-banner"');
-    expect(settings).toMatch(/>\s*Sloe Pro\s*</);
-    expect(settings).toMatch(
-      /userTier === "pro" \? "Manage" : "Upgrade"/,
-    );
-    expect(settings).toMatch(
-      /userTier === "pro" \? "\/account\/billing" : "\/pricing"/,
-    );
+  it("renders the Sloe Pro banner: free Upgrade link; Pro Active status (ENG-1615)", () => {
+    // ENG-1615: Pro manage lives only in SubscriptionCard — banner is
+    // status-only for pro. Free → /pricing with Upgrade pill.
+    // Markup lives in settings-sloe-pro-banner.tsx (screen-budget extract).
+    expect(settings).toContain("SettingsSloeProBanner");
+    const banner = readFileSync(PRO_BANNER_PATH, "utf8");
+    expect(banner).toContain('data-testid="settings-sloe-pro-banner"');
+    expect(banner).toMatch(/>\s*Sloe Pro\s*</);
+    expect(banner).toContain('href="/pricing"');
+    expect(banner).toMatch(/>\s*Active\s*</);
+    expect(banner).toMatch(/>\s*Upgrade\s*</);
+    expect(banner).not.toContain("/account/billing");
   });
 
   it("the profile name reads in the Newsreader serif display face", () => {
