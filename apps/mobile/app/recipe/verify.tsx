@@ -720,7 +720,7 @@ export default function VerifyScreen() {
       flexDirection: "row",
       alignItems: "flex-start",
       backgroundColor: accent.warningSoft,
-      borderColor: Accent.warningLight + "66",
+      borderColor: Accent.warningLight, // ENG-1572 — was warningLight + alpha, now solid
       borderWidth: 1,
       borderRadius: Radius.md,
       paddingVertical: Spacing.sm,

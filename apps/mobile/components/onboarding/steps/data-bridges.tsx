@@ -457,7 +457,7 @@ function BridgeCard({
         padding: 16,
         marginBottom: 20, // Spacing.lg — breathable inter-card gap (was off-scale 12 = too tight, per Grace)
         borderWidth: 1,
-        borderColor: grantedBadge ? Accent.success + "66" : colors.border,
+        borderColor: grantedBadge ? Accent.successLight : colors.border, // ENG-1572 — solid Light, no alpha
       }}
     >
       <View

@@ -158,11 +158,11 @@ export function MobileMfpCsvImportCard({
         borderRadius: Radius.lg,
         padding: 16,
         borderWidth: 1,
-        borderColor:
+        borderColor: // ENG-1572 — solid Light borders, no alpha
           state.kind === "success"
-            ? Accent.success + "66"
+            ? Accent.successLight
             : highlighted && state.kind === "idle"
-              ? accent.primary + "66"
+              ? accent.primaryLight
               : colors.border,
       }}
     >

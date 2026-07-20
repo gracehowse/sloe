@@ -289,6 +289,7 @@ function makeStyles(
     // m7 — semi-transparent today ring (~40% opacity, `+ '66'`) to match the
     // web `ring-primary/40` halo. Threaded via `accent` (M3) so the plum inverts
     // correctly on dark instead of collapsing to the near-invisible static plum.
+    // ENG-1572 exempt: deliberate cross-platform halo parity, not drift.
     dotToday: { borderWidth: 2, borderColor: accent.primarySolid + "66" },
     bestLine: { ...Type.caption, color: colors.textSecondary, fontVariant: ["tabular-nums"] },
 

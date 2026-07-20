@@ -150,7 +150,7 @@ export default function OverrideIngredientSheet({
     // Layout-only override for the SupprButton Cancel/Save (padding/radius/colour
     // come from the button system; this only matches the destructive button width).
     btnLayout: { minWidth: 96 },
-    btnDestructive: { backgroundColor: "transparent", borderWidth: 1, borderColor: Accent.destructive + "80" },
+    btnDestructive: { backgroundColor: "transparent", borderWidth: 1, borderColor: Accent.destructiveLight }, // ENG-1572 — solid Light, no alpha
     btnDestructiveText: { color: Accent.destructive, fontWeight: "600", fontSize: 14 },
   });
 

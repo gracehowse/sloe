@@ -115,7 +115,7 @@ export function ImportSuccess({
         marginTop: Spacing.dense,
         borderRadius: Radius.md,
         borderWidth: 1,
-        borderColor: Accent.success + "66",
+        borderColor: Accent.successLight, // ENG-1572 — solid Light, no alpha
         overflow: "hidden",
       }}
     >
