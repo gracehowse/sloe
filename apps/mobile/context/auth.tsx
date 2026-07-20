@@ -121,7 +121,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // E2E test seam: when running under Maestro/Detox, skip the login UI by
       // signing in with env credentials. Requires explicit opt-in via
       // EXPO_PUBLIC_E2E_AUTH_ENABLED — never set in production .env.
+      //
+      // SEC-05/DI-05 (ENG-1389): the `__DEV__` guard is the STRUCTURAL
+      // safety net, not just belt-and-suspenders. `EXPO_PUBLIC_*` vars are
+      // inlined into the JS bundle at build time regardless of `__DEV__`,
+      // so without this gate a stray EXPO_PUBLIC_E2E_PASSWORD in a release
+      // EAS profile would bake a real auto-login credential into the
+      // shipped app. `__DEV__` is true only for Metro-served dev bundles
+      // (where Maestro E2E actually runs — see .maestro/shared/login.yaml)
+      // and is a compile-time `false` in every release EAS build (preview +
+      // production), so the whole block — including the inlined password —
+      // is dead-code-eliminated out of the production bundle. A build-time
+      // denylist assertion in apps/mobile/app.config.ts is the second
+      // defence-in-depth layer (fails a release build that sets these vars).
       if (
+        __DEV__ &&
         !data.session &&
         process.env.EXPO_PUBLIC_E2E_AUTH_ENABLED === "true" &&
         process.env.EXPO_PUBLIC_E2E_EMAIL &&
