@@ -29,6 +29,8 @@ function detectSocialPlatform(url: string): SocialPlatform {
  *
  * Kinds map to flows that already exist (just fragmented today):
  *   - social     → instagram/tiktok/youtube recipe extraction (`extractSocialRecipe`)
+ *   - collection → saved IG/TikTok collection of many posts — surfaced with
+ *                  guidance to import each post separately (ENG-1581)
  *   - recipe-url → web recipe URL import (`parseRecipeFromHtml`)
  *   - csv        → MyFitnessPal/Cronometer export → column-mapping (#7)
  *   - plan-text  → pasted meal-plan import (`planImport/parsePlanImportPrompt`)
@@ -37,18 +39,19 @@ function detectSocialPlatform(url: string): SocialPlatform {
  *
  * Deliberately conservative: when a guess isn't well-supported it falls back to
  * the safe, broadest kind (`recipe-text`) rather than mis-routing.
- *
- * NOTE: a "collection" kind (a saved IG/TikTok collection of many posts) is a
- * future addition — collection URLs are rare + ambiguous, so they currently
- * classify as `social`/`recipe-url`. // deferred: see ENG-1581
  */
 export type ImportKind =
   | "social"
+  | "collection"
   | "recipe-url"
   | "csv"
   | "plan-text"
   | "recipe-text"
   | "empty";
+
+/** Hint shown when the user pastes a saved IG/TikTok collection URL. */
+export const COLLECTION_IMPORT_HINT =
+  "This looks like a saved collection of posts. Suppr imports one recipe at a time — share or paste each post link separately.";
 
 export interface ImportClassification {
   kind: ImportKind;
@@ -56,7 +59,7 @@ export interface ImportClassification {
   label: string;
   /** Extracted URL for social / recipe-url; null otherwise. */
   url: string | null;
-  /** Social platform when kind === "social"; null otherwise. */
+  /** Social platform when kind === "social" or "collection"; null otherwise. */
   platform: SocialPlatform;
 }
 
@@ -80,6 +83,34 @@ const SOCIAL_LABEL: Record<Exclude<SocialPlatform, null>, string> = {
   tiktok: "TikTok video",
   youtube: "YouTube video",
 };
+
+const COLLECTION_LABEL: Record<"instagram" | "tiktok", string> = {
+  instagram: "Instagram saved collection",
+  tiktok: "TikTok collection",
+};
+
+/**
+ * Saved IG/TikTok collections (many posts) — distinct from a single reel/video
+ * URL. Instagram: `/{user}/saved/…`; TikTok: `/collection/…` or
+ * `/@user/collection/…`.
+ */
+function detectSocialCollection(url: string): "instagram" | "tiktok" | null {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    const path = parsed.pathname;
+
+    if (host === "instagram.com" || host.endsWith(".instagram.com") || host === "instagr.am") {
+      return /\/saved(?:\/|$)/i.test(path) ? "instagram" : null;
+    }
+    if (host === "tiktok.com" || host.endsWith(".tiktok.com")) {
+      return /\/collection(?:\/|$)/i.test(path) ? "tiktok" : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 /** Header/columns that mark a MyFitnessPal / Cronometer nutrition CSV export. */
 const CSV_HINT = /\b(date|meal|calories|kcal|energy|protein|carb(?:ohydrate)?s?|fat|fiber|fibre|sodium|sugar|serving|food name|amount)\b/i;
@@ -116,6 +147,15 @@ export function classifyImport(raw: string): ImportClassification {
 
   const url = firstUrl(text);
   if (url) {
+    const collectionPlatform = detectSocialCollection(url);
+    if (collectionPlatform) {
+      return {
+        kind: "collection",
+        label: COLLECTION_LABEL[collectionPlatform],
+        url,
+        platform: collectionPlatform,
+      };
+    }
     const platform = detectSocialPlatform(url);
     if (platform) {
       return { kind: "social", label: SOCIAL_LABEL[platform], url, platform };

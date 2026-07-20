@@ -3,6 +3,7 @@ import {
   CalendarDays,
   FileSpreadsheet,
   FileText,
+  Layers,
   Link2,
   Play,
   type LucideIcon,
@@ -24,6 +25,7 @@ import {
 // Generic glyphs (lucide dropped brand icons) — the label carries the platform.
 function iconFor(kind: ImportKind): LucideIcon {
   if (kind === "social") return Play; // reel / video
+  if (kind === "collection") return Layers;
   if (kind === "csv") return FileSpreadsheet;
   if (kind === "plan-text") return CalendarDays;
   if (kind === "recipe-text") return FileText;

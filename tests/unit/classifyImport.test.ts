@@ -23,6 +23,26 @@ describe("classifyImport", () => {
     expect(classifyImport("https://youtu.be/abc123").label).toBe("YouTube video");
   });
 
+  it("saved IG/TikTok collection URLs → collection, not social", () => {
+    const igSaved = classifyImport("https://www.instagram.com/chef/saved/recipes/1234567890/");
+    expect(igSaved.kind).toBe("collection");
+    expect(igSaved.platform).toBe("instagram");
+    expect(igSaved.label).toBe("Instagram saved collection");
+
+    const igAll = classifyImport("instagram.com/me/saved/all-posts/");
+    expect(igAll.kind).toBe("collection");
+    expect(igAll.platform).toBe("instagram");
+
+    const tt = classifyImport("https://www.tiktok.com/@chef/collection/dinner-7297251424885377835");
+    expect(tt.kind).toBe("collection");
+    expect(tt.platform).toBe("tiktok");
+    expect(tt.label).toBe("TikTok collection");
+
+    const ttRoot = classifyImport("https://www.tiktok.com/collection/7297251424885377835");
+    expect(ttRoot.kind).toBe("collection");
+    expect(ttRoot.platform).toBe("tiktok");
+  });
+
   it("strips trailing punctuation off the URL", () => {
     expect(classifyImport("see (https://tiktok.com/@x/video/1).").url).toBe(
       "https://tiktok.com/@x/video/1",
