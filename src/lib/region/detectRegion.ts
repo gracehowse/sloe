@@ -18,7 +18,19 @@
  *     wired — the Stripe price IDs only exist in GBP today. Until we
  *     ship EU / US Stripe prices, EU visitors see GBP amounts with an
  *     explicit "EU pricing coming soon — current prices in GBP" note.
- *     The UK surface always renders GBP. // deferred: see ENG-1442
+ *     The UK surface always renders GBP.
+ *
+ *     ENG-1442 (MP-10/LEGAL-009, resolved 2026-07-20): the pricing SSOT
+ *     (`PRICING_TIERS` in `src/lib/landing/pricingTiers.ts`) now has a
+ *     `displayByCurrency` slot per tier so it CAN carry a real EUR
+ *     string once one is priced, and `assertEurSkuDisplayReadiness()`
+ *     (`src/lib/stripe/eurSkuDisplayGuard.ts`) refuses to let the app
+ *     boot if a EUR Stripe Price env var is ever set before that
+ *     happens. Actually launching EUR pricing — deciding the real €
+ *     numbers and wiring `PricingTiersGrid` to render them — is still
+ *     not done and has no open ticket; it's a future pricing decision,
+ *     not a gap. See
+ *     docs/decisions/2026-07-20-eng1442-currency-display-guard.md.
  *
  * Inputs (precedence order):
  *   1. `CF-IPCountry` header — Cloudflare edge-injected ISO-3166-alpha-2.

@@ -3,8 +3,13 @@
  * Exit 0 always, unless a blocking misconfiguration is found AND we're in strict
  * mode — i.e. VERIFY_STRICT=1 or running on the prod deployment (VERCEL_ENV=production).
  *
+ * EXCEPTION: the ENG-1442 EUR-SKU display-readiness check below exits 1
+ * unconditionally, in every mode — see that section for why.
+ *
  * Usage: npm run verify:production-env
  */
+import { checkEurSkuDisplayReadiness } from "../src/lib/stripe/eurSkuDisplayGuard";
+
 function has(v: string | undefined): boolean {
   return typeof v === "string" && v.trim().length > 0;
 }
@@ -74,6 +79,23 @@ if (has(stripeSecret) && (!has(priceBase) || !has(pricePro))) {
   console.log("[!!] Checkout: set STRIPE_PRICE_BASE_MONTHLY and STRIPE_PRICE_PRO_MONTHLY to Price IDs.");
   strictFail = true;
 }
+
+// ENG-1442 (MP-10/LEGAL-009) — shown-£/charged-€ mismatch guard.
+// `resolveProStripePriceId` resolves to a EUR Stripe Price the instant
+// STRIPE_PRICE_PRO_{MONTHLY,ANNUAL}_EUR are set, but /pricing still
+// renders the hardcoded GBP PRICING_TIERS strings — a EU visitor would
+// see "£7.99" and get charged in €. This is an active-mischarge risk,
+// not a missing-integration warning, so unlike every other check in
+// this script it fails HARD in every mode (dev, CI, preview, prod) —
+// not gated behind `strictMode` below. See
+// docs/decisions/2026-07-20-eng1442-currency-display-guard.md.
+const eurSkuReadiness = checkEurSkuDisplayReadiness();
+if (!eurSkuReadiness.ok) {
+  console.error(`\n[!!] ${eurSkuReadiness.message}`);
+  console.error("verify-production-env: refusing to continue — ENG-1442 EUR display guard tripped.");
+  process.exit(1);
+}
+line(true, "EUR SKU display guard", "no EUR Price env vars set (or display is ready) — OK");
 
 if (!has(upstashUrl) || !has(upstashToken)) {
   console.log(

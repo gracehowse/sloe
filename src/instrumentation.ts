@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import { missingServerEnvKeys } from "@/lib/server/serverEnv";
+import { assertEurSkuDisplayReadiness } from "@/lib/stripe/eurSkuDisplayGuard";
 
 /**
  * Runs once when the Node.js process starts (Next.js instrumentation hook).
@@ -17,6 +18,14 @@ export async function register() {
   if (process.env.NEXT_RUNTIME === "edge") {
     await import("../sentry.edge.config");
   }
+
+  // ENG-1442 (MP-10/LEGAL-009) — refuse to boot if a EUR Stripe Price
+  // env var is set while the pricing display layer can't render EUR
+  // yet (a shown-£/charged-€ mischarge risk). Throwing here — the one
+  // guaranteed once-per-process-start hook — crashes server boot even
+  // if `npm run verify:production-env` was skipped for this deploy.
+  // See docs/decisions/2026-07-20-eng1442-currency-display-guard.md.
+  assertEurSkuDisplayReadiness();
 
   const missing = missingServerEnvKeys();
   if (missing.length === 0) {
