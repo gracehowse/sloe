@@ -72,8 +72,12 @@ import { NEUTRAL_AVATAR_DATA_URI } from "@/lib/ui/neutralAvatar";
 import { isFreeTierPlanCapError } from "@/lib/mealPlan/planPersistError";
 import { fetchPublicRecipeSaveCounts } from "../lib/recipes/fetchPublicRecipeSaveCounts.ts";
 import { normalizeRecipeTitle } from "../lib/recipes/normalizeRecipeTitle.ts";
-import { SEED_RECIPES_V2 } from "../lib/recipes/seedRecipesV2.ts";
+import {
+  SEED_RECIPES_V2,
+  isRetiredDiscoverSeedCard,
+} from "../lib/recipes/seedRecipesV2.ts";
 import { seedsToRecipeCards } from "../lib/recipes/seedRecipesToCard.ts";
+import { isDiscoverReadyRecipeCard } from "../lib/recipes/discoverRecipeReadiness.ts";
 import {
   fetchMaterialisedSeedMap,
   isUuid,
@@ -1117,15 +1121,15 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshDiscoverRecipes = useCallback(async () => {
-    // GW-03/GW-04 fix (audit 2026-04-28): see the matching comment
-    // in `apps/mobile/lib/recipes.ts`. The `.not("author_id", "is",
-    // null)` filter has been removed so platform-curated rows
-    // (author_id = NULL) surface in Discover; the seeder now writes
-    // NULL per the data-integrity remediation.
+    // Keep unauthored rows in the query because creator/community content can
+    // legitimately be unauthored. After mapping,
+    // `isRetiredDiscoverSeedCard` removes only superseded platform-catalogue
+    // rows; the current approved catalogue is always prepended from the shared
+    // static Sloe Kitchen source of truth. Mobile mirrors this in recipes.ts.
     const { data, error } = await supabase
       .from("recipes")
       .select(
-        "id, title, image_url, image_source, source_url, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, prep_time_min, cook_time_min, allergens, dietary_flags, author:profiles!recipes_author_id_fkey(display_name, avatar_url)",
+        "id, title, image_url, image_source, source_url, source_name, content_origin, servings, is_verified, creator_calories, calories, protein, carbs, fat, fiber_g, created_at, author_id, creator_id, meal_type, prep_time_min, cook_time_min, allergens, dietary_flags, author:profiles!recipes_author_id_fkey(display_name, avatar_url)",
       )
       .eq("published", true)
       .order("created_at", { ascending: false })
@@ -1151,7 +1155,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       const cookOk = Number.isFinite(cookM) && cookM > 0;
       return {
         id: row.id as string,
-        creatorName: (row?.author?.display_name as string | null) ?? "Community",
+        creatorName:
+          (row?.author?.display_name as string | null) ??
+          (row.source_name as string | null) ??
+          "Community",
         creatorImage:
           (row?.author?.avatar_url as string | null) ??
           NEUTRAL_AVATAR_DATA_URI,
@@ -1178,6 +1185,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         feedCreatedAt: row.created_at as string,
         authorId: (row.author_id as string | null) ?? null,
         creatorId: (row.creator_id as string | null) ?? null,
+        sourceName: (row.source_name as string | null) ?? null,
+        contentOrigin:
+          (row.content_origin as
+            | "first_party"
+            | "imported_stub"
+            | "claimed"
+            | null) ?? undefined,
         mealSlots: mealPlannerSlotsFromMealType((row as { meal_type?: string[] | null }).meal_type),
         prepTimeMin: prepOk ? Math.round(prepM) : null,
         cookTimeMin: cookOk ? Math.round(cookM) : null,
@@ -1193,7 +1207,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           ? ((row as { dietary_flags?: unknown[] }).dietary_flags as string[])
           : [],
       };
-    });
+    }).filter(
+      (card: RecipeCard) =>
+        !isRetiredDiscoverSeedCard(card) && isDiscoverReadyRecipeCard(card),
+    );
 
     let enriched = mapped;
     try {
@@ -2603,7 +2620,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     // Mirrors `apps/mobile/lib/recipes.ts#useDiscoverRecipes`.
     // Each seed carries `feedSource: "catalog"` so downstream UI can
     // distinguish them from community uploads when needed.
-    const seeds = seedsToRecipeCards(SEED_RECIPES_V2) as unknown as RecipeCard[];
+    const seeds = (
+      seedsToRecipeCards(SEED_RECIPES_V2) as unknown as RecipeCard[]
+    ).filter(isDiscoverReadyRecipeCard);
     return [...seeds, ...uploaded];
   }, [savedRecipeIds, uploadedRecipes]);
 

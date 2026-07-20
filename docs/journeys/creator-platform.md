@@ -2,12 +2,11 @@
 
 **Audience:** Product / Design / Engineering / Legal
 
-**Status:** Half real, half fabricated — read the Open risk section below
-before treating any part of this surface as "ready for real users." The
-follow graph and the import-attribution legal machinery are genuinely
-shipped. The creator *population* is not: every profile a user can reach
-today is one of five invented personas, and there is currently no way for
-a real person to become a creator at all.
+**Status:** Real-only, currently unpopulated. The five invented personas were
+retired by ENG-1535; Discover now hides the creator rail until genuine creator
+rows exist. The follow graph and import-attribution legal machinery are
+shipped, but there is still no in-product path for a real person to become a
+creator.
 
 ## One-line purpose
 
@@ -30,8 +29,8 @@ Suppr can import recipes from the open web at all.
 - Report an issue (non-copyright content report)
 - DMCA takedown (form, API route, `/dmca` policy page) — and specifically
   why its §512(c) safe harbour is **not yet legally effective**
-- The fabricated "launch-partner" creator seed and the missing
-  creator-onboarding write path — the open risk this doc leads with
+- The retired "launch-partner" creator seed decision and the still-missing
+  creator-onboarding write path
 - Creator/trainer monetisation — named here as backlog, not built, so it
   isn't confused with anything in scope above
 
@@ -46,70 +45,30 @@ Suppr can import recipes from the open web at all.
 - Deep per-ingredient nutrition correction → [verify-ingredients.md](./verify-ingredients.md)
 - Writing a recipe from scratch → [create-recipe.md](./create-recipe.md)
 
-## OPEN RISK — read this before treating the creator platform as ready for real users
+## Creator trust posture — resolved 2026-07-20 (ENG-1535)
 
-**The entire live creator platform is fabricated, and there is no way to fix that from inside the product today.**
+Grace chose to remove the five invented "launch partner" personas until
+genuine creators exist. The shared `loadTopCreators` loader rejects their
+fixed IDs on web and mobile, so the Discover rail self-hides immediately even
+in an environment that has not run the cleanup migration yet. Migration
+`20260720075508_eng1535_remove_synthetic_creators.sql` deletes the rows from
+`public.creators`; recipe attribution is cleared by `ON DELETE SET NULL` and
+synthetic follows are removed by `ON DELETE CASCADE`.
 
-- The Discover **"Top creators" rail** and **every reachable `/creator/[id]`
-  page** are populated exclusively by five invented personas — Priya Patel
-  (@priyaeats), Marcus Chen (@marcuscooks), Sofia Romano (@sofiaromano),
-  Theo Blake (@theoblake), Aisha Khan (@aishakitchen) — `INSERT`ed straight
-  into the production `public.creators` table by migration
-  `supabase/migrations/20260702120900_eng1239_launch_creators_and_rpc.sql`.
-  There is no real creator behind any of them.
-- Every one of the five is written with **`is_verified = true`** and no
-  disclosure anywhere in the UI that they're placeholders. A verified tick
-  next to a fictional name, with zero indication it's a sample/seed, reads
-  as a trust and possibly a deceptive-practice concern — this has not had a
-  product or legal ruling.
-- **No recipe row sets `creator_id`** to any of the five, so every one of
-  their profile pages shows "0 recipes" and the honest "No recipes yet"
-  empty state. The rail and the profile surface work end-to-end but have
-  nothing real to render.
-- The rail is **not gated behind a dark flag waiting to be flipped** — the
-  feature flag that shows it, `discover_creator_rail_v1`, is already
-  **default-ON** (`REDESIGN_DEFAULT_ON` in `src/lib/analytics/track.ts` /
-  `apps/mobile/lib/analytics.ts`). Both the web and mobile in-code comments
-  next to that flag claim it "self-hides when the `creators` table is
-  empty" — that framing is now **stale**: the seed migration means the
-  table is never empty again, so the rail always renders the five
-  fabricated, verified-badged personas to every user who reaches Discover.
-- **There is no write path anywhere in the app that creates a `creators`
-  row.** Every `from("creators")` call in the repo is either a read
-  (`app/creator/[id]/page.tsx`, `apps/mobile/app/creator/[id].tsx`) or the
-  single cleanup delete in `scripts/delete-seeded-recipes.ts`; no insert
-  exists outside the seed migration. Publishing a recipe sets `author_id`
-  (real ownership) but never `creator_id` — so a real user who writes and
-  publishes 50 recipes today still cannot get a `/creator` profile, cannot
-  appear in the rail, and cannot be followed via this graph. The
-  claim/merge bridge that was meant to eventually connect real creators to
-  this plane is explicitly post-launch and exists only as a DB foundation
-  today (see §8): the original thinking was that the trigger for building
-  it would be the first real creator asking for one, since at zero real
-  creators there's nothing to claim. That reasoning explains why the plane
-  started empty; it doesn't address what it means to ship it populated
-  with fiction instead.
-
-**The product and legal question this doc cannot resolve on its own:**
-should the Discover creator rail and `/creator/[id]` ship to real users at
-all in this state — five verified-badged fictional people, zero real
-recipes, no placeholder disclosure, no way for a genuine creator to ever
-appear next to them? That needs an explicit product and legal decision, not
-an engineering judgement call. Until it's made, do not describe the
-creator platform as "live" in any external-facing material, and do not
-assume the verified tick on these five names is harmless because "nobody's
-really using it yet" — the rail is default-ON and any TestFlight/live
-session sees it.
+The creator components, RPC, profiles, and follow graph remain available for
+genuine creator rows. What is still missing is the write/claim path that lets a
+real person become a creator (§8). Until that exists and real creators opt in,
+the honest Discover state is no creator rail—not fictional momentum.
 
 ## Where this sits in the loops
 
 ```
 Discover "Top creators" rail ──▶ /creator/[id] (§2) ──▶ Follow (§3) ──▶ Discover "Following" feed scope
-        (fabricated — see risk above)          │
-                                                └─▶ tap a recipe (none exist today) ──▶ Recipe Detail
+        (self-hides with no real rows)          │
+                                                └─▶ tap a recipe ──▶ Recipe Detail
 
 Recipe Detail byline (creator_id present) ──▶ /creator/[id] (§2)
-        (only true for seeded content — imports/user creations never carry creator_id)
+        (only true for genuine creator attribution; imports/user creations do not carry creator_id)
 
 import-recipe.md (parse → save) ──▶ Recipe Detail ──▶ attribution (§4) + blocked photo/prose (§5)
                                                     ──▶ Report an issue (§6) / DMCA takedown (§7)
@@ -128,16 +87,14 @@ imported-recipe interaction. Don't assume one implies the other.
 
 **Why this exists:** the social/creator bet (B5 Discover Phase 2) — a
 followed creator's recipes surfacing in Discover's Following scope closes a
-follow → more-of-their-content loop, the only genuinely closed loop this
-surface has today (see the risk above for what circulates through it).
+follow → more-of-their-content loop. The rail is deliberately absent until
+genuine creator rows exist.
 
 **Entry point:** the Discover tab's "Top creators" rail (backed by the
 `top_creators_by_saves` RPC, `src/lib/discover/topCreators.ts` /
 `apps/mobile/hooks/useTopCreators.ts`); a creator byline on a Discover hero
 card or a curated Recipe Detail page; deep link `suppr://creator/[id]`.
-**Every byline link is gated on `recipe.creator_id` being non-null** — today
-that's only ever true for the five seeded rows, which have no recipes, so
-in practice the byline path never actually resolves to a populated profile.
+**Every byline link is gated on `recipe.creator_id` being non-null.**
 
 **What comes next:** tap through to §2.
 
@@ -148,22 +105,14 @@ in practice the byline path never actually resolves to a populated profile.
 **Why this exists:** the read surface for Plane B of the two-plane creator
 content model — "first-party creators who want ownership, credit, their own
 photos." The model itself is coherent; this page is its intended shopfront.
-Why it ships pre-populated with fictional people instead of empty is the
-open risk above, not something the underlying data model addresses.
 
-**What the user sees:** avatar (or a monogram fallback when none is set —
-all five seeded creators have `avatar_url: null`, so today every profile
-shows a monogram), display name, `@handle`, bio, a verified tick when
+**What the user sees:** avatar (or a monogram fallback when none is set),
+display name, `@handle`, bio, a verified tick when
 `is_verified` is true, follower + recipe counts (true head-counts via a
 separate `count: "exact", head: true` query, not the loaded-row count), a
 Follow/Following CTA, and a newest-first, paginated recipe list (page size
 24, `creatorRecipePagination.ts`, shared web/mobile) with an honest
 "No recipes yet" empty state and a proper not-found state for an unknown id.
-
-**Example (today, live):** visiting `/creator/a1000001-0001-4000-8000-000000000001`
-resolves to Priya Patel — `@priyaeats`, bio "Batch-cooking & big-flavour
-veg", a verified tick, 0 recipes, "No recipes yet." Every one of the five
-seeded ids resolves the same way.
 
 **Web:** `app/creator/[id]/page.tsx` — a server component (SSR + OG
 metadata via `generateMetadata`), fetching creator + first recipe page +
@@ -183,8 +132,7 @@ user maps to a `creators` row today (§8), so this guard can never actually
 fire — harmless right now, but structurally wrong, and it will misbehave
 the moment a real creator-linking path exists.
 
-**What comes next:** Follow → §3. Tap a recipe row → Recipe Detail (only
-possible if the creator had recipes, which none do today).
+**What comes next:** Follow → §3. Tap a recipe row → Recipe Detail.
 
 ---
 
@@ -219,8 +167,8 @@ self-view guard bug.
 
 **What comes next:** the followed creator's recipes appear in Discover's
 "Following" feed scope — see [discover-and-library.md](./discover-and-library.md#3--discover-the-browse-feed)
-§3. Today that scope is empty for every seeded creator, for the same
-zero-recipes reason as §2.
+§3. With no genuine creators yet, the scope currently resolves to its honest
+empty state.
 
 ---
 
@@ -400,10 +348,8 @@ can restore content after 10–14 business days absent a court filing.
 
 ## §8 — Becoming a creator: not built
 
-**Why this matters:** this is the gap that makes the risk at the top of
-this doc structural rather than cosmetic. Everything in §1–§4 describes a
-*read* surface. There is no corresponding *write* surface anywhere in the
-product.
+**Why this matters:** everything in §1–§4 describes a *read* surface. There is
+no corresponding *write* surface anywhere in the product.
 
 **What's actually there:** `recipe_claims` exists as a DB foundation —
 RLS default-deny for client roles, with normal recipe-owner insert/update
@@ -418,20 +364,13 @@ impersonation vector) that must write through a service-role or
 **What this means concretely:** a real user can author and publish 50
 recipes right now, and none of it gets them a `/creator/[id]` profile, a
 follower count, or a spot in the Discover rail — because all of that reads
-from `creators`/`creator_id`, and only the five seeded rows populate that
-table. This emptiness was an intentional launch-sequencing call: the
-trigger for building the claim/merge path was meant to be the first real
-creator asking for one, since at zero real creators there's nothing to
-claim. That reasoning predates the seed migration that filled the table
-with five fictional profiles. The original intent was "starts empty, fills
-in later." The shipped reality is "starts full of fiction, still has no
-fill-in mechanism." Those are not the same launch posture, and nothing in
-the product today reconciles them.
+from `creators`/`creator_id`. ENG-1535 restores the intended launch posture:
+the plane starts empty and fills only when a genuine, consented creator path
+exists.
 
 **What comes next (future, unbuilt):** verified claim → the claimant's own
 published Plane-B recipe, with a real photo replacing the placeholder →
-appears on their `/creator` profile → discoverable and followable like the
-seeded personas are today, minus the fabrication problem.
+appears on their `/creator` profile → discoverable and followable.
 
 ---
 
@@ -451,8 +390,8 @@ publish at all.
 
 ## Edge cases / limits
 
-- **A creator with no avatar** — every seeded creator has `avatar_url: null`;
-  both platforms render a monogram fallback, never a broken image or a
+- **A creator with no avatar** — both platforms render a monogram fallback,
+  never a broken image or a
   substituted stock photo.
 - **An unknown `/creator/[id]`** — web returns Next's `notFound()`; mobile
   shows an equivalent not-found state. Neither silently redirects.
@@ -472,20 +411,9 @@ publish at all.
 
 ## Known limitations and open questions
 
-**Whether the creator platform should ship to real users at all in its
-current state is unresolved, and it's the most consequential open question
-in this document.** Five fabricated, verified-badged personas with zero
-real recipes and no way for a genuine creator to join is either an
-acceptable state for a live Discover rail and public `/creator/[id]` pages,
-or reason enough to flag-gate the surface off until a claim/merge or other
-creator-onboarding path exists (§8). This needs an explicit product and
-legal decision, not an engineering default.
-
-**Whether `is_verified: true` on invented personas is a trust or legal
-problem is also unresolved.** A verification badge on fictional people,
-with no "sample/placeholder" disclosure anywhere in the UI, risks reading
-as deceptive. This needs product and legal judgement, not an engineering
-default.
+**Real creator onboarding is still absent.** The read surfaces remain dark
+until the verified claim/onboarding path in §8 exists; this is now an honest
+empty state rather than a fabricated catalogue.
 
 **The self-view follow guard described in §2 compares the wrong id
 space.** `authedUserId === creator.id` should eventually compare through
@@ -493,12 +421,6 @@ the `author_id`/`creator_id` linkage once a real creator-onboarding path
 exists. It's dead code today, so there's no urgency to fix it in
 isolation — but it belongs in the same piece of work as §8, not left to
 surface as a live bug once a real claim path ships.
-
-**The `discover_creator_rail_v1` in-code comments are stale on both
-platforms.** They claim the rail "self-hides when the `creators` table is
-empty," which stopped being true the moment the seed migration populated
-that table. This doesn't change behaviour, but it's worth a cleanup pass
-so a future reader isn't misled about why the rail is visible.
 
 **DMCA agent registration status is incorporation-dependent and owned
 outside the codebase.** Anyone describing the import/DMCA posture as fully

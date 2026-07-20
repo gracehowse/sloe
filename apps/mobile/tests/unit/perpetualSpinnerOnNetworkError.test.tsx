@@ -25,22 +25,32 @@ import { renderHook, waitFor } from "@testing-library/react-native";
 // Mock supabase so the `await supabase.from(...)` chain rejects.
 const supabaseFromMock = vi.fn();
 vi.mock("@/lib/supabase", () => ({
-  supabase: { from: supabaseFromMock },
+  supabase: {
+    from: supabaseFromMock,
+    rpc: vi.fn().mockResolvedValue({ data: [], error: null }),
+  },
 }));
 
 // Mock the offline cache so we can drive the warm-start path
 // deterministically (a populated library that must survive a failed
 // network fetch). vi.hoisted keeps the mock fns referenceable from the
 // hoisted vi.mock factory.
-const { getCachedSavedRecipesMock, cacheSavedRecipesMock } = vi.hoisted(() => ({
+const {
+  getCachedDiscoverRecipesMock,
+  getCachedSavedRecipesMock,
+  cacheDiscoverRecipesMock,
+  cacheSavedRecipesMock,
+} = vi.hoisted(() => ({
+  getCachedDiscoverRecipesMock: vi.fn(),
   getCachedSavedRecipesMock: vi.fn(),
+  cacheDiscoverRecipesMock: vi.fn(),
   cacheSavedRecipesMock: vi.fn(),
 }));
 vi.mock("@/lib/offlineCache", () => ({
   getCachedSavedRecipes: getCachedSavedRecipesMock,
   cacheSavedRecipes: cacheSavedRecipesMock,
-  getCachedDiscoverRecipes: vi.fn().mockResolvedValue(null),
-  cacheDiscoverRecipes: vi.fn().mockResolvedValue(undefined),
+  getCachedDiscoverRecipes: getCachedDiscoverRecipesMock,
+  cacheDiscoverRecipes: cacheDiscoverRecipesMock,
 }));
 
 // Stub the modules `useSavedLibraryRecipes` pulls in so the hook can
@@ -66,7 +76,9 @@ beforeEach(() => {
   // Default: no warm cache (cold load) so the existing spinner-regression
   // assertions keep exercising the no-data path.
   getCachedSavedRecipesMock.mockReset().mockResolvedValue(null);
+  getCachedDiscoverRecipesMock.mockReset().mockResolvedValue(null);
   cacheSavedRecipesMock.mockReset().mockResolvedValue(undefined);
+  cacheDiscoverRecipesMock.mockReset().mockResolvedValue(undefined);
   process.on("unhandledRejection", swallowNetworkRejection);
 });
 
@@ -209,5 +221,65 @@ describe("useSavedLibraryRecipes — perpetual spinner regression", () => {
     await waitFor(() => expect(result.current.refreshing).toBe(false), {
       timeout: 2000,
     });
+  });
+});
+
+describe("useDiscoverRecipes — retired catalogue cache", () => {
+  it("does not mix superseded seed cards back into the approved catalogue", async () => {
+    getCachedDiscoverRecipesMock.mockResolvedValue([
+      {
+        id: "seed-v2-mediterranean-classic-greek-salad",
+        title: "Classic Greek Salad",
+        feedSource: "catalog",
+      },
+      {
+        id: "community-1",
+        title: "Community Soup",
+        image: "https://cdn.example.com/community-soup.jpg",
+        servings: 4,
+        calories: 380,
+        protein: 18,
+        carbs: 42,
+        fat: 14,
+        prepTimeMin: 10,
+        cookTimeMin: 30,
+        feedSource: "community",
+      },
+      {
+        id: "community-no-photo",
+        title: "Photo-less Community Soup",
+        image: null,
+        servings: 4,
+        calories: 380,
+        protein: 18,
+        carbs: 42,
+        fat: 14,
+        prepTimeMin: 10,
+        cookTimeMin: 30,
+        feedSource: "community",
+      },
+    ]);
+    supabaseFromMock.mockImplementation(() => ({
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue({
+        data: null,
+        error: { message: "Network request failed" },
+      }),
+    }));
+
+    const { useDiscoverRecipes } = await import("@/lib/recipes");
+    const { result } = renderHook(() => useDiscoverRecipes());
+
+    await waitFor(() => expect(result.current.loading).toBe(false), {
+      timeout: 1000,
+    });
+
+    const titles = result.current.recipes.map((recipe) => recipe.title);
+    expect(titles).not.toContain("Classic Greek Salad");
+    expect(titles).not.toContain("Photo-less Community Soup");
+    expect(titles).toContain("Butter Bean Shakshuka");
+    expect(titles).toContain("Community Soup");
   });
 });

@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "generationMode": "OpenAI built-in image generation",
+  "selectionPolicy": "Only photographs explicitly described by Grace as good, mostly good, great, amazing or perfect are included.",
+  "promptProfile": {
+    "useCase": "photorealistic-natural Sloe Kitchen recipe hero",
+    "creativeBaseline": "Miso Salmon Rice Bowl: believable food, soft directional window light, tactile ceramic and stone or linen, restrained props and a premium independent food-magazine mood.",
+    "foodRule": "Every visible component must be named in the dish brief, physically plausible, accurately cooked and reproducible by the paired recipe.",
+    "surfaceRule": "Natural ingredient-scale texture only; avoid global speckling, repeated dots, pebble or scale patterns, fake seasoning crust, over-sharpening and plastic sheen.",
+    "framingRule": "Square card-and-hero crop, plausible serving size, no people, hands, packaging, logos, text or watermark.",
+    "dishBriefSource": "catalogue.json"
+  },
+  "assets": [
+    { "slug": "butter-bean-shakshuka", "sourceArtifact": "exec-690232dc-1801-45d2-80e8-3665448e6047.png", "approval": "great" },
+    { "slug": "halloumi-lentil-roast-veg-salad", "sourceArtifact": "exec-7d92eb70-bb77-4a17-99ae-c10453d2b216.png", "approval": "great" },
+    { "slug": "harissa-salmon-herb-couscous", "sourceArtifact": "exec-7b36b4bc-a0e4-4925-9d3c-22466b4d2774.png", "approval": "great" },
+    { "slug": "miso-salmon-rice-bowl", "sourceArtifact": "exec-1b104538-4194-4d45-b074-57e179d9a310.png", "approval": "perfect" },
+    { "slug": "tomato-butter-bean-orzo", "sourceArtifact": "exec-53b536fc-da76-46bb-b828-9244b9fab9e2.png", "approval": "good; corrected to remove an artificial background basil sprig" },
+    { "slug": "prawn-saganaki-feta", "sourceArtifact": "exec-355a6aac-34f8-4730-90bd-183175e0e3b1.png", "approval": "good" },
+    { "slug": "green-herb-falafel-bowl", "sourceArtifact": "exec-4b868c29-0467-4d69-a7dc-16a3911276a1.png", "approval": "good" },
+    { "slug": "crispy-tofu-peanut-noodles", "sourceArtifact": "exec-ff17a032-ce1c-48ad-aa62-672bc3c91ab0.png", "approval": "good" },
+    { "slug": "ginger-chicken-udon", "sourceArtifact": "exec-96e5ec6e-1235-49da-b672-b6fd087a8e9e.png", "approval": "good" },
+    { "slug": "gochujang-turkey-meatballs", "sourceArtifact": "exec-9778e27f-0346-4ad5-bbfe-d9c40ff77bb2.png", "approval": "mostly good; accepted with naturally hand-rolled recipe instruction" },
+    { "slug": "thai-basil-beef-rice", "sourceArtifact": "exec-ee7406e3-b6eb-415c-a7d7-9910d06d402a.png", "approval": "amazing" },
+    { "slug": "sesame-soba-edamame-salad", "sourceArtifact": "exec-085daaa2-4c56-481f-81b7-309d846bf159.png", "approval": "amazing" },
+    { "slug": "coconut-lime-chicken-curry", "sourceArtifact": "exec-5e263288-b340-431b-bbb9-bf98bbdedcd7.png", "approval": "amazing" },
+    { "slug": "soy-ginger-cod-bok-choy", "sourceArtifact": "exec-c6f56c67-f74c-4648-8aca-fbc46fab9551.png", "approval": "amazing" },
+    { "slug": "kimchi-fried-rice-eggs", "sourceArtifact": "exec-7be54b75-fc9b-4757-84f3-65a6794e0bcf.png", "approval": "amazing" },
+    { "slug": "mango-prawn-rice-bowl", "sourceArtifact": "exec-f4ca782f-5d63-4da7-8d1c-526330b46767.png", "approval": "amazing" },
+    { "slug": "huevos-rancheros-black-beans", "sourceArtifact": "exec-d43770cf-1a49-4f47-8cc6-34614b7306cb.png", "approval": "good" },
+    { "slug": "chicken-tinga-rice-bowl", "sourceArtifact": "exec-ed69adc1-06a2-414d-9f43-80744490fec3.png", "approval": "good" }
+  ]
+}

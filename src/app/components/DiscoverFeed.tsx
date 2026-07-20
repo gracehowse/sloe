@@ -135,9 +135,9 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   });
   const [collections] = useState<CollectionRow[]>(() => loadCollections());
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
-  // ENG-1225 #14 — v3 creator rail + featured hero behind the NEW default-OFF
-  // `discover_creator_rail_v1` (dark pending Grace's SEE; real creators win, else
-  // a seeded set when the `creators` table is empty). Mobile parity: discover.tsx.
+  // ENG-1225 #14 — genuine-creator rail + featured hero. ENG-1535 retired the
+  // synthetic launch personas, so the rail self-hides until real rows exist.
+  // Mobile parity: discover.tsx.
   const creatorRailEnabled = isFeatureEnabled("discover_creator_rail_v1");
   const creatorRail = useTopCreators((c) => router.push(`/creator/${c.id}`));
   // ENG-921 (2026-06-07) — CATEGORY filters per Figma `528:2`
@@ -476,7 +476,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             </button>
           ) : null}
         </div>
-
+        {showClusterCarousels ? <DiscoverQuickWeeknight placement="first" recipes={recipes} onPressRecipe={(r) => setSelectedRecipe(r)} /> : null}
         {/* Creator rail + featured hero (ENG-1225 #14) — both self-gate on
             `discover_creator_rail_v1` (hero also needs the default view; `md+`). */}
         <div className="mt-4 pl-4 pr-2 md:pl-0 md:pr-0">{creatorRail}</div>
@@ -603,7 +603,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
         {/* ENG-1225 Block 6 — Quick weeknight + Collections above the clusters (flag-gated; mobile parity). */}
         {showClusterCarousels ? (
           <>
-            <DiscoverQuickWeeknight recipes={recipes} onPressRecipe={(r) => setSelectedRecipe(r)} />
+            <DiscoverQuickWeeknight placement="legacy" recipes={recipes} onPressRecipe={(r) => setSelectedRecipe(r)} />
             <DiscoverCollections recipes={recipes} onSelectCategory={setCategory} />
           </>
         ) : null}

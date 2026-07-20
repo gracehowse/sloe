@@ -1,7 +1,7 @@
 /**
- * Discover cluster carousels — pin the Wave 4 (2026-05-02) seed
- * expansion: Discover renders 5 horizontal carousels, one per cuisine
- * cluster (Mediterranean → Asian → Latin → Comfort → Healthy bowls).
+ * Discover cluster carousels — pin the founder-approved Sloe Kitchen
+ * collection: Discover renders one horizontal carousel per populated
+ * cluster (Mediterranean → Asian → Latin).
  *
  * Web `DiscoverFeed.tsx` reads from the shared `seedRecipesV2` source,
  * groups entries by cluster, and renders a header above each horizontal
@@ -32,13 +32,11 @@ const ORDERED_CLUSTERS = [
   "mediterranean",
   "asian",
   "latin",
-  "comfort",
-  "healthy-bowls",
 ] as const;
 
-describe("Discover cluster carousels (Wave 4 — 2026-05-02)", () => {
-  describe("seed metadata declares all 5 clusters in the canonical order", () => {
-    it("SEED_CLUSTERS has the 5 expected ids in reading order", () => {
+describe("Discover cluster carousels (Sloe Kitchen v1)", () => {
+  describe("seed metadata declares the populated clusters in canonical order", () => {
+    it("SEED_CLUSTERS has the 3 expected ids in reading order", () => {
       expect(SEED_CLUSTERS.map((c) => c.id)).toEqual([...ORDERED_CLUSTERS]);
     });
 
@@ -96,7 +94,7 @@ describe("Discover cluster carousels (Wave 4 — 2026-05-02)", () => {
   });
 
   describe("cross-platform parity", () => {
-    it("both platforms reference all 5 cluster ids", () => {
+    it("both platforms reference all populated cluster ids", () => {
       // The cluster ids never appear hard-coded in JSX — they come
       // from SEED_CLUSTERS — but the cluster-recovery fallback
       // walks the SEED_CLUSTERS array, so the canonical ids must

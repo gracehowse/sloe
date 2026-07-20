@@ -19,7 +19,7 @@
  * `auth.uid() = author_id` on every INSERT), carrying the seed's title/
  * macros/ingredients/steps across so the row is immediately full-featured
  * (loggable, plannable, editable) rather than a stub. Provenance is kept
- * via `source_name = "Suppr Kitchen"` (matches the seed's own
+ * via `source_name = "Sloe Kitchen"` (matches the seed's own
  * `attribution.author`) with `source_url: null` — this is first-party
  * content per `docs/decisions/2026-04-27-onboarding-seed-copyright-review.md`,
  * not an external import, so there is no source link to preserve.
@@ -29,7 +29,7 @@
  * is no DB-level uniqueness guard for first-party rows — adding one is
  * out of scope for this bounded fix. Instead this does a check-then-insert
  * keyed on (`author_id`, `title`, `content_origin = 'first_party'`,
- * `source_name = 'Suppr Kitchen'`); every seed title in the catalogue is
+ * `source_name = 'Sloe Kitchen'`); every seed title in the catalogue is
  * unique (pinned by the "seed titles are unique" assertion in this
  * module's test), so a title match reliably means "this user already
  * has their own copy of this exact seed" and the existing row is reused
@@ -49,9 +49,9 @@ import type { SeedRecipe } from "./seedRecipesV2";
 import { findSeedRecipeById, SEED_RECIPES_V2 } from "./seedRecipesV2";
 import { IMPORT_ERROR_COPY, mapPersistenceError } from "./importErrorCopy";
 
-/** Suppr-owned first-party provenance label — matches every seed's
+/** Sloe-owned first-party provenance label — matches every seed's
  *  `attribution.author` in `seedRecipesV2.ts`. */
-const SEED_SOURCE_NAME = "Suppr Kitchen";
+const SEED_SOURCE_NAME = "Sloe Kitchen";
 
 /**
  * RFC-4122-shaped UUID check (any version/variant — Postgres `uuid`
@@ -160,8 +160,8 @@ export async function materialiseSeedRecipe(
       carbs: Math.round(seed.carbsG),
       fat: Math.round(seed.fatG),
       fiber_g: Math.round(seed.fiberG),
-      sugar_g: 0,
-      sodium_mg: 0,
+      sugar_g: Math.round(seed.sugarG),
+      sodium_mg: Math.round(seed.sodiumMg),
     })
     .select("id")
     .single();
@@ -190,8 +190,8 @@ export async function materialiseSeedRecipe(
     name: ing.name,
     amount: ing.grams,
     unit: "g",
-    // Recipe-level totals are the seed's authored estimate (see the
-    // module doc in seedRecipesV2.ts); per-ingredient macros are not
+    // Recipe-level totals are verifier-generated (see the module doc in
+    // seedRecipesV2.ts); per-ingredient macros are not
     // part of the seed shape, so ingredient rows carry name + grams
     // only. Logging from the materialised recipe still runs through the
     // standard ingredient-matching pipeline at log time — unchanged

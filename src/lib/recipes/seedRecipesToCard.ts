@@ -67,7 +67,7 @@ function fmtMin(n: number | null): string {
  * One seed entry → one RecipeCard-shaped object. Idempotent + pure.
  *
  * Attribution carry-over: the wire `creatorName` is set to
- * `attribution.author` ("Suppr Kitchen") so the per-row provenance
+ * `attribution.author` ("Sloe Kitchen") so the per-row provenance
  * declared in `seedRecipesV2.ts` reaches the Discover card byline
  * verbatim. Don't substitute a different label here; that would
  * silently desync the on-card byline from the recorded provenance
@@ -75,7 +75,7 @@ function fmtMin(n: number | null): string {
  */
 export function seedToRecipeCard(seed: SeedRecipe): SeedRecipeCard {
   // Curated avatar — neutral placeholder so the card byline reads
-  // "Suppr Kitchen" without surfacing a real user identity. The
+  // "Sloe Kitchen" without surfacing a real user identity. The
   // avatar is a 1x1 transparent GIF; Discover renders the byline
   // text and the icon only when an avatar is present.
   const NEUTRAL_AVATAR =

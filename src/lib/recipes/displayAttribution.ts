@@ -13,17 +13,10 @@
  * cleaning up the seed data in the DB would invalidate user-attached
  * imports that legitimately use the same string.
  *
- * 2026-06-08 (rebrand display remap): the curated seed records its
- * prose author as the LEGAL string "Suppr Kitchen" — that's the
- * copyright/IP provenance pinned by `discoverSeedCopyright.test.ts`
- * (path-1/path-2 contract) and must NOT be renamed in the seed data.
- * But the live brand is Sloe, so a card byline reading "Suppr Kitchen"
- * is stale on the user-facing surface. We remap the brand at the
- * display boundary ONLY: the recorded `attribution.author` stays
- * "Suppr Kitchen" (legal), the rendered byline calms to "Sloe
- * Kitchen". Same pattern as the internal-seed filtering above — the
- * fix lives at render, never in the data. Covers web + mobile because
- * both Discover/Library feeds route their byline through this helper.
+ * 2026-06-08 (rebrand display remap): legacy materialised rows can still
+ * carry the old "Suppr Kitchen" source. Calm those historical rows to
+ * "Sloe Kitchen" at display time. The current static catalogue records
+ * "Sloe Kitchen" directly; both paths therefore render one byline.
  */
 
 const INTERNAL_SEED_SOURCES: ReadonlySet<string> = new Set([
@@ -38,9 +31,8 @@ const INTERNAL_SEED_SOURCES: ReadonlySet<string> = new Set([
 /**
  * Stale brand strings → live brand, applied at the display boundary.
  * Keyed lowercase; the value preserves the user-facing casing. Keep
- * this list tiny and exact — it is a rebrand calm-over, not a general
- * find/replace. The legal `attribution.author` field is untouched (see
- * the module note + `discoverSeedCopyright.test.ts`).
+ * this list tiny and exact — it is a legacy-data calm-over, not a general
+ * find/replace.
  */
 const BRAND_DISPLAY_REMAP: ReadonlyMap<string, string> = new Map([
   ["suppr kitchen", "Sloe Kitchen"],

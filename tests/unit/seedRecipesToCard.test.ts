@@ -27,7 +27,7 @@ describe("seedRecipesToCard", () => {
     expect(card.carbs).toBe(seed.carbsG);
     expect(card.fat).toBe(seed.fatG);
     expect(card.fiberG).toBe(seed.fiberG);
-    expect(card.creatorName).toBe("Suppr Kitchen");
+    expect(card.creatorName).toBe("Sloe Kitchen");
     expect(card.feedSource).toBe("catalog");
     expect(card.isVerified).toBe(true);
   });

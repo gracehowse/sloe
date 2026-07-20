@@ -58,7 +58,6 @@
     "apps/mobile/components/Digest.tsx": 2,
     "apps/mobile/components/DigestBlended.tsx": 3,
     "apps/mobile/components/discover/DiscoverClusterCarousels.tsx": 1,
-    "apps/mobile/components/discover/DiscoverQuickWeeknight.tsx": 1,
     "apps/mobile/components/food-log/ServingStepper.tsx": 1,
     "apps/mobile/components/HouseholdCard.tsx": 1,
     "apps/mobile/components/import/ImportProgressDrawer.tsx": 5,

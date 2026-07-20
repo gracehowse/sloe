@@ -4,13 +4,25 @@
  * section. Pins the flag + empty gating, the quick-recipe derivation, the card
  * meta, and the onPress wiring.
  */
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render } from "@testing-library/react-native";
 
-const isFeatureEnabled = vi.fn(() => true);
-vi.mock("@/lib/analytics", () => ({ isFeatureEnabled: () => isFeatureEnabled() }));
+const featureFlags = vi.hoisted(() => ({
+  values: new Map<string, boolean>(),
+}));
+const recipeCardImage = vi.hoisted(() => vi.fn((_props: unknown) => null));
+
+vi.mock("@/lib/analytics", () => ({
+  isFeatureEnabled: (flag: string) => featureFlags.values.get(flag) ?? false,
+}));
+vi.mock("@/components/library/RecipeCardImage", () => ({
+  RecipeCardImage: (props: unknown) => recipeCardImage(props),
+}));
 vi.mock("@/hooks/use-theme-colors", () => ({
   useThemeColors: () => ({
+    backgroundSecondary: "#F8F4F0",
+    card: "#FFFFFF",
+    primaryForeground: "#FFFFFF",
     text: "#221B26",
     textSecondary: "#6A6072",
     textTertiary: "#9B93A3",
@@ -48,12 +60,25 @@ const rc = (id: string, o: Partial<RecipeCard> = {}): RecipeCard =>
   }) as RecipeCard;
 
 describe("DiscoverQuickWeeknight", () => {
-  it("renders quick recipes with meta + fires onPress", () => {
+  beforeEach(() => {
+    featureFlags.values.clear();
+    featureFlags.values.set("sloe_v3_discover_editorial", true);
+    featureFlags.values.set("discover_photographic_first_view_v1", true);
+    recipeCardImage.mockClear();
+  });
+
+  it("renders real recipe media with meta + fires onPress", () => {
     const onPressRecipe = vi.fn();
-    const { getByText, getByLabelText } = render(
+    const { getByText, getByLabelText, getByTestId } = render(
       <DiscoverQuickWeeknight
         recipes={[
-          rc("Egg wrap", { calories: 360, protein: 22, prepTimeMin: 3, cookTimeMin: 4 }),
+          rc("Egg wrap", {
+            image: "https://example.com/egg-wrap.jpg",
+            calories: 360,
+            protein: 22,
+            prepTimeMin: 3,
+            cookTimeMin: 4,
+          }),
           rc("Slow stew", { prepTimeMin: 20, cookTimeMin: 40 }), // not quick → dropped
         ]}
         onPressRecipe={onPressRecipe}
@@ -62,8 +87,26 @@ describe("DiscoverQuickWeeknight", () => {
     expect(getByText("Quick weeknight")).toBeTruthy();
     expect(getByText("Egg wrap")).toBeTruthy();
     expect(getByText("360 kcal · 22g · 7 min")).toBeTruthy();
+    expect(getByTestId("quick-weeknight-photo-Egg wrap")).toBeTruthy();
+    expect(recipeCardImage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        uri: "https://example.com/egg-wrap.jpg",
+        recipeId: "Egg wrap",
+      }),
+    );
     fireEvent.press(getByLabelText(/Egg wrap/));
     expect(onPressRecipe).toHaveBeenCalledWith(expect.objectContaining({ id: "Egg wrap" }));
+  });
+
+  it("restores the legacy tint card when the photographic flag is off", () => {
+    featureFlags.values.set("discover_photographic_first_view_v1", false);
+    const { getByTestId, queryByTestId } = render(
+      <DiscoverQuickWeeknight recipes={[rc("Egg wrap")]} onPressRecipe={() => {}} />,
+    );
+
+    expect(getByTestId("quick-weeknight-tint-Egg wrap")).toBeTruthy();
+    expect(queryByTestId("quick-weeknight-photo-Egg wrap")).toBeNull();
+    expect(recipeCardImage).not.toHaveBeenCalled();
   });
 
   it("renders nothing when there are no quick recipes", () => {
@@ -77,7 +120,7 @@ describe("DiscoverQuickWeeknight", () => {
   });
 
   it("renders nothing when the flag is off", () => {
-    isFeatureEnabled.mockReturnValueOnce(false);
+    featureFlags.values.set("sloe_v3_discover_editorial", false);
     const { queryByText } = render(
       <DiscoverQuickWeeknight recipes={[rc("Egg wrap")]} onPressRecipe={() => {}} />,
     );

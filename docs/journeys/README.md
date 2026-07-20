@@ -110,9 +110,9 @@ takedown/report path.
 
 **Reading path:** [`discover-and-library.md`](./discover-and-library.md) (creator byline / rail) → [`creator-platform.md`](./creator-platform.md) → [`import-recipe.md`](./import-recipe.md) (attribution/legal on imported recipes)
 
-**Read the Open risk section of `creator-platform.md` first:** the live
-creator platform is populated only by seeded launch-partner personas with
-zero real recipes — there is no real-creator publish path yet.
+**Current posture:** ENG-1535 removed the seeded launch-partner personas, so
+the creator rail is hidden until genuine creator rows exist. There is still no
+real-creator publish/claim path.
 
 ### 13. Cross-Device Entry Loop (Shortcuts, Widgets, Deep Links)
 Power-user entry points that skip the app UI entirely — Siri Shortcuts /
@@ -155,7 +155,7 @@ Plan, Progress, and Coach on next read.
 | Cookbook import (PDF, batch) | [import-cookbook.md](./import-cookbook.md) | No dedicated Maestro/Playwright/Vitest coverage — a known gap |
 | Ingredient verify | [verify-ingredients.md](./verify-ingredients.md) | Maestro `26_recipe_verify` (manual suite — gated) |
 | Discover & Library (browse, save, Recipe Detail, Cook Mode, Batch Cook) | [discover-and-library.md](./discover-and-library.md) | Maestro `12_library`, `11_discover`, `05_recipe_detail`, `00e1_recipe_detail`, `17_cook_mode`, `00e3_cook_active`; no dedicated Batch Cook Maestro flow — see doc's Open questions |
-| Creator & Social loop (creator profile, follow/unfollow, import legal attribution, DMCA/report) | [creator-platform.md](./creator-platform.md) | No dedicated Maestro flow yet. **Read the Open risk section first: the live creator platform is entirely fabricated seed personas with no real-creator write path.** |
+| Creator & Social loop (creator profile, follow/unfollow, import legal attribution, DMCA/report) | [creator-platform.md](./creator-platform.md) | No dedicated Maestro flow yet. ENG-1535 removed the fabricated personas; the rail is real-only and hidden until genuine creator rows exist. A real-creator write/claim path is still not built. |
 | Progress / recap (includes weight, trajectory, goal) | [progress.md](./progress.md) | Maestro `07_progress`, `27_progress_metric` |
 | Shortcuts & widgets | [shortcuts-and-widgets.md](./shortcuts-and-widgets.md) | Partial — see doc |
 | Monetisation / paywall loop (trigger → checkout → webhook → entitlement → manage/cancel) | [monetisation-and-paywall.md](./monetisation-and-paywall.md) | Maestro `19_paywall`; Vitest `tests/unit/stripeCheckoutRoute.test.ts`, `tests/unit/entitlementReconcileJob.test.ts`, `apps/mobile/tests/unit/pollUntilEntitled.test.ts`, `apps/mobile/tests/unit/cancelExportPromptSheet.test.tsx` |

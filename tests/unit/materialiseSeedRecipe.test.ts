@@ -96,7 +96,7 @@ describe("isUuid", () => {
   });
 
   it("rejects seed slug ids and other non-UUID strings", () => {
-    expect(isUuid("seed-v2-mediterranean-greek-salad")).toBe(false);
+    expect(isUuid("seed-v2-mediterranean-butter-bean-shakshuka")).toBe(false);
     expect(isUuid("not-a-uuid")).toBe(false);
     expect(isUuid("")).toBe(false);
     expect(isUuid(null)).toBe(false);
@@ -124,7 +124,9 @@ describe("materialiseSeedRecipe — fresh materialisation", () => {
     expect(payload.title).toBe(seed.title);
     expect(payload.published).toBe(false);
     expect(payload.content_origin).toBe("first_party");
-    expect(payload.source_name).toBe("Suppr Kitchen");
+    expect(payload.source_name).toBe("Sloe Kitchen");
+    expect(payload.sugar_g).toBe(Math.round(seed.sugarG));
+    expect(payload.sodium_mg).toBe(Math.round(seed.sodiumMg));
     // RLS (`recipes_insert_own`) requires auth.uid() = author_id — never
     // null, even though the seed catalogue itself has no user owner.
     expect(payload.author_id).toBeTruthy();

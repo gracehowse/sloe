@@ -93,4 +93,38 @@ describe("loadTopCreators", () => {
     };
     expect(await loadTopCreators(supabase)).toEqual([]);
   });
+
+  it("drops the retired synthetic personas but keeps genuine creator rows", async () => {
+    const supabase = {
+      rpc: vi.fn().mockResolvedValue({
+        data: [
+          {
+            id: "a1000001-0001-4000-8000-000000000002",
+            handle: "marcuscooks",
+            display_name: "Marcus Chen",
+            avatar_url: null,
+            saves: 0,
+          },
+          {
+            id: "d2461bc3-3118-46a5-90df-462cf9a87e33",
+            handle: "realcook",
+            display_name: "Real Cook",
+            avatar_url: "https://example.com/avatar.jpg",
+            saves: 4,
+          },
+        ],
+        error: null,
+      }),
+    };
+
+    expect(await loadTopCreators(supabase)).toEqual([
+      {
+        id: "d2461bc3-3118-46a5-90df-462cf9a87e33",
+        handle: "realcook",
+        displayName: "Real Cook",
+        avatarUrl: "https://example.com/avatar.jpg",
+        bio: null,
+      },
+    ]);
+  });
 });
