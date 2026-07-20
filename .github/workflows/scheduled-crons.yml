@@ -24,6 +24,11 @@
 #                                                Stripe truth when a webhook is missed;
 #                                                :30 avoids colliding with the hourly and
 #                                                06:00 ticks above)
+#   0 9 * * 1  → /api/cron/testflight-expiry-check (weekly, Monday 09:00 UTC — ENG-1414
+#                                                PRA-015/IM-16 "Alarm 10": polls the App
+#                                                Store Connect API for the newest
+#                                                TestFlight build's 90-day expirationDate,
+#                                                alerting to Sentry when <21 days remain)
 
 name: Scheduled crons
 
@@ -34,6 +39,7 @@ on:
     - cron: "0 6 * * *"
     - cron: "0 7 * * *"
     - cron: "30 */6 * * *"
+    - cron: "0 9 * * 1"
   workflow_dispatch:
     inputs:
       target:
@@ -46,6 +52,7 @@ on:
           - supabase-advisor-check
           - household-purge
           - entitlement-reconcile
+          - testflight-expiry-check
 
 concurrency:
   group: scheduled-crons-${{ github.event.schedule || inputs.target }}
@@ -68,6 +75,7 @@ jobs:
             "0 6 * * *"|"supabase-advisor-check")   echo "path=/api/cron/supabase-advisor-check" >> "$GITHUB_OUTPUT" ;;
             "0 7 * * *"|"household-purge")          echo "path=/api/cron/household-purge" >> "$GITHUB_OUTPUT" ;;
             "30 */6 * * *"|"entitlement-reconcile") echo "path=/api/cron/entitlement-reconcile" >> "$GITHUB_OUTPUT" ;;
+            "0 9 * * 1"|"testflight-expiry-check")  echo "path=/api/cron/testflight-expiry-check" >> "$GITHUB_OUTPUT" ;;
             "0 * * * *"|"weigh-in-reminder")        echo "path=/api/push/weigh-in-reminder" >> "$GITHUB_OUTPUT" ;;
             *) echo "Unknown trigger '${{ github.event.schedule || inputs.target }}'" >&2; exit 1 ;;
           esac

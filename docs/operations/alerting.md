@@ -189,11 +189,13 @@ fails loudly with a clear "SUPABASE_ACCESS_TOKEN is not set" message
 
 ### Alarm 10 — TestFlight build expiry
 
-- **Vendor:** App Store Connect (no native email)
-- **Trigger condition:** A TestFlight build's expiry date is **7 days** away with no successor build uploaded.
-- **Why:** Solo tester. If the only TestFlight build expires while Grace is heads-down on code, the cohort lapses for hours/days. Mid-Phase-1 this is annoying. Mid-Phase-3 (after public launch) it's still a coverage gap for the beta channel.
-- **Implementation sketch:** Vercel cron route hitting App Store Connect API for build list, filter `expirationDate < now + 7d`, email when one is hit and no newer build exists.
-- **Status:** Not yet wired.
+- **Vendor:** App Store Connect API (weekly poll) + Sentry (alert delivery — reuses Alarm 1's routing, no separate email wiring).
+- **Trigger condition:** The newest TestFlight build's `expirationDate` is **under 21 days** away (PRA-015's explicit threshold — revised from this section's original 7-day sketch to match the audit's recommendation), the build is already expired, or App Store Connect returns zero builds for the app.
+- **Why:** Solo tester. If the only TestFlight build expires while Grace is heads-down on code, the cohort lapses for hours/days. Before this was built, the only guard was a recurring 60-day calendar reminder (`docs/operations/founder-safety-net.md` §3) — a human process that fails exactly during a busy launch month or a 7-day absence, the two scenarios where it matters most.
+- **Route:** `Sentry.captureMessage` at `level: "error"`, fingerprinted per build version — lands in the same Sentry project as every other alarm, so Alarm 1's existing "new issue created" rule delivers it to `gracehowse@outlook.com` with no additional Sentry config.
+- **Implementation:** `POST /api/cron/testflight-expiry-check` (`app/api/cron/testflight-expiry-check/route.ts`, logic in `src/lib/server/testflightExpiryCheck.ts`), invoked weekly (Monday 09:00 UTC) by `.github/workflows/scheduled-crons.yml`, same `X-Cron-Secret` gate as every other scheduled cron. Signs a short-lived ES256 JWT (`ASC_KEY_ID` / `ASC_ISSUER_ID` / `ASC_PRIVATE_KEY`) and calls `GET /v1/builds?filter[app]=ASC_APP_ID&sort=-uploadedDate&limit=1`.
+- **Status:** **Built** (2026-07-20, ENG-1414/PRA-015). **Not yet armed** — the four `ASC_*` credentials are not provisioned in Vercel production yet, so the route clean-skips (`200 {"skipped":"app_store_connect_not_configured"}`) rather than alerting. Provisioning steps: [`docs/decisions/2026-07-20-eng1414-production-readiness-hardening-tail.md`](../decisions/2026-07-20-eng1414-production-readiness-hardening-tail.md). Until provisioned, the 60-day calendar reminder in `founder-safety-net.md` §3 remains the live guard — do not remove it.
+- **Test procedure:** unit tests (`tests/unit/testflightExpiryCheckRoute.test.ts`) cover the day-math, alert-trigger threshold, and clean-skip path with mocked ASC responses. End-to-end test once credentials are provisioned: `gh workflow run scheduled-crons.yml -f target=testflight-expiry-check`, then confirm the run's response body and (if a build is genuinely <21 days out) a new Sentry issue.
 
 ---
 

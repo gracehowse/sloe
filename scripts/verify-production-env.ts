@@ -125,6 +125,30 @@ if (!vapidConfigured) {
   );
 }
 
+// 2026-07-20 (ENG-1414, PRA-015/IM-16) — App Store Connect API credentials
+// for the weekly TestFlight build-expiry alarm (/api/cron/testflight-expiry-check).
+// Same four env vars scripts/fetch-testflight-feedback.mjs already uses for
+// this API — see that script + src/lib/server/testflightExpiryCheck.ts for
+// where to generate the key. Optional, like VAPID/FatSecret above: the route
+// clean-skips (200) rather than failing when unset, so this is advisory only.
+const ascKeyId = process.env.ASC_KEY_ID;
+const ascIssuerId = process.env.ASC_ISSUER_ID;
+const ascPrivateKey = process.env.ASC_PRIVATE_KEY;
+const ascAppId = process.env.ASC_APP_ID;
+const ascConfigured = has(ascKeyId) && has(ascIssuerId) && has(ascPrivateKey) && has(ascAppId);
+line(
+  ascConfigured,
+  "App Store Connect API (TestFlight expiry alarm)",
+  ascConfigured
+    ? "configured (ASC_KEY_ID + ASC_ISSUER_ID + ASC_PRIVATE_KEY + ASC_APP_ID)"
+    : "missing — the weekly testflight-expiry-check cron clean-skips instead of alerting",
+);
+if (!ascConfigured) {
+  console.log(
+    "[--] TestFlight expiry alarm: generate an App Store Connect API key (Users and Access → Keys) and set ASC_KEY_ID + ASC_ISSUER_ID + ASC_PRIVATE_KEY (inline PEM) + ASC_APP_ID in Vercel prod — see docs/decisions/2026-07-20-eng1414-production-readiness-hardening-tail.md.",
+  );
+}
+
 console.log("");
 console.log("Stripe Dashboard: create endpoint POST /api/stripe/webhook with events:");
 console.log("  checkout.session.completed, customer.subscription.created, customer.subscription.updated, customer.subscription.deleted");
