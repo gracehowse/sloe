@@ -6,7 +6,7 @@
  * Mirrors mobile `SettingsSloeProBanner`.
  */
 import Link from "next/link";
-import { Icons } from "../suppr/icons.tsx";
+import { Icons } from "../ui/icons";
 
 export function SettingsSloeProBanner({ isPro }: { isPro: boolean }) {
   const label = (
