@@ -287,7 +287,39 @@ If S4 happened because MCP `apply_migration` was used, the recovery path is **fi
 
 4. **Post-mortem if outage > 2h.** Add to Linear as a tail-risk follow-up. Re-evaluate whether multi-region readiness should jump priority for Phase 1.
 
-**Comms templates** for S2 / S7:
+### S8 — Apple Sign-In (SIWA) auth outage
+
+**Trigger:** Apple's Sign in with Apple service degrades or goes down. Symptom: `onAppleSignIn` (`apps/mobile/app/login.tsx`; mirrored in `apps/mobile/components/onboarding/steps/signup.tsx`) throws before or during `AppleAuthentication.signInAsync()`, or the returned identity token fails Supabase's `signInWithIdToken` verification. Users see the generic `formatAuthError` message — not a silent hang. **Triage in this order before assuming it's Apple:**
+
+1. Check [Apple System Status](https://developer.apple.com/system-status/) — component "Sign in with Apple." If it isn't flagged there, don't write S8 comms yet — check steps 2–3 first.
+2. Check [status.supabase.com](https://status.supabase.com) — component "Auth." A Supabase Auth degradation produces the identical user-facing symptom with zero Apple involvement.
+3. Check recent deploys/migrations touching auth — rule out S4 (bad migration) or S5 (broken deploy) masquerading as a vendor outage.
+4. **Known monitoring gap, stated honestly:** mobile Sentry telemetry is live (DSN shipped in `apps/mobile/app.json` — PRA-001/IM-03 fixed post-audit), but no dedicated alert rule exists yet for a SIWA-specific error spike; only the general "new issue / event spike" rule (Alarm 1, [`docs/operations/alerting.md`](../operations/alerting.md)) would catch it, with no SIWA-specific tagging. Until that's built, the practical detection signal is Apple's status page plus user/support reports.
+
+**Blast radius — split by user type. This is not a uniform 100% mobile lockout** (correcting the originating audit finding, which read that way):
+
+- **Returning mobile users are NOT blocked.** `apps/mobile/app/login.tsx` ships a full email/password + magic-link + password-reset flow that's always visible next to the Apple button — not gated behind Apple failing. "Continue with email" on the chooser (or landing there directly via "I already have an account") never calls Apple.
+- **Apple-only accounts (no password ever set) still recover.** Both "Forgot password" (`onSendPasswordReset`) and "Sign in with magic link" (`onSendMagicLink`) authenticate by email lookup against Supabase `auth.users`, not by original signup provider — so they work for an Apple-only account too, sent to whichever email Supabase has on file (the user's real address, or their Apple private-relay address if they chose "Hide My Email" — relay mail delivery is a separate Apple system from SIWA and not typically affected by a SIWA-specific outage).
+- **Brand-new mobile signups ARE fully blocked.** `apps/mobile/components/onboarding/steps/signup.tsx` is Apple-only by deliberate design (ENG-672, 2026-05-26 — the email field was removed on purpose: "Until real email sign-up ships, Apple Sign-In is surfaced as the single, honest path"). A user starting onboarding fresh during the outage has no on-device way to create an account.
+- **Web is unaffected either way.** `app/login/ui.tsx` offers Apple + email; `app/onboarding` (web signup) is email/password-only with no Apple dependency at all.
+
+**Response — this is (almost always) an outage on Apple's infrastructure, outside the team's control; the steps below are triage + comms, not a repair procedure:**
+
+1. **Triage first** (Trigger steps 1–3 above). Only send S8-specific comms once Apple's status page — or a clear pattern of Apple-only failures with Supabase and our own deploys clean — confirms this is Apple-side.
+
+2. **Comms — no new flag needed.** Flip the existing `dr-full-outage-banner` PostHog flag with S8-specific payload copy; the component already renders whatever `{ title, body }` the flag payload carries (§ Pre-Phase-1 checklist, `dr_full_outage_banner` row). Template below. **The reach caveat on that same checklist row carries over:** the banner is dark for mobile users who haven't consented to analytics — lead with status.suppr.club / X / Instagram, treat the in-app banner as a bonus surface, not the primary channel.
+   - Point returning users at "Continue with email" on the same screen — don't send them anywhere else.
+   - Point new users at signing up on suppr.app (web) as the interim path; a web-created account works immediately on mobile via the email login path once they open the app.
+
+3. **There is nothing to fix.** Do not disable the Apple button app-wide as a "fix" — that breaks the one path unaffected users still prefer once Apple recovers, and buys nothing (the button already fails with a visible, non-blocking error). The only engineering lever available during this scenario is the comms in step 2.
+
+4. **Monitor** Apple's status page. When "Sign in with Apple" clears, do one real end-to-end tap-test on a device/simulator before declaring recovery — Apple's status page has historically lagged actual service restoration.
+
+5. **Drop the banner; post recovery comms** (template below).
+
+6. **Post-incident, if the outage ran >2h:** pull `user_signed_up` counts from PostHog split by `method` (`apple` vs `email`) and `platform` (`mobile` vs `web`) for the outage window to size the actual new-signup loss. That number is the input to any future call on whether the ENG-672 Apple-only onboarding stance should grow an email fallback — not a decision to make mid-incident.
+
+**Comms templates** for S2 / S7 / S8:
 
 ```
 In-app banner (S2 — restoring):
@@ -295,6 +327,11 @@ In-app banner (S2 — restoring):
 
 In-app banner (S7 — vendor outage):
 "Suppr is temporarily down due to a Supabase outage. We're monitoring and will update at status.suppr.club."
+
+In-app banner (S8 — SIWA outage):
+"Sign in with Apple is temporarily down (Apple-side, not us). Already have
+an account? Tap 'Continue with email' to sign in. New here? Sign up at
+suppr.app on the web — your account works on the app too."
 
 Public post (S2 — full restore):
 "We're working through an unexpected database issue and restoring from
@@ -389,3 +426,4 @@ When every box is checked, the Blocker 2 row of the audit can be flipped to **Cl
 - Launch checklist: [`docs/launch/checklist.md`](../launch/checklist.md) — Phase 2 row dependencies
 - Project rule on migrations: [`.claude/CLAUDE.md`](../../.claude/CLAUDE.md) § Non-negotiable rules (S4 above cites this)
 - Product/parity coverage of the `dr_full_outage_banner` component itself (what it renders, the payload contract, platform-sync behaviour): [`docs/product/web-mobile-parity-scope.md`](../product/web-mobile-parity-scope.md) — "Disaster-recovery / degraded-mode banner" row. This runbook stays the source of truth for *when* to flip it and what to say; that doc covers *what the component does*.
+- S8's onboarding-vs-login auth split, and the stale `apps/mobile/CLAUDE.md` "no email/password" line it depends on reading past: [`docs/journeys/onboarding-to-first-log.md`](../journeys/onboarding-to-first-log.md) § Open product questions.
