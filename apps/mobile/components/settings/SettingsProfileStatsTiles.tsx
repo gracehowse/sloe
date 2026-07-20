@@ -2,7 +2,7 @@
  * Settings Recipes/Streak tile row — only when BOTH stats are non-zero
  * (ENG-1614). A lone stat folds into the profile subline instead.
  */
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { Spacing } from "@/constants/theme";
 import { TILE_RADIUS } from "@/components/ui/SupprCard";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -35,10 +35,11 @@ export function SettingsProfileStatsTiles({
             ? accentColor
             : streakColor;
         return (
-          <Pressable
+          <View
             key={tile.kind}
             // One-card-treatment (2026-06-09): page-ground soft card chrome;
-            // accent lives in the numeral, not the border.
+            // accent lives in the numeral, not the border. Non-interactive
+            // (View, not Pressable) — display-only stats.
             style={[
               {
                 flex: 1,
@@ -62,7 +63,7 @@ export function SettingsProfileStatsTiles({
             >
               {tile.label}
             </Text>
-          </Pressable>
+          </View>
         );
       })}
     </View>
