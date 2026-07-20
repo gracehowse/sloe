@@ -92,6 +92,10 @@ import { getSupprWebBase } from "@/lib/supprWeb";
 import { probeHealthAccess } from "@/lib/healthSync";
 import { settingsRoute } from "@/lib/settingsRoute";
 import { nukeAllUserAppData } from "@suppr/shared/account/nukeAccountData";
+import {
+  formatSettingsProfileSubline,
+  resolveSettingsProfileStatsPresentation,
+} from "@suppr/shared/settings/settingsProfileStats";
 import { normaliseDietaryFromProfile } from "../../../../src/constants/dietaryPreferences";
 import { saveWeekStartDay } from "@suppr/nutrition-core/weekStartDayClient";
 import {
@@ -1337,6 +1341,21 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   // `userTier === "base"` rows render as "Free". Drives both the profile
   // plan label ("Free plan" / "Pro plan") and the Sloe Pro banner action.
   const tierLabel = profileData.userTier === "pro" ? "Pro" : "Free";
+  const profileStatsPresentation = useMemo(
+    () =>
+      resolveSettingsProfileStatsPresentation({
+        savedCount: profileData.savedCount,
+        streak: profileData.streak,
+      }),
+    [profileData.savedCount, profileData.streak],
+  );
+  const profileSubline = formatSettingsProfileSubline(
+    {
+      email: session?.user?.email,
+      planLabel: tierLabel === "Pro" ? "Pro plan" : "Free plan",
+    },
+    profileStatsPresentation,
+  );
 
   return (
     <>
@@ -1396,12 +1415,14 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             {displayName}
           </Text>
           <Text
+            testID="settings-profile-subline"
             style={{ fontSize: 14, color: colors.textSecondary, marginTop: 2 }}
-            numberOfLines={1}
+            numberOfLines={2}
           >
-            {/* v3 prototype: "email · plan" (ENG-1247). */}
-            {session?.user?.email ? `${session.user.email} · ` : ""}
-            {tierLabel === "Pro" ? "Pro plan" : "Free plan"}
+            {/* v3 prototype: "email · plan" (ENG-1247). A lone Recipes or
+                Streak stat folds inline here instead of a full-width orphan
+                tile (ENG-1614). */}
+            {profileSubline}
           </Text>
         </View>
       </Pressable>
@@ -1415,54 +1436,55 @@ export function SettingsBundleContent({ context }: { context: Context }) {
 
       {/* Stats strip — Recipes / Streak.
           Audit 2026-05-22 subtractive: hide tiles whose value is zero
-          (and the whole row if both are zero). "0 Recipes · — Streak"
-          on a brand-new account read as dead chrome — two tiles
-          shouting nothing. Tiles reappear individually as the user
-          accumulates a streak or saves a recipe, so the row earns its
-          space rather than reserving it pre-emptively. */}
-      {(profileData.savedCount > 0 || profileData.streak > 0) ? (
-        <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
-          {(
-            [
-              profileData.savedCount > 0
-                ? [String(profileData.savedCount), profileData.savedCount === 1 ? "Recipe" : "Recipes", semanticStatRoles ? colors.text : t.accent]
-                : null,
-              profileData.streak > 0
-                ? [String(profileData.streak), "Streak", semanticStatRoles ? colors.text : t.green]
-                : null,
-            ].filter((x): x is [string, string, string] => x !== null)
-          ).map(([v, l, c]) => (
-            <Pressable
-              key={l}
-              // One-card-treatment (2026-06-09): the stat tile sits on the
-              // page ground, so it takes the same soft card chrome as its
-              // siblings — standard card fill + soft lift — instead of the
-              // bespoke tinted-border inputBg chip that read as one-off
-              // "dead chrome" next to the lifted cards around it. The
-              // accent lives in the numeral, not the border.
-              style={[
-                {
-                  flex: 1,
-                  alignItems: "center",
-                  paddingVertical: Spacing.dense,
-                  borderRadius: TILE_RADIUS,
-                  backgroundColor: statTileElevation.liftBg ?? colors.card,
-                  borderWidth: statTileElevation.useBorder ? 1 : 0,
-                  borderColor: colors.cardBorder,
-                },
-                statTileElevation.shadowStyle,
-              ]}
-            >
-              <Text style={{ fontSize: 18, fontWeight: "700", color: c }}>
-                {v}
-              </Text>
-              <Text
-                style={{ fontSize: 10, color: colors.textTertiary, marginTop: 2 }}
+          (and the whole row if both are zero). ENG-1614: when only one
+          stat is present, fold it into the profile subline above — a lone
+          full-width tile reads as dead chrome. The two-tile row renders
+          only when both Recipes and Streak are non-zero. */}
+      {profileStatsPresentation.mode === "tiles" ? (
+        <View
+          testID="settings-profile-stats-tiles"
+          style={{ flexDirection: "row", gap: 8, marginTop: 10 }}
+        >
+          {profileStatsPresentation.tiles.map((tile) => {
+            const color =
+              semanticStatRoles
+                ? colors.text
+                : tile.kind === "recipes"
+                  ? t.accent
+                  : t.green;
+            return (
+              <Pressable
+                key={tile.kind}
+                // One-card-treatment (2026-06-09): the stat tile sits on the
+                // page ground, so it takes the same soft card chrome as its
+                // siblings — standard card fill + soft lift — instead of the
+                // bespoke tinted-border inputBg chip that read as one-off
+                // "dead chrome" next to the lifted cards around it. The
+                // accent lives in the numeral, not the border.
+                style={[
+                  {
+                    flex: 1,
+                    alignItems: "center",
+                    paddingVertical: Spacing.dense,
+                    borderRadius: TILE_RADIUS,
+                    backgroundColor: statTileElevation.liftBg ?? colors.card,
+                    borderWidth: statTileElevation.useBorder ? 1 : 0,
+                    borderColor: colors.cardBorder,
+                  },
+                  statTileElevation.shadowStyle,
+                ]}
               >
-                {l}
-              </Text>
-            </Pressable>
-          ))}
+                <Text style={{ fontSize: 18, fontWeight: "700", color }}>
+                  {tile.value}
+                </Text>
+                <Text
+                  style={{ fontSize: 10, color: colors.textTertiary, marginTop: 2 }}
+                >
+                  {tile.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       ) : null}
 

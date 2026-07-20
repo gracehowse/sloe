@@ -26,7 +26,12 @@ describe("semantic stat roles parity (ENG-1578)", () => {
     expect(mobileProgress).toContain("semanticStats ? text : sage");
     expect(mobileProgress).toMatch(/color: semanticStats[\s\S]{0,90}\? text/);
     expect(webProgress).toContain('semanticStats ? "var(--foreground)"');
-    expect(mobileSettings).toContain("semanticStatRoles ? colors.text : t.accent");
-    expect(mobileSettings).toContain("semanticStatRoles ? colors.text : t.green");
+    expect(mobileSettings).toContain("semanticStatRoles");
+    expect(mobileSettings).toMatch(
+      /semanticStatRoles[\s\S]{0,120}colors\.text[\s\S]{0,120}t\.accent/,
+    );
+    expect(mobileSettings).toMatch(
+      /semanticStatRoles[\s\S]{0,120}colors\.text[\s\S]{0,120}t\.green/,
+    );
   });
 });
