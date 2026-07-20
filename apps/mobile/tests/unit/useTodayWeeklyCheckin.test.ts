@@ -19,10 +19,10 @@ import { act, renderHook } from "@testing-library/react-native";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const trackMock = vi.fn();
-const isFeatureEnabledMock = vi.fn(() => false);
-const eqMock = vi.fn(async () => ({ error: null }));
-const updateMock = vi.fn(() => ({ eq: eqMock }));
-const fromMock = vi.fn(() => ({ update: updateMock }));
+const isFeatureEnabledMock = vi.fn((_flag: string) => false);
+const eqMock = vi.fn(async (_col: string, _val: string) => ({ error: null }));
+const updateMock = vi.fn((_payload: Record<string, unknown>) => ({ eq: eqMock }));
+const fromMock = vi.fn((_table: string) => ({ update: updateMock }));
 
 vi.mock("@/lib/supabase", () => ({
   supabase: { from: (...args: [string]) => fromMock(...args) },
