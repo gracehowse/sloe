@@ -76,7 +76,7 @@ import {
   CloudOff,
   X,
 } from "lucide-react-native";
-import { Accent, Spacing, Radius, Type, FontFamily } from "@/constants/theme";
+import { Accent, Spacing, Radius, Type } from "@/constants/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { Layout } from "@/constants/layout";
 import FoodSearchModal, { type SelectedFood as FoodSearchSelectedFood } from "@/components/FoodSearchModal";
@@ -108,11 +108,6 @@ import {
 import {
   isBelowMealsPromptVisible,
 } from "@suppr/shared/today/belowMealsPromptSelection";
-import {
-  todayDayName,
-  todayShortDate,
-  todayPastDayGreetingLines,
-} from "@suppr/shared/copy/today";
 import {
   normalizeWeekSummaryMode,
   weekSummaryDateKeys,
@@ -211,6 +206,7 @@ import { WinMomentPlayer } from "@/components/ui/WinMomentPlayer";
 import { useLogConfirmCheck } from "@/hooks/useLogConfirmCheck";
 import { LogConfirmCheck } from "@/components/today/LogConfirmCheck";
 import { TodayHero } from "@/components/today/TodayHero";
+import { TodayGreetingHero } from "@/components/today/TodayGreetingHero";
 import { WhyThisNumberSheet } from "@/components/today/WhyThisNumberSheet";
 import { paceKgPerWeekFromPreset, whyThisNumberGoalFromDb } from "@suppr/nutrition-core/whyThisNumber";
 import { TodayFastingPill } from "@/components/today/TodayFastingPill";
@@ -4022,44 +4018,11 @@ export default function TrackerScreen() {
           onOpenNotifications={() => router.push("/(tabs)/notifications")}
         />
 
-        {/* v3 serif date hero (ENG-1247, 2026-06-24, prototype `.t-greet`):
-            an eyebrow rule + a big Newsreader day name + a small date subline,
-            replacing the time-of-day greeting. The prototype's "DAY N" chip is
-            OMITTED — it's mock text with no honest data source (Grace's call).
-            On a historic day the eyebrow is hidden and the serif slot shows the
-            day's date so the section still anchors which day is in view. */}
-        {viewMode === "day" ? (() => {
-          const heroLine = isToday
-            ? { headline: todayDayName(selectedDate), subline: todayShortDate(selectedDate) }
-            : todayPastDayGreetingLines(selectedDate);
-          return (
-          <View>
-            {isToday ? (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, marginBottom: Spacing.xs }}>
-                <Text style={{ fontFamily: FontFamily.sansBold, fontSize: 11, letterSpacing: 2, color: accent.primarySolid }}>
-                  TODAY
-                </Text>
-                <View style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
-              </View>
-            ) : null}
-            <Text
-              testID="today-hero-greeting"
-              numberOfLines={1}
-              style={{ fontFamily: FontFamily.serifMedium, fontSize: 36, lineHeight: 40, letterSpacing: -0.5, color: colors.text }}
-            >
-              {heroLine.headline}
-            </Text>
-            {heroLine.subline ? (
-              <Text
-                testID="today-hero-greeting-subline"
-                style={{ fontFamily: Type.body.fontFamily, fontSize: 13, color: colors.textTertiary, marginTop: Spacing.xs }}
-              >
-                {heroLine.subline}
-              </Text>
-            ) : null}
-          </View>
-          );
-        })() : null}
+        {/* v3 serif date hero — extracted to <TodayGreetingHero> (ENG-1609,
+            2026-07-20, boy-scout shrink alongside the strip→hero dead-band
+            fix below); day-view only, see that component for the full
+            history/rationale comment. */}
+        <TodayGreetingHero viewMode={viewMode} isToday={isToday} selectedDate={selectedDate} />
 
         {/* Week strip (SLOE redesign 2026-06-03, `01 · Today` frame):
             the date header is now `stripOnly` — only the 7-day week
@@ -4073,18 +4036,23 @@ export default function TrackerScreen() {
             reachable only via the strip + calendar, which is intended.
             The header still owns the supportive streak-reset copy
             (rendered under the strip in `stripOnly` mode). */}
-        {/* Sloe redesign (2026-06-08): airier rhythm to match Figma `654:2`
-            (`mb-7` ≈ 28px between the week strip and the ring hero) — the
-            strip→ring transition is the one deliberate break in the header.
-            Rhythm sweep ENG-1032 (2026-06-11): was `marginBottom: lg (20)`
-            which, on the scroll `gap (8)`, summed to a 28pt OFF-SCALE seam
-            (measured, bd76ed95 method — snaps to neither 24 nor 32). Snapped
-            onto the scale at `md (16)` so the break lands on a clean 24pt
-            (16 + the 8pt gap) — the nearest on-scale value to the Figma 28px
-            target, and the header's single intentional break vs the 8pt
-            cluster rhythm above it. */}
-        <View style={{ marginBottom: Spacing.md }}>
-          <TodayDateHeader
+        {/* ENG-1609 (2026-07-20, Grace annotated screenshot — "too much
+            space here"): this used to carry an extra `marginBottom: md
+            (16)` wrapper, added by the 2026-06-11 rhythm sweep (ENG-1032)
+            back when `styles.scroll`'s base gap was 8px — 16+8 landed the
+            strip→hero break at a deliberate 24pt, bigger than the 8pt
+            cluster rhythm above it. The ENG-1356 flag-collapse
+            (2026-07-06) later made the scroll gap unconditionally
+            `Spacing.xl` (24) EVERYWHERE — the same base gap Meals /
+            Activity / Hydration / Planned already lean on alone (see the
+            "one 24 Spacing.xl styles.scroll gap carries the rhythm" note
+            below). The 16px wrapper never got revisited, so this seam
+            silently doubled to 40px — a dead band, not a deliberate break.
+            Dropped: the strip→hero gap now matches every other section
+            seam on the page (and mirrors web, where `NutritionTracker.tsx`
+            never wrapped `<TodayDateHeader>` in an extra margin — its
+            `space-y-6` container already gave this exactly 24px). */}
+        <TodayDateHeader
           stripOnly
           viewMode={viewMode}
           onViewModeChange={setViewMode}
@@ -4125,7 +4093,6 @@ export default function TrackerScreen() {
             undefined
           }
         />
-        </View>
 
         {isOffline && (
           <View style={styles.offlineBanner} accessibilityRole="alert">

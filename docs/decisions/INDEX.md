@@ -9,10 +9,11 @@
   Generator: scripts/generate-decisions-index.mjs (ENG-1370)
 -->
 
-345 decision docs, newest first. Generated 2026-07-20.
+346 decision docs, newest first. Generated 2026-07-20.
 
 | Date | Decision | Summary |
 |------|----------|---------|
+| 2026-07-20 | [Today — collapse the strip→hero dead band (ENG-1609)](./2026-07-20-eng1609-today-strip-hero-dead-band.md) | `apps/mobile/app/(tabs)/_today/TodayScreen.tsx` no longer wraps `<TodayDateHeader stripOnly>` (the week strip) in an extra `marginBottom: Spacing.md` (16px) `<View>`. The strip→hero gap is now the same single 24px `Spaci… |
 | 2026-07-20 | [SupprBot public bot-contact page — built for real (ENG-1570)](./2026-07-20-supprbot-public-bot-page.md) | Build the page for real at `app/bot/page.tsx`, reachable without auth (added to `middleware.ts` `PUBLIC_ROUTES`), and link the existing "public bot contact page" / "public bot page" text in Terms and Help to it. Covers:… |
 | 2026-07-19 | [Cookbook single filter row (ENG-1607)](./2026-07-19-cookbook-single-filter-row.md) | The Recipes tab (Library/Cookbook) shows **one** standing filter chip row — the provenance row (All / Saved / Created / Imported) — on both platforms. The standing category pill row (All / Breakfast / Lunch / Dinner / De… |
 | 2026-07-19 | [Ingredients render as text — no icon/image tiles (ENG-1611)](./2026-07-19-ingredient-text-rows.md) | Foods and ingredients render as **text rows** — no glyph tiles, no monogram tiles, no photos — on: |

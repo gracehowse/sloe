@@ -2,7 +2,13 @@
 
 - **Date:** 2026-06-08
 - **Area:** Figma Sloe · Screens / 01 · Today (canonical `654:2`)
-- **Status:** Resolved (product choice — match the canonical frame)
+- **Status:** Resolved (product choice — match the canonical frame). **Item 4
+  (strip→hero `mb-7` widening) superseded 2026-07-20 — see
+  [ENG-1609](./2026-07-20-eng1609-today-strip-hero-dead-band.md).** The
+  16px wrapper margin that widening introduced was calibrated against a
+  `styles.scroll` base gap that later changed (ENG-1356, 2026-07-06), and
+  the seam silently doubled into a dead band Grace flagged 2026-07-19.
+  Items 1–3 are unaffected and remain current.
 
 ## Context
 
