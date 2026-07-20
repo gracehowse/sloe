@@ -124,7 +124,7 @@
     "apps/mobile/components/settings/BarcodeContributionsSection.tsx": 2,
     "apps/mobile/components/settings/CancelExportPromptSheet.tsx": 2,
     "apps/mobile/components/settings/DevFlagOverrides.tsx": 1,
-    "apps/mobile/components/settings/SettingsBundleContent.tsx": 56,
+    "apps/mobile/components/settings/SettingsBundleContent.tsx": 54,
     "apps/mobile/components/settings/SettingsRow.tsx": 2,
     "apps/mobile/components/SponsoredDisclosure.tsx": 1,
     "apps/mobile/components/suppr/screen-section-chrome.tsx": 1,
