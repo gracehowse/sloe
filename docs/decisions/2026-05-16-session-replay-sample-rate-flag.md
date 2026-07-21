@@ -6,6 +6,12 @@
 **Area:** Analytics / release process
 **Linear:** ENG-516
 
+**Applied 2026-07-21** (ENG-1410): flag payload flipped from `1.0` to
+`0.1` in the PostHog dashboard — confirmed via the flag definition
+(`version: 2`, `updated_at: 2026-07-21T20:17:05Z`). Existing sessions
+are unaffected (sampling is decided at recording start); new sessions
+pick up 10% sampling starting each user's next app launch / page load.
+
 ## What changed
 
 The session-replay sample rate is now driven by a PostHog feature
