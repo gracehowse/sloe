@@ -55,11 +55,9 @@ describe("ENG-633 — cookie consent clears Today FAB on product routes", () => 
       resolve(ROOT, "src/app/components/CookieConsent.tsx"),
       "utf8",
     );
-    // Helper renamed isProductFabRoute → isProductAppRoute (13952d62); the banner
-    // still lifts above the bottom nav on product routes (the bottom-[calc(4.5rem…]
-    // class below is the behaviour that actually matters).
-    expect(cookie).toMatch(/isProductAppRoute/);
-    expect(cookie).toMatch(/bottom-\[calc\(4\.5rem/);
+    // ENG-1386 — banner docks via the shared mobileWebBottomChrome contract.
+    expect(cookie).toMatch(/isMobileWebProductRoute/);
+    expect(cookie).toMatch(/MOBILE_WEB_CONSENT_DOCK_BOTTOM/);
     expect(cookie).toMatch(/usePathname/);
   });
 });

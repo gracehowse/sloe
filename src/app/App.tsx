@@ -2,6 +2,10 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import {
+  MOBILE_WEB_BOTTOM_NAV_SCROLL_PADDING,
+  MOBILE_WEB_BOTTOM_NAV_SCROLL_PADDING_BOTTOM,
+} from "../lib/layout/mobileWebBottomChrome.ts";
 // ENG-1211 — type-only import for the create-view method hint threaded from the
 // import method tiles ("Paste text" / "Scan") through navigateToView.
 import type { CreateMethodHint } from "./components/RecipeUpload.tsx";
@@ -784,7 +788,7 @@ export default function App() {
             pass. */}
         <main
           id="main-content"
-          className={`flex-1 overflow-auto ${showMobileBottomChrome ? "pb-[calc(5rem+env(safe-area-inset-bottom))] scroll-pb-[calc(5rem+env(safe-area-inset-bottom))]" : "pb-0 scroll-pb-0"} md:pb-0 md:scroll-pb-0`}
+          className={`flex-1 overflow-auto ${showMobileBottomChrome ? `${MOBILE_WEB_BOTTOM_NAV_SCROLL_PADDING} ${MOBILE_WEB_BOTTOM_NAV_SCROLL_PADDING_BOTTOM}` : "pb-0 scroll-pb-0"} md:pb-0 md:scroll-pb-0`}
           role="main"
         >
           {renderView()}

@@ -503,7 +503,8 @@ primary action, not because the surface itself changes:
 - **Authed product routes** (`today`, `plan`, `shopping`, `library`,
   `recipes`, `progress`, `settings`, `profile`, `recipe`) → bottom-anchored
   and lifted above the mobile bottom-nav/FAB height
-  (`bottom-[calc(4.5rem+env(safe-area-inset-bottom))]`).
+  (`bottom-[calc(5rem+env(safe-area-inset-bottom))]` — shared with
+  `src/lib/layout/mobileWebBottomChrome.ts` and the main scroll inset).
 
 **Mobile's ask moment is scoped narrower and by design.** Because the tabs
 shell only mounts post-login + post-onboarding, `AnalyticsConsentPrompt`
