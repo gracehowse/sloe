@@ -71,7 +71,7 @@ function makeSupabase(handlers: Partial<Record<string, Handler>>, rpcHandler?: R
 
   return {
     from: (table: string) => builder(table, "select"),
-    rpc: async (fn: string, params: Record<string, unknown>) => {
+    rpc: async (fn: string, params: Record<string, unknown> = {}) => {
       if (rpcHandler) return rpcHandler(fn, params);
       // ENG-1602 (2026-07-21): `getMyHousehold` now always calls
       // `get_household_shared_targets` for co-member data (targets +
@@ -278,11 +278,10 @@ describe("F-16 member-macro strip", () => {
       },
       (fn, params) => {
         expect(fn).toBe("get_household_shared_targets");
-        // The caller's own local today-key, not a hardcoded literal —
-        // pins that the client passes its own `todayKey()` rather than
-        // letting the RPC fall back to `current_date` (see the
-        // migration's UTC-vs-local rationale).
-        expect(params).toHaveProperty("p_date_key");
+        // No arguments — the RPC resolves each co-member's own local
+        // date server-side (from profiles.tz_iana), never a client-
+        // supplied date applied uniformly to every member.
+        expect(params).toEqual({});
         return {
           data: [
             {

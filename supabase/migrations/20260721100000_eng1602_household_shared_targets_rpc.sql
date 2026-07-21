@@ -46,15 +46,15 @@
 --   exact same shape for the read side of household sharing.
 --
 -- WHAT THIS FUNCTION DOES:
---   `get_household_shared_targets(p_date_key)` operates on `auth.uid()`
---   only -- it takes no household id or user id argument, so there is
---   nothing client-suppliable to spoof. For every co-member of the
---   caller's household who has `share_targets = true` (excluding the
---   caller), it returns ONLY:
+--   `get_household_shared_targets()` operates on `auth.uid()` only -- it
+--   takes NO arguments at all, so there is nothing client-suppliable to
+--   spoof. For every co-member of the caller's household who has
+--   `share_targets = true` (excluding the caller), it returns ONLY:
 --     user_id, target_calories, target_protein, target_carbs, target_fat,
 --     consumed_calories, consumed_protein, consumed_carbs, consumed_fat
 --   `consumed_*` is aggregated server-side from that member's
---   `nutrition_entries` rows for `p_date_key`. The function re-verifies
+--   `nutrition_entries` rows for THAT MEMBER'S OWN local "today" (resolved
+--   per-row from `profiles.tz_iana` -- see below). The function re-verifies
 --   BOTH household co-membership (resolved from the CALLER's own
 --   `household_members` row -- never a client-supplied household id) AND
 --   `share_targets = true` inside the function body on every call; it
@@ -67,22 +67,34 @@
 --   return set -- only the four target numbers and four aggregated-today
 --   numbers per co-member.
 --
--- WHY `p_date_key` IS A PARAMETER, NOT A BARE `current_date` READ:
---   `householdClient.ts`'s `todayKey()` (Build 41 fix, lineage
---   20260501100000) deliberately derives the CALLER's LOCAL calendar
---   date, not the UTC date -- `nutrition_entries.date_key` is always
---   written from the logging user's local day everywhere else in the
---   app. Postgres's `current_date` inside a SECURITY DEFINER function
---   reflects the DB session's timezone (UTC on Supabase), not the
---   caller's device timezone. Defaulting to it here would silently
---   reintroduce the exact UTC-vs-local mismatch Build 41 already fixed
---   (TestFlight `AJ_dfDvM2j6rnkOAgHTpwig`, "calories wildly high vs
---   target") for any household member near midnight in a non-UTC offset.
---   The client MUST always pass its own `todayKey()` explicitly as
---   `p_date_key` (see `src/lib/household/householdClient.ts`); the
---   `current_date` default exists only so the function has defined
---   behaviour if ever invoked without an argument (ad-hoc SQL / manual
---   debugging), not as a path the app is expected to take.
+-- WHY THIS FUNCTION TAKES NO DATE ARGUMENT AT ALL (fixed post-adversarial-
+-- review, 2026-07-21 -- the first draft took a client-supplied `p_date_key`
+-- and applied that SAME date to every co-member's `nutrition_entries`
+-- filter; caught before merge, never shipped):
+--   This function never returns the CALLER's own row (`hm.user_id <>
+--   v_uid`), so a "caller's local date" was never the right date to filter
+--   by in the first place -- `nutrition_entries.date_key` is always written
+--   from the LOGGING user's own local day (Build 41 fix, lineage
+--   20260501100000; see `todayKey()` in `src/lib/household/householdClient.ts`
+--   for how the client computes its OWN local day for ITS OWN writes). A
+--   household is not always co-located in one timezone (a travelling
+--   member, a remote/blended family) -- applying the caller's date to a
+--   co-member near midnight in a different offset would silently misfile
+--   that member's already-logged food as "not today," understating their
+--   consumed total. That's the exact class of bug this ticket exists to
+--   fix (a wrong number presented as real), just relocated rather than
+--   removed.
+--
+--   Fix: resolve each co-member's OWN local date SERVER-SIDE, per row,
+--   from `profiles.tz_iana` (added 20260429000000 specifically so server
+--   jobs can resolve a DIFFERENT user's local day -- see the weekly-recap
+--   push cron / `src/lib/push/weighInReminder.ts` for the established
+--   precedent). `coalesce(p.tz_iana, 'UTC')` matches that same precedent's
+--   null-handling exactly (a profile that hasn't reported its zone yet is
+--   treated as UTC, never a hard failure). No parameter is client-
+--   suppliable here, so the earlier "should p_date_key be clamped so a
+--   caller can't request an arbitrary past day" question is moot too --
+--   there is no date input to clamp.
 --
 -- Apply step (Grace runs this -- Claude/MCP must NOT apply, per
 -- .claude/CLAUDE.md: MCP `apply_migration` rewrites
@@ -91,9 +103,7 @@
 --   supabase db push --linked
 -- ============================================================================
 
-create or replace function public.get_household_shared_targets(
-  p_date_key date default current_date
-)
+create or replace function public.get_household_shared_targets()
 returns table (
   user_id uuid,
   target_calories integer,
@@ -158,7 +168,7 @@ begin
     on p.id = hm.user_id
   left join public.nutrition_entries ne
     on ne.user_id = hm.user_id
-   and ne.date_key = p_date_key
+   and ne.date_key = (current_timestamp at time zone coalesce(p.tz_iana, 'UTC'))::date
   where hm.household_id = v_household_id
     and hm.user_id <> v_uid
     and hm.share_targets = true
@@ -173,10 +183,10 @@ $$;
 -- explicit revoke + grant pair below is belt-and-braces (mirrors the
 -- `auth_owns_collection` precedent, 20260703140000): authenticated only,
 -- anon NEVER.
-revoke all on function public.get_household_shared_targets(date) from public;
-grant execute on function public.get_household_shared_targets(date) to authenticated;
+revoke all on function public.get_household_shared_targets() from public;
+grant execute on function public.get_household_shared_targets() to authenticated;
 
-comment on function public.get_household_shared_targets(date) is
+comment on function public.get_household_shared_targets() is
   'ENG-1602: SECURITY DEFINER read of co-members targets/consumed-today. Re-verifies household co-membership (from the callers own household_members row) AND share_targets = true server-side for every returned row -- never trusts a client-supplied household id or member list. Exposes ONLY target_calories/protein/carbs/fat plus consumed_calories/protein/carbs/fat per opted-in co-member -- never a raw profiles or nutrition_entries row, never any other profiles column (no display_name, email, weight, etc). authenticated-only execute grant, never anon. See householdClient.ts getMyHousehold() for the caller.';
 
 NOTIFY pgrst, 'reload schema';

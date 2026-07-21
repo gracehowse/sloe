@@ -51,7 +51,7 @@ describe("ENG-1602 get_household_shared_targets — filename + migration orderin
 describe("ENG-1602 get_household_shared_targets — definer + search_path", () => {
   it("is SECURITY DEFINER with a pinned search_path (no mutable-search_path advisor hit)", () => {
     expect(CODE).toMatch(
-      /create or replace function public\.get_household_shared_targets\( p_date_key date default current_date \) returns table \(/,
+      /create or replace function public\.get_household_shared_targets\(\) returns table \(/,
     );
     expect(CODE).toContain("language plpgsql security definer set search_path = public, pg_temp");
   });
@@ -63,9 +63,9 @@ describe("ENG-1602 get_household_shared_targets — definer + search_path", () =
 
 describe("ENG-1602 get_household_shared_targets — co-membership + consent re-check", () => {
   it("resolves the caller's household from the caller's OWN household_members row only", () => {
-    // No household id is ever taken as an argument — the function
-    // signature above has exactly one parameter, p_date_key.
-    expect(CODE).not.toMatch(/get_household_shared_targets\([^)]*household_id/);
+    // The function takes no arguments at all — nothing client-suppliable
+    // to spoof, household or otherwise.
+    expect(CODE).toContain("create or replace function public.get_household_shared_targets()");
     expect(CODE).toMatch(
       /select hm\.household_id into v_household_id from public\.household_members hm where hm\.user_id = v_uid order by hm\.joined_at desc limit 1;/,
     );
@@ -128,24 +128,32 @@ describe("ENG-1602 get_household_shared_targets — narrow output contract", () 
     expect(CODE).not.toMatch(/select\s+\*\s+from\s+public\.nutrition_entries/);
   });
 
-  it("scopes consumed-today to the caller-supplied date_key, never a bare current_date read inside the body", () => {
-    expect(CODE).toMatch(/ne\.date_key = p_date_key/);
-    // The ONLY place `current_date` may appear is the parameter default
-    // -- never re-read inside the function body/query itself.
-    const occurrences = CODE.match(/current_date/g) ?? [];
-    expect(occurrences.length).toBe(1);
+  it("scopes consumed-today to EACH co-member's OWN local date via profiles.tz_iana, never the caller's date applied to everyone", () => {
+    // The bug an adversarial review caught before this shipped: a first
+    // draft took a client-supplied p_date_key and applied that SAME date
+    // to every co-member's nutrition_entries filter -- wrong for a
+    // cross-timezone household, since date_key is always the LOGGING
+    // user's own local day. Fixed by resolving each row's date server-side
+    // from that row's own profiles.tz_iana (coalesced to UTC), matching
+    // the weekly-recap cron's established null-handling precedent.
+    expect(CODE).toMatch(
+      /ne\.date_key = \(current_timestamp at time zone coalesce\(p\.tz_iana, 'utc'\)\)::date/,
+    );
+    // No client-suppliable date argument exists at all anymore.
+    expect(CODE).not.toMatch(/p_date_key/);
+    expect(CODE).not.toMatch(/get_household_shared_targets\([^)]+\)/);
   });
 });
 
 describe("ENG-1602 get_household_shared_targets — grant lockdown", () => {
   it("grants execute to authenticated only", () => {
     expect(CODE).toContain(
-      "grant execute on function public.get_household_shared_targets(date) to authenticated;",
+      "grant execute on function public.get_household_shared_targets() to authenticated;",
     );
   });
 
   it("revokes from public and never grants to anon", () => {
-    expect(CODE).toContain("revoke all on function public.get_household_shared_targets(date) from public;");
+    expect(CODE).toContain("revoke all on function public.get_household_shared_targets() from public;");
     expect(CODE).not.toMatch(/grant[^;]*get_household_shared_targets[^;]*anon/);
   });
 });

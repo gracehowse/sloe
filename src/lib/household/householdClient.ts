@@ -55,7 +55,7 @@ import {
 
 type SupabaseLike = {
   from: (table: string) => any;
-  rpc: (fn: string, params: Record<string, unknown>) => Promise<{ data: any; error: any }>;
+  rpc: (fn: string, params?: Record<string, unknown>) => Promise<{ data: any; error: any }>;
 };
 
 // Domain shapes — match `GET /api/household` response exactly so UIs
@@ -508,12 +508,13 @@ export async function getMyHousehold(
       .eq("user_id", userId)
       .eq("date_key", todayKey()),
     // ENG-1602: co-members' targets + today's consumed macros, computed
-    // server-side. `p_date_key` is passed explicitly as the CALLER's own
-    // local `todayKey()` — never left to the RPC's `current_date`
-    // default, which would read the DB session's (UTC) day and
-    // reintroduce the Build-41 UTC-vs-local mismatch for any non-UTC
-    // household member.
-    supabase.rpc("get_household_shared_targets", { p_date_key: todayKey() }),
+    // server-side. No date argument — the RPC resolves EACH co-member's
+    // OWN local "today" from their own `profiles.tz_iana` internally
+    // (never the caller's `todayKey()`, which only ever describes the
+    // caller's own day and was the wrong date to apply to someone else's
+    // entries in a cross-timezone household — caught by adversarial
+    // review before this shipped; see the migration file).
+    supabase.rpc("get_household_shared_targets"),
   ]);
   if (profilesResp.error) throw profilesResp.error;
   if (entriesResp.error) throw entriesResp.error;

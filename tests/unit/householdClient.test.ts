@@ -108,7 +108,7 @@ function makeSupabase(
 
   return {
     from: (table: string) => builder(table, "select"),
-    rpc: async (fn: string, params: Record<string, unknown>) => {
+    rpc: async (fn: string, params: Record<string, unknown> = {}) => {
       rpcCalls.push({ fn, params });
       if (typeof rpcHandler === "function") return rpcHandler(params);
       const scoped = rpcHandler?.[fn];
@@ -654,10 +654,12 @@ describe("getMyHousehold — ENG-1602 shared-targets RPC", () => {
     expect(bea.consumed).toEqual({ calories: 700, protein: 50, carbs: 60, fat: 25 });
     expect(bea.remaining).toEqual({ calories: 1200, protein: 90, carbs: 120, fat: 30 });
 
-    // The RPC was actually invoked, with the caller's own local date key.
+    // The RPC was actually invoked, with no arguments — the function
+    // resolves each co-member's own local date itself server-side (via
+    // profiles.tz_iana), so the client has nothing date-related to pass.
     expect(sb.rpcCalls).toHaveLength(1);
     expect(sb.rpcCalls[0]?.fn).toBe("get_household_shared_targets");
-    expect(sb.rpcCalls[0]?.params).toHaveProperty("p_date_key");
+    expect(sb.rpcCalls[0]?.params).toEqual({});
   });
 
   it("a non-opted-in member renders the distinct 'not sharing' state — never fabricated numbers", async () => {
