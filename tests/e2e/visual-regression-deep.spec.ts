@@ -44,6 +44,19 @@ test.describe("Visual regression — deep authenticated routes", () => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
       await page.goto("/settings", { waitUntil: "domcontentloaded" });
       await dismissVisualOverlays(page);
+      // sloe_v3_settings (default-on) two-pane shell only shows the active
+      // section at md+ (SettingsTwoPaneShell.tsx: non-active panels get
+      // `block md:hidden`); "Account & billing" is the default, so the
+      // Preferences panel — and settings-fasting-link inside it — stays
+      // display:none at desktop until its nav item is clicked. Without this,
+      // scrollIntoViewIfNeeded can never bring a display:none element to a
+      // stable rect and times out. Mirrors the same guard already used for
+      // the privacy nav in authenticated-views.spec.ts. No-ops on mobile,
+      // where the nav (`hidden md:block`) isn't rendered at all.
+      const preferencesNav = page.getByTestId("settings-pane-nav-preferences");
+      if (await preferencesNav.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await preferencesNav.click();
+      }
       const fastingLink = page.getByTestId("settings-fasting-link");
       await fastingLink.scrollIntoViewIfNeeded();
       await stabilizeForScreenshot(page, 1500);

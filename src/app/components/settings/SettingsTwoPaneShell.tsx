@@ -25,8 +25,10 @@
  * so web↔mobile content parity is unaffected (this is a web-only re-layout
  * behind `sloe_v3_settings`).
  *
- * Gated by `sloe_v3_settings` (default-OFF) at the `Settings.tsx` callsite;
- * the OFF path keeps the legacy single-scroll stack alive.
+ * Gated by `sloe_v3_settings` at the `Settings.tsx` callsite — default-ON
+ * (`REDESIGN_DEFAULT_ON` in `track.ts`) since 2026-06-29; the OFF path (kill
+ * switch only, not the shipped default) keeps the legacy single-scroll stack
+ * alive.
  */
 
 import { useState, type ReactNode } from "react";

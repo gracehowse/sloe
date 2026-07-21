@@ -37,6 +37,12 @@ jobs:
       - name: Playwright visual regression (public shell)
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3100
+          # Tells rateLimit.ts's isProductionRuntime() this `next start`
+          # process (which stays up for the next step too) is serving
+          # Playwright, not a real deploy, so it uses the in-memory fallback
+          # instead of failing closed with no Upstash configured. See
+          # rateLimit.ts's isProductionRuntime doc.
+          SUPPR_E2E_SERVER: "1"
         run: |
           npm run start -- --port 3100 &
           npx wait-on http://127.0.0.1:3100/login
