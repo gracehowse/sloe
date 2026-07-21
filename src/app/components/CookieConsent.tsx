@@ -137,18 +137,33 @@ export function CookieConsent() {
   // the banner must paint on first paint pre-consent. SupprPlateMark is
   // imported directly (not SupprMark, which evaluates the
   // design_system_brandmark flag).
-  // ENG-1386: dock above the tab bar (5rem + safe-area, shared with App.tsx)
-  // at z-40 so the nav (z-50) always wins taps; publish
-  // --cookie-consent-scroll-inset so scroll surfaces clear the strip.
+  // ENG-1386: dock above the mobile product tab bar (5rem + safe-area,
+  // shared with App.tsx) at z-40 so that nav (z-50, App.tsx:817) always
+  // wins taps — this only applies to the liftAboveMobileChrome (product
+  // route) case below.
+  //
+  // Top-anchored marketing routes are a different stacking context: they
+  // sit under each marketing page's own sticky header, which is not the
+  // z-50 "nav" the ENG-1386 rule above was written for, and has no "wins
+  // taps" rationale — the consent banner is the thing that must be
+  // interactable there. z-40 there let the landing page's own sticky
+  // `.lp-nav` (landing.css, z-50) render on top of and fully obscure the
+  // banner's buttons, making cookie consent uninteractive on `/` for real
+  // visitors — a compliance-relevant bug caught 2026-07-21 once
+  // dismissVisualOverlays' broken isVisible-as-a-wait no-op (fixed
+  // alongside PR #1010) stopped silently skipping the click in tests. Use
+  // z-[60] (matching the "always on top" tier already used by
+  // upgrade-paywall-dialog.tsx / NotificationsBell.tsx) for topAnchored
+  // only, so the bottom-docked mobile-product case above is untouched.
   return (
     <div
       data-testid="cookie-consent-banner"
-      className={`fixed inset-x-0 z-40 bg-card/95 backdrop-blur border-border shadow-[var(--elev-sheet)] ${
+      className={`fixed inset-x-0 bg-card/95 backdrop-blur border-border shadow-[var(--elev-sheet)] ${
         topAnchored
-          ? "top-0 border-b pt-[env(safe-area-inset-top)]"
+          ? "z-[60] top-0 border-b pt-[env(safe-area-inset-top)]"
           : liftAboveMobileChrome
-            ? `${MOBILE_WEB_CONSENT_DOCK_BOTTOM} border-t`
-            : "bottom-0 border-t pb-[env(safe-area-inset-bottom)]"
+            ? `z-40 ${MOBILE_WEB_CONSENT_DOCK_BOTTOM} border-t`
+            : "z-40 bottom-0 border-t pb-[env(safe-area-inset-bottom)]"
       }`}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 flex flex-row items-center gap-3">

@@ -74,14 +74,23 @@ export async function seedConsent(page: Page): Promise<void> {
  *  two-pane-nav guard fixed alongside this). `waitFor({ state: "visible" })`
  *  genuinely retries for the given timeout before concluding "absent".
  *
- *  Every click below is bounded + caught, not bare: on the public landing
- *  shell the cookie banner can dock `topAnchored` under the sticky nav,
- *  which deliberately wins taps at z-50 vs the banner's z-40 (ENG-1386, see
- *  CookieConsent.tsx) — a real, intentional layering the old no-op guards
- *  never actually exercised. A bare `.click()` there hangs for the full
- *  actionTimeout (×3 retries) waiting for an interception that is by design.
- *  This is a best-effort dismiss for a clean screenshot, not an assertion
- *  that the banner is interactable — give it a bounded shot and move on. */
+ *  Every click below is bounded + caught, not bare, as defensive belt-and-
+ *  braces for any one-shot overlay dismissal (not just this one).
+ *
+ *  Correction (2026-07-21, this pass): a prior version of this comment
+ *  attributed the landing-page click hang to the ENG-1386 "nav (z-50)
+ *  always wins taps" rule and treated it as intentional. That rule is
+ *  about the MOBILE PRODUCT bottom tab bar (App.tsx:817, liftAboveMobileChrome
+ *  docking) — a different component from the marketing landing page's own
+ *  sticky `.lp-nav` header (landing.css, also z-50 for unrelated reasons),
+ *  which is what the topAnchored banner collides with on `/`. There was no
+ *  actual design intent for the landing page's own nav to beat the consent
+ *  banner — verified live (screenshot + click) that real visitors could not
+ *  interact with the banner at all on the landing page. Fixed at the root in
+ *  CookieConsent.tsx (topAnchored now renders at z-[60], above the landing
+ *  nav; the liftAboveMobileChrome/bottom-docked case is untouched, z-40 as
+ *  ENG-1386 intended). The bounded+caught click here stays regardless, as
+ *  general defensive practice for a best-effort dismiss. */
 export async function dismissVisualOverlays(page: Page): Promise<void> {
   const acceptBtn = page
     .locator('[data-testid="cookie-consent-banner"]')
