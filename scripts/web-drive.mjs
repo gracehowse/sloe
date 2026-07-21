@@ -219,7 +219,17 @@ async function dismissOverlays(page) {
   ];
   for (const { container, rx } of scopes) {
     const btn = page.locator(container).getByRole("button", { name: rx }).first();
-    if (await btn.isVisible({ timeout: 1200 }).catch(() => false)) {
+    // `isVisible({ timeout })` doesn't wait (Playwright's own types mark
+    // that option deprecated/ignored) — `waitFor({ state: "visible" })` is
+    // the primitive that genuinely retries. `goto()` above already settles
+    // (networkidle + fonts + 900ms), so this rarely pays the full timeout,
+    // but only `waitFor` actually guarantees that (see the identical fix in
+    // tests/e2e/utils/visual.ts#dismissVisualOverlays, 2026-07-21).
+    const hasBtn = await btn
+      .waitFor({ state: "visible", timeout: 1200 })
+      .then(() => true)
+      .catch(() => false);
+    if (hasBtn) {
       await btn.click().catch(() => undefined);
       await page.waitForTimeout(300);
     }
