@@ -192,6 +192,12 @@ export async function POST(req: Request) {
       userId,
       limit: FREE_PHOTO_LOG_WEEKLY_LIMIT,
       windowMs: FREE_PHOTO_LOG_WINDOW_MS,
+      // ENG-1490 #5: this is an identity-bound entitlement (5 free/week per
+      // account), not a connection-bound abuse throttle — a genuine client
+      // IP change (mobile CGNAT rotation, VPN) must not reset it. The Pro
+      // 100/day bucket below stays IP-composite (unchanged); that's an
+      // abuse-throttle on an already-paying tier, a different threat model.
+      identityScoped: true,
     });
     if (!freeLimited.ok) {
       return NextResponse.json(

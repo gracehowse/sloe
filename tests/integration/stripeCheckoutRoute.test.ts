@@ -17,6 +17,10 @@ const getUserIdFromAuthHeaderMock = vi.fn();
 
 vi.mock("@/lib/supabase/serverAnonClient", () => ({
   getUserIdFromAuthHeader: (h: string | null) => getUserIdFromAuthHeaderMock(h),
+  // ENG-1490 #3: fail-open (unconfigured service role → never trialed),
+  // matching every other pre-existing assumption in this file. Trial
+  // eligibility itself is covered by tests/unit/stripeCheckoutRoute.test.ts.
+  createSupabaseServiceRoleClient: () => null,
 }));
 
 vi.mock("@/lib/server/rateLimit", () => ({

@@ -181,6 +181,9 @@ describe("POST /api/nutrition/photo-log", () => {
         userId: "u1",
         limit: FREE_PHOTO_LOG_WEEKLY_LIMIT,
         windowMs: FREE_PHOTO_LOG_WINDOW_MS,
+        // ENG-1490 #5: identity-bound entitlement — a genuine client IP
+        // change must not reset this weekly quota.
+        identityScoped: true,
       }),
     );
   });
@@ -273,9 +276,16 @@ describe("POST /api/nutrition/photo-log", () => {
     // Critical correctness check — the Pro bucket key prefix is NOT
     // the free-taster prefix. (Defence-in-depth: a regression that
     // collapses the two buckets would break this assertion.)
-    const call = mockRateLimit.mock.calls[0]?.[0] as { keyPrefix: string };
+    const call = mockRateLimit.mock.calls[0]?.[0] as {
+      keyPrefix: string;
+      identityScoped?: boolean;
+    };
     expect(call.keyPrefix).toBe("api:photo-log");
     expect(call.keyPrefix).not.toBe("api:photo-log:free-quota");
+    // ENG-1490 #5: the Pro 100/day bucket is an abuse throttle on an
+    // already-paying tier, NOT an identity-bound entitlement — it must
+    // stay IP-composite, unlike the free-quota bucket above.
+    expect(call.identityScoped).toBeFalsy();
   });
 
   it("pro user hits the existing 100/day cap → 429", async () => {

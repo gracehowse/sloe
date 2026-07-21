@@ -92,6 +92,26 @@ export type RateLimitOptions = {
    *     scoping is the correct default for genuinely anonymous traffic.
    */
   userId?: string | null;
+  /**
+   * ENG-1490 finding #5 (2026-07-10): when true AND `userId` is set, the IP
+   * component is dropped from the bucket key entirely —
+   * `${keyPrefix}:user:${userId}` instead of `${keyPrefix}:user:${userId}:${ip}`.
+   * Defaults to false/unchanged: every existing caller keeps the P0-6
+   * (user, ip) composite key unless it opts in explicitly.
+   *
+   * Use for identity-bound ENTITLEMENT quotas — a cap that is a property of
+   * the account (e.g. "5 free AI photo logs a week"), not the connection.
+   * The default (user, ip) key is correct for short-window ABUSE throttles
+   * (e.g. "10 checkout attempts a minute") where IP specificity is useful
+   * defense-in-depth against a single compromised session being hammered
+   * from a fixed IP — do not set this for those.
+   *
+   * Without this option, a genuine client IP change (mobile CGNAT rotation,
+   * VPN toggle) mints a fresh (user, ip) bucket and silently resets the
+   * user's free-tier quota, since the IP component is part of the key even
+   * though the entitlement is scoped to the identity, not the connection.
+   */
+  identityScoped?: boolean;
 };
 
 export type RateLimitResult =
@@ -168,7 +188,10 @@ export async function rateLimit(opts: RateLimitOptions): Promise<RateLimitResult
   const h = await headers();
   const ip = getIpFromHeaders(h) ?? "no-ip";
   const userPart = opts.userId ? `user:${opts.userId}` : "anon";
-  const key = `${opts.keyPrefix}:${userPart}:${ip}`;
+  const key =
+    opts.identityScoped && opts.userId
+      ? `${opts.keyPrefix}:${userPart}`
+      : `${opts.keyPrefix}:${userPart}:${ip}`;
   const upstash = getUpstashLimiter(opts.limit, opts.windowMs);
   if (upstash) {
     const result = await rateLimitUpstash(key, ip, upstash);
@@ -210,9 +233,10 @@ export async function rateLimit(opts: RateLimitOptions): Promise<RateLimitResult
  *  key shape so a future regression (e.g. dropping the user prefix,
  *  flattening the namespace) fails at PR time. */
 export function _composeRateLimitKeyForTest(
-  opts: { keyPrefix: string; userId?: string | null },
+  opts: { keyPrefix: string; userId?: string | null; identityScoped?: boolean },
   ip: string,
 ): string {
   const userPart = opts.userId ? `user:${opts.userId}` : "anon";
+  if (opts.identityScoped && opts.userId) return `${opts.keyPrefix}:${userPart}`;
   return `${opts.keyPrefix}:${userPart}:${ip}`;
 }

@@ -1,11 +1,38 @@
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { rateLimit } from "@/lib/server/rateLimit";
-import { getUserIdFromAuthHeader } from "@/lib/supabase/serverAnonClient";
+import { getUserIdFromAuthHeader, createSupabaseServiceRoleClient } from "@/lib/supabase/serverAnonClient";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { detectRegion } from "@/lib/region/detectRegion";
 import { resolveProStripePriceId } from "@/lib/stripe/resolveProStripePrice";
 import { assertOrigin } from "@/lib/api/assertOrigin";
+
+/**
+ * ENG-1490 finding #3 (2026-07-10): checkout unconditionally set
+ * `trial_period_days: 7` on every annual checkout with no prior-trial check,
+ * and Checkout mints a fresh Stripe Customer each session (no `customer`
+ * param), so repeat checkout was an unbounded free-Pro loop.
+ *
+ * `profiles.trial_started_at` is set server-side, once, by the Stripe
+ * webhook (`webhookProcess.ts`) the first time a subscription for this user
+ * is observed `trialing` — never client-writable (T2/P0-4 forward-banned
+ * column lockdown). Fail-open here means "grant a trial" on a read error;
+ * that's the safe direction — a spurious 500 on checkout would be a worse
+ * user-facing failure than the rare double-trial from a transient DB read
+ * blip, and every actual `trialing` event still funnels through the same
+ * once-only WHERE-IS-NULL webhook write regardless of this read's outcome.
+ */
+async function hasAlreadyTrialed(userId: string): Promise<boolean> {
+  const sb = createSupabaseServiceRoleClient();
+  if (!sb) return false;
+  const { data, error } = await sb
+    .from("profiles")
+    .select("trial_started_at")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) return false;
+  return Boolean(data?.trial_started_at);
+}
 
 export const runtime = "nodejs";
 
@@ -102,6 +129,12 @@ export async function POST(req: Request) {
     );
   }
 
+  // ENG-1490 #3: eligibility check must happen before we decide whether to
+  // include trial_period_days below — read once, reuse for both the
+  // subscription_data and payment_method_collection branches so they can't
+  // drift from each other.
+  const eligibleForTrial = period === "annual" && !(await hasAlreadyTrialed(userId));
+
   const origin = appOrigin();
 
   // Stripe Tax wiring is flag-gated (round-6, 2026-04-19). When the
@@ -151,13 +184,21 @@ export async function POST(req: Request) {
         // this restores web↔mobile parity. The webhook grants Pro on
         // `trialing` (webhookProcess.ts) and the subscription card +
         // /checkout/success already render trial states.
-        ...(period === "annual" ? { trial_period_days: 7 } : {}),
+        //
+        // ENG-1490 #3: gated on `eligibleForTrial` (annual AND never
+        // trialed before) rather than just `period === "annual"` — a
+        // returning user who already used their trial gets a normal paid
+        // annual subscription, no second trial, no matter how many fresh
+        // Stripe Customers repeat checkout has minted for them.
+        ...(eligibleForTrial ? { trial_period_days: 7 } : {}),
       },
       // Card collected upfront during the trial ("always" is Stripe's
       // default, pinned explicitly so the disclosure's "first charge on
       // Day 7" promise can't drift to a card-less trial that dunning-
-      // fails on Day 7).
-      ...(period === "annual" ? { payment_method_collection: "always" as const } : {}),
+      // fails on Day 7). Non-trial annual checkouts don't need this pinned
+      // — Stripe's default already collects payment upfront for a paid
+      // (non-trialing) subscription.
+      ...(eligibleForTrial ? { payment_method_collection: "always" as const } : {}),
       // Audit 2026-04-30 (user-sentiment pain #1): the success page is
       // a dedicated `/checkout/success` route that surfaces an explicit
       // trust-copy receipt (cancel path, trial-end, refund window,
