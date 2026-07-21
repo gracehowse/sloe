@@ -18,9 +18,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "@/context/auth";
-import { supabase } from "@/lib/supabase";
-import { resolveTargets } from "@/lib/calcTargets";
-import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
+import { usePlanImportNutritionTargets } from "@/hooks/usePlanImportNutritionTargets";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
@@ -76,19 +74,8 @@ export default function PlanImportScreen() {
   const [autoRebalance, setAutoRebalance] = useState(true);
   const [committing, setCommitting] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
-  // ENG-1601 — real per-user targets, resolved the same way planner.tsx
-  // does (explicit DB target → computed from body stats → app defaults).
-  // Never a fabricated flat number: `nutritionTargets` starts at
-  // NUTRITION_DEFAULTS (the sanctioned, documented fallback every other
-  // mobile screen uses while data is loading) and is replaced by the
-  // real resolved values once the profile fetch below completes.
-  const [nutritionTargets, setNutritionTargets] = useState({
-    calories: NUTRITION_DEFAULTS.calories,
-    protein: NUTRITION_DEFAULTS.protein,
-    carbs: NUTRITION_DEFAULTS.carbs,
-    fat: NUTRITION_DEFAULTS.fat,
-    fiber: NUTRITION_DEFAULTS.fiber,
-  });
+  // ENG-1601 — real per-user targets, never fabricated (see the hook's doc comment).
+  const nutritionTargets = usePlanImportNutritionTargets(userId);
 
   const apiBase = getSupprApiBase();
 
@@ -102,54 +89,6 @@ export default function PlanImportScreen() {
     const pending = consumePendingImportText();
     if (pending) setPasteText(pending);
   }, [router]);
-
-  // ENG-1601 — fetch the user's real nutrition targets for auto-rebalance,
-  // matching planner.tsx's exact select + resolveTargets call so both
-  // screens resolve the same user's targets identically.
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    supabase
-      .from("profiles")
-      .select(
-        "target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, height_cm, sex, activity_level, goal, dob, age, plan_pace",
-      )
-      .eq("id", userId)
-      .single()
-      .then(({ data }) => {
-        if (cancelled || !data) return;
-        const d = data as Record<string, unknown>;
-        const t = resolveTargets(
-          {
-            target_calories: d.target_calories as number | null,
-            target_protein: d.target_protein as number | null,
-            target_carbs: d.target_carbs as number | null,
-            target_fat: d.target_fat as number | null,
-            target_fiber_g: d.target_fiber_g as number | null,
-          },
-          {
-            weight_kg: d.weight_kg as number | null,
-            height_cm: d.height_cm as number | null,
-            sex: d.sex as string | null,
-            activity_level: d.activity_level as string | null,
-            goal: d.goal as string | null,
-            dob: d.dob as string | null,
-            age: d.age as number | null,
-            plan_pace: d.plan_pace as string | null,
-          },
-        );
-        setNutritionTargets({
-          calories: t.calories,
-          protein: t.protein,
-          carbs: t.carbs,
-          fat: t.fat,
-          fiber: t.fiber,
-        });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
 
   const extractSourceText = useCallback(
     async (file: PickedFile, kind: "pdf" | "image"): Promise<string | null> => {
