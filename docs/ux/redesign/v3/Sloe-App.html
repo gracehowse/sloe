@@ -103,9 +103,9 @@
   /* Semantic state */
   --success:          #5e7c5a;    /* Sage — under budget / on track */
   --success-soft:     #e3eadd;
-  --warning:          #cf6e3c;    /* Burnt orange — macro/sodium over (distinct from carb gold; NEVER the ring) */
+  --warning:          #cf6e3c;    /* Burnt orange — over-budget signals product-wide incl. the ring's over state (ENG-1296; distinct from carb gold) */
   --warning-soft:     #cf6e3c16;
-  --destructive:      #c0533f;    /* ring over-budget ONLY; errors */
+  --destructive:      #c0533f;    /* errors + destructive actions ONLY — over-budget is amber (ENG-1296 red retirement) */
   --destructive-soft: #c0533f14;
 
   /* Macro — fixed across all surfaces, never reassign per-surface.
@@ -150,7 +150,7 @@
   --ring-track: #5e7c5a;          /* Sage when logged + under budget */
   /* Jewel-grade arc — gradient stops (deep→fresh), luminous cap, engraved channel */
   --ring-under-a:  #4d7a50;  --ring-under-b:  #93c08c;   /* Sage → fresh leaf */
-  --ring-over-a:   #c0533f;  --ring-over-b:   #e08a5f;   /* Destructive → warm */
+  --ring-over-a:   #925812;  --ring-over-b:   #C9892C;   /* ONE amber family with the numeral (ENG-1296 — matches shipped src/styles/theme.css) */
   --ring-empty-a:  #c4bcd4;  --ring-empty-b:  #e6e0f1;   /* Frost bloom */
   --ring-channel:  rgba(36,23,51,.06);  /* engraved inner edge on track */
   --ring-cap-core: #ffffff;             /* luminous gem highlight */
@@ -245,7 +245,7 @@
   --ring-track: #7fa078;
   /* Jewel-grade arc — brighter in dark so the gem reads luminous on plum-black */
   --ring-under-a:  #6fa06a;  --ring-under-b:  #b6e0ad;
-  --ring-over-a:   #d2614a;  --ring-over-b:   #f0a47a;
+  --ring-over-a:   #D6A24A;  --ring-over-b:   #E0B25E;  /* lifted amber family — red retired (ENG-1296, matches shipped dark tokens) */
   --ring-empty-a:  #6a5a7e;  --ring-empty-b:  #b9add0;
   --ring-channel:  rgba(0,0,0,.28);
   --ring-cap-core: #fbf7ff;
@@ -595,7 +595,7 @@ button{ color: inherit; }
 .pill svg{ width:13px; height:13px; }
 .pill--success{ background: var(--success-soft); color: var(--success); }
 .pill--warn{ background: var(--warning-soft); color: var(--warning); }
-.pill--over{ background: var(--destructive-soft); color: var(--destructive); }
+.pill--over{ background: var(--warning-soft); color: var(--warning); } /* ENG-1296 — over = amber */
 .pill--frost{ background: var(--accent-frost-mist); color: var(--primary-active); }
 .pill--clay{ background: var(--accent-frost-mist); color: var(--primary-active); }
 .pill--on-dark{ background: rgba(255,255,255,0.16); color:#fff; backdrop-filter: blur(6px); }
@@ -612,14 +612,16 @@ button{ color: inherit; }
 
 /* ════════════ THE RING (canonical DailyRing) ════════════
    Locked rule: empty = brand gradient · logged+under = Sage ·
-   over target = Destructive. Track = Frost Mist. Centre reads the
-   big number (Inter heavy, tabular) + LOGGED / LEFT / OVER.        */
+   over target = Amber (ENG-1296 red retirement — red is errors/
+   destructive only; over-budget is uniformly amber product-wide).
+   Track = Frost Mist. Centre reads the big number (Inter heavy,
+   tabular) + LOGGED / LEFT / OVER.                                 */
 .ring{ position: relative; flex: none; display:inline-flex; }
 .ring svg{ display:block; }
 .ring__track{ stroke: var(--ring-bg); }
 .ring__arc{ transition: stroke-dashoffset var(--dur-lg) var(--ease), stroke var(--dur-md) var(--ease); stroke-linecap: round; }
 .ring__arc.is-under{ stroke: var(--success); }
-.ring__arc.is-over{ stroke: var(--destructive); }
+.ring__arc.is-over{ stroke: var(--warning); } /* ENG-1296 — over = amber, never red (matches .ring-status.is-over) */
 .ring__center{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
 /* Ring numeral is the brand-data hybrid → Newsreader (serif), tabular. */
 .ring__num{ font-family: var(--font-serif); font-weight: var(--fw-medium); letter-spacing: -0.01em;
@@ -1467,8 +1469,8 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 .rh-coltrack i{ display:block; width:100%; border-radius:12px 12px 0 0; }
 .rh-colb{ display:flex; flex-direction:column; align-items:flex-start; text-align:left; }
 .rh-colb .ring-cap{ align-self:flex-start; }
-.ring-overchip{ display:inline-flex; align-items:center; gap:4px; margin-top:8px; padding:3px 12px; border-radius:9999px; background:var(--destructive-soft); color:var(--destructive); font-size:11px; font-weight:var(--fw-bold); }
-.ring-overchip .dot{ width:5px; height:5px; border-radius:9999px; background:var(--destructive); }
+.ring-overchip{ display:inline-flex; align-items:center; gap:4px; margin-top:8px; padding:3px 12px; border-radius:9999px; background:var(--warning-soft); color:var(--warning); font-size:11px; font-weight:var(--fw-bold); } /* ENG-1296 — over = amber */
+.ring-overchip .dot{ width:5px; height:5px; border-radius:9999px; background:var(--warning); }
 .ring-stats{ display:flex; align-items:center; justify-content:center; gap:8px; margin-top:16px; font-size:13px; color:var(--fg-secondary); }
 .ring-stats b{ color:var(--fg); font-weight:var(--fw-semibold); font-variant-numeric:tabular-nums; }
 .ring-stats .dot{ color:var(--fg-tertiary); }
@@ -1576,10 +1578,10 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
   background:color-mix(in srgb, var(--accent-frost-mist) 70%, var(--card)); transition:transform .14s var(--ease); }
 [data-theme="dark"] .guide-inset, .dark .guide-inset{ background:rgba(148,116,168,.14); }
 .guide-inset:active{ transform:scale(.99); }
-.guide-inset.is-over{ background:var(--destructive-soft); }
+.guide-inset.is-over{ background:var(--warning-soft); } /* ENG-1296 — over = amber */
 .guide-inset.is-good{ background:var(--success-soft); }
 .guide-inset .gi{ width:34px; height:34px; flex:none; border-radius:8px; display:flex; align-items:center; justify-content:center; background:var(--primary); color:#fff; }
-.guide-inset.is-over .gi{ background:var(--destructive); } .guide-inset.is-good .gi{ background:var(--success); }
+.guide-inset.is-over .gi{ background:var(--warning); } .guide-inset.is-good .gi{ background:var(--success); } /* ENG-1296 — over = amber */
 .guide-inset .gt{ flex:1; min-width:0; }
 .guide-inset .gt b{ display:block; font-size:15px; font-weight:var(--fw-semibold); color:var(--fg); }
 .guide-inset .gsub{ display:block; font-size:12px; color:var(--fg-secondary); margin-top:1px; line-height:1.35; }
@@ -2848,7 +2850,7 @@ body{ margin:0; background: var(--bg-secondary); font-family: var(--font-sans); 
 .w-listrow-s{ display:block; font-size:13px; color:var(--fg-tertiary); margin-top:1px; }
 /* web Today: guide line, digest, insight */
 .w-guide{ display:flex; align-items:center; gap:12px; width:100%; margin:16px 0 4px; padding:12px 16px; border-radius:12px; border:none; background:var(--accent-frost-mist); color:var(--primary); font-family:var(--font-sans); font-size:13px; cursor:pointer; text-align:left; }
-.w-guide.is-over{ background:var(--destructive-soft); color:var(--destructive); }
+.w-guide.is-over{ background:var(--warning-soft); color:var(--warning); } /* ENG-1296 — over = amber */
 .w-guide b{ font-weight:600; } .w-guide-ic{ flex:none; }
 .w-digest{ display:block; cursor:pointer; text-align:left; width:100%; }
 .w-digest-ic{ width:28px; height:28px; border-radius:8px; background:var(--accent-frost-mist); color:var(--primary); display:inline-flex; align-items:center; justify-content:center; }
