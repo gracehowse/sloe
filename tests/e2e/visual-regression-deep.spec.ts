@@ -146,8 +146,13 @@ test.describe("Visual regression — deep authenticated routes", () => {
       await page.goto("/profile", { waitUntil: "domcontentloaded" });
       await dismissVisualOverlays(page);
       const upgrade = page.getByRole("button", { name: /upgrade to pro/i });
+      // `isVisible({ timeout })` doesn't wait (see the settings-nav guard
+      // above) — a false negative here would silently `test.skip` real
+      // coverage instead of just missing a click, so this needs the same
+      // `waitFor` treatment.
       const hasUpgrade = await upgrade
-        .isVisible({ timeout: 5000 })
+        .waitFor({ state: "visible", timeout: 5000 })
+        .then(() => true)
         .catch(() => false);
       test.skip(
         !hasUpgrade,

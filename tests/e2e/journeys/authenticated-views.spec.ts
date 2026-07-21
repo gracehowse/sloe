@@ -29,9 +29,19 @@ test.describe("Authenticated app view matrix", () => {
 
     await test.step("Library", async () => {
       await gotoView("/library");
-      // Empty library redirects to Discover (parity with mobile).
+      // Empty library redirects to Discover (parity with mobile). This check
+      // picks which branch to assert, right after a fresh navigation with no
+      // prior wait — the same `isVisible({ timeout })`-doesn't-actually-wait
+      // race as the settings guard below, but here a false negative sends
+      // the test down the WRONG assertion branch instead of just skipping a
+      // click, so `waitFor` matters even more. See the settings-nav comment
+      // below for the full explanation.
       const libraryTitle = page.getByTestId("library-desktop-title");
-      if (await libraryTitle.isVisible({ timeout: 5000 }).catch(() => false)) {
+      const hasLibraryTitle = await libraryTitle
+        .waitFor({ state: "visible", timeout: 5000 })
+        .then(() => true)
+        .catch(() => false);
+      if (hasLibraryTitle) {
         // ENG-921 / Figma 527:2 — Library search placeholder is
         // "Search your recipes" (Discover keeps "Search recipes").
         await expect(page.getByPlaceholder(/search (your )?recipes/i).first()).toBeVisible();
