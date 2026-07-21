@@ -72,11 +72,13 @@ export interface NorthStarBlockSuggestion {
    */
   whyLine?: string;
   /**
-   * Figma `654:2` hero meta row — optional cook time in minutes. When
+   * Figma `654:2` hero meta row — optional prep + cook time in minutes,
+   * combined into ONE total via `totalRecipeDurationMin` (ENG-1617). When
    * present a "· {n} min" chip with a Clock glyph renders after the
-   * kcal span. Sourced from the recipe (`cookTimeMin`) by the host;
-   * absent for recipes with no recorded time — the chip degrades away.
+   * kcal span. Sourced from the recipe by the host; absent for recipes
+   * with no recorded time — the chip degrades away.
    */
+  prepTimeMin?: number;
   cookTimeMin?: number;
   /** ENG-1417 — whether the recipe's macros are a verified nutrition
    *  lookup vs an unverified estimate. Absent/undefined renders the

@@ -39,14 +39,14 @@ const MOBILE_A11Y_SRC =
   MOBILE_DISCOVER_SRC + "\n" + readFileSync(MOBILE_MORE_IDEA_PATH, "utf8");
 
 describe("recipeCardAccessibilityLabel — shared helper", () => {
-  it("builds a descriptive, trust-safe label with title, macros, cook time, and a call to action", () => {
+  it("builds a descriptive, trust-safe label with title, macros, time, and a call to action", () => {
     const label = recipeCardAccessibilityLabel({
       title: "Katsu Curry",
       calories: 540,
       protein: 32,
       carbs: 60,
       fat: 18,
-      cookTime: "25 min",
+      timeLabel: "25 min",
     });
     expect(label).toBe(
       "Katsu Curry. Estimated 540 calories, 32g protein, 60g carbs, 18g fat, 25 min. View recipe.",
@@ -84,7 +84,7 @@ describe("recipeCardAccessibilityLabel — shared helper", () => {
     expect(label).not.toContain("calories");
   });
 
-  it("handles a recipe with macros but no cook time", () => {
+  it("handles a recipe with macros but no time", () => {
     const label = recipeCardAccessibilityLabel({
       title: "Salad",
       calories: 150,

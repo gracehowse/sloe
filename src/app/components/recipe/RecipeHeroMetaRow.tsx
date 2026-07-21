@@ -4,6 +4,7 @@
  */
 import { Icons } from "../ui/icons";
 import { RecipeHeroCostEstimate } from "./RecipeHeroCostEstimate";
+import { totalRecipeDurationMin } from "../../../lib/recipes/totalDuration";
 
 type IngredientLine = {
   name: string;
@@ -32,14 +33,15 @@ export function RecipeHeroMetaRow({
   isPro,
   onUpgrade,
 }: Props) {
-  const totalMin = (prepMin ?? 0) + (cookMin ?? 0);
+  // ENG-1617 — one shared total (prep + cook) selector, not a local sum.
+  const totalMin = totalRecipeDurationMin(prepMin, cookMin);
   const roundedKcal = Math.round(kcal);
 
   return (
     <div className="flex flex-wrap items-center gap-4 text-[13px] font-medium text-white/90">
       <span className="inline-flex items-center gap-1">
         <Icons.timer className="w-3.5 h-3.5" aria-hidden />
-        {totalMin > 0 ? `${totalMin} min` : "—"}
+        {totalMin != null ? `${totalMin} min` : "—"}
       </span>
       {roundedKcal > 0 ? (
         <span className="inline-flex items-center gap-1">

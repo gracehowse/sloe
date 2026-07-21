@@ -24,13 +24,10 @@ import {
   type RecipeCategoryId,
 } from "../../lib/recipes/recipeCategoryFilters.ts";
 import { classifyLibraryEntry } from "../../lib/recipes/libraryEntryKind.ts";
-import {
-  matchesPlanImportPill,
-  planImportFilterLabels,
-  planImportPillId,
-} from "../../lib/planning/planImport/libraryFilters.ts";
+import { matchesPlanImportPill, planImportFilterLabels, planImportPillId } from "../../lib/planning/planImport/libraryFilters.ts";
 import { recipeSearchMatch } from "../../lib/recipes/recipeSearchMatch.ts";
 import { deriveLibraryComposition } from "../../lib/recipes/libraryShelves.ts";
+import { totalRecipeDurationMin } from "../../lib/recipes/totalDuration.ts";
 import { useLibraryDiscoverSearch } from "../../lib/libraryDiscoverSearchStore.ts";
 
 /** Recipe image with the shared fallback for missing or failed URLs. */
@@ -540,7 +537,7 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
               const protein = Math.round(recipe.protein ?? 0);
               const carbs = Math.round(recipe.carbs ?? 0);
               const fat = Math.round(recipe.fat ?? 0);
-              const totalTime = (typeof recipe.prepTimeMin === "number" ? recipe.prepTimeMin : 0) + (typeof recipe.cookTimeMin === "number" ? recipe.cookTimeMin : 0);
+              const totalTime = totalRecipeDurationMin(recipe.prepTimeMin, recipe.cookTimeMin); // ENG-1617: shared selector, not a local sum
               // `★ N` uses the REAL saves count (`savedCount`) — there is no
               // rating field on RecipeCard, so we never fabricate a 4.8-style
               // score (would trip recipeCardNoScore.test.ts + the trust
@@ -629,14 +626,14 @@ export const Library = memo(function Library({ userTier, onUpgrade: _onUpgrade, 
                           {saves}
                         </span>
                       ) : null}
-                      {saves > 0 && totalTime > 0 ? <span aria-hidden>·</span> : null}
-                      {totalTime > 0 ? (
+                      {saves > 0 && totalTime != null ? <span aria-hidden>·</span> : null}
+                      {totalTime != null ? (
                         <span className="inline-flex items-center gap-1">
                           <Icons.time className="w-[12px] h-[12px]" aria-hidden />
                           {totalTime} min
                         </span>
                       ) : null}
-                      {saves === 0 && totalTime === 0 ? (
+                      {saves === 0 && totalTime == null ? (
                         <span>{recipe.servings} {recipe.servings === 1 ? "serving" : "servings"}</span>
                       ) : null}
                     </div>

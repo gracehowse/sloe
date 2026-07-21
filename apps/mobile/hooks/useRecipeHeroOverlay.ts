@@ -4,6 +4,7 @@
  */
 import { useRecipeCostEstimate } from "./useRecipeCostEstimate";
 import { buildRecipeHeroOverlay } from "../lib/recipe/buildRecipeHeroOverlay";
+import { totalRecipeDurationMin } from "@suppr/shared/recipes/totalDuration";
 import type { RecipeHeroOverlay } from "../components/recipe/RecipeDetailHero";
 
 type IngredientLine = {
@@ -41,8 +42,8 @@ export function useRecipeHeroOverlay(args: {
 
   const heroShowsPhoto = Boolean(args.heroImageUrl) && !args.heroImageBroken;
   const heroOverlayActive = args.recipeDetailV3 && heroShowsPhoto;
-  const heroTotalTimeMin =
-    (args.prepMin ?? 0) + (args.cookMin ?? 0) || null;
+  // ENG-1617 — one shared total (prep + cook) selector, not a local sum.
+  const heroTotalTimeMin = totalRecipeDurationMin(args.prepMin, args.cookMin);
 
   const heroOverlay = buildRecipeHeroOverlay({
     active: heroOverlayActive,

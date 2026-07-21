@@ -4,6 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "../../../lib/supabase/browserClient";
 import { normalizeRecipeTitle } from "../../../lib/recipes/normalizeRecipeTitle";
+import { formatTotalRecipeDuration } from "../../../lib/recipes/totalDuration";
 import {
   CREATOR_RECIPES_PAGE_SIZE,
   mergeRecipePage,
@@ -128,6 +129,8 @@ export function CreatorRecipeList({
         {recipes.map((r, idx) => {
           const kcal = Math.round(r.calories ?? 0);
           const protein = Math.round(r.protein ?? 0);
+          // ENG-1617 — total (prep + cook), not cook alone.
+          const timeLabel = formatTotalRecipeDuration(r.prep_time_min, r.cook_time_min);
           return (
             <li key={r.id} className={idx > 0 ? "border-t border-border" : undefined}>
               <Link
@@ -170,7 +173,7 @@ export function CreatorRecipeList({
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
                     {kcal} kcal · {protein}g protein
-                    {r.cook_time_min ? ` · ${r.cook_time_min} min` : ""}
+                    {timeLabel ? ` · ${timeLabel}` : ""}
                   </p>
                 </div>
               </Link>

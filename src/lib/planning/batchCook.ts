@@ -5,6 +5,8 @@
  * Grace scope 2026-06-28: recipe picker + batch-size scaling + shopping-list
  * scale — not the full assign-portions / fridge-pip planner at launch.
  */
+import { totalRecipeDurationMin } from "../recipes/totalDuration";
+
 export const BATCH_COOK_MIN_PORTIONS = 2;
 
 export interface BatchCookRecipeCandidate {
@@ -25,11 +27,19 @@ export interface BatchCookRecipeCandidate {
   batchFriendly?: boolean;
 }
 
+/**
+ * ENG-1617 — delegates to the one shared total-time selector
+ * (`totalRecipeDurationMin`) so batch-cook candidates can never disagree
+ * with the same recipe's total shown on Library / Discover / Recipe Detail.
+ * Keeps the pre-existing `number` (never `null`) contract for this call
+ * site's `BatchCookRecipeCandidate.timeMin` — batch-cook's own candidate
+ * list, not a user-facing "no time recorded" display.
+ */
 export function recipeTotalTimeMin(
   prep: number | null | undefined,
   cook: number | null | undefined,
 ): number {
-  return (prep ?? 0) + (cook ?? 0);
+  return totalRecipeDurationMin(prep, cook) ?? 0;
 }
 
 /**

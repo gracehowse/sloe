@@ -5,6 +5,7 @@ import { RecipeHeroFallback } from "../suppr/RecipeHeroFallback";
 import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
 import { useFallbackScheme } from "../../../lib/theme/useFallbackScheme";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
+import { totalRecipeDurationMin } from "../../../lib/recipes/totalDuration";
 
 import type { RecipeCard } from "@/types/recipe";
 
@@ -25,25 +26,20 @@ export interface RecipeCardWideProps {
   onPress: () => void;
 }
 
-function totalMinutes(r: RecipeCard): number {
-  const prep = Number.isFinite(r.prepTimeMin) ? (r.prepTimeMin as number) : 0;
-  const cook = Number.isFinite(r.cookTimeMin) ? (r.cookTimeMin as number) : 0;
-  return prep + cook;
-}
-
 export function RecipeCardWide({ recipe, onPress }: RecipeCardWideProps) {
   const [broken, setBroken] = React.useState(false);
   const fallbackScheme = useFallbackScheme(); // ENG-1528 — dark ramp underlay on dark cards
   const mediaPalette = isFeatureEnabled("recipe_sparse_media_v1") ? "plum-duotone" : "legacy-cuisine";
   const image = recipe.image?.trim() ?? "";
   const showImage = image.length > 0 && !broken;
-  const mins = totalMinutes(recipe);
+  // ENG-1617 — one shared total (prep + cook) selector, not a local sum.
+  const mins = totalRecipeDurationMin(recipe.prepTimeMin, recipe.cookTimeMin);
   const hasKcal = recipe.calories > 0;
   const meta = [
     hasKcal
       ? `${Math.round(recipe.calories)} kcal · ${Math.round(recipe.protein)}g protein`
       : "Nutrition pending",
-    mins > 0 ? `${mins} min` : null,
+    mins != null ? `${mins} min` : null,
   ]
     .filter(Boolean)
     .join(" · ");

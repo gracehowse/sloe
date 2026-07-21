@@ -48,12 +48,7 @@ import {
   Text,
   View,
 } from "react-native";
-import {
-  ChevronLeft,
-  ChevronRight,
-  CircleCheck,
-  UtensilsCrossed,
-} from "lucide-react-native";
+import { ChevronLeft, ChevronRight, CircleCheck, UtensilsCrossed } from "lucide-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { formatMacro, formatKcalDisplay } from "@suppr/nutrition-core/formatMacro";
@@ -63,6 +58,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { Spacing, Radius, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { normalizeRecipeTitle } from "@suppr/shared/recipes/normalizeRecipeTitle";
+import { formatTotalRecipeDuration } from "@suppr/shared/recipes/totalDuration";
 import {
   mergeRecipePage,
   nextPageRange,
@@ -409,7 +405,7 @@ export default function CreatorProfileScreen() {
                 <Text style={styles.recipeMeta} numberOfLines={1}>
                   {formatKcalDisplay(r.calories ?? 0)} kcal
                   {r.protein != null ? ` · ${formatMacro(r.protein, "protein", "g")} protein` : ""}
-                  {r.cook_time_min ? ` · ${r.cook_time_min} min` : ""}
+                  {formatTotalRecipeDuration(r.prep_time_min, r.cook_time_min) ? ` · ${formatTotalRecipeDuration(r.prep_time_min, r.cook_time_min)}` : ""}
                 </Text>
               </View>
               <ChevronRight size={18} color={colors.textTertiary} />
