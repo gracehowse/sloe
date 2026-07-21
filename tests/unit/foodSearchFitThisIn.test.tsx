@@ -17,12 +17,21 @@
  * at the module boundary so we don't reach Supabase.
  */
 import * as React from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { CustomFood } from "../../src/lib/nutrition/customFoods";
 
 void React;
+
+// ENG-1409 — confirmed flake (CPU contention when the full suite runs
+// alongside another workflow, not a regression: this file passes in ~1s
+// total in isolation). Bumped per-test timeout from vitest's 5s default
+// for headroom under load, matching the pattern in
+// tests/unit/weeklyRecapPushRoute.test.ts.
+beforeAll(() => {
+  vi.setConfig({ testTimeout: 15_000 });
+});
 
 // ── Mock custom-foods client so FoodSearch has a single "seeded" row ──
 const SEED_FOOD: CustomFood = {

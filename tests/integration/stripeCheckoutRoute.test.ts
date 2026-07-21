@@ -3,7 +3,16 @@
  * invalid tier short-circuit before Stripe SDK (complements
  * tests/unit/stripeCheckoutRoute.test.ts which pins session.create shape).
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from "vitest";
+
+// ENG-1409 — confirmed flake (CPU contention when the full suite runs
+// alongside another workflow, not a regression: this file passes in
+// <500ms in isolation). Bumped per-test timeout from vitest's 5s default
+// for headroom under load, matching the pattern in
+// tests/unit/weeklyRecapPushRoute.test.ts.
+beforeAll(() => {
+  vi.setConfig({ testTimeout: 15_000 });
+});
 
 const sessionsCreateMock = vi.fn();
 

@@ -20,10 +20,19 @@
  * (mobile is Apple-Sign-In-only).
  */
 import * as React from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 void React;
+
+// ENG-1409 — confirmed flake (CPU contention when the full suite runs
+// alongside another workflow, not a regression: this file passes in
+// <300ms total in isolation). Bumped per-test timeout from vitest's 5s
+// default for headroom under load, matching the pattern in
+// tests/unit/weeklyRecapPushRoute.test.ts.
+beforeAll(() => {
+  vi.setConfig({ testTimeout: 15_000 });
+});
 
 const signUpMock = vi.fn();
 

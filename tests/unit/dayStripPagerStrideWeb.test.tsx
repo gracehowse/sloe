@@ -17,7 +17,7 @@
  *     PREVIOUS week and moves the selection exactly 7 days back.
  */
 import * as React from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render } from "@testing-library/react";
 
 import { DayStrip } from "../../src/app/components/DayStrip";
@@ -27,6 +27,15 @@ import {
   dayIndexInWeek,
   enumerateWeekStartsInJournalRange,
 } from "../../src/lib/nutrition/journalNavigation.ts";
+
+// ENG-1409 — confirmed flake (CPU contention when the full suite runs
+// alongside another workflow, not a regression: this file passes in
+// ~1.3s total in isolation). Bumped per-test timeout from vitest's 5s
+// default for headroom under load, matching the pattern in
+// tests/unit/weeklyRecapPushRoute.test.ts.
+beforeAll(() => {
+  vi.setConfig({ testTimeout: 15_000 });
+});
 
 void React;
 
