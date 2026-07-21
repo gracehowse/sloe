@@ -6,6 +6,14 @@
  * `toast.test.tsx`, and `useToast.test.tsx` — this file's job is narrower:
  * prove planner.tsx wires them up correctly and that the migration didn't
  * silently expand past its 7-call-site scope or touch a destructive dialog.
+ *
+ * ENG-1631 (2026-07-21, Planner extract slice 1): the plan-templates
+ * fetch's error `Alert.alert("Templates", ...)` moved verbatim from
+ * planner.tsx into `usePlannerTemplates.ts`. It's still one of the 8
+ * genuinely-blocking dialogs the migration deliberately left alone (a
+ * Cancel/Try-again alert, not a toast candidate) — just relocated, so the
+ * per-file count below dropped from 8 to 7 and the hook file now carries
+ * the 8th. Total across both files is unchanged.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -14,6 +22,10 @@ import { describe, expect, it } from "vitest";
 const ROOT = resolve(__dirname, "../..");
 const PLANNER_SRC = readFileSync(
   resolve(ROOT, "app/(tabs)/planner.tsx"),
+  "utf8",
+);
+const PLANNER_TEMPLATES_HOOK_SRC = readFileSync(
+  resolve(ROOT, "hooks/usePlannerTemplates.ts"),
   "utf8",
 );
 const ANALYTICS_SRC = readFileSync(resolve(ROOT, "lib/analytics.ts"), "utf8");
@@ -58,8 +70,15 @@ describe("planner.tsx — Alert-to-Toast migration (ENG-1344)", () => {
   it("leaves the 8 genuinely blocking/destructive Alert.alert calls untouched", () => {
     // Every remaining bare Alert.alert( call must be one of the known
     // branching/destructive dialogs — never one of the 7 migrated messages.
+    // ENG-1631 moved one of the 8 (the plan-templates fetch error alert)
+    // into usePlannerTemplates.ts — the total across both files must still
+    // be 8, split 7 (planner.tsx) + 1 (the hook).
     const rawAlertCalls = PLANNER_SRC.match(/(?<!\.)Alert\.alert\(/g) ?? [];
-    expect(rawAlertCalls.length).toBe(8);
+    expect(rawAlertCalls.length).toBe(7);
+    const hookAlertCalls =
+      PLANNER_TEMPLATES_HOOK_SRC.match(/(?<!\.)Alert\.alert\(/g) ?? [];
+    expect(hookAlertCalls.length).toBe(1);
+    expect(rawAlertCalls.length + hookAlertCalls.length).toBe(8);
 
     const migratedTitles = [
       '"No alternatives"',

@@ -162,15 +162,10 @@ import {
   moveMealInPlan,
   type LeftoverAwareMeal,
 } from "@suppr/nutrition-core/leftoversPlanner";
-import {
-  buildTemplateFromWeek,
-  applyTemplateToWeek,
-  type PlanTemplate,
-} from "@suppr/nutrition-core/planTemplates";
+import { buildTemplateFromWeek, applyTemplateToWeek } from "@suppr/nutrition-core/planTemplates";
 import {
   createPlanTemplate,
   deletePlanTemplate,
-  listPlanTemplates,
 } from "@suppr/nutrition-core/planTemplatesClient";
 import { normaliseMealSlot } from "@suppr/nutrition-core/mealSlots";
 import {
@@ -192,6 +187,7 @@ import { useToast } from "@/hooks/useToast";
 import { alertOrToast } from "@/lib/alertOrToast";
 import { ResetPlanSheet } from "@/components/plan/ResetPlanSheet";
 import { usePlannerGenerateMenu } from "@/hooks/usePlannerGenerateMenu";
+import { usePlannerTemplates } from "@/hooks/usePlannerTemplates";
 import { useResetPlanGate } from "@/hooks/useResetPlanGate";
 import { PlanV3Surface } from "@/components/plan/PlanV3Surface";
 import { AdjustConstraintsSheet } from "@/components/plan/AdjustConstraintsSheet";
@@ -943,10 +939,12 @@ export default function PlannerScreen() {
     }, [userId]),
   );
 
-  // Batch 3.10 — plan templates state.
-  const [templatesOpen, setTemplatesOpen] = useState(false);
-  const [planTemplates, setPlanTemplates] = useState<PlanTemplate[]>([]);
-  const [templatesLoading, setTemplatesLoading] = useState(false);
+  // Batch 3.10 — plan templates state. ENG-1631 slice 1: state + the
+  // fetch effect live in usePlannerTemplates() below; the
+  // <PlanTemplatesSheet> JSX and its onSave/onApply/onDelete callbacks
+  // stay here (see the hook's doc comment for why).
+  const { templatesOpen, setTemplatesOpen, planTemplates, setPlanTemplates, templatesLoading } =
+    usePlannerTemplates({ userId });
   /** When a plan exists: expand to change day count / slots / start before regenerating. */
   const [planSetupExpanded, setPlanSetupExpanded] = useState(false);
   // 2026-05-23 — Plan setup rework. Replaces the three-section inline
@@ -1006,44 +1004,6 @@ export default function PlannerScreen() {
     onPick: (recipeId: string) => void;
   } | null>(null);
   const [moveSource, setMoveSource] = useState<{ day: number; slotIndex: number } | null>(null);
-
-  // P2-40 (TestFlight `APU2FBCjLALmugeCLmQ4Ii0`, 2026-04-25):
-  // generic "Could not load templates" toast was a dead end —
-  // no retry, no explanation. Add a retry counter so the alert
-  // gives the user a button to try again, plus a friendlier
-  // explanation when the error is offline-shaped.
-  const [templatesLoadAttempt, setTemplatesLoadAttempt] = useState(0);
-  useEffect(() => {
-    if (!templatesOpen || !userId) return;
-    let cancelled = false;
-    setTemplatesLoading(true);
-    listPlanTemplates(supabase, userId)
-      .then(({ templates, error }) => {
-        if (cancelled) return;
-        if (error) {
-          const friendly =
-            String(error).match(/network|fetch|offline/i)
-              ? "Couldn't reach Sloe. Check your connection and try again."
-              : `Could not load templates: ${error}`;
-          Alert.alert(
-            "Templates",
-            friendly,
-            [
-              { text: "Cancel", style: "cancel", onPress: () => setTemplatesOpen(false) },
-              { text: "Try again", onPress: () => setTemplatesLoadAttempt((n) => n + 1) },
-            ],
-          );
-          return;
-        }
-        setPlanTemplates(templates);
-      })
-      .finally(() => {
-        if (!cancelled) setTemplatesLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [templatesOpen, userId, templatesLoadAttempt]);
 
   // Load shopping item count. The shopping list is ephemeral — it
   // only makes sense in the context of an active plan. When there is
