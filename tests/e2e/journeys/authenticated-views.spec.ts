@@ -84,8 +84,19 @@ test.describe("Authenticated app view matrix", () => {
       // single-scroll flag-off path renders every section at once, so guard
       // the click. The test still verifies the privacy link is reachable in
       // Settings either way.
+      // `isVisible({ timeout })` doesn't actually wait — Playwright's types
+      // mark that option deprecated/ignored ("returns immediately"). The
+      // toBeVisible() assertion above happens to give hydration enough time
+      // in practice, but `waitFor({ state: "visible" })` is the primitive
+      // that genuinely retries, so this guard doesn't silently no-op if that
+      // timing ever tightens (see visual-regression-deep.spec.ts's identical
+      // fix, 2026-07-21, for the failure mode this avoids).
       const privacyNav = page.getByTestId("settings-pane-nav-privacy");
-      if (await privacyNav.isVisible({ timeout: 5000 }).catch(() => false)) {
+      const hasTwoPaneNav = await privacyNav
+        .waitFor({ state: "visible", timeout: 5000 })
+        .then(() => true)
+        .catch(() => false);
+      if (hasTwoPaneNav) {
         await privacyNav.click();
       }
       await expect(page.getByRole("link", { name: /privacy policy/i })).toBeVisible();
