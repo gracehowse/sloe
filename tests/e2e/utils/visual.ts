@@ -72,7 +72,16 @@ export async function seedConsent(page: Page): Promise<void> {
  *  overlays had mounted, leaking them into the golden screenshot instead of
  *  dismissing them (2026-07-21, same failure class as the settings
  *  two-pane-nav guard fixed alongside this). `waitFor({ state: "visible" })`
- *  genuinely retries for the given timeout before concluding "absent". */
+ *  genuinely retries for the given timeout before concluding "absent".
+ *
+ *  Every click below is bounded + caught, not bare: on the public landing
+ *  shell the cookie banner can dock `topAnchored` under the sticky nav,
+ *  which deliberately wins taps at z-50 vs the banner's z-40 (ENG-1386, see
+ *  CookieConsent.tsx) — a real, intentional layering the old no-op guards
+ *  never actually exercised. A bare `.click()` there hangs for the full
+ *  actionTimeout (×3 retries) waiting for an interception that is by design.
+ *  This is a best-effort dismiss for a clean screenshot, not an assertion
+ *  that the banner is interactable — give it a bounded shot and move on. */
 export async function dismissVisualOverlays(page: Page): Promise<void> {
   const acceptBtn = page
     .locator('[data-testid="cookie-consent-banner"]')
@@ -82,7 +91,7 @@ export async function dismissVisualOverlays(page: Page): Promise<void> {
     .then(() => true)
     .catch(() => false);
   if (hasAcceptBtn) {
-    await acceptBtn.click();
+    await acceptBtn.click({ timeout: 3000 }).catch(() => undefined);
     await page.waitForTimeout(400);
   }
 
@@ -94,7 +103,7 @@ export async function dismissVisualOverlays(page: Page): Promise<void> {
     .then(() => true)
     .catch(() => false);
   if (hasDismissBtn) {
-    await dismissBtn.click();
+    await dismissBtn.click({ timeout: 3000 }).catch(() => undefined);
     await page.waitForTimeout(400);
   }
 
@@ -110,7 +119,7 @@ export async function dismissVisualOverlays(page: Page): Promise<void> {
     .then(() => true)
     .catch(() => false);
   if (hasKeepGoing) {
-    await keepGoing.click().catch(() => undefined);
+    await keepGoing.click({ timeout: 3000 }).catch(() => undefined);
     await page.waitForTimeout(400);
   }
 }
