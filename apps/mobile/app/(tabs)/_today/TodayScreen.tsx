@@ -38,6 +38,7 @@ import { useTrackingExtrasOnFocus } from "@/hooks/useTrackingExtrasOnFocus";
 import { useLogSheetDeepLinks } from "@/hooks/useLogSheetDeepLinks";
 import { useHouseholdMemberCount } from "@/hooks/useHouseholdMemberCount";
 import { useTodayHydrationStimulants } from "@/hooks/useTodayHydrationStimulants";
+import { useTodayFasting } from "@/hooks/useTodayFasting";
 import { useTodayStreakAndFreezes } from "@/hooks/useTodayStreakAndFreezes";
 import { useTodayFoodFavorites } from "@/hooks/useTodayFoodFavorites";
 import { useTodayActivationNudges } from "@/hooks/useTodayActivationNudges";
@@ -674,18 +675,19 @@ export default function TrackerScreen() {
   const [nutrientsModalOpen, setNutrientsModalOpen] = useState(false);
   const [dailyStepsGoal, setDailyStepsGoal] = useState(NUTRITION_DEFAULTS.steps);
   const [plannedMeals, setPlannedMeals] = useState<{name?: string; recipe_title?: string; calories?: number; protein?: number; carbs?: number; fat?: number; recipe_id?: string | null}[]>([]);
-  const [activeFastStart, setActiveFastStart] = useState<string | null>(null);
-  // Target fast length in hours, parsed from `profiles.fasting_window`
-  // (stored as "16:8" style). Defaults to 16 until the profile loads.
-  // Used by the widget snapshot so the iOS widget shows the correct ring.
-  const [fastTargetHours, setFastTargetHours] = useState<number>(16);
-  // F-109 (TestFlight `AFHtAQRAWad1w8bDvSgZkUg`, 2026-05-06): the
-  // idle-state "Start fast" pill on Today is gated on the user having
-  // opted in to intermittent fasting (Grace, 2026-05-07). The proxy
-  // signal is `profiles.fasting_window != null` — the column is set
-  // only after the user picks a window on /fasting or in settings.
-  // Non-IF users see no pill at all.
-  const [fastingOptedIn, setFastingOptedIn] = useState<boolean>(false);
+  // ENG-1626 (Today extract, slice 2) — fasting state cluster (state +
+  // ticking effect + Siri/Shortcuts starter) moved to `useTodayFasting()`.
+  // See the hook's own doc comment for the full "why" + the preserved
+  // `fastingOptedIn` dead-read finding.
+  const {
+    activeFastStart,
+    fastTargetHours,
+    fastingTick,
+    setActiveFastStart,
+    setFastTargetHours,
+    setFastingOptedIn,
+    startFastFromShortcut,
+  } = useTodayFasting({ userId });
   const [fabSheetOpen, setFabSheetOpen] = useState(false);
   // ENG-1450 — onboarding's Breakfast/Coffee "One quick win" chips pre-scope
   // the LogSheet's search via `?openLogQuery=`, threaded by useLogSheetDeepLinks.
@@ -729,7 +731,6 @@ export default function TrackerScreen() {
   const editCanonicalRef = useRef({ cal: 0, p: 0, cb: 0, f: 0 });
   // 2026-05-15 (ENG-543): dedup parallel `loadJournal` calls — see fn.
   const loadJournalInFlightRef = useRef(false);
-  const [fastingTick, setFastingTick] = useState(Date.now());
   const [isOffline, setIsOffline] = useState(false);
   const [targetCelebration, setTargetCelebration] = useState(false);
   const [completeDayOpen, setCompleteDayOpen] = useState(false);
@@ -905,12 +906,6 @@ export default function TrackerScreen() {
       cancelled = true;
     };
   }, [userId]);
-
-  useEffect(() => {
-    if (!activeFastStart) return;
-    const id = setInterval(() => setFastingTick(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, [activeFastStart]);
 
   // Quick add panel — state/handlers live in `QuickAddPanel.tsx` (shared
   // render-only wrapper around the nutrition helpers). The host still owns
@@ -2668,38 +2663,9 @@ export default function TrackerScreen() {
     setPhotoLogOpen(true);
   }, []);
 
-  /** Batch 5.12 — start a fast from a deep link (Siri / Shortcuts app).
-   *  No-ops when a fast is already active; uses the existing
-   *  profiles.fasting_sessions shape so the fasting screen agrees. */
-  const startFastFromShortcut = useCallback(
-    async (hours: number) => {
-      if (!userId) return;
-      const { data } = await supabase
-        .from("profiles")
-        .select("fasting_sessions")
-        .eq("id", userId)
-        .maybeSingle();
-      const existing: { start: string; end: string | null }[] = Array.isArray(
-        data?.fasting_sessions,
-      )
-        ? (data.fasting_sessions as { start: string; end: string | null }[])
-        : [];
-      if (existing.some((s) => s.end === null)) {
-        // Already fasting — do not stack sessions.
-        return;
-      }
-      const startIso = new Date().toISOString();
-      const next = [...existing, { start: startIso, end: null }].slice(-90);
-      await supabase.from("profiles").update({ fasting_sessions: next }).eq("id", userId);
-      setActiveFastStart(startIso);
-      // `hours` currently only informs the widget snapshot — the fasting
-      // screen reads the window from `profiles.fasting_window`. When
-      // users invoke `suppr://fast/start?hours=N` with a non-default N we
-      // log it so analytics reflects actual use.
-      track(AnalyticsEvents.siri_action_invoked, { kind: "start_fast", hours });
-    },
-    [userId],
-  );
+  // ENG-1626 (Today extract, slice 2) — `startFastFromShortcut` moved to
+  // `useTodayFasting()`; this flush effect below still calls the
+  // hook-returned function.
 
   /**
    * Batch 5.12 — flush any pending Siri / Shortcuts-app action that the
