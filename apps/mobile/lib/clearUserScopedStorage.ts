@@ -45,9 +45,6 @@ const KEYS_TO_CLEAR_ON_SIGNOUT: ReadonlyArray<string> = [
   "health_export_nutrition",
   "health_body_lookback_days",
   "health_sync_apple_connected",
-  // apps/mobile/lib/healthSyncTypePrefs.ts
-  "health_sync_type_prefs_v1",
-  "health_last_sync_at_v1",
   // apps/mobile/lib/expoPushToken.ts
   "notifications_prompt_dismissed_v1",
   "expo_push_token_last_synced_v1",
