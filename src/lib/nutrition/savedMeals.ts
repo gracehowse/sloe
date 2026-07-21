@@ -250,6 +250,62 @@ export async function listSavedMeals(
 }
 
 /**
+ * Bulk variant of `listSavedMeals` — fetches saved meals for many users
+ * in two `IN(...)` queries instead of N per-user round trips (mirrors
+ * the bulk `saves` fetch pattern already used by the weekly-recap cron
+ * route). Built for ENG-1586: the cron needs every eligible user's
+ * saved meals in one pass to feed Cascade Rule 1 (`re_log_prompt`) —
+ * looping `listSavedMeals` per user would mean up to
+ * `MAX_ROWS_PER_INVOCATION` × 2 extra queries per run.
+ *
+ * Returns a `Map<userId, SavedMeal[]>`. Users with no saved meals (or
+ * not present in `userIds`) are simply absent from the map — callers
+ * should default to `[] ` via `.get(id) ?? []`, same as `listSavedMeals`
+ * returning `[]` for a user with none.
+ */
+export async function listSavedMealsForUsers(
+  supabase: SupabaseLike,
+  userIds: readonly string[],
+): Promise<Map<string, SavedMeal[]>> {
+  const out = new Map<string, SavedMeal[]>();
+  if (userIds.length === 0) return out;
+
+  const { data: parentRows, error: parentErr } = await supabase
+    .from("user_saved_meals")
+    .select(`${SAVED_MEAL_LIST_COLUMNS}, user_id`)
+    .in("user_id", userIds as string[])
+    .order("last_logged_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  if (parentErr || !Array.isArray(parentRows) || parentRows.length === 0) return out;
+
+  const parentIds = parentRows.map((r: any) => String(r.id));
+  const { data: itemRows, error: itemsErr } = await supabase
+    .from("user_saved_meal_items")
+    .select(SAVED_MEAL_ITEM_LIST_COLUMNS)
+    .in("saved_meal_id", parentIds)
+    .order("position", { ascending: true });
+
+  const itemsByMealId = new Map<string, SavedMealItem[]>();
+  if (!itemsErr && Array.isArray(itemRows)) {
+    for (const r of itemRows) {
+      const key = String(r.saved_meal_id);
+      const arr = itemsByMealId.get(key) ?? [];
+      arr.push(rowToItem(r));
+      itemsByMealId.set(key, arr);
+    }
+  }
+
+  for (const row of parentRows as any[]) {
+    const meal = rowToMeal(row, itemsByMealId.get(String(row.id)) ?? []);
+    const userId = String(row.user_id);
+    const arr = out.get(userId);
+    if (arr) arr.push(meal);
+    else out.set(userId, [meal]);
+  }
+  return out;
+}
+
+/**
  * Create a saved meal with its items. Assigns `position = index`. If the
  * items insert fails, the parent is deleted to avoid a zombie row.
  * Throws the underlying Supabase error on failure.

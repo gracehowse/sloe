@@ -191,6 +191,22 @@ name: "Expanded visual sweep — every tab, sub-screen, primary action, modal st
     timeout: 15000
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/50-paywall
 
+# ENG-1583 — cookbook-import is flag-gated (`cookbook_import_enabled`); its
+# `useEffect` calls `router.back()` on mount when the flag is off. Neither
+# this file nor `00z_sweep_deeplinks.yaml` covered this route before, so an
+# ad hoc 2026-06-09 capture done outside both harnesses silently
+# screenshotted the post-`router.back()` fallback and produced a
+# `cookbook-import.png` byte-identical to `plan.png`. The testID guard below
+# closes that gap: a redirect-on-mount now times out this step and Maestro
+# hard-fails the flow instead of falling through to `takeScreenshot`. See
+# `apps/mobile/.maestro/README.md`'s "Flag-gated screens" note.
+- openLink: suppr:///cookbook-import
+- extendedWaitUntil:
+    visible:
+      id: "screen-cookbook-import"
+    timeout: 15000
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/54-cookbook-import
+
 # ──────────────────────────────────────────────────────────────────────
 # Note: Logged-out auth flows (signin, signup, reset-password) need a
 # separate `00z_auth_flows_sweep.yaml` that starts from logout — mixing

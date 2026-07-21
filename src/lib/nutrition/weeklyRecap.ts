@@ -835,6 +835,60 @@ export function buildUsualMealRecapInsight<M extends MealMacros>(
 }
 
 /**
+ * ENG-1586 — `saveSeedItemCount` input for `weeklyDigestSuggestion.ts`'s
+ * Rule 1 (`re_log_prompt`): "the size of the would-be saved-meal seed
+ * when the user accepts the prompt" (see that module's doc comment).
+ * Concretely, that's the item count of the most recent day within the
+ * window that has entries logged under `slot` — the same day's log
+ * that would pre-populate `SaveMealDialog` if the user tapped the CTA
+ * right now. Rule 1 suppresses below 2 (a single-item "usual" isn't
+ * worth a save dialog).
+ *
+ * Searches `weekKeys` first (the 7-day recap window); when
+ * `extendedWeekKeys` is supplied (a superset — see
+ * `UsualMealRecapInsightInput.extendedWeekKeys`) and the slot never
+ * appears in `weekKeys`, falls back to it so the loosened Action 5
+ * Item 8 gate (an unsaved-slot prompt sourced from the 14-day window)
+ * still gets an honest seed count instead of a bogus 0. Returns 0 when
+ * the slot appears in neither window.
+ *
+ * Pure — no I/O. Mirrors the `"Snack"` → `"Snacks"` slot-name
+ * normalisation `findMostRepeatedUnsavedSlot` uses.
+ */
+export function computeSaveSeedItemCount<M extends MealMacros>(
+  byDay: ByDayOf<M>,
+  slot: "Breakfast" | "Lunch" | "Dinner" | "Snacks",
+  weekKeys: readonly string[],
+  extendedWeekKeys?: readonly string[],
+): number {
+  const countForDay = (dayKey: string): number => {
+    const meals = byDay[dayKey] ?? [];
+    return meals.filter((m) => {
+      const rawName = ((m as unknown as { name?: string }).name ?? "").trim();
+      const normalised = rawName === "Snack" ? "Snacks" : rawName;
+      return normalised === slot;
+    }).length;
+  };
+
+  const mostRecentFirst = [...weekKeys].sort().reverse();
+  for (const dayKey of mostRecentFirst) {
+    const count = countForDay(dayKey);
+    if (count > 0) return count;
+  }
+
+  if (extendedWeekKeys && extendedWeekKeys.length > 0) {
+    const extendedOnly = extendedWeekKeys.filter((k) => !weekKeys.includes(k));
+    const extendedMostRecentFirst = [...extendedOnly].sort().reverse();
+    for (const dayKey of extendedMostRecentFirst) {
+      const count = countForDay(dayKey);
+      if (count > 0) return count;
+    }
+  }
+
+  return 0;
+}
+
+/**
  * Action 5 Item 8 helper — bucket saved meals by their `defaultMealSlot`
  * so the loosened gate can ask "is there already a usual for this
  * slot?". Saved meals without a default slot don't cover any slot

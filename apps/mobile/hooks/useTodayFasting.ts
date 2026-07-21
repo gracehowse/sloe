@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
+import { AccessibilityInfo } from "react-native";
 
 import { supabase } from "@/lib/supabase";
 import { track } from "@/lib/analytics";
@@ -116,13 +117,20 @@ export function useTodayFasting({ userId }: UseTodayFastingParams): UseTodayFast
         ? (data.fasting_sessions as FastingSession[])
         : [];
       if (existing.some((s) => s.end === null)) {
-        // Already fasting — do not stack sessions.
+        // Already fasting — do not stack sessions. `_layout.tsx`'s Siri
+        // deep-link handler can't know this ahead of time (it fires
+        // before this DB check resolves), so the VoiceOver announcement
+        // for the shortcut lives here, where the real outcome is known —
+        // never the optimistic "Starting a fast" copy on a no-op
+        // (ENG-1606).
+        AccessibilityInfo.announceForAccessibility("You're already fasting");
         return;
       }
       const startIso = new Date().toISOString();
       const next = [...existing, { start: startIso, end: null }].slice(-90);
       await supabase.from("profiles").update({ fasting_sessions: next }).eq("id", userId);
       setActiveFastStart(startIso);
+      AccessibilityInfo.announceForAccessibility(`Starting a ${hours} hour fast`);
       // `hours` currently only informs the widget snapshot — the fasting
       // screen reads the window from `profiles.fasting_window`. When
       // users invoke `suppr://fast/start?hours=N` with a non-default N we

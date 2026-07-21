@@ -12,6 +12,7 @@
  */
 import { act, renderHook } from "@testing-library/react-native";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AccessibilityInfo } from "react-native";
 
 const trackMock = vi.fn();
 
@@ -130,6 +131,31 @@ describe("useTodayFasting", () => {
     });
     expect(updateMock).not.toHaveBeenCalled();
     expect(result.current.activeFastStart).toBeNull();
+  });
+
+  it("ENG-1606: announces 'You're already fasting' (not 'Starting a fast') on the no-op path", async () => {
+    const announceSpy = vi.spyOn(AccessibilityInfo, "announceForAccessibility");
+    maybeSingleMock.mockResolvedValueOnce({
+      data: { fasting_sessions: [{ start: "2026-07-19T08:00:00.000Z", end: null }] },
+    });
+    const { result } = renderHook(() => useTodayFasting({ userId: "user-1" }));
+    await act(async () => {
+      await result.current.startFastFromShortcut(16);
+    });
+    expect(announceSpy).toHaveBeenCalledWith("You're already fasting");
+    expect(announceSpy).not.toHaveBeenCalledWith(expect.stringContaining("Starting a"));
+    announceSpy.mockRestore();
+  });
+
+  it("ENG-1606: announces 'Starting a N hour fast' when the fast actually starts", async () => {
+    const announceSpy = vi.spyOn(AccessibilityInfo, "announceForAccessibility");
+    maybeSingleMock.mockResolvedValueOnce({ data: { fasting_sessions: [] } });
+    const { result } = renderHook(() => useTodayFasting({ userId: "user-1" }));
+    await act(async () => {
+      await result.current.startFastFromShortcut(18);
+    });
+    expect(announceSpy).toHaveBeenCalledWith("Starting a 18 hour fast");
+    announceSpy.mockRestore();
   });
 
   it("startFastFromShortcut starts a fast: persists the session, sets activeFastStart, tracks siri_action_invoked", async () => {

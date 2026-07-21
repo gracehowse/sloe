@@ -120,6 +120,35 @@ export function entriesToByDay(
 }
 
 /**
+ * Local-Date arithmetic shared by `previousWeekKeys` and
+ * `extendedPreviousWeekKeys` — resolves the Monday/Sunday-snapped start
+ * of the previous completed week as a real `Date` (not a re-parsed
+ * `YYYY-MM-DD` string, which `Date` parses as UTC midnight and would
+ * drift by a day in negative-UTC-offset timezones once local getters
+ * read it back).
+ */
+function resolvePreviousWeekStart(
+  weekStartDay: "monday" | "sunday",
+  now: Date,
+): Date {
+  const anchor = new Date(now);
+  anchor.setDate(anchor.getDate() - 7);
+  anchor.setHours(0, 0, 0, 0);
+  const dow = anchor.getDay();
+  const offset = weekStartDay === "monday" ? (dow === 0 ? -6 : 1 - dow) : -dow;
+  const start = new Date(anchor);
+  start.setDate(anchor.getDate() + offset);
+  return start;
+}
+
+function formatDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${da}`;
+}
+
+/**
  * Build the 7-day window of `YYYY-MM-DD` keys the recap covers.
  *
  * The push fires for the *previous completed week* — so we anchor on
@@ -134,21 +163,41 @@ export function previousWeekKeys(
   weekStartDay: "monday" | "sunday",
   now: Date = new Date(),
 ): string[] {
-  const anchor = new Date(now);
-  anchor.setDate(anchor.getDate() - 7);
-  anchor.setHours(0, 0, 0, 0);
-  const dow = anchor.getDay();
-  const offset = weekStartDay === "monday" ? (dow === 0 ? -6 : 1 - dow) : -dow;
-  const start = new Date(anchor);
-  start.setDate(anchor.getDate() + offset);
+  const start = resolvePreviousWeekStart(weekStartDay, now);
   const keys: string[] = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const da = String(d.getDate()).padStart(2, "0");
-    keys.push(`${y}-${m}-${da}`);
+    keys.push(formatDateKey(d));
+  }
+  return keys;
+}
+
+/**
+ * ENG-1586 — 14-day extended window: the 7 days immediately before
+ * `previousWeekKeys(...)` plus that primary 7-day window itself, in
+ * chronological order. Feeds the loosened Action 5 Item 8 gate inside
+ * `buildUsualMealRecapInsight` (its `extendedWeekKeys` input) and
+ * `computeSaveSeedItemCount`'s fallback search — mirrors the client
+ * computation inline in `ProgressDashboard.tsx`'s `usualMealInsight`
+ * memo (walks back 7 more days from `weekKeys[0]`), but computed from
+ * the same local-Date `start` anchor `previousWeekKeys` uses rather
+ * than re-parsing a formatted key (see `resolvePreviousWeekStart`'s
+ * doc comment for why that matters).
+ *
+ * The result is always a superset of `previousWeekKeys(...)` — callers
+ * that only need the wider window can use this alone.
+ */
+export function extendedPreviousWeekKeys(
+  weekStartDay: "monday" | "sunday",
+  now: Date = new Date(),
+): string[] {
+  const start = resolvePreviousWeekStart(weekStartDay, now);
+  const keys: string[] = [];
+  for (let i = -7; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    keys.push(formatDateKey(d));
   }
   return keys;
 }
