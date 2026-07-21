@@ -22,7 +22,7 @@ Do not rely on tab-level flows alone. For every UI change on a deep route:
 | `visual-audit.spec.ts` | Landing, login, pricing, tab shells (unauthenticated) |
 | `visual-audit-authed.spec.ts` | Today, Discover, Plan, Progress, Settings, Library, Shopping |
 | `visual-regression-subpages.spec.ts` | Help, legal, profile, import, billing, create |
-| `visual-regression-deep.spec.ts` | Settings preferences band, `/home?view=targets`, profile Targets tab, recipe detail (`?recipe=`), upgrade paywall dialog |
+| `visual-regression-deep.spec.ts` | Settings preferences band, `/home?view=targets`, recipe detail (`?recipe=`), upgrade paywall dialog |
 
 **Cohesion gate (ENG-1142):** Today + paywall dialog + recipe detail — the three surfaces whose drift hurts brand cohesion most. Filtered run:
 

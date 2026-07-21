@@ -65,27 +65,20 @@ test.describe("Visual regression — deep authenticated routes", () => {
       await expect(page).toHaveScreenshot(`deep/targets-${vp.name}.png`);
     });
 
-    test(`profile targets tab ${vp.name}`, async ({ page }) => {
-      // Skipped 2026-07-21 (ENG-1629 discovery, tracked as a separate
-      // follow-up) -- the "Macro Calculator" tab click now times out
-      // (locator.click: Timeout 15000ms exceeded) against the golden
-      // account, unrelated to ENG-1629 (this PR never touches Profile.tsx).
-      // Left failing, this ALSO broke every other test after it in this
-      // `describe.configure({ mode: "serial" })` block -- Playwright aborts
-      // the rest of a serial sequence on the first failure, so recipe
-      // detail/upgrade paywall never even ran, silently going stale on top
-      // of the original break. Skip (not fixme-and-run) so the suite keeps
-      // going; remove this test.skip once the underlying click is fixed.
-      test.skip(true, "ENG-1629 follow-up — profile Macro Calculator tab click times out; unblocks the rest of this serial suite meanwhile");
-      await page.setViewportSize({ width: vp.width, height: vp.height });
-      await page.goto("/profile", { waitUntil: "domcontentloaded" });
-      await dismissVisualOverlays(page);
-      await page.getByRole("button", { name: /macro calculator/i }).click();
-      await stabilizeForScreenshot(page);
-      await expect(page).toHaveScreenshot(
-        `deep/profile-targets-tab-${vp.name}.png`,
-      );
-    });
+    // `profile targets tab` (clicked "Macro Calculator" on /profile) removed
+    // 2026-07-21. ENG-1629 (#1001) hit this same failure and landed a
+    // `test.skip` stopgap ("remove once the underlying click is fixed") to
+    // unblock its own baseline regen — this supersedes that skip with the
+    // actual fix: the click can't be fixed because the button is gone for
+    // good, not flaky. `sloe_v3_profile` went default-on 2026-07-01
+    // (ENG-1246, #686), so Profile.tsx now returns the read-only
+    // `EditorialProfileBlock` before ever reaching the legacy Tabs/Macro-
+    // Calculator markup — that branch is unreachable in production
+    // (`flagForceOverride` is inert when NODE_ENV === "production", so no
+    // real user or query-param override can reach it). Default `/profile`
+    // render is already covered by `visual-regression-subpages.spec.ts`;
+    // target editing is covered by the `targets view` test above
+    // (`/home?view=targets`) and Targets.tsx's own `GoalPaceEditorDialog`.
 
     test(`recipe detail ${vp.name}`, async ({ page }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
