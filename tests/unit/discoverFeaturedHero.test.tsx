@@ -78,6 +78,15 @@ describe("DiscoverFeaturedHeroCard (presentation)", () => {
     expect(onOpenCreator).toHaveBeenCalledWith("seed-creator-priya");
   });
 
+  it("ENG-1617 — shows the TOTAL (prep + cook) minutes, not cook time alone", () => {
+    const withPrep = { ...recipe, prepTimeMin: 10, cookTimeMin: 35 } as RecipeCard;
+    const { getByText, queryByText } = render(
+      <DiscoverFeaturedHeroCard recipe={withPrep} onOpenRecipe={() => {}} />,
+    );
+    expect(getByText("45")).not.toBeNull();
+    expect(queryByText("35")).toBeNull();
+  });
+
   it("omits the Min metric + creator link when there's no cook time / creator", () => {
     const bare = { ...recipe, cookTimeMin: null, cookTime: undefined, creatorId: null } as RecipeCard;
     const onOpenCreator = vi.fn();

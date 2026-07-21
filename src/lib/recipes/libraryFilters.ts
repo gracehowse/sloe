@@ -47,6 +47,7 @@
  *   - `QUICK_TOTAL_MIN` = 30 min total (prep + cook). Matches the
  *     "Quick" label used on Discover.
  */
+import { totalRecipeDurationMin } from "./totalDuration";
 
 // Narrow shape — only the fields any filter needs. Both
 // `src/types/recipe.ts` and `apps/mobile/lib/types.ts` are structural
@@ -86,12 +87,11 @@ export function isHighProtein(r: LibraryFilterRecipe): boolean {
  * isn't penalised — if the total is still ≤ 30, it qualifies).
  */
 export function isQuick(r: LibraryFilterRecipe): boolean {
-  const prep = typeof r.prepTimeMin === "number" && Number.isFinite(r.prepTimeMin) ? r.prepTimeMin : 0;
-  const cook = typeof r.cookTimeMin === "number" && Number.isFinite(r.cookTimeMin) ? r.cookTimeMin : 0;
-  // A recipe with neither field doesn't qualify — we'd otherwise flag
-  // every legacy row as Quick. Require at least one signal.
-  if (prep === 0 && cook === 0) return false;
-  return prep + cook <= QUICK_TOTAL_MIN;
+  // ENG-1617 — one shared total (prep + cook) selector. A recipe with
+  // neither field doesn't qualify (null) — we'd otherwise flag every
+  // legacy row as Quick. Require at least one real signal.
+  const total = totalRecipeDurationMin(r.prepTimeMin, r.cookTimeMin);
+  return total != null && total <= QUICK_TOTAL_MIN;
 }
 
 /**

@@ -11,6 +11,7 @@ import { decodeEntities } from "@/lib/decodeEntities";
 import type { RecipeCard } from "@/lib/types";
 import { displayAttribution } from "@suppr/shared/recipes/displayAttribution";
 import { recipeCardAccessibilityLabel } from "@suppr/shared/recipes/recipeCardAccessibilityLabel";
+import { formatTotalRecipeDuration } from "@suppr/shared/recipes/totalDuration";
 import { isFeatureEnabled } from "@/lib/analytics";
 
 /** Row thumbnail: if `uri` 404s, show the same glyph box as missing image. */
@@ -58,6 +59,8 @@ export function DiscoverMoreIdeaRow({ item, idx, onPress }: DiscoverMoreIdeaRowP
   const kcal = Math.round(item.calories);
   const protein = Math.round(item.protein);
   const carbs = Math.round(item.carbs);
+  // ENG-1617 — total (prep + cook), not cook alone.
+  const timeLabel = formatTotalRecipeDuration(item.prepTimeMin, item.cookTimeMin);
   return (
     <Pressable
       onPress={onPress}
@@ -67,7 +70,7 @@ export function DiscoverMoreIdeaRow({ item, idx, onPress }: DiscoverMoreIdeaRowP
         calories: kcal,
         protein,
         carbs,
-        cookTime: item.cookTime ?? null,
+        timeLabel,
       })}
       style={{
         flexDirection: "row",
@@ -103,7 +106,7 @@ export function DiscoverMoreIdeaRow({ item, idx, onPress }: DiscoverMoreIdeaRowP
         </Text>
         <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 1 }} numberOfLines={1}>
           {displayAttribution({ creatorName: item.creatorName, source: item.source })}
-          {item.cookTime ? ` · ${item.cookTime}` : ""}
+          {timeLabel ? ` · ${timeLabel}` : ""}
         </Text>
       </View>
       <Text style={{ ...Type.caption, color: colors.textSecondary, fontVariant: ["tabular-nums"] }}>

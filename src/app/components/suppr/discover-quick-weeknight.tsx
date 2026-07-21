@@ -7,6 +7,7 @@ import type { RecipeCard } from "../../../types/recipe";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { deriveQuickWeeknight } from "../../../lib/discover/quickWeeknight";
 import { creatorTintFor } from "../../../lib/discover/creatorChipPresentation";
+import { totalRecipeDurationMin } from "../../../lib/recipes/totalDuration";
 import { DiscoverRecipeImage } from "./discover-recipe-image";
 
 /**
@@ -22,12 +23,6 @@ export interface DiscoverQuickWeeknightProps {
   onPressRecipe: (recipe: RecipeCard) => void;
   /** Feed position; omitted when the component is rendered in isolation. */
   placement?: "first" | "legacy";
-}
-
-function minutesOf(r: RecipeCard): number {
-  const prep = typeof r.prepTimeMin === "number" ? r.prepTimeMin : 0;
-  const cook = typeof r.cookTimeMin === "number" ? r.cookTimeMin : 0;
-  return prep + cook;
 }
 
 export function DiscoverQuickWeeknight({
@@ -73,11 +68,12 @@ export function DiscoverQuickWeeknight({
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         {quick.map((r) => {
-          const mins = minutesOf(r);
+          // ENG-1617 — one shared total (prep + cook) selector, not a local sum.
+          const mins = totalRecipeDurationMin(r.prepTimeMin, r.cookTimeMin);
           const meta = [
             r.calories > 0 ? `${Math.round(r.calories)} kcal` : null,
             r.protein > 0 ? `${Math.round(r.protein)}g` : null,
-            mins > 0 ? `${mins} min` : null,
+            mins != null ? `${mins} min` : null,
           ]
             .filter(Boolean)
             .join(" · ");
@@ -114,7 +110,7 @@ export function DiscoverQuickWeeknight({
                 ) : (
                   <UtensilsCrossed className="h-5 w-5 text-white opacity-50" />
                 )}
-                {mins > 0 ? (
+                {mins != null ? (
                   <span
                     className="absolute left-2 top-2 rounded-full px-[9px] py-1 text-[10px] font-semibold"
                     style={{ backgroundColor: "rgba(255,255,255,0.92)", color: "rgba(28,22,32,1)" }}

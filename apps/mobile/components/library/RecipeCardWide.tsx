@@ -5,6 +5,7 @@ import { RecipeCardImage } from "@/components/library/RecipeCardImage";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { FontFamily, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { totalRecipeDurationMin } from "@suppr/shared/recipes/totalDuration";
 import type { RecipeCard } from "@/lib/types";
 
 /**
@@ -19,21 +20,16 @@ export interface RecipeCardWideProps {
   onPress: () => void;
 }
 
-function totalMinutes(r: RecipeCard): number {
-  const prep = Number.isFinite(r.prepTimeMin) ? (r.prepTimeMin as number) : 0;
-  const cook = Number.isFinite(r.cookTimeMin) ? (r.cookTimeMin as number) : 0;
-  return prep + cook;
-}
-
 export function RecipeCardWide({ recipe, onPress }: RecipeCardWideProps) {
   const colors = useThemeColors();
-  const mins = totalMinutes(recipe);
+  // ENG-1617 — one shared total (prep + cook) selector, not a local sum.
+  const mins = totalRecipeDurationMin(recipe.prepTimeMin, recipe.cookTimeMin);
   const hasKcal = recipe.calories > 0;
   const meta = [
     hasKcal
       ? `${Math.round(recipe.calories)} kcal · ${Math.round(recipe.protein)}g protein`
       : "Nutrition pending",
-    mins > 0 ? `${mins} min` : null,
+    mins != null ? `${mins} min` : null,
   ]
     .filter(Boolean)
     .join(" · ");

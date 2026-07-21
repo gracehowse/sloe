@@ -5,6 +5,7 @@ import { RecipeCardImage } from "@/components/library/RecipeCardImage";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { totalRecipeDurationMin } from "@suppr/shared/recipes/totalDuration";
 import type { RecipeCard } from "@/lib/types";
 
 /**
@@ -23,13 +24,12 @@ export interface FeaturedHeroProps {
 
 export function FeaturedHero({ recipe, onPress }: FeaturedHeroProps) {
   const colors = useThemeColors();
-  const prep = Number.isFinite(recipe.prepTimeMin) ? (recipe.prepTimeMin as number) : 0;
-  const cook = Number.isFinite(recipe.cookTimeMin) ? (recipe.cookTimeMin as number) : 0;
-  const mins = prep + cook;
+  // ENG-1617 — one shared total (prep + cook) selector, not a local sum.
+  const mins = totalRecipeDurationMin(recipe.prepTimeMin, recipe.cookTimeMin);
   const meta = [
     recipe.calories > 0 ? `${Math.round(recipe.calories)} kcal` : null,
     recipe.protein > 0 ? `${Math.round(recipe.protein)}g protein` : null,
-    mins > 0 ? `${mins} min` : null,
+    mins != null ? `${mins} min` : null,
   ]
     .filter(Boolean)
     .join(" · ");

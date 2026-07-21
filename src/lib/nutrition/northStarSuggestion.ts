@@ -72,11 +72,15 @@ export interface NorthStarRecipe {
   /** Optional slot tags ("breakfast" | "lunch" | "dinner" | "snack"). */
   mealType?: string | readonly string[] | null;
   /**
-   * Optional cook time in minutes — surfaced on the Figma `654:2`
-   * hero meta row ("· {n} min"). Additive + optional so existing
-   * callers stay source-compatible; absent for recipes with no
-   * recorded time.
+   * Optional prep + cook time in minutes — surfaced on the Figma `654:2`
+   * hero meta row ("· {n} min") as their combined TOTAL, computed via
+   * `totalDuration.ts`'s `totalRecipeDurationMin` (ENG-1617: this
+   * previously rendered `cookTimeMin` alone, so the same recipe's Today
+   * suggestion disagreed with its Library/Recipe-Detail total). Additive +
+   * optional so existing callers stay source-compatible; absent for
+   * recipes with no recorded time.
    */
+  prepTimeMin?: number | null;
   cookTimeMin?: number | null;
   /**
    * ENG-1417 — whether this recipe's macros are a verified nutrition

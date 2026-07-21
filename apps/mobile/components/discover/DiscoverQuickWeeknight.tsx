@@ -10,6 +10,7 @@ import { isFeatureEnabled } from "@/lib/analytics";
 import type { RecipeCard } from "@/lib/types";
 import { deriveQuickWeeknight } from "@suppr/shared/discover/quickWeeknight";
 import { creatorTintFor } from "@suppr/shared/discover/creatorChipPresentation";
+import { totalRecipeDurationMin } from "@suppr/shared/recipes/totalDuration";
 
 /**
  * DiscoverQuickWeeknight — the Sloe v3 Discover "Quick weeknight" section
@@ -26,12 +27,6 @@ export interface DiscoverQuickWeeknightProps {
   onPressRecipe: (recipe: RecipeCard) => void;
   /** Feed position; omitted when the component is rendered in isolation. */
   placement?: "first" | "legacy";
-}
-
-function minutesOf(r: RecipeCard): number {
-  const prep = Number.isFinite(r.prepTimeMin) ? (r.prepTimeMin as number) : 0;
-  const cook = Number.isFinite(r.cookTimeMin) ? (r.cookTimeMin as number) : 0;
-  return prep + cook;
 }
 
 export function DiscoverQuickWeeknight({
@@ -63,11 +58,12 @@ export function DiscoverQuickWeeknight({
       </View>
       <View style={styles.grid}>
         {quick.map((r) => {
-          const mins = minutesOf(r);
+          // ENG-1617 — one shared total (prep + cook) selector, not a local sum.
+          const mins = totalRecipeDurationMin(r.prepTimeMin, r.cookTimeMin);
           const meta = [
             r.calories > 0 ? `${Math.round(r.calories)} kcal` : null,
             r.protein > 0 ? `${Math.round(r.protein)}g` : null,
-            mins > 0 ? `${mins} min` : null,
+            mins != null ? `${mins} min` : null,
           ]
             .filter(Boolean)
             .join(" · ");
@@ -109,7 +105,7 @@ export function DiscoverQuickWeeknight({
                     style={styles.tintIcon}
                   />
                 )}
-                {mins > 0 ? (
+                {mins != null ? (
                   <View style={[styles.timePill, { backgroundColor: colors.card }]}>
                     <Text style={[styles.timePillText, { color: colors.text }]}>{mins} min</Text>
                   </View>

@@ -10,6 +10,7 @@ import { useFallbackScheme } from "../../../lib/theme/useFallbackScheme";
 import { cn } from "../ui/utils";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { formatQualifiedKcal } from "../../../lib/nutrition/formatMacro";
+import { totalRecipeDurationMin } from "../../../lib/recipes/totalDuration";
 import type { NorthStarBlockSuggestion } from "./north-star-block";
 
 /**
@@ -41,10 +42,8 @@ export function NorthStarFigmaHeroBlock({
   testID?: string;
 }) {
   const showFitsBadge = suggestion.bandTight || suggestion.bandLabel.toLowerCase().includes("close");
-  const cookMin =
-    typeof suggestion.cookTimeMin === "number" && suggestion.cookTimeMin > 0
-      ? suggestion.cookTimeMin
-      : null;
+  // ENG-1617 — total (prep + cook), not cook alone.
+  const totalMin = totalRecipeDurationMin(suggestion.prepTimeMin, suggestion.cookTimeMin);
   // ENG-1417 — flag-gated "~" qualifier when the suggestion's macros are an
   // unverified estimate rather than a verified nutrition lookup. Off →
   // exact pre-ENG-1417 kcal display (kill switch).
@@ -141,12 +140,12 @@ export function NorthStarFigmaHeroBlock({
                 <Flame width={14} height={14} aria-hidden />
                 {kcalDisplay} kcal
               </span>
-              {cookMin !== null ? (
+              {totalMin !== null ? (
                 <>
                   <span className="inline-block h-1 w-1 rounded-full bg-white/40" aria-hidden />
                   <span className="inline-flex items-center gap-1">
                     <Clock width={14} height={14} aria-hidden />
-                    {cookMin} min
+                    {totalMin} min
                   </span>
                 </>
               ) : null}

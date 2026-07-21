@@ -221,9 +221,11 @@ export function NorthStarBlockHost({
         predictedFat: suggestion.predictedFat,
         bandLabel: bandLabel(suggestion.band),
         bandTight: suggestion.band === "tight",
-        // Figma `654:2` hero meta — optional cook-time chip. Source
-        // from whatever the recipe exposes; `null`/absent degrades to
-        // no chip. Mirror of mobile NorthStarBlockHost.
+        // Figma `654:2` hero meta — optional total-time chip (prep +
+        // cook, ENG-1617). Source from whatever the recipe exposes;
+        // `null`/absent on both degrades to no chip. Mirror of mobile
+        // NorthStarBlockHost.
+        prepTimeMin: suggestion.recipe.prepTimeMin ?? undefined,
         cookTimeMin: suggestion.recipe.cookTimeMin ?? undefined,
         // ENG-1417 — trust signal for the "~" unverified-estimate qualifier.
         // Mirror of mobile NorthStarBlockHost.

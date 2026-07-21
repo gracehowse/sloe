@@ -5,6 +5,7 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { RecipeCardImage } from "@/components/library/RecipeCardImage";
 import { MacroIconRow } from "@/components/nutrition/MacroIconRow";
+import { formatTotalRecipeDuration } from "@suppr/shared/recipes/totalDuration";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
@@ -144,6 +145,8 @@ export function FollowingFeed({
           const protein = Math.round(recipe.protein);
           const carbs = Math.round(recipe.carbs);
           const fat = Math.round(recipe.fat);
+          // ENG-1617 — total (prep + cook), not cook alone.
+          const timeLabel = formatTotalRecipeDuration(recipe.prepTimeMin, recipe.cookTimeMin);
           return (
             <View
               key={creator.id}
@@ -274,7 +277,7 @@ export function FollowingFeed({
                     carbs={carbs}
                     fat={fat}
                     fiber={recipe.fiberG}
-                    cookTime={recipe.cookTime}
+                    cookTime={timeLabel}
                     textColor={colors.textSecondary}
                     textTertiaryColor={colors.textTertiary}
                     emphasiseProtein
