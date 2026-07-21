@@ -2,7 +2,7 @@
 
 **Owner:** Grace
 **Status:** living document — append rows when a `npm audit` finding is consciously accepted (and never silently ignored)
-**Last updated:** 2026-05-14 (Soft spot 1 of the 2026-05-14 production-readiness audit)
+**Last updated:** 2026-07-21 (first allow-list row — postcss/next advisory, ENG-1638)
 
 This doc backs the `dep-audit` CI job in [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml). That job runs `npm audit --audit-level=high --omit=dev` on both the web root and `apps/mobile`. Any high or critical finding **fails the build**. The allow-list below is the escape valve for findings that have been triaged and consciously deferred — never for "I don't have time today, mute it."
 
@@ -25,7 +25,7 @@ This doc backs the `dep-audit` CI job in [`.github/workflows/ci.yml`](../../.git
 
 | Advisory ID | Package | Severity | Reason for deferral | Upstream tracker | Added | Review by | Added by |
 |---|---|---|---|---|---|---|---|
-| _(none — empty allow-list)_ | | | | | | | |
+| [GHSA-qx2v-qp2m-jg93](https://github.com/advisories/GHSA-qx2v-qp2m-jg93) | postcss (nested under `next`) | Moderate | Every stable `next@15.x` (incl. latest 15.5.21) pins its nested `postcss` to the exact vulnerable `8.4.31`; only the unstable `16.3.0-preview.x` line carries the fix. `npm audit fix --force` would downgrade `next` to `9.3.3` (rejected — major breaking change). A targeted `overrides` entry is low-risk on its own but only applies cleanly against a from-scratch lockfile regen (~1,040 package nodes touched in testing) — too large to bundle into a scoped dep-audit fix. Doesn't fail this gate today (moderate, gate is `--audit-level=high`). See [ENG-1638](https://linear.app/suppr/issue/ENG-1638/dependency-postcss-xss-advisory-ghsa-qx2v-qp2m-jg93-pinned-by-next15x) for full rationale + revisit triggers. | [ENG-1638](https://linear.app/suppr/issue/ENG-1638/dependency-postcss-xss-advisory-ghsa-qx2v-qp2m-jg93-pinned-by-next15x) | 2026-07-21 | 2026-08-20 | Claude |
 
 ## Allow-list (mobile — `/apps/mobile`)
 
