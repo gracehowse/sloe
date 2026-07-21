@@ -38,7 +38,7 @@ export function CookbookImport({
         className="product-shell py-pm-6 flex flex-col items-center justify-center min-h-[60vh] text-center gap-4"
       >
         <ChefHat className="size-10 text-primary-solid" aria-hidden />
-        <RefreshCw className="size-6 animate-spin text-primary-solid -mt-2" aria-hidden />
+        <RefreshCw className="size-6 animate-spin text-primary-solid" aria-hidden />
         <p className="font-[family-name:var(--font-headline)] text-[22px] text-foreground-brand">
           {s.parsingMessage}
         </p>

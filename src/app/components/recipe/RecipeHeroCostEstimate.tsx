@@ -37,11 +37,11 @@ export function RecipeHeroCostEstimate({
   if (isPro) {
     return (
       <span
-        className="inline-flex items-center gap-1.5"
+        className="inline-flex items-center gap-1"
         data-testid="recipe-cost-estimate"
       >
         {formatRecipeCostServingLabel(estimate)}
-        <Badge variant="pro" className="ml-0.5 px-1 py-0 text-[9px] leading-none">
+        <Badge variant="pro" className="ml-1 px-1 py-0 text-[9px] leading-none">
           Pro
         </Badge>
       </span>
@@ -51,7 +51,7 @@ export function RecipeHeroCostEstimate({
   return (
     <button
       type="button"
-      className="inline-flex items-center gap-1.5 pointer-events-auto"
+      className="inline-flex items-center gap-1 pointer-events-auto"
       data-testid="recipe-cost-estimate-locked"
       onClick={() => {
         if (onUpgrade) onUpgrade();
@@ -59,7 +59,7 @@ export function RecipeHeroCostEstimate({
       }}
     >
       {RECIPE_COST_LOCKED_LABEL}
-      <Badge variant="pro" className="ml-0.5 px-1 py-0 text-[9px] leading-none">
+      <Badge variant="pro" className="ml-1 px-1 py-0 text-[9px] leading-none">
         Pro
       </Badge>
     </button>

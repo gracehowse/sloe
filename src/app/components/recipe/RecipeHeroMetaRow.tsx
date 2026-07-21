@@ -37,17 +37,17 @@ export function RecipeHeroMetaRow({
 
   return (
     <div className="flex flex-wrap items-center gap-4 text-[13px] font-medium text-white/90">
-      <span className="inline-flex items-center gap-1.5">
+      <span className="inline-flex items-center gap-1">
         <Icons.timer className="w-3.5 h-3.5" aria-hidden />
         {totalMin > 0 ? `${totalMin} min` : "—"}
       </span>
       {roundedKcal > 0 ? (
-        <span className="inline-flex items-center gap-1.5">
+        <span className="inline-flex items-center gap-1">
           <Icons.calories className="w-3.5 h-3.5" aria-hidden />
           {roundedKcal} kcal
         </span>
       ) : null}
-      <span className="inline-flex items-center gap-1.5">
+      <span className="inline-flex items-center gap-1">
         <Icons.dinner className="w-3.5 h-3.5" aria-hidden />
         Serves {servings}
       </span>
