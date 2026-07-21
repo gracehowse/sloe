@@ -9,10 +9,11 @@
   Generator: scripts/generate-decisions-index.mjs (ENG-1370)
 -->
 
-351 decision docs, newest first. Generated 2026-07-21.
+352 decision docs, newest first. Generated 2026-07-21.
 
 | Date | Decision | Summary |
 |------|----------|---------|
+| 2026-07-21 | [Web core-screen page gutter — converge onto `.product-shell` (ENG-1629)](./2026-07-21-eng1629-web-gutter-convergence.md) | `Targets.tsx` and `RecipeDetail.tsx` converge their page gutter onto `.product-shell`'s composition (`src/styles/theme.css`) behind a new flag, `web_gutter_convergence_v1`: |
 | 2026-07-20 | [User-avatar monogram — Rule 7 serif + frost-ring, one shared primitive (ENG-1593)](./2026-07-20-avatar-monogram-rule7-frost-ring.md) | The 2026-07-17 design sweep (`docs/audits/2026-07-17-design-sweep/report.md`) flagged the persistent user/household avatar monogram as a **Rule 7** violation on every screen it appears on, with the specifics differing ac… |
 | 2026-07-20 | [Estimated grocery cost per recipe (ENG-1274)](./2026-07-20-eng1274-recipe-cost-estimate.md) | ENG-867 shipped import loading, cook-step chips, and graceful load — but the **Est. Cost per recipe** signal carved out as ENG-1274. Julienne shows a US pricing estimate on recipe detail; our prototype (`Sloe-App.html`)… |
 | 2026-07-20 | [Production readiness — hardening tail (ENG-1414, PRA-015/IM-16 + PRA-016)](./2026-07-20-eng1414-production-readiness-hardening-tail.md) | This bundles two unrelated sev-2 findings from the 2026-07-05 deep audit (`docs/audits/2026-07-05-deep-audits/audit2-production-readiness/findings.json`) into one ticket, per how the ticket itself is scoped. They're docu… |
@@ -43,7 +44,7 @@
 | 2026-07-03 | [ENG-1304 — Onboarding refugee capture (recipe import + MFP CSV)](./2026-07-03-onboarding-refugee-capture-eng1304.md) | The July 1 full-product sweep found the lead viral bet (recipe import) and MFP-refugee CSV adapters were invisible during first-run: |
 | 2026-07-02 | [ENG-1052 schema hardening batch](./2026-07-02-eng1052-schema-hardening.md) | Ship a forward-only Supabase migration for the two SQL-backed hardening items: |
 | 2026-07-02 | [HealthKit nutrition import hardening (ENG-1023)](./2026-07-02-healthkit-nutrition-import-hardening.md) | After the ENG-1019 HealthKit mutex serialized native bridge calls, Grace's iOS 26.6 device no longer crashed from concurrent dietary probes. The remaining risk was a quieter failure mode: nutrition import could still re-… |
-| 2026-07-02 | [Decision — Log sheet v3 method-grid + "Add to today" header (ENG-1303)](./2026-07-02-logsheet-v3-method-grid.md) | 1. **Adopt the v3 method-grid TILE grammar** for the Log-sheet input-method row, behind a new flag `sloe_v3_log` (default-ON per the beta-window "always flag on" policy — the solo tester must see her own features). The l… |
+| 2026-07-02 | [Decision — Log sheet v3 method-grid + "Add to today" header (ENG-1303)](./2026-07-02-logsheet-v3-method-grid.md) | The original Label deferral below is now superseded. The existing `/api/nutrition/scan-label` parser gained a dedicated capture → reading → editable per-serving review → journal commit surface on web and iOS. Label now s… |
 | 2026-07-01 | [Body-composition trends card (ENG-1237)](./2026-07-01-body-composition-trends-eng1237.md) | Progress showed at most a single body-fat % scalar (manual entry or latest HealthKit sync). The v3 prototype and Pro paywall promise **body fat and lean mass trended over time** — a Pro conversion surface with no product… |
 | 2026-07-01 | [ENG-1240 — Full Coach screen (Today's read + Ask chips)](./2026-07-01-coach-screen-eng1240.md) | Ship the prototype's unified **Coach** destination as a flag-gated push screen on web (`/coach`) and mobile (`/coach`), while keeping the Today one-liner coach hint as the lightweight entry when the flag is off. |
 | 2026-07-01 | [Honest recipe imagery — no fabricated stock photos (ENG-1287)](./2026-07-01-honest-recipe-imagery-eng1287.md) | Whenever a recipe had no `image_url`, three fabrication paths assigned a **wrong stock photo presented as the dish's real photo**: |

@@ -641,6 +641,23 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   stack renders exactly as before (kill switch). Both hosts read the
  *   flag ONCE on mount into state so the layout never flips mid-session.
  *   Keep in sync with `apps/mobile/lib/analytics.ts`. Web + mobile.
+ * - `web_gutter_convergence_v1` (ENG-1629) — converges the three-way page-
+ *   gutter split on web core screens (`.product-shell`'s 40px `px-pm-6`
+ *   dominant convention vs `Targets.tsx`'s 32px `px-pm-5` vs
+ *   `RecipeDetail.tsx`'s un-tokenized 24px `px-6`) onto `.product-shell`'s
+ *   composition everywhere. DEFAULT-OFF: RecipeDetail is a named visual-
+ *   regression cohesion-gate surface (ENG-1142) on the launch-critical
+ *   Recipes tab — same "ship dark for Grace's own glance" posture as this
+ *   file's three other recipe-detail-touching flags (`recipe_verdict_chip_v1`,
+ *   `avatar_monogram_frost_ring_v1`, `recipe_estimated_cost_v1`), not the
+ *   "always flag on" additive-card convention. Off → both screens render
+ *   their exact pre-ENG-1629 gutter (kill switch). The e2e cohesion suite
+ *   force-flags this ON (`tests/e2e/utils/visual.ts` REDESIGN_VISUAL_FLAGS)
+ *   so the committed `deep-recipe-detail-*.png`/`deep-targets-*.png`
+ *   baselines show the converged state ready for the PostHog ramp.
+ *   WEB-ONLY — mobile has no Tailwind `.product-shell` equivalent (its own
+ *   `Spacing` ramp has no analogous 3-way split); registered on mobile only
+ *   for the web ↔ mobile `KNOWN_DEFAULT_OFF_FLAGS` discoverability parity.
  *
  * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
  * `expenditure_trend_card` (ENG-953); the "always flag on" batch (ENG-1279,
@@ -670,6 +687,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "semantic_stat_roles_v1", // ENG-1578 — sibling stats stay ink; state lives in sanctioned indicators.
   "library_single_filter_row_v1", // ENG-1607 — Cookbook single provenance chip row (v3); off = legacy two-row stack (kill switch). Web + mobile.
   "recipe_estimated_cost_v1", // ENG-1274 — per-serving grocery cost estimate (Pro) on recipe-detail hero meta; off = hidden (kill switch). Web + mobile.
+  "web_gutter_convergence_v1", // ENG-1629 — converge Targets.tsx (px-pm-5) + RecipeDetail.tsx (px-6/max-w-4xl) onto .product-shell's gutter; off = exact pre-ENG-1629 gutters (kill switch). WEB-ONLY.
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

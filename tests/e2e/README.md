@@ -55,7 +55,7 @@ The visual specs freeze browser time to `2026-06-16T17:00:00.000Z` by default;
 override with `E2E_VISUAL_NOW` only when intentionally regenerating every
 affected golden.
 
-Committed visual-regression specs force the redesign flag bundle on before navigation via `forceRedesignVisualFlagsOn` (`design_system_*`, `redesign_*`, `web-subscription-card`, and `web-meal-nutrition-detail`). Keep that helper in sync when adding a new flag-gated redesign surface so CI diffs the flag-ON path rather than the empty `$enabled_feature_flags` auth fixture.
+Committed visual-regression specs force the redesign flag bundle on before navigation via `forceRedesignVisualFlagsOn` (`design_system_*`, `redesign_*`, `web-subscription-card`, `web-meal-nutrition-detail`, and `web_gutter_convergence_v1`). Keep that helper in sync when adding a new flag-gated redesign surface so CI diffs the flag-ON path rather than the empty `$enabled_feature_flags` auth fixture.
 
 ## Environment variables
 

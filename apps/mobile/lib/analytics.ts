@@ -808,6 +808,14 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   stack renders exactly as before (kill switch). Both hosts read the
  *   flag ONCE on mount into state so the layout never flips mid-session.
  *   Keep in sync with `src/lib/analytics/track.ts`. Web + mobile.
+ * - `web_gutter_convergence_v1` (ENG-1629) — converges the web page-gutter
+ *   split (`.product-shell`'s 40px vs `Targets.tsx`'s 32px vs
+ *   `RecipeDetail.tsx`'s un-tokenized 24px) onto `.product-shell`. DEFAULT-
+ *   OFF, same "ship dark for Grace's own glance" posture as the other
+ *   recipe-detail-touching flags — see the full rationale in
+ *   `src/lib/analytics/track.ts`. WEB-ONLY: mobile has no Tailwind
+ *   `.product-shell` equivalent; registered here only for the web ↔ mobile
+ *   KNOWN_DEFAULT_OFF_FLAGS discoverability parity.
  *
  * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
  * `expenditure_trend_card` (ENG-953); the "always flag on" batch (ENG-1279,
@@ -837,6 +845,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "library_single_filter_row_v1", // ENG-1607 — Cookbook single provenance chip row (v3); off = legacy two-row stack (kill switch). Web + mobile.
   "ingredient_text_rows_v1", // ENG-1611 — foods/ingredients render as TEXT (no glyph/monogram/photo tiles) on log-sheet rows + recipe-detail ingredients; off = legacy tiles (kill switch). Web + mobile.
   "recipe_estimated_cost_v1", // ENG-1274 — per-serving grocery cost estimate (Pro) on recipe-detail hero meta; off = hidden (kill switch). Web + mobile.
+  "web_gutter_convergence_v1", // ENG-1629 — converges web Targets.tsx/RecipeDetail.tsx page gutters onto .product-shell. WEB-ONLY: mobile has no Tailwind product-shell equivalent; registered here only for the web ↔ mobile KNOWN_DEFAULT_OFF_FLAGS discoverability parity.
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

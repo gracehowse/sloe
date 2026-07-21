@@ -14,6 +14,14 @@ export const REDESIGN_VISUAL_FLAGS = [
   "redesign_winmoment",
   "web-meal-nutrition-detail",
   "web-subscription-card",
+  // ENG-1629 — default-OFF gutter convergence (Targets.tsx + RecipeDetail.tsx
+  // onto `.product-shell`). Force it ON here so the committed cohesion-gate
+  // baselines (`deep-recipe-detail-*.png`, `deep-targets-*.png`) capture the
+  // converged state Grace will see once she ramps the flag in PostHog —
+  // without this, the deep-authenticated captures would render the
+  // unchanged flag-OFF gutter and the "regenerate baselines" step would be
+  // a no-op. See the flag's full rationale in `src/lib/analytics/track.ts`.
+  "web_gutter_convergence_v1",
 ] as const;
 
 export type RedesignVisualFlag = (typeof REDESIGN_VISUAL_FLAGS)[number];
