@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import type { MaintenanceConfidence } from "@suppr/nutrition-core/resolveMaintenance";
+import { buildWeightRangeStats } from "@suppr/nutrition-core/progressRangeStats";
 import {
   buildWeeklyCheckinContent,
   shouldShowWeeklyCheckin,
@@ -49,6 +50,16 @@ type UseTodayWeeklyCheckinParams = {
   targetCalories: number;
   resolvedMaintenance: WeeklyCheckinMaintenance;
   profileSex: "male" | "female" | "unspecified" | null;
+  /**
+   * ENG-1585 — `profiles.weight_kg_by_day`, the same map TodayScreen
+   * hydrates into `profileWeightKgByDay`. Feeds the real 7-day
+   * weigh-in delta via `buildWeightRangeStats` (shared with the
+   * Progress tab, `src/lib/nutrition/progressRangeStats.ts`) so the
+   * modal's weight row is never fabricated: `weekDeltaKg` is `null`
+   * whenever fewer than 2 weigh-ins fall in the trailing 7-day
+   * window (no data, or a single weigh-in).
+   */
+  weightKgByDay: Record<string, number>;
   /** Raw `useState` dispatch for `profileTargets` — `handleWeeklyCheckinAccept`
    *  is the only mutation path for this hook (optimistic local target bump on
    *  accept); every other write to `profileTargets` stays in
@@ -134,6 +145,7 @@ export function useTodayWeeklyCheckin({
   targetCalories,
   resolvedMaintenance,
   profileSex,
+  weightKgByDay,
   setProfileTargets,
 }: UseTodayWeeklyCheckinParams): UseTodayWeeklyCheckinResult {
   const [weeklyCheckinShownAt, setWeeklyCheckinShownAt] = useState<string | null>(null);
@@ -146,11 +158,11 @@ export function useTodayWeeklyCheckin({
   // Weekly check-in ritual gate (PR claude/weekly-checkin-ritual-v2,
   // 2026-05-02 — rebuild of #26). Runs once per Today first-load —
   // `weeklyCheckinHandledRef` suppresses re-fires for the rest of the
-  // session even if `weekData` recomputes. Honest weight delta: we pass
-  // `null` for `weightDeltaKg` until a downstream change wires real
-  // weigh-in data through (`profileWeightKgByDay` + a 7-day window
-  // resolver). The modal suppresses the row rather than fabricate
-  // "+0.0 kg". // deferred: see ENG-1585
+  // session even if `weekData` recomputes. Honest weight delta
+  // (ENG-1585): `weightDeltaKg` is the real trailing-7-day weigh-in
+  // delta via `buildWeightRangeStats` (same helper the Progress tab
+  // uses) — still `null`, not fabricated, when fewer than 2 weigh-ins
+  // fall in that window; the modal suppresses the row in that case.
   useEffect(() => {
     if (!isToday) return;
     if (weeklyCheckinHandledRef.current) return;
@@ -208,8 +220,10 @@ export function useTodayWeeklyCheckin({
       priorTdee: resolvedMaintenance?.formulaKcal ?? null,
       currentTargetKcal: targetCalories,
       avgCaloriesThisWeek: weekData.weekAvg.calories,
-      // weightDeltaKg follow-up: honest null until wired. Tracked as ENG-1585.
-      weightDeltaKg: null,
+      // ENG-1585 — real trailing-7-day weigh-in delta (rounded to 0.1
+      // kg by `buildWeightRangeStats`), null when < 2 weigh-ins fall
+      // in that window. Never fabricated.
+      weightDeltaKg: buildWeightRangeStats(weightKgByDay, "7d").weekDeltaKg,
       // ENG-1027 — sex-aware suggested-target floor (never suggest a man
       // below 1,500 / a woman below 1,200).
       sex: profileSex,
@@ -250,6 +264,7 @@ export function useTodayWeeklyCheckin({
     weeklyCheckinShownAt,
     editingMeal,
     params.editMealId,
+    weightKgByDay,
   ]);
 
   const handleWeeklyCheckinAccept = useCallback(() => {

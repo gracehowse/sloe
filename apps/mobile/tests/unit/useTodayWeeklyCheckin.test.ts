@@ -47,6 +47,19 @@ function fiveLoggedDaysWeek(avgCalories = 1800): WeekData {
   };
 }
 
+/** Local-calendar `YYYY-MM-DD` key for "N days ago" — matches the local-time
+ *  keying `buildWeightRangeStats` (`src/lib/nutrition/progressRangeStats.ts`)
+ *  uses internally, so these fixtures land inside/outside its trailing-7-day
+ *  window exactly as intended regardless of the runner's TZ. */
+function localDateKeyDaysAgo(daysAgo: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function baseParams(overrides: Partial<Parameters<typeof useTodayWeeklyCheckin>[0]> = {}) {
   return {
     userId: "user-1",
@@ -59,6 +72,10 @@ function baseParams(overrides: Partial<Parameters<typeof useTodayWeeklyCheckin>[
     targetCalories: 1800,
     resolvedMaintenance: { formulaKcal: 2000 },
     profileSex: "female" as const,
+    // ENG-1585: default to no weigh-in history — most existing tests below
+    // don't care about the weight row, and an empty map keeps
+    // `weightDeltaKg` honestly null rather than coincidentally non-null.
+    weightKgByDay: {} as Record<string, number>,
     setProfileTargets: vi.fn(),
     ...overrides,
   };
@@ -143,6 +160,56 @@ describe("useTodayWeeklyCheckin", () => {
       "weekly_checkin_shown",
       expect.objectContaining({ confidence: "high", daysLoggedThisWeek: 5 }),
     );
+  });
+
+  it("ENG-1585: passes a real computed weightDeltaKg (not null) when ≥2 weigh-ins fall in the trailing 7-day window", () => {
+    const { result } = renderHook(() =>
+      useTodayWeeklyCheckin(
+        baseParams({
+          weightKgByDay: {
+            [localDateKeyDaysAgo(6)]: 76.0,
+            [localDateKeyDaysAgo(0)]: 75.0,
+          },
+        }),
+      ),
+    );
+    expect(result.current.weeklyCheckinContent).not.toBeNull();
+    expect(result.current.weeklyCheckinContent?.weightDeltaLabel).toBe("−1.0 kg");
+  });
+
+  it("ENG-1585: still passes null (safe suppression, not fabrication) with only one weigh-in", () => {
+    const { result } = renderHook(() =>
+      useTodayWeeklyCheckin(
+        baseParams({
+          weightKgByDay: { [localDateKeyDaysAgo(0)]: 75.0 },
+        }),
+      ),
+    );
+    expect(result.current.weeklyCheckinContent).not.toBeNull();
+    expect(result.current.weeklyCheckinContent?.weightDeltaLabel).toBeNull();
+  });
+
+  it("ENG-1585: still passes null (safe suppression, not fabrication) with no weigh-ins logged", () => {
+    const { result } = renderHook(() =>
+      useTodayWeeklyCheckin(baseParams({ weightKgByDay: {} })),
+    );
+    expect(result.current.weeklyCheckinContent).not.toBeNull();
+    expect(result.current.weeklyCheckinContent?.weightDeltaLabel).toBeNull();
+  });
+
+  it("ENG-1585: a weigh-in outside the trailing 7-day window doesn't count toward the delta", () => {
+    const { result } = renderHook(() =>
+      useTodayWeeklyCheckin(
+        baseParams({
+          weightKgByDay: {
+            [localDateKeyDaysAgo(30)]: 80.0, // outside the 7d window
+            [localDateKeyDaysAgo(0)]: 75.0, // only 1 point inside the window
+          },
+        }),
+      ),
+    );
+    expect(result.current.weeklyCheckinContent).not.toBeNull();
+    expect(result.current.weeklyCheckinContent?.weightDeltaLabel).toBeNull();
   });
 
   it("does not fire when adaptive confidence is low (gate math, exercised through the hook)", () => {

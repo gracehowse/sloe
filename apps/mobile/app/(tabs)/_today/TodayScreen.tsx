@@ -2215,7 +2215,7 @@ export default function TrackerScreen() {
     weekData,
     targetCalories: targets.calories,
     resolvedMaintenance,
-    profileSex,
+    profileSex, weightKgByDay: profileWeightKgByDay, // ENG-1585: real 7-day weigh-in delta
     setProfileTargets,
   });
 
