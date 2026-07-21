@@ -11,6 +11,12 @@
  * Web's reference implementation (`src/app/components/plan-import/usePlanImport.ts`)
  * has always used the real `useAppData().nutritionTargets`.
  *
+ * The real fetch + resolveTargets logic lives in
+ * `usePlanImportNutritionTargets.ts` (extracted out of the screen file
+ * in a hotfix to stay under the screen's pinned line budget) — this
+ * file checks both: the hook's resolution chain, and that the screen
+ * consumes it instead of any ad hoc math.
+ *
  * Structural source-pin test (matches the existing
  * `planImportLaunchGate.test.ts` convention for this hard-to-render
  * Expo Router + Supabase screen) rather than a full component render.
@@ -20,6 +26,10 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const SRC = readFileSync(resolve(__dirname, "../../app/plan-import.tsx"), "utf8");
+const HOOK_SRC = readFileSync(
+  resolve(__dirname, "../../hooks/usePlanImportNutritionTargets.ts"),
+  "utf8",
+);
 const PLANNER_SRC = readFileSync(resolve(__dirname, "../../app/(tabs)/planner.tsx"), "utf8");
 
 describe("plan-import.tsx — real nutrition targets (ENG-1601)", () => {
@@ -34,21 +44,13 @@ describe("plan-import.tsx — real nutrition targets (ENG-1601)", () => {
     expect(SRC).not.toMatch(/\*\s*0\.035/);
   });
 
-  it("fetches the user's real profile targets via the same columns planner.tsx uses", () => {
+  it("consumes the shared usePlanImportNutritionTargets hook, not inline fetch/resolve logic", () => {
     expect(SRC).toMatch(
-      /target_calories, target_protein, target_carbs, target_fat, target_fiber_g/,
+      /import \{ usePlanImportNutritionTargets \} from "@\/hooks\/usePlanImportNutritionTargets"/,
     );
-    expect(SRC).toMatch(/\.from\("profiles"\)/);
-  });
-
-  it("resolves targets through the shared resolveTargets fallback chain (not ad hoc math)", () => {
-    expect(SRC).toMatch(/import \{ resolveTargets \} from "@\/lib\/calcTargets"/);
-    expect(SRC).toMatch(/resolveTargets\(/);
-  });
-
-  it("starts from NUTRITION_DEFAULTS (the sanctioned fallback) while the fetch is in flight, never a fabricated literal", () => {
-    expect(SRC).toMatch(/import \{ NUTRITION_DEFAULTS \} from "@\/constants\/nutritionDefaults"/);
-    expect(SRC).toMatch(/calories: NUTRITION_DEFAULTS\.calories/);
+    expect(SRC).toMatch(/usePlanImportNutritionTargets\(userId\)/);
+    expect(SRC).not.toMatch(/\.from\("profiles"\)/);
+    expect(SRC).not.toMatch(/resolveTargets\(/);
   });
 
   it("the rebalance call passes real per-macro targets, not derived fractions", () => {
@@ -68,5 +70,26 @@ describe("plan-import.tsx — real nutrition targets (ENG-1601)", () => {
     expect(PLANNER_SRC).toMatch(
       /target_calories, target_protein, target_carbs, target_fat, target_fiber_g/,
     );
+  });
+});
+
+describe("usePlanImportNutritionTargets — real fetch + resolution chain (ENG-1601)", () => {
+  it("fetches the user's real profile targets via the same columns planner.tsx uses", () => {
+    expect(HOOK_SRC).toMatch(
+      /target_calories, target_protein, target_carbs, target_fat, target_fiber_g/,
+    );
+    expect(HOOK_SRC).toMatch(/\.from\("profiles"\)/);
+  });
+
+  it("resolves targets through the shared resolveTargets fallback chain (not ad hoc math)", () => {
+    expect(HOOK_SRC).toMatch(/import \{ resolveTargets \} from "@\/lib\/calcTargets"/);
+    expect(HOOK_SRC).toMatch(/resolveTargets\(/);
+  });
+
+  it("starts from NUTRITION_DEFAULTS (the sanctioned fallback) while the fetch is in flight, never a fabricated literal", () => {
+    expect(HOOK_SRC).toMatch(
+      /import \{ NUTRITION_DEFAULTS \} from "@\/constants\/nutritionDefaults"/,
+    );
+    expect(HOOK_SRC).toMatch(/calories: NUTRITION_DEFAULTS\.calories/);
   });
 });
