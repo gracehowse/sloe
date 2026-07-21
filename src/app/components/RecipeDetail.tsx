@@ -416,16 +416,12 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
   const [activeTab, setActiveTab] = useState<"ingredients" | "steps" | "nutrition">("ingredients");
   const [cookModeOpen, setCookModeOpen] = useState(Boolean(autoOpenCookMode));
 
-  // ENG-818/819 (Redesign — Design Direction 2026) — flag-gated web mirrors of
-  // the mobile recipe-detail redesign.
-  //   - `redesignColours`  → the "Fits your day" payoff chip (win-amber when it
-  //     fits well). Flag-off keeps the flat coloured-text line.
-  //   - `winFeedback` → the web analog of the mobile confirm haptic: a brief
-  //     press payoff (scale + ring) on the commit CTAs (web has no Haptics API).
-  // (The resting-card elevation is now UNCONDITIONAL — Figma 332:2 white slabs
-  // on cream — so the old `design_system_elevation` read is dropped here, in
-  // lockstep with mobile's unconditional `useCardElevation` soft lift.)
-  const redesignColours = isFeatureEnabled("design_system_colours");
+  // ENG-818/819 (Redesign — Design Direction 2026) — `winFeedback` is the web
+  // analog of the mobile confirm haptic: a brief press payoff (scale + ring)
+  // on the commit CTAs (web has no Haptics API). (The former `redesignColours`
+  // read — the "Fits your day" payoff chip — is dead here: ENG-1612 extracted
+  // that chip into `RecipeFitsYourDayVerdict.tsx`, which reads its own flag.
+  // Removed 2026-07-21 rather than left as an unused stale read, ENG-1629.)
   const winFeedback = isFeatureEnabled("redesign_winmoment");
   /** ENG-943 — "Add to shopping list" action (default-ON). */
   const recipeShoppingListEnabled = isFeatureEnabled("recipe_shopping_list_v1");
@@ -438,6 +434,9 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
   // renders as a soft inline chip behind its own flag, `recipe_verdict_chip_v1`,
   // independent of `recipeDetailV3` (computed in the title-block IIFE below).
   const recipeDetailV3 = isFeatureEnabled("recipe_detail_v3_conformance");
+  const gutterConvergence = isFeatureEnabled("web_gutter_convergence_v1"); // ENG-1629 (DEFAULT-OFF; rationale in track.ts) — converge the page gutter onto `.product-shell`.
+  const gutterWidthClass = gutterConvergence ? "w-full max-w-4xl mx-auto md:max-w-6xl xl:max-w-7xl" : "max-w-4xl mx-auto";
+  const gutterPadClass = gutterConvergence ? "px-pm-6" : "px-6";
   const [loggingRecipe, setLoggingRecipe] = useState(false);
   // Commit-CTA press payoff (web analog of the mobile confirm haptic). A subtle
   // active-state scale + a brief brightness lift on press, gated on
@@ -1862,7 +1861,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
 
   if (!isCatalogRecipe && dbLoading) {
     return (
-      <div className="max-w-4xl mx-auto px-6 py-10 space-y-4">
+      <div className={`${gutterWidthClass} ${gutterPadClass} py-10 space-y-4`}>
         <div className="h-8 w-48 rounded-md bg-skeleton animate-pulse" />
         <div className="aspect-video w-full rounded-xl bg-skeleton animate-pulse" />
         <div className="space-y-2">
@@ -1877,7 +1876,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
 
   if (!isCatalogRecipe && dbFetchFailed) {
     return (
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className={`${gutterWidthClass} ${gutterPadClass} py-8`}>
         <button
           type="button"
           onClick={onBack}
@@ -1909,7 +1908,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
     // Figma 332:2 — warm cream editorial page (`#F6F5F2`
     // `background-secondary`); the white slab cards below lift off it.
     // Mirrors the public-share page + mobile detail (cream page, white cards).
-    <div className="max-w-4xl mx-auto bg-background-secondary min-h-screen pb-24">
+    <div className={`${gutterWidthClass} bg-background-secondary min-h-screen pb-24`}>
       {/* 1. Full-bleed hero with overlaid controls (Figma 332:2 §1). The photo
           (or the deterministic cream/plum fallback) runs edge-to-edge; a top
           scrim darkens the controls; back (left) + bookmark / share / more
@@ -1989,7 +1988,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
                   aria-hidden
                 />
                 <div
-                  className="absolute inset-x-0 bottom-0 px-6 pb-6 flex flex-col gap-2 pointer-events-none"
+                  className={`absolute inset-x-0 bottom-0 ${gutterPadClass} pb-6 flex flex-col gap-2 pointer-events-none`}
                   data-testid="recipe-hero-title-overlay"
                 >
                   <span
@@ -2205,7 +2204,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
           [id].tsx` body StyleSheet (Spacing.md = 12). */}
       {/* Body — single-scroll editorial stack (Figma 332:2 §2–7). The hero
           above is full-bleed; the body content begins at section 2. */}
-      <div className="px-6 py-6 space-y-5">
+      <div className={`${gutterPadClass} py-6 space-y-5`}>
         {/* 2026-04-30 ui-product-designer recipe-detail audit Fix 1 —
             web parity gap closed. Mobile body has always rendered the
             recipe title + byline subtitle below the hero; the web
@@ -3417,7 +3416,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
           className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card/95 backdrop-blur-sm"
           data-testid="recipe-detail-sticky-footer"
         >
-          <div className="max-w-4xl mx-auto flex items-center justify-between gap-3 px-6 py-3">
+          <div className={`${gutterWidthClass} flex items-center justify-between gap-3 ${gutterPadClass} py-3`}>
             {/* Left — yield + servings stepper (canonical servings control). */}
             <div className="flex flex-col gap-1">
               <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">

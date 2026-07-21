@@ -154,7 +154,10 @@ describe("web in-app detail — full Figma 332:2 visual language (not just bound
     // blocks). Re-pinned 2026-06-09: the old cream sticky nav bar
     // (`bg-background-secondary/85`) is gone — the hero is now full-bleed
     // (`recipe-detail-hero`) with overlaid frosted controls (Figma §1).
-    expect(WEB_SRC).toContain("max-w-4xl mx-auto bg-background-secondary min-h-screen");
+    // Re-pinned 2026-07-21 (ENG-1629) — the outer wrapper's width is now
+    // `gutterWidthClass` (`max-w-4xl mx-auto` legacy / the `.product-shell`
+    // composition behind `web_gutter_convergence_v1`), not a static literal.
+    expect(WEB_SRC).toContain("`${gutterWidthClass} bg-background-secondary min-h-screen pb-24`");
     expect(WEB_SRC).toContain('data-testid="recipe-detail-hero"');
     expect(WEB_SRC).not.toContain("bg-background-secondary/85");
   });

@@ -313,8 +313,27 @@ describe("web recipe-detail — tighter section gaps (Fix 6 / Figma 332:2)", () 
     // Re-pinned 2026-06-09: under the full-bleed-hero 332:2 layout the body
     // padding is `py-6` (the cream body begins right under the photo), not the
     // old `py-8`. The tightened `space-y-5` rhythm is preserved.
-    expect(SRC).toMatch(/<div className="px-6 py-6 space-y-5"/);
+    // Re-pinned 2026-07-21 (ENG-1629) — the body's horizontal padding is now
+    // `gutterPadClass` (`px-6` legacy / `px-pm-6` behind `web_gutter_convergence_v1`),
+    // not a static `px-6` literal. `py-6 space-y-5` is unaffected by the flag.
+    expect(SRC).toMatch(/<div className=\{`\$\{gutterPadClass\} py-6 space-y-5`\}>/);
     expect(SRC).not.toMatch(/<div className="px-6 py-8 space-y-8"/);
+  });
+
+  it("ENG-1629 — gutter convergence flag drives a shared width/pad pair, legacy values intact", () => {
+    // The flag read + the two shared class constants derived from it.
+    expect(SRC).toMatch(
+      /const gutterConvergence = isFeatureEnabled\("web_gutter_convergence_v1"\)/,
+    );
+    // Flag-off legacy values — byte-identical to pre-ENG-1629 — still exist as
+    // literal strings (the kill switch), even though they're no longer a single
+    // static className.
+    expect(SRC).toMatch(/const gutterWidthClass = gutterConvergence[\s\S]{0,80}: "max-w-4xl mx-auto"/);
+    expect(SRC).toMatch(/const gutterPadClass = gutterConvergence \? "px-pm-6" : "px-6"/);
+    // Flag-on converged value matches `.product-shell`'s composition exactly.
+    expect(SRC).toMatch(
+      /"w-full max-w-4xl mx-auto md:max-w-6xl xl:max-w-7xl"/,
+    );
   });
 });
 

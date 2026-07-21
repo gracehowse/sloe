@@ -170,6 +170,16 @@ jobs:
           fi
 
       - name: Commit regenerated baselines back to the ref
+        # ENG-1629 fix: was missing `if: always()`, so ANY single failing spec
+        # in the run (e.g. an unrelated pre-existing flake/break elsewhere in
+        # the same spec file) discarded every successfully-regenerated
+        # baseline from this step, not just the failing one's. `--update-
+        # snapshots` already wrote the successful PNGs to disk regardless of
+        # the overall `playwright test` exit code; this step just needs to
+        # run and commit them even when that exit code is non-zero. The job
+        # still reports failure overall (the previous step stays red), which
+        # is correct — this only stops throwing away good work alongside it.
+        if: always()
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
