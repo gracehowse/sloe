@@ -87,9 +87,20 @@ function dayDiff(fromKey: string, toKey: string): number {
   return Math.round((b - a) / 86_400_000);
 }
 
+// `isVisible({ timeout })` doesn't wait — Playwright's own types mark that
+// option deprecated/ignored ("returns immediately") — so a check called
+// right after `page.goto(..., { waitUntil: "domcontentloaded" })` races
+// hydration and silently no-ops before these one-shot overlays have
+// mounted, leaking them into the capture instead of dismissing them
+// (2026-07-21, same failure class as tests/e2e/utils/visual.ts's
+// dismissVisualOverlays). `waitFor({ state: "visible" })` genuinely retries.
 async function dismissChrome(page: Page): Promise<void> {
   const accept = page.getByRole("button", { name: /accept all/i });
-  if (await accept.isVisible({ timeout: 2500 }).catch(() => false)) {
+  const hasAccept = await accept
+    .waitFor({ state: "visible", timeout: 2500 })
+    .then(() => true)
+    .catch(() => false);
+  if (hasAccept) {
     await accept.click();
   }
   // ENG-633 — suppress first-run completion toast noise on Today captures.
@@ -97,9 +108,17 @@ async function dismissChrome(page: Page): Promise<void> {
     localStorage.setItem("suppr-checklist-toast-shown", "1");
   });
   const milestone = page.getByRole("dialog");
-  if (await milestone.isVisible({ timeout: 2000 }).catch(() => false)) {
+  const hasMilestone = await milestone
+    .waitFor({ state: "visible", timeout: 2000 })
+    .then(() => true)
+    .catch(() => false);
+  if (hasMilestone) {
     const keep = milestone.getByRole("button", { name: /keep going/i });
-    if (await keep.isVisible().catch(() => false)) {
+    const hasKeep = await keep
+      .waitFor({ state: "visible", timeout: 800 })
+      .then(() => true)
+      .catch(() => false);
+    if (hasKeep) {
       await keep.click();
     } else {
       await milestone.getByRole("button", { name: /^close$/i }).click();
