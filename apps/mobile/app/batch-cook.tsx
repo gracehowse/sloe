@@ -8,14 +8,14 @@ import { useSavedLibraryRecipes } from "@/lib/recipes";
 import { supabase } from "@/lib/supabase";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import {
-  batchShoppingMultiplier,
   isBatchCookCandidate,
   recipeTotalTimeMin,
   type BatchCookRecipeCandidate,
 } from "@suppr/shared/planning/batchCook";
-import { generateShoppingListFromRecipeEntriesAsync } from "@suppr/shared/planning/generateShoppingList";
-import { upsertShoppingListJsonItems } from "@suppr/shared/supabase/shoppingJsonFallback";
-import { filterShoppingItemsByPantry, parsePantryStaples } from "@suppr/shared/planning/pantryStaples";
+import { scaleBatchCookToShoppingList } from "@suppr/shared/planning/scaleBatchCookToShoppingList";
+import { parsePantryStaples } from "@suppr/shared/planning/pantryStaples";
+import { getMyHousehold } from "@suppr/shared/household/householdClient";
+import { shoppingScopeFor } from "@suppr/shared/household/shoppingScope";
 
 /** ENG-1255 — Batch cook pushed screen (`suppr:///batch-cook`). */
 export default function BatchCookScreen() {
@@ -55,43 +55,40 @@ export default function BatchCookScreen() {
         Alert.alert("No ingredients", "This recipe has no ingredient lines to scale yet.");
         return false;
       }
-      const multiplier = batchShoppingMultiplier(portions, recipe.servings);
-      const titleToId = (title: string) => (title === recipe.title ? recipe.id : null);
-      const ingredientsByRecipeId = new Map<
-        string,
-        Array<{ name: string; amount: string; unit: string }>
-      >([
-        [
-          recipe.id,
-          ingredients.map((ing) => ({
-            name: String(ing.name ?? ""),
-            amount: ing.amount != null ? String(ing.amount) : "",
-            unit: String(ing.unit ?? ""),
-          })),
-        ],
-      ]);
-      const generated = await generateShoppingListFromRecipeEntriesAsync({
-        entries: [{ title: recipe.title, multiplier }],
-        recipeTitleToId: titleToId,
-        fetchDbIngredients: async (recipeId) => ingredientsByRecipeId.get(recipeId) ?? [],
-        fetchDbIngredientsBatch: async () => ingredientsByRecipeId,
-      });
       const { data: profile } = await supabase
         .from("profiles")
         .select("pantry_staples")
         .eq("id", userId)
         .maybeSingle();
-      const filtered = filterShoppingItemsByPantry(generated, parsePantryStaples(profile?.pantry_staples));
-      const items = filtered.map((it) => ({
-        name: it.name,
-        amount: it.amount,
-        unit: it.unit,
-        category: it.category,
-        checked: false,
-      }));
-      const { error: upErr } = await upsertShoppingListJsonItems(supabase, userId, items);
-      if (upErr) {
-        Alert.alert("Couldn't update shopping list", upErr.message);
+
+      // ENG-1600 — resolve household scope the same way the single-recipe
+      // "Add to shopping list" action does (ENG-943's
+      // `AddToShoppingListButton.tsx`), so a household user's batch-cook
+      // items land in the shared household list, not a solo-only row.
+      let householdId: string | null = null;
+      try {
+        const { data } = await getMyHousehold(supabase as never, userId);
+        householdId = data?.household?.id ?? null;
+      } catch {
+        householdId = null;
+      }
+      const scope = shoppingScopeFor({ userId, householdId });
+
+      const res = await scaleBatchCookToShoppingList({
+        client: supabase as never,
+        scope,
+        recipeTitle: recipe.title,
+        recipeServings: recipe.servings,
+        portions,
+        ingredients: ingredients.map((ing) => ({
+          name: String(ing.name ?? ""),
+          amount: ing.amount != null ? String(ing.amount) : "",
+          unit: String(ing.unit ?? ""),
+        })),
+        pantryStaples: parsePantryStaples(profile?.pantry_staples),
+      });
+      if (!res.ok) {
+        Alert.alert("Couldn't update shopping list", res.error);
         return false;
       }
       return true;

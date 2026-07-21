@@ -190,25 +190,15 @@ Neither platform ships an "add custom item" free-text input — both explicitly 
 
 ---
 
-## Known bug — batch-cook "scale to shopping" writes to a dead table
+## Fixed bug (ENG-1600) — batch-cook "scale to shopping" used to write to a dead table
 
-**This is broken today on both platforms — do not describe it as working until it's fixed.**
+**Status: fixed.** This section previously documented an open bug (found during the 2026-07-19 documentation sweep, filed as ENG-1600) where batch-cook's "scale to shopping" action persisted through `upsertShoppingListJsonItems` — the **legacy JSON blob table** (`shopping_lists`, renamed to `shopping_lists_legacy` by migration `20260413100000_relational_user_data.sql`) — instead of the relational `shopping_items` table both platforms' Shopping screens actually read. Net effect: items added via batch-cook never surfaced on mobile `/shopping`, and on web they replaced (rather than merged into) the in-memory list for the rest of the session, then vanished entirely on reload once `useShoppingListState` re-read `shopping_items` and found nothing new there.
 
-**What it's supposed to do:** on the batch-cook screen, scaling a recipe to N portions and hitting Save/Cook should add the scaled ingredients to the shopping list, the same way Step 3's single-recipe add does.
+**The fix:** both platforms now route through a new shared module, `src/lib/planning/scaleBatchCookToShoppingList.ts` — pantry-staple filtering, then the batch multiplier, then a delegate to `appendRecipeToShoppingListClient` (ENG-943's delta-merge appender, the exact pattern Step 3's single-recipe "Add to shopping list" action already uses). This persists only the delta (INSERT new rows / UPDATE changed quantities, preserving `checked` on existing rows) into `shopping_items`, resolved to the caller's household-or-solo scope exactly like every other shopping-list write in this doc:
+- **Mobile** (`apps/mobile/app/batch-cook.tsx` `scaleToShopping`): resolves household scope via `getMyHousehold` (matching `AddToShoppingListButton.tsx`), then calls the shared module.
+- **Web** (`src/app/components/MealPlanner.tsx` `scaleBatchCookToShopping`): resolves scope from the already-loaded `activeHouseholdId` (`AppDataContext`), calls the shared module, and reflects the returned *merged* list via `setShoppingItems(res.items)` — fixing the "replaces the visible list" side effect noted in the original bug write-up, not just the persistence.
 
-**What it actually does:** it generates the scaled rows correctly through the shared generator and pantry filter, but persists them via `upsertShoppingListJsonItems` — which writes to the **legacy JSON blob table** (`shopping_lists`, which migration `20260413100000_relational_user_data.sql` renamed to `shopping_lists_legacy`), **not** the relational `shopping_items` table the shopping screen actually reads.
-
-The mismatch is visible on both sides of the code:
-- `src/lib/supabase/shoppingJsonFallback.ts` — its own header comment says: *"After migration `20260413100000_relational_user_data.sql`, `shopping_lists` is renamed to `shopping_lists_legacy`; new data lives in `shopping_items`."* `upsertShoppingListJsonItems` still targets `SHOPPING_LIST_JSON_TABLES = ["shopping_lists", "shopping_lists_legacy"]`.
-- `src/context/appData/useShoppingListState.ts` (web) and `apps/mobile/app/shopping.tsx` — both read `shopping_items` on the happy path, and only fall through to the JSON fallback **when the relational query errors** (missing-table detection). In production `shopping_items` exists and returns rows successfully, so the JSON fallback read path never executes.
-
-**Net effect:**
-- **Mobile** (`apps/mobile/app/batch-cook.tsx:44` `scaleToShopping`, `:92` the JSON-blob write): the scaled items are written to `shopping_lists_legacy` and never surface. Tapping "View list" opens `/shopping`, which reads `shopping_items` and shows nothing new — the items are silently absent.
-- **Web** (`src/app/components/MealPlanner.tsx:1070` `scaleBatchCookToShopping`): additionally calls `setShoppingItems(filtered)` in memory, which **replaces** (does not merge into) the currently-rendered list with just the batch items for the rest of the session. So the batch items appear to work in the moment — but they've also silently hidden the rest of the list from view until the next fetch — and on reload, `useShoppingListState` re-reads the relational `shopping_items` table, which never got the batch write, so both the batch items and the illusion of success vanish.
-
-**This reads as a bug, not a deliberate ephemeral design:** the surrounding code (pantry filtering, the shared generator, the "View list" CTA) is written as if this is meant to persist durably like every other path in this doc. There's no comment marking the JSON-blob write as intentional or ephemeral. It reads as a write path that was never migrated when `shopping_items` became canonical.
-
-**Status:** open, unresolved. The likely fix is to swap `upsertShoppingListJsonItems` for the same delta-merge persistence Step 3 already uses (`appendRecipeToShoppingList`-style), on both platforms.
+Tests: `tests/unit/scaleBatchCookToShoppingList.test.ts` proves the shared module inserts into a `shopping_items`-shaped client (never touches a `shopping_lists`/JSON-blob-shaped client), excludes pantry staples before persisting, and stamps `household_id` for household scope.
 
 ---
 

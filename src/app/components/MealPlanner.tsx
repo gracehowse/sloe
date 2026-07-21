@@ -76,16 +76,14 @@ import { ResetPlanSheet } from "./plan/ResetPlanSheet.tsx";
 import { useMealPlanRegenerate } from "./plan/useMealPlanRegenerate.ts";
 import { useMealSlotConfig } from "./plan/useMealSlotConfig.ts";
 import {
-  batchShoppingMultiplier,
   defaultBatchCookToolSubtitle,
   isBatchCookCandidate,
   recipeTotalTimeMin,
   type BatchCookRecipeCandidate,
 } from "../../lib/planning/batchCook.ts";
-import { filterShoppingItemsByPantry } from "../../lib/planning/pantryStaples.ts";
-import { generateShoppingListFromRecipeEntriesAsync } from "../../lib/planning/generateShoppingList.ts";
 import { buildPlanSwapEdit } from "../../lib/planning/planShoppingSyncHost.ts";
-import { upsertShoppingListJsonItems } from "../../lib/supabase/shoppingJsonFallback.ts";
+import { scaleBatchCookToShoppingList } from "../../lib/planning/scaleBatchCookToShoppingList.ts";
+import { shoppingScopeFor } from "../../lib/household/shoppingScope.ts";
 import { AdjustConstraintsSheet } from "./plan/AdjustConstraintsSheet.tsx";
 import { computeSmartRecipeSuggestions } from "../../lib/planning/smartSuggestions";
 import {
@@ -263,6 +261,8 @@ export const MealPlanner = memo(function MealPlanner({
     setShoppingItems,
     pantryStaples,
     nutritionByDay,
+    // ENG-1600 — household scope for batch-cook's "scale to shopping" write.
+    activeHouseholdId,
   } = useAppData();
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -1081,44 +1081,31 @@ export const MealPlanner = memo(function MealPlanner({
         toast.error("This recipe has no ingredient lines to scale yet.");
         return false;
       }
-      const multiplier = batchShoppingMultiplier(portions, recipe.servings);
-      const titleToId = (title: string) => (title === recipe.title ? recipe.id : null);
-      const ingredientsByRecipeId = new Map<
-        string,
-        Array<{ name: string; amount: string; unit: string }>
-      >([
-        [
-          recipe.id,
-          ingredients.map((ing) => ({
-            name: String(ing.name ?? ""),
-            amount: ing.amount != null ? String(ing.amount) : "",
-            unit: String(ing.unit ?? ""),
-          })),
-        ],
-      ]);
-      const generated = await generateShoppingListFromRecipeEntriesAsync({
-        entries: [{ title: recipe.title, multiplier }],
-        recipeTitleToId: titleToId,
-        fetchDbIngredients: async (recipeId) => ingredientsByRecipeId.get(recipeId) ?? [],
-        fetchDbIngredientsBatch: async () => ingredientsByRecipeId,
+      const scope = shoppingScopeFor({ userId: authedUserId, householdId: activeHouseholdId });
+      const res = await scaleBatchCookToShoppingList({
+        client: supabase as unknown as Parameters<typeof scaleBatchCookToShoppingList>[0]["client"],
+        scope,
+        recipeTitle: recipe.title,
+        recipeServings: recipe.servings,
+        portions,
+        ingredients: ingredients.map((ing) => ({
+          name: String(ing.name ?? ""),
+          amount: ing.amount != null ? String(ing.amount) : "",
+          unit: String(ing.unit ?? ""),
+        })),
+        pantryStaples,
       });
-      const filtered = filterShoppingItemsByPantry(generated, pantryStaples);
-      setShoppingItems(filtered);
-      const items = filtered.map((it) => ({
-        name: it.name,
-        amount: it.amount,
-        unit: it.unit,
-        category: it.category,
-        checked: false,
-      }));
-      const { error: upErr } = await upsertShoppingListJsonItems(supabase, authedUserId, items);
-      if (upErr) {
-        toast.error(upErr.message);
+      if (!res.ok) {
+        toast.error(res.error);
         return false;
       }
+      // Reflect the merged list locally (existing rows + this batch's rows,
+      // deduped) — preserves checked state on rows already on the list,
+      // same as the single-recipe "Add to shopping list" action.
+      setShoppingItems(res.items);
       return true;
     },
-    [authedUserId, pantryStaples, setShoppingItems],
+    [authedUserId, activeHouseholdId, pantryStaples, setShoppingItems],
   );
 
   const plan = mealPlan ?? [];
