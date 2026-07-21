@@ -434,6 +434,7 @@ export default function HealthSyncScreen() {
       if (result.activeEnergyUpdated) parts.push("active energy");
       if (result.workoutsUpdated) parts.push("workouts");
       if (result.basalBurnUpdated) parts.push("resting energy");
+      if (result.sleepUpdated) parts.push("sleep");
 
       // 2026-05-14 (premium-bar audit Group J #9): persist a per-category
       // last-sync timestamp for every flag that updated. Stamps the

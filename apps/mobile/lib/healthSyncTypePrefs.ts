@@ -6,10 +6,21 @@
  * types, their labels, and whether each type is supported. This file
  * owns the *storage*: AsyncStorage keys, getters, setters, defaults.
  *
- * The read path of `syncHealthData` consults these prefs so a branch
- * whose toggle is off gets skipped at runtime. That wiring lives in
- * `apps/mobile/lib/healthSync.ts` and is covered by
- * `apps/mobile/tests/unit/healthSyncTypePrefsGating.test.ts`.
+ * ─── Not wired up yet (found during ENG-1584, 2026-07-21) ─────────────
+ * An earlier version of this comment claimed `syncHealthData`'s read
+ * path consults these prefs to skip a branch whose toggle is off, with
+ * that wiring "in `apps/mobile/lib/healthSync.ts`" and covered by
+ * `apps/mobile/tests/unit/healthSyncTypePrefsGating.test.ts`. Neither is
+ * true: `syncHealthData` syncs every wired type unconditionally
+ * whenever Health is connected, with no per-type gate, and that test
+ * file doesn't exist. There is also currently no UI caller of
+ * `getHealthSyncTypePrefs`/`setHealthSyncTypePref` at all — see
+ * `src/lib/health/syncTypes.ts`'s header for the fuller picture (this
+ * storage layer + the SSOT are both waiting on a settings screen that
+ * doesn't exist yet). Building that real feature (a per-type settings
+ * UI that actually reads and writes these prefs, plus wiring
+ * `syncHealthData` to respect them) is out of ENG-1584's scope —
+ * tracked instead as ENG-1635.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
 

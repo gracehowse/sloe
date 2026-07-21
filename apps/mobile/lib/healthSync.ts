@@ -48,6 +48,7 @@ import {
   type CorrelationParentRow,
   dietaryCorrelationKeyForSample,
 } from "./healthSyncCorrelation";
+import { aggregateAsleepMinutesByDay, type RawSleepSample } from "./healthSyncSleep";
 
 /** Expo Go (no custom native modules). Prefer executionEnvironment; appOwnership is legacy. */
 export function isExpoGoRuntime(): boolean {
@@ -301,6 +302,24 @@ type AppleHealthKitNative = {
       results: { value: number; startDate: string }[],
     ) => void,
   ): void;
+  // ENG-1584 — unlike every other `get*Samples` method above, the native
+  // bridge maps `HKCategoryValueSleepAnalysis` to a STRING (`value`), not
+  // a number. See `healthSyncSleep.ts`'s module docblock for the full
+  // taxonomy and why it's handled the way it is.
+  getSleepSamples(
+    options: { startDate: string; endDate: string; limit?: number; ascending?: boolean },
+    callback: (
+      err: string,
+      results: {
+        id?: string;
+        value: string;
+        startDate: string;
+        endDate: string;
+        sourceName?: string;
+        sourceId?: string;
+      }[],
+    ) => void,
+  ): void;
 };
 
 let cachedNative: AppleHealthKitNative | null | undefined;
@@ -334,7 +353,7 @@ function loadAppleHealthKit(): AppleHealthKitNative | null {
   }
 }
 
-/** HealthKit body metrics (steps, weight, energy, workouts). */
+/** HealthKit body metrics (steps, weight, energy, workouts, sleep). */
 const HEALTH_KIT_BODY_READ = [
   "StepCount",
   "Weight",
@@ -342,6 +361,9 @@ const HEALTH_KIT_BODY_READ = [
   "ActiveEnergyBurned",
   "BasalEnergyBurned",
   "Workout",
+  // ENG-1584 — requested in the same stage-1 sheet as the rest of body
+  // metrics (same precedent as adding Workout/BasalEnergyBurned here).
+  "SleepAnalysis",
 ] as const;
 
 /**
@@ -882,6 +904,37 @@ function getBasalEnergyBurnedPromise(
             }),
           );
         else resolve(results ?? []);
+      });
+    },
+    { dateRange: options },
+  );
+}
+
+/**
+ * ENG-1584. `results[].value` is a STRING taxonomy
+ * (INBED/ASLEEP/CORE/DEEP/REM/AWAKE/UNKNOWN), not the numeric
+ * `HealthValue.value` the other `get*Samples` wrappers above return —
+ * see `healthSyncSleep.ts`'s module docblock.
+ */
+function getSleepSamplesPromise(
+  hk: AppleHealthKitNative,
+  options: { startDate: string; endDate: string },
+): Promise<RawSleepSample[]> {
+  return withHealthCallbackTimeout(
+    "getSleepSamples",
+    (resolve, reject) => {
+      if (!hk.getSleepSamples) {
+        resolve([]);
+        return;
+      }
+      hk.getSleepSamples(options, (err, results) => {
+        if (err)
+          reject(
+            logHealthSyncBridgeError("getSleepSamples", err, {
+              dateRange: options,
+            }),
+          );
+        else resolve((results ?? []) as RawSleepSample[]);
       });
     },
     { dateRange: options },
@@ -1951,6 +2004,7 @@ export async function syncHealthData(
   activeEnergyUpdated: boolean;
   workoutsUpdated: boolean;
   basalBurnUpdated: boolean;
+  sleepUpdated: boolean;
 }> {
   const hk = loadAppleHealthKit();
   if (!hk)
@@ -1961,6 +2015,7 @@ export async function syncHealthData(
       activeEnergyUpdated: false,
       workoutsUpdated: false,
       basalBurnUpdated: false,
+      sleepUpdated: false,
     };
 
   /** How far back to read HealthKit (user preference; default ~12 months). "All" uses 4000d (~11y) cap. */
@@ -1976,12 +2031,13 @@ export async function syncHealthData(
   let activeEnergyUpdated = false;
   let workoutsUpdated = false;
   let basalBurnUpdated = false;
+  let sleepUpdated = false;
 
   try {
     const { data: profile } = await supabase
       .from("profiles")
       .select(
-        "steps_by_day, weight_kg_by_day, weight_kg, body_fat_pct, body_fat_pct_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day",
+        "steps_by_day, weight_kg_by_day, weight_kg, body_fat_pct, body_fat_pct_by_day, activity_burn_by_day, workouts_by_day, basal_burn_by_day, sleep_minutes_by_day",
       )
       .eq("id", userId)
       .maybeSingle();
@@ -2005,6 +2061,10 @@ export async function syncHealthData(
       unknown[]
     >;
     const existingBasalBurn = (profile?.basal_burn_by_day ?? {}) as Record<
+      string,
+      number
+    >;
+    const existingSleep = (profile?.sleep_minutes_by_day ?? {}) as Record<
       string,
       number
     >;
@@ -2288,6 +2348,37 @@ export async function syncHealthData(
     } catch {
       // Basal energy sync failed silently
     }
+
+    // ── Sleep (ENG-1584) ──
+    // `aggregateAsleepMinutesByDay` filters to genuine asleep states
+    // (excludes in-bed/awake/unknown), merges overlapping multi-source
+    // intervals, and splits across local-midnight boundaries — see
+    // `healthSyncSleep.ts`. Same overwrite-only-the-days-HealthKit-
+    // reported shape as steps/active-energy/basal above: recomputing
+    // and overwriting (not adding onto existing) avoids double-counting
+    // on repeat syncs.
+    try {
+      const sleepSamples = await getSleepSamplesPromise(hk, {
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      });
+
+      const fromHealthSleep = aggregateAsleepMinutesByDay(sleepSamples);
+      const sleepMinutesByDay: Record<string, number> = { ...existingSleep };
+      for (const [dk, v] of Object.entries(fromHealthSleep)) {
+        sleepMinutesByDay[dk] = v;
+      }
+
+      if (JSON.stringify(sleepMinutesByDay) !== JSON.stringify(existingSleep)) {
+        const { error } = await supabase
+          .from("profiles")
+          .update({ sleep_minutes_by_day: sleepMinutesByDay })
+          .eq("id", userId);
+        if (!error) sleepUpdated = true;
+      }
+    } catch {
+      // Sleep sync failed silently
+    }
   } catch {
     // Profile load failed
   }
@@ -2299,6 +2390,7 @@ export async function syncHealthData(
     activeEnergyUpdated,
     workoutsUpdated,
     basalBurnUpdated,
+    sleepUpdated,
   };
 }
 
