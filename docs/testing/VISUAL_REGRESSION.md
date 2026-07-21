@@ -59,6 +59,8 @@ npm run test:e2e:visual:update -- tests/e2e/visual-regression-deep.spec.ts -g "r
 
 Writes `screenshots/latest/deeplink-*.png` (diff) and `docs/audits/visual-sweep-expanded/*` (human audit pack).
 
+**Flag-gated routes (ENG-1583):** every deep-linked capture in this sweep (and in `00z_expanded_visual_sweep.yaml`) asserts the target screen's own testID is visible *before* `takeScreenshot` — a screen that redirects away on mount (e.g. a feature-flag gate calling `router.back()`) times out that assertion and hard-fails the flow instead of silently capturing whatever screen the redirect landed on. See `apps/mobile/.maestro/README.md`'s "Flag-gated screens" section for the incident this closes and the convention for adding new routes.
+
 ```bash
 npm run mobile:dev
 npm run mobile:test:sweep:deeplinks

@@ -43,11 +43,16 @@ const tableResults: {
   nutrition_entries: SelectResult;
   saves: SelectResult;
   web_push_subscriptions: SelectResult;
+  // ENG-1586 — bulk saved-meals fetch feeding Cascade Rule 1.
+  user_saved_meals: SelectResult;
+  user_saved_meal_items: SelectResult;
 } = {
   profiles: { data: [], error: null },
   nutrition_entries: { data: [], error: null },
   saves: { data: [], error: null },
   web_push_subscriptions: { data: [], error: null },
+  user_saved_meals: { data: [], error: null },
+  user_saved_meal_items: { data: [], error: null },
 };
 
 // Convenience getter — keeps the existing per-test setter syntax
@@ -83,6 +88,7 @@ function makeBuilder(tableKey: keyof typeof tableResults) {
     in: ReturnType<typeof vi.fn>;
     gte: ReturnType<typeof vi.fn>;
     lte: ReturnType<typeof vi.fn>;
+    order: ReturnType<typeof vi.fn>;
     range: ReturnType<typeof vi.fn>;
     then: (resolve: (v: SelectResult) => unknown) => unknown;
   } = {
@@ -99,6 +105,11 @@ function makeBuilder(tableKey: keyof typeof tableResults) {
       return builder;
     }),
     lte: vi.fn(function lte(this: unknown) {
+      return builder;
+    }),
+    // ENG-1586 — `listSavedMealsForUsers` chains `.order(...).order(...)`
+    // on `user_saved_meals`. Chainable no-op like the other filters.
+    order: vi.fn(function order(this: unknown) {
       return builder;
     }),
     range: vi.fn(async function range(this: unknown) {
@@ -123,7 +134,9 @@ const supabaseMock = {
     const tableKey = (
       table === "nutrition_entries" ||
       table === "saves" ||
-      table === "web_push_subscriptions"
+      table === "web_push_subscriptions" ||
+      table === "user_saved_meals" ||
+      table === "user_saved_meal_items"
         ? table
         : "profiles"
     ) as keyof typeof tableResults;
@@ -240,6 +253,8 @@ beforeEach(() => {
   tableResults.nutrition_entries = { data: [], error: null };
   tableResults.saves = { data: [], error: null };
   tableResults.web_push_subscriptions = { data: [], error: null };
+  tableResults.user_saved_meals = { data: [], error: null };
+  tableResults.user_saved_meal_items = { data: [], error: null };
   // ENG-748 #7: default web-push mock delivers every subscription.
   webPushFanoutMock.mockReset();
   webPushFanoutMock.mockImplementation(
@@ -688,6 +703,98 @@ describe("T3 — per-user data fetch + reshape", () => {
       (c) => c[0] === "nutrition_entries",
     );
     expect(nutritionCalls.length).toBe(0);
+  });
+});
+
+describe("ENG-1586 — Cascade Rule 1 (re_log_prompt) fires server-side", () => {
+  it("fires with_suggestion / re_log_prompt when 5+ days are logged with no saved meals", async () => {
+    tableResults.profiles = {
+      data: [
+        makeProfile({ id: "user-recap", expo_push_token: "ExponentPushToken[recap]" }),
+      ],
+      error: null,
+    };
+    // 5 distinct days (Mon-Fri of the previous Mon-start week), all
+    // Breakfast. The most recent (Fri, offset 4) carries 2 items so
+    // `saveSeedItemCount` clears the >=2 floor.
+    tableResults.nutrition_entries = {
+      data: [
+        { user_id: "user-recap", date_key: dateKeyInPreviousWeek(0), name: "Breakfast", recipe_title: "Oats", calories: 300, protein: 20, carbs: 40, fat: 8 },
+        { user_id: "user-recap", date_key: dateKeyInPreviousWeek(1), name: "Breakfast", recipe_title: "Oats", calories: 300, protein: 20, carbs: 40, fat: 8 },
+        { user_id: "user-recap", date_key: dateKeyInPreviousWeek(2), name: "Breakfast", recipe_title: "Oats", calories: 300, protein: 20, carbs: 40, fat: 8 },
+        { user_id: "user-recap", date_key: dateKeyInPreviousWeek(3), name: "Breakfast", recipe_title: "Oats", calories: 300, protein: 20, carbs: 40, fat: 8 },
+        { user_id: "user-recap", date_key: dateKeyInPreviousWeek(4), name: "Breakfast", recipe_title: "Oats", calories: 300, protein: 20, carbs: 40, fat: 8 },
+        { user_id: "user-recap", date_key: dateKeyInPreviousWeek(4), name: "Breakfast", recipe_title: "Berries", calories: 60, protein: 1, carbs: 14, fat: 0 },
+      ],
+      error: null,
+    };
+    // No saved meals for this user — default empty tableResults.
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ data: [{ status: "ok", id: "t" }] }),
+    );
+    const POST = await loadRoute();
+    await POST(makeReq({ secret: "test-cron-secret" }));
+    const sent = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body));
+    expect(sent[0].data.bodyVariant).toBe("with_suggestion");
+    expect(sent[0].body.toLowerCase()).toContain("breakfast");
+    expect(sent[0].body).toMatch(/save/i);
+  });
+
+  it("does not fire re_log_prompt when fewer than 5 distinct days are logged", async () => {
+    tableResults.profiles = {
+      data: [
+        makeProfile({ id: "user-few", expo_push_token: "ExponentPushToken[few]" }),
+      ],
+      error: null,
+    };
+    tableResults.nutrition_entries = {
+      data: [
+        // protein == target_protein (150, the makeProfile default) so
+        // Rule 3 (protein_nudge) also stays suppressed — isolates this
+        // test to the Rule 1 distinct-days gate, matching the profile
+        // setup the "calories_only" T3 test above already pins as
+        // NO-cascade-rule-fires.
+        { user_id: "user-few", date_key: dateKeyInPreviousWeek(0), name: "Breakfast", recipe_title: "Oats", calories: 300, protein: 150, carbs: 40, fat: 8 },
+        { user_id: "user-few", date_key: dateKeyInPreviousWeek(1), name: "Breakfast", recipe_title: "Oats", calories: 300, protein: 150, carbs: 40, fat: 8 },
+      ],
+      error: null,
+    };
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({ data: [{ status: "ok", id: "t" }] }),
+    );
+    const POST = await loadRoute();
+    await POST(makeReq({ secret: "test-cron-secret" }));
+    const sent = JSON.parse(String((fetchMock.mock.calls[0]?.[1] as RequestInit).body));
+    expect(sent[0].data.bodyVariant).toBe("calories_only");
+  });
+
+  it("queries user_saved_meals + user_saved_meal_items during fan-out", async () => {
+    tableResults.profiles = {
+      data: [makeProfile({ id: "user-a", expo_push_token: "ExponentPushToken[a]" })],
+      error: null,
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: [{ status: "ok", id: "t" }] }));
+    const POST = await loadRoute();
+    await POST(makeReq({ secret: "test-cron-secret" }));
+    const fromCalls = supabaseMock.from.mock.calls.map((c) => c[0]);
+    expect(fromCalls).toContain("user_saved_meals");
+  });
+
+  it("continues fan-out when the saved-meals select errors (Rule 1 just won't fire)", async () => {
+    tableResults.profiles = {
+      data: [makeProfile({ id: "user-a", expo_push_token: "ExponentPushToken[a]" })],
+      error: null,
+    };
+    tableResults.user_saved_meals = {
+      data: null,
+      error: { message: "saved meals table flake" },
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: [{ status: "ok", id: "t" }] }));
+    const POST = await loadRoute();
+    const res = await POST(makeReq({ secret: "test-cron-secret" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toEqual({ ok: true, attempted: 1, succeeded: 1, deregistered: 0 });
   });
 });
 

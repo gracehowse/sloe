@@ -74,7 +74,11 @@ import { sendWebPushFanout } from "@/lib/push/webPushSend";
 // ENG-717 — local-calendar date key, shared with mobile + the rest of web.
 import { dateKeyFromDate as dateKey } from "@/lib/datetime/dateKey";
 import { getSupabaseAdminClient } from "@/lib/supabase/serverAdminClient";
-import { buildWeeklyRecap } from "@/lib/nutrition/weeklyRecap";
+import {
+  buildWeeklyRecap,
+  buildUsualMealRecapInsight,
+  computeSaveSeedItemCount,
+} from "@/lib/nutrition/weeklyRecap";
 import { buildWeekStats } from "@/lib/nutrition/progressWeekReport";
 import { resolveMaintenance } from "@/lib/nutrition/resolveMaintenance";
 import { formatWeeklyRecapPushBody } from "@/lib/nutrition/weeklyRecapPushBody";
@@ -82,9 +86,12 @@ import {
   selectDigestSuggestion,
   type DigestSuggestionProfile,
 } from "@/lib/nutrition/weeklyDigestSuggestion";
+import { normaliseRecipeTitle } from "@/lib/nutrition/usualMealHint";
+import { listSavedMealsForUsers, type SavedMeal } from "@/lib/nutrition/savedMeals";
 import {
   entriesToByDay,
   entriesToFiberByDay,
+  extendedPreviousWeekKeys,
   parseFreezeLedger,
   parseHydrationByDay,
   parseWeightKgByDay,
@@ -401,9 +408,21 @@ async function runWeeklyRecapPush(req: Request) {
   //    start cohorts can shift by a day, so we widen by one day on
   //    each end. The per-user reshape filters by exact week keys
   //    later in `entriesToByDay`.
+  //
+  //    ENG-1586: Cascade Rule 1's loosened gate additionally needs the
+  //    14-day `extendedPreviousWeekKeys` window (the previous week plus
+  //    7 more days before it). Since this cron runs daily (not just
+  //    Sunday — `.github/workflows/scheduled-crons.yml` fires it at
+  //    23:00 UTC every day, and per-user tz/dedupe decide who actually
+  //    gets pushed that day), `now` can land on any weekday, and
+  //    `resolvePreviousWeekStart`'s Monday/Sunday snap shifts the
+  //    window start by up to 6 days depending which weekday `now` is —
+  //    worst case (now = Sunday for a Monday-start user, or Saturday
+  //    for a Sunday-start user) the extended window's start is
+  //    `now - 20 days`. 21 rounds that up with a day of margin.
   const nowDate = new Date(now);
   const widestStart = new Date(nowDate);
-  widestStart.setDate(widestStart.getDate() - 14);
+  widestStart.setDate(widestStart.getDate() - 21);
   const widestStartKey = dateKey(widestStart);
   const widestEndKey = dateKey(nowDate);
 
@@ -469,6 +488,26 @@ async function runWeeklyRecapPush(req: Request) {
       if (s.created_at && s.created_at >= sevenDaysAgo) cur.recentlyAddedCount += 1;
       savesByUser.set(s.user_id, cur);
     }
+  }
+
+  // 6b. ENG-1586 — bulk saved-meals fetch (two IN(...) queries via
+  //     `listSavedMealsForUsers`, same bulk-then-bucket shape as the
+  //     `saves` fetch above) so Cascade Rule 1 (`re_log_prompt`) can
+  //     evaluate real `usualMealInsight` + `saveSeedItemCount` per user
+  //     instead of the hardcoded `null` / `0` that structurally
+  //     suppressed it. Non-critical like `saves`: a failure here just
+  //     means Rule 1 won't fire this run — log + continue.
+  let savedMealsByUser = new Map<string, SavedMeal[]>();
+  try {
+    savedMealsByUser = await listSavedMealsForUsers(supabase, eligibleUserIds);
+  } catch (err) {
+    console.log(
+      JSON.stringify({
+        at: "push.weekly_recap",
+        phase: "saved_meals_select_failed_continuing",
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
   }
 
   // 7. Compose per-user message. Per-user compute failure → silent
@@ -632,18 +671,55 @@ async function runWeeklyRecapPush(req: Request) {
         };
         const saves = savesByUser.get(row.id) ?? { count: 0, recentlyAddedCount: 0 };
 
-        // Cascade Rule 1 (`re_log_prompt`) needs `usualMealInsight`
-        // and `saveSeedItemCount`. These are derived in the existing
-        // Progress UI from a 14-day extended window + the user's
-        // saved-meals list — neither of which the cron has fast
-        // access to here. The route therefore passes `null` for the
-        // insight and `0` for the seed count, which means Rule 1 is
-        // structurally suppressed in v1 of the server-fanout path.
-        // Rules 2–5 still fire normally; the worst-case slip is a
-        // user who would have hit Rule 1 instead lands on Rule 2/3/
-        // 4/5 or the unsuggested recap variant. Acceptable for v1.
-        // Promoting Rule 1 would require fetching `saved_meals`
-        // here. // deferred: see ENG-1586
+        // ENG-1586 — Cascade Rule 1 (`re_log_prompt`) inputs. Mirrors
+        // the client computation in `ProgressDashboard.tsx`'s
+        // `usualMealInsight` memo: bucket the user's saved meals'
+        // (title, kcal) item sets, check which days in the primary
+        // 7-day window match all of a saved meal's items, then hand
+        // both the primary and 14-day extended windows to
+        // `buildUsualMealRecapInsight` so its loosened Action 5 Item 8
+        // gate can fire too. `extendedByDay` is a superset of `byDay`
+        // (built from `extendedWeekKeys`, itself a superset of
+        // `descriptor.keys`) so one reshape covers both windows.
+        const savedMeals = savedMealsByUser.get(row.id) ?? [];
+        const extendedWeekKeys = extendedPreviousWeekKeys(wsd, nowDate);
+        const extendedByDay = entriesToByDay(userRows, row.id, extendedWeekKeys);
+        const logCountBySavedMealId: Record<string, number> = {};
+        for (const sm of savedMeals) {
+          const itemKeys = new Set<string>();
+          for (const it of sm.items) {
+            itemKeys.add(`${normaliseRecipeTitle(it.recipeTitle)}|${Math.round(it.calories)}`);
+          }
+          let dayMatches = 0;
+          for (const dayKey of descriptor.keys) {
+            const meals = extendedByDay[dayKey] ?? [];
+            const dayKeys = new Set<string>();
+            for (const m of meals) {
+              dayKeys.add(`${normaliseRecipeTitle(m.recipeTitle)}|${Math.round(m.calories)}`);
+            }
+            if (itemKeys.size > 0 && [...itemKeys].every((k) => dayKeys.has(k))) {
+              dayMatches += 1;
+            }
+          }
+          logCountBySavedMealId[sm.id] = dayMatches;
+        }
+        const usualMealInsight = buildUsualMealRecapInsight({
+          byDay: extendedByDay,
+          weekKeys: descriptor.keys,
+          savedMeals,
+          logCountBySavedMealId,
+          extendedWeekKeys,
+        });
+        const saveSeedItemCount =
+          usualMealInsight?.kind === "prompt"
+            ? computeSaveSeedItemCount(
+                extendedByDay,
+                usualMealInsight.suggestedSlot,
+                descriptor.keys,
+                extendedWeekKeys,
+              )
+            : 0;
+
         const suggestion = selectDigestSuggestion({
           recap,
           proteinOnTarget: weekBundle.proteinOnTarget,
@@ -653,8 +729,8 @@ async function runWeeklyRecapPush(req: Request) {
           ledger,
           freezesAvailable: freezesAvail,
           saves,
-          usualMealInsight: null,
-          saveSeedItemCount: 0,
+          usualMealInsight,
+          saveSeedItemCount,
           profile: cascadeProfile,
           now: nowDate,
         });

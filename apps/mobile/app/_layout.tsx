@@ -193,9 +193,9 @@ function ForwardSocialSharesToImport() {
  * the action is queued via `setPendingSiriAction` and the user is routed
  * to Today — the Today tab flushes the queue on mount/focus. This keeps
  * the layout provider-free (no tight coupling to the Today hook).
- *
- * An accessibility announcement surfaces the action immediately so
- * VoiceOver users hear confirmation even before Today renders.
+ * An accessibility announcement surfaces water logging and the "remaining macros" nav
+ * immediately. `start_fast` defers its announcement to `startFastFromShortcut`
+ * (`useTodayFasting.ts`), which alone knows the real started-vs-no-op outcome (ENG-1606).
  */
 function HandleSiriDeepLinks() {
   const router = useRouter();
@@ -217,7 +217,7 @@ function HandleSiriDeepLinks() {
         }
         case "start_fast": {
           await setPendingSiriAction(action);
-          AccessibilityInfo.announceForAccessibility(`Starting a ${action.hours} hour fast`);
+          // No announcement here — `startFastFromShortcut` announces the real outcome (ENG-1606).
           router.replace("/");
           return true;
         }

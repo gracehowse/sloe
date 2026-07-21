@@ -21,6 +21,7 @@ import {
   deleteSavedMeal,
   incrementLogCount,
   listSavedMeals,
+  listSavedMealsForUsers,
   renameSavedMeal,
 } from "@/lib/nutrition/savedMeals";
 
@@ -175,6 +176,61 @@ describe("listSavedMeals", () => {
     const rows = await listSavedMeals(sb as any, "u1");
     expect(rows).toHaveLength(1);
     expect(rows[0]!.items).toEqual([]);
+  });
+});
+
+// -- listSavedMealsForUsers (ENG-1586 — bulk fetch for the weekly-recap cron) --
+
+describe("listSavedMealsForUsers", () => {
+  it("returns an empty map for an empty userIds list without querying", async () => {
+    const sb = makeSupabase({});
+    const out = await listSavedMealsForUsers(sb as any, []);
+    expect(out.size).toBe(0);
+    expect(sb.calls).toHaveLength(0);
+  });
+
+  it("returns an empty map when the parent query errors (swallowed, mirrors listSavedMeals)", async () => {
+    const sb = makeSupabase({
+      user_saved_meals: () => ({ data: null, error: new Error("permission denied") }),
+    });
+    const out = await listSavedMealsForUsers(sb as any, ["u1", "u2"]);
+    expect(out.size).toBe(0);
+  });
+
+  it("buckets parents + joined items per user_id across the IN(...) result", async () => {
+    const parentRows = [
+      { id: "m1", user_id: "u1", name: "u1 breakfast", created_at: "2026-04-15", last_logged_at: null, log_count: 2, default_meal_slot: "Breakfast" },
+      { id: "m2", user_id: "u2", name: "u2 lunch", created_at: "2026-04-14", last_logged_at: null, log_count: 0, default_meal_slot: null },
+      { id: "m3", user_id: "u1", name: "u1 snack", created_at: "2026-04-10", last_logged_at: null, log_count: 1, default_meal_slot: null },
+    ];
+    const itemRows = [
+      { id: "i1", saved_meal_id: "m1", position: 0, recipe_title: "Oats", calories: 300, protein: 10, carbs: 50, fat: 6 },
+      { id: "i2", saved_meal_id: "m2", position: 0, recipe_title: "Wrap", calories: 400, protein: 20, carbs: 40, fat: 10 },
+      { id: "i3", saved_meal_id: "m3", position: 0, recipe_title: "Nuts", calories: 200, protein: 5, carbs: 10, fat: 15 },
+    ];
+    const sb = makeSupabase({
+      user_saved_meals: () => ({ data: parentRows, error: null }),
+      user_saved_meal_items: () => ({ data: itemRows, error: null }),
+    });
+    const out = await listSavedMealsForUsers(sb as any, ["u1", "u2"]);
+    expect(out.size).toBe(2);
+    expect(out.get("u1")!.map((m) => m.id)).toEqual(["m1", "m3"]);
+    expect(out.get("u2")!.map((m) => m.id)).toEqual(["m2"]);
+    expect(out.get("u1")![0]!.items.map((it) => it.recipeTitle)).toEqual(["Oats"]);
+    // A user with no saved meals is simply absent from the map.
+    expect(out.has("u3")).toBe(false);
+  });
+
+  it("returns parents with empty items arrays when the child query errors", async () => {
+    const parentRows = [
+      { id: "m1", user_id: "u1", name: "X", created_at: "2026-04-15", last_logged_at: null, log_count: 0 },
+    ];
+    const sb = makeSupabase({
+      user_saved_meals: () => ({ data: parentRows, error: null }),
+      user_saved_meal_items: () => ({ data: null, error: new Error("oops") }),
+    });
+    const out = await listSavedMealsForUsers(sb as any, ["u1"]);
+    expect(out.get("u1")![0]!.items).toEqual([]);
   });
 });
 

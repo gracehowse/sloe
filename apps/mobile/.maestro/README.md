@@ -102,6 +102,39 @@ data-driven surface.
 so Maestro launches against the freshly compiled bundle instead of reusing a
 running stale JS bundle.
 
+### Flag-gated screens — hard-fail on redirect-away, not silent capture (ENG-1583)
+
+A screen gated by a feature flag that isn't ramped in your environment may
+`router.back()` (or otherwise redirect away) inside a `useEffect` on mount —
+see `apps/mobile/app/cookbook-import.tsx`'s `cookbook_import_enabled` gate.
+If a sweep flow's `openLink` → `takeScreenshot` sequence doesn't first assert
+the target screen's own testID is visible, the redirect fires, some *other*
+screen ends up on top, and Maestro screenshots that instead — silently. This
+happened for real on 2026-06-09: an ad hoc audit capture (done outside both
+`00z_sweep_deeplinks.yaml` and `00z_expanded_visual_sweep.yaml`, neither of
+which covered this route yet) produced a `cookbook-import.png` byte-identical
+to `plan.png`, and nobody caught it until a later review.
+
+**The fix is the same "hydration sentinel" discipline above, generalised:**
+every `openLink` step in these two sweep files is followed by
+`extendedWaitUntil: { visible: { id: "screen-<name>" } }` *before*
+`takeScreenshot` — never a bare wait or a generic text/regex match. When the
+target screen doesn't mount (flag off, redirect, crash), that wait times out
+and Maestro hard-fails the flow with a clear "element not found" error
+instead of quietly falling through to the screenshot step. Both sweeps now
+cover `cookbook-import` this way (`suppr:///cookbook-import` →
+`screen-cookbook-import`); if `cookbook_import_enabled` is off in your
+environment, this step is *expected* to fail loudly — force the flag on via
+Settings → DEV · Flag overrides (`DevFlagOverrides.tsx`, ENG-840) + "Reload
+app" before running the sweep, rather than treating the failure as flaky and
+skipping it.
+
+**When adding a new deep-linked or flag-gated screen to either sweep file:**
+give it a `screen-<name>` (or more specific hydration-sentinel) testID and
+assert it's visible before the screenshot — the same rule as above, just
+framed for the redirect-on-mount failure mode rather than the pre-hydration
+one.
+
 ## Visual regression — screenshot diff
 
 Maestro flows assert text visibility, not how the screen *looks*. A button can overlap a macro card by 3 px and every `assertVisible` still passes. The screenshot-diff layer closes that gap on the daily-loop surfaces.

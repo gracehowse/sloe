@@ -108,6 +108,26 @@ name: "Sweep — deep routes (deeplink baseline)"
 - takeScreenshot: screenshots/latest/deeplink-paywall
 - takeScreenshot: ../../docs/audits/visual-sweep-expanded/50-paywall
 
+# ENG-1583 — cookbook-import is flag-gated (`cookbook_import_enabled`); the
+# screen's own `useEffect` calls `router.back()` on mount when the flag is
+# off (apps/mobile/app/cookbook-import.tsx). This route was never covered by
+# either sweep file, so an ad hoc 2026-06-09 capture done outside this
+# harness silently screenshotted the post-`router.back()` fallback screen
+# and produced a `cookbook-import.png` byte-identical to `plan.png` — a
+# false-positive nobody caught until the redesign audit. The
+# `extendedWaitUntil: visible: { id: "screen-cookbook-import" }` guard below
+# closes that gap the same way every other capture in this file already
+# does: if the flag is off (or any other redirect-on-mount bug fires) this
+# step times out and Maestro HARD-FAILS the flow with a clear "element not
+# found" error instead of silently falling through to `takeScreenshot`. See
+# `apps/mobile/.maestro/README.md`'s "Flag-gated screens" note.
+- openLink: suppr:///cookbook-import
+- extendedWaitUntil:
+    visible: { id: "screen-cookbook-import" }
+    timeout: 15000
+- takeScreenshot: screenshots/latest/deeplink-cookbook-import
+- takeScreenshot: ../../docs/audits/visual-sweep-expanded/54-cookbook-import
+
 # Recipe detail — library grid tap (needs at least one recipe)
 - tapOn:
     id: "tab-recipes"

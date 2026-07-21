@@ -21,6 +21,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   entriesToByDay,
+  extendedPreviousWeekKeys,
   parseFreezeLedger,
   parseWeightKgByDay,
   previousWeekDescriptor,
@@ -201,6 +202,48 @@ describe("previousWeekKeys — Monday vs Sunday week-start", () => {
     // Both produce a 7-day window.
     expect(sun).toHaveLength(7);
     expect(mon).toHaveLength(7);
+  });
+});
+
+describe("extendedPreviousWeekKeys — ENG-1586 14-day window", () => {
+  it("prepends 7 days before the primary Monday-start week", () => {
+    // Same fixture as `previousWeekKeys`'s Monday case: primary week is
+    // Mon 6 .. Sun 12 Apr 2026. Extended adds Mon 30 Mar .. Sun 5 Apr.
+    const keys = extendedPreviousWeekKeys("monday", new Date(2026, 3, 19, 12));
+    expect(keys).toHaveLength(14);
+    expect(keys[0]).toBe("2026-03-30");
+    expect(keys[6]).toBe("2026-04-05");
+    expect(keys[7]).toBe("2026-04-06");
+    expect(keys[13]).toBe("2026-04-12");
+  });
+
+  it("prepends 7 days before the primary Sunday-start week", () => {
+    // Same fixture as `previousWeekKeys`'s Sunday case: primary week is
+    // Sun 5 .. Sat 11 Apr 2026.
+    const keys = extendedPreviousWeekKeys("sunday", new Date(2026, 3, 18, 12));
+    expect(keys).toHaveLength(14);
+    expect(keys[0]).toBe("2026-03-29");
+    expect(keys[6]).toBe("2026-04-04");
+    expect(keys[7]).toBe("2026-04-05");
+    expect(keys[13]).toBe("2026-04-11");
+  });
+
+  it("is always a superset of previousWeekKeys for the same inputs", () => {
+    const now = new Date(2026, 3, 19, 12);
+    for (const wsd of ["monday", "sunday"] as const) {
+      const primary = previousWeekKeys(wsd, now);
+      const extended = extendedPreviousWeekKeys(wsd, now);
+      for (const k of primary) expect(extended).toContain(k);
+    }
+  });
+
+  it("is in chronological order with no duplicate or skipped days", () => {
+    const keys = extendedPreviousWeekKeys("monday", new Date(2026, 3, 19, 12));
+    for (let i = 1; i < keys.length; i++) {
+      const prev = new Date(`${keys[i - 1]}T00:00:00`);
+      const cur = new Date(`${keys[i]}T00:00:00`);
+      expect((cur.getTime() - prev.getTime()) / 86_400_000).toBe(1);
+    }
   });
 });
 

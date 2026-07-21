@@ -569,8 +569,8 @@ The DS-compliance pass on `apps/mobile/app/cookbook-import.tsx` fixed the follow
 **Fixed (ENG-1582, web parity):**
 - **Web cookbook-import surface** — `/cookbook-import` + `CookbookImport` component: batch PDF parse, per-recipe exclude, author-vs-match nutrition mode, partial-save on free tier. Gated on `cookbook_import_enabled` (same as mobile). Entry on web Import recipe surface when flag is on.
 
-**Deferred (not fixed in this pass):**
-- **Sweep harness hard-fail for flag-gated routes** (sev 5 functionality): the sweep that produced the false positive `cookbook-import.png` (byte-identical to plan.png) captured the Plan fallback because `cookbook_import_enabled` was off. The harness should detect `router.back()` on mount and fail the sweep. This is a test-infra fix, not a cookbook-import code fix. // deferred: see ENG-1583
+**Fixed (ENG-1583, test-infra):**
+- **Sweep harness hard-fail for flag-gated routes** (sev 5 functionality): the sweep that produced the false positive `cookbook-import.png` (byte-identical to plan.png) captured the Plan fallback because `cookbook_import_enabled` was off. Neither `00z_sweep_deeplinks.yaml` nor `00z_expanded_visual_sweep.yaml` covered this route at all, so the ad hoc capture that produced the false positive ran outside both harnesses with no guard. Both sweep files now capture `cookbook-import` (`suppr:///cookbook-import`) with the same `extendedWaitUntil: visible: { id: "screen-cookbook-import" }` guard every other route in those files already uses — a `router.back()`-on-mount redirect (flag off, or any other future regression) now times out that step and hard-fails the flow instead of silently falling through to `takeScreenshot`. See `apps/mobile/.maestro/README.md`'s "Flag-gated screens" section. This was a test-infra fix, not a cookbook-import code fix — the code path itself (`router.back()` on flag-off) was already correct.
 
 ---
 
