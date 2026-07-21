@@ -1177,6 +1177,7 @@ export type Database = {
           prefer_activity_adjusted_calories: boolean | null
           pronouns: string | null
           sex: string | null
+          sleep_minutes_by_day: Json | null
           steps_by_day: Json
           streak_freeze_budget_max: number
           streak_freezes_earned_at: Json
@@ -1257,6 +1258,7 @@ export type Database = {
           prefer_activity_adjusted_calories?: boolean | null
           pronouns?: string | null
           sex?: string | null
+          sleep_minutes_by_day?: Json | null
           steps_by_day?: Json
           streak_freeze_budget_max?: number
           streak_freezes_earned_at?: Json
@@ -1337,6 +1339,7 @@ export type Database = {
           prefer_activity_adjusted_calories?: boolean | null
           pronouns?: string | null
           sex?: string | null
+          sleep_minutes_by_day?: Json | null
           steps_by_day?: Json
           streak_freeze_budget_max?: number
           streak_freezes_earned_at?: Json
