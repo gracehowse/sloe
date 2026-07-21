@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   COOKIE_CONSENT_SCROLL_INSET_VAR,
+  COOKIE_CONSENT_TOP_INSET_VAR,
   isMobileWebProductRoute,
   MOBILE_WEB_CONSENT_BANNER_INSET,
   MOBILE_WEB_CONSENT_DOCK_BOTTOM,
@@ -68,6 +69,7 @@ export function CookieConsent() {
   const pathname = usePathname() ?? "";
   const [visible, setVisible] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const bannerRef = useRef<HTMLDivElement>(null);
   const onProductRoute = isMobileWebProductRoute(pathname);
   const liftAboveMobileChrome = visible && onProductRoute;
   const topAnchored = visible && isMarketingRoute(pathname);
@@ -106,6 +108,36 @@ export function CookieConsent() {
       root.style.removeProperty(COOKIE_CONSENT_SCROLL_INSET_VAR);
     };
   }, [hydrated, onProductRoute, visible]);
+
+  // ENG-1639/isVisible-race fallout, 2026-07-21 — `.lp-nav` (landing.css) is
+  // `position: sticky; top: 0; z-index: 50`, and this banner is `fixed
+  // top-0 z-40` on marketing routes: identical position, nav wins the
+  // stacking fight, so its "Get started" link intercepted every click meant
+  // for "Accept all"/"Essential only" (real bug, not just a test artifact —
+  // confirmed via the chromatic landing capture once dismissVisualOverlays
+  // stopped racing hydration and actually attempted the click). Publish the
+  // banner's live-measured height so `.lp-nav` can push its sticky offset
+  // below it instead. Measured (not a hardcoded constant) so it never drifts
+  // if the banner's copy/padding changes.
+  useEffect(() => {
+    if (!hydrated || !topAnchored) {
+      document.documentElement.style.setProperty(COOKIE_CONSENT_TOP_INSET_VAR, "0px");
+      return;
+    }
+    const el = bannerRef.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const publish = () => {
+      root.style.setProperty(COOKIE_CONSENT_TOP_INSET_VAR, `${el.getBoundingClientRect().height}px`);
+    };
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      root.style.setProperty(COOKIE_CONSENT_TOP_INSET_VAR, "0px");
+    };
+  }, [hydrated, topAnchored]);
 
   function accept() {
     setConsentChoice("accepted");
@@ -157,6 +189,7 @@ export function CookieConsent() {
   // only, so the bottom-docked mobile-product case above is untouched.
   return (
     <div
+      ref={bannerRef}
       data-testid="cookie-consent-banner"
       className={`fixed inset-x-0 bg-card/95 backdrop-blur border-border shadow-[var(--elev-sheet)] ${
         topAnchored
