@@ -93,7 +93,20 @@ test.describe("Visual regression — deep authenticated routes", () => {
         waitUntil: "domcontentloaded",
       });
       await dismissVisualOverlays(page);
-      await expect(page.getByTestId("recipe-body-title")).toBeVisible({
+      // Re-pinned 2026-07-21 (ENG-1629 discovery) -- this hardcoded
+      // `recipe-body-title` alone since before `recipe_detail_v3_conformance`
+      // went default-on (ENG-1247, 2026-06-29). RecipeDetail.tsx's own
+      // `heroOverlayActive` (recipeDetailV3 && heroHasPhoto) hides that body
+      // `<h1>` in favour of `recipe-hero-overlay-title` whenever the recipe
+      // has a photo -- an existing, correct product variation, not a bug.
+      // Whichever one is live is the real readiness signal for "the title
+      // rendered"; hardcoding just one made this test flake/fail entirely
+      // based on whether the seeded golden recipe happens to have a photo.
+      await expect(
+        page.locator(
+          '[data-testid="recipe-body-title"], [data-testid="recipe-hero-overlay-title"]',
+        ),
+      ).toBeVisible({
         timeout: 30_000,
       });
       await stabilizeForScreenshot(page, 3000);
