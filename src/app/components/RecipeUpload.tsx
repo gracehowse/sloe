@@ -51,7 +51,7 @@ import { persistVerifiedRecipeAggregate } from "../../lib/recipes/persistVerifie
 import { stripSectionPrefix } from "../../lib/recipe-import/socialUrlHelpers.ts";
 import { ImportLoadingSkeleton } from "./suppr/import-loading-skeleton.tsx";
 import { ImportSuccessSheet } from "./suppr/import-success-sheet.tsx";
-import { ImportRecentImports } from "./suppr/import-recent-imports.tsx";
+import { ImportRecentImports, ImportCookbookPdfEntry } from "./suppr/import-recent-imports.tsx";
 import { SupprButton } from "./suppr/suppr-button.tsx";
 import {
   IMPORT_ERROR_COPY,
@@ -1835,7 +1835,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           {mode === "import"
             ? "Bring in recipes you have access to—cookbooks, blogs, or scans—for your private library. These stay personal copies; you don't publish them as your own work."
             : "Build an original recipe (typed or from your own photo). Publishing is optional—say when it's your content. Scanning a cookbook page you bought belongs under Import, not here."}
-        </p>
+        </p>{mode === "import" ? <ImportCookbookPdfEntry /> : null}
       </div>
 
       {mode === "create" && onSwitchToImport ? (

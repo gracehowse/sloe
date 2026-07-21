@@ -69,7 +69,7 @@ export type SidebarView =
   | "notifications"
   | "create"
   | "import"
-  | "plan-import"
+  | "plan-import" | "cookbook-import"
   | "household-settings"
   | "targets";
 
@@ -135,7 +135,7 @@ const PRIMARY_ITEMS: PrimaryItem[] = [
     label: "Recipes",
     icon: "navRecipes",
     defaultLeaf: "library",
-    leaves: ["library", "discover", "create", "import"],
+    leaves: ["library", "discover", "create", "import", "cookbook-import"],
   },
   {
     // `plan-import` highlights the Plan primary group (ENG-696).

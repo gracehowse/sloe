@@ -66,6 +66,17 @@ describe("ENG-608 web route completion", () => {
     expect(appSrc).toContain("plan_import_enabled");
   });
 
+  // ENG-1582 — the web Cookbook-Import surface must be reachable at /cookbook-import.
+  it("renders CookbookImport for the /cookbook-import view (ENG-1582)", () => {
+    const pagePath = resolve(REPO, "app/(product)/cookbook-import/page.tsx");
+    expect(existsSync(pagePath), "cookbook-import page missing").toBe(true);
+    const appSrc = readFileSync(resolve(REPO, "src/app/App.tsx"), "utf8");
+    expect(appSrc).toMatch(/"cookbook-import":\s*"cookbook-import"/);
+    expect(appSrc).toMatch(/case\s+"cookbook-import":/);
+    expect(appSrc).toMatch(/<CookbookImport/);
+    expect(appSrc).toContain("cookbook_import_enabled");
+  });
+
   // ENG-622 — the web Targets surface must be reachable at /targets on a
   // hard reload / deep link (the in-app SPA nav already worked). Same two-part
   // wiring: (1) the path→view map carries the `targets` segment; (2)

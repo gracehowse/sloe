@@ -78,6 +78,10 @@ const PlanImport = dynamic(
   () => import("./components/PlanImport.tsx").then((m) => ({ default: m.PlanImport })),
   { ssr: false, loading: () => <AppLoadingSkeleton label="Loading plan import..." /> },
 );
+const CookbookImport = dynamic(
+  () => import("./components/CookbookImport.tsx").then((m) => ({ default: m.CookbookImport })),
+  { ssr: false, loading: () => <AppLoadingSkeleton label="Loading cookbook import..." /> },
+);
 const UpgradePaywallDialog = dynamic(
   () =>
     import("./components/suppr/upgrade-paywall-dialog.tsx").then((m) => ({
@@ -102,6 +106,7 @@ type View =
   | "create"
   | "import"
   | "plan-import"
+  | "cookbook-import"
   | "targets";
 
 /**
@@ -172,6 +177,7 @@ export default function App() {
       plan: "plan",
       planner: "plan",
       "plan-import": "plan-import",
+      "cookbook-import": "cookbook-import",
       progress: "progress",
       shopping: "shopping",
       settings: "settings",
@@ -205,6 +211,10 @@ export default function App() {
   // view falls back to the Plan surface (mirrors mobile's deep-link guard
   // that `router.replace`s back to the planner tab).
   const planImportEnabled = useFeatureFlagEnabled("plan_import_enabled");
+  // ENG-1582 — web Cookbook-Import surface. Gated on the SAME flag the mobile
+  // entry points use (`cookbook_import_enabled`). When off, the `/cookbook-import`
+  // view falls back to the Library surface (mirrors mobile's deep-link guard).
+  const cookbookImportEnabled = useFeatureFlagEnabled("cookbook_import_enabled");
   // Upgrade-paywall dialog (2026-04-20 Claude Design port). When
   // `upgradePaywallFrom` is non-null the `<UpgradePaywallDialog>`
   // renders with that attribution. Opened via `openUpgradeDialog()`,
@@ -294,6 +304,7 @@ export default function App() {
       create: "/create",
       import: "/import",
       "plan-import": "/plan-import",
+      "cookbook-import": "/cookbook-import",
       targets: "/targets",
     }),
     [],
@@ -669,6 +680,27 @@ export default function App() {
         return (
           <FeatureErrorBoundary feature="Plan Import">
             <PlanImport onClose={() => navigateToView("plan")} />
+          </FeatureErrorBoundary>
+        );
+      case "cookbook-import":
+        if (!cookbookImportEnabled) {
+          return (
+            <FeatureErrorBoundary feature="Recipe Library">
+              <Library
+                userTier={userTier}
+                onUpgrade={() => openUpgradePromo("recipe_import")}
+              />
+            </FeatureErrorBoundary>
+          );
+        }
+        return (
+          <FeatureErrorBoundary feature="Cookbook Import">
+            <CookbookImport
+              onClose={() => navigateToView("library")}
+              onUpgrade={() => openUpgradePromo("recipe_import")}
+              onViewLibrary={() => navigateToView("library")}
+              onBuildPlan={() => navigateToView("plan")}
+            />
           </FeatureErrorBoundary>
         );
       case "targets":
