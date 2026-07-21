@@ -73,6 +73,11 @@ export function NorthStarFigmaHeroBlock({
       >
         <div className="absolute inset-0 z-0">
           {suggestion.thumbnail ? (
+            /* ENG-1623 — decorative alt="" is deliberate: the full-bleed
+               <button aria-label={`${slotEyebrow}: ${suggestion.title}...`}>
+               below already carries the recipe name, plus the visible
+               <h4>{suggestion.title}</h4> footer overlay. See the
+               decorative-vs-informative rule in suppr/discover-recipe-image.tsx. */
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={suggestion.thumbnail}

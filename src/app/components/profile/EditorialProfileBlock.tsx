@@ -217,6 +217,10 @@ function EditorialProfileBlockImpl({
                 style={{ backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }, fallbackScheme) }}
               >
                 {recipe.image ? (
+                  // ENG-1623 — decorative alt="" is deliberate: the enclosing
+                  // <button aria-label={`Open ${recipe.title}`}> already
+                  // carries the recipe name. See the decorative-vs-informative
+                  // rule in suppr/discover-recipe-image.tsx.
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={recipe.image}

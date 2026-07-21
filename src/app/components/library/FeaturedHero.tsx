@@ -63,6 +63,10 @@ export function FeaturedHero({ recipe, onPress }: FeaturedHeroProps) {
         style={{ backgroundColor: recipeUnderlayColor({ id: recipe.id, title: recipe.title }, fallbackScheme, mediaPalette) }}
       >
         {showImage ? (
+          // ENG-1623 — decorative alt="" is deliberate: the whole card is a
+          // <button aria-label={`Tonight's pick: ${recipe.title}...`}>, so the
+          // recipe name is already the button's accessible name. See the
+          // decorative-vs-informative rule in suppr/discover-recipe-image.tsx.
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={image}

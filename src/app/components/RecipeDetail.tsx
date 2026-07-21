@@ -1929,7 +1929,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
             {heroSrc ? (
               <RecipeHeroImage
                 src={heroSrc}
-                alt={recipe.title}
+                alt={recipe.title} /* ENG-1623 — INFORMATIVE: sole namer of the recipe here, no adjacent title text (contract: suppr/discover-recipe-image.tsx) */
                 recipeId={recipe.id}
                 recipeTitle={recipe.title}
                 className="w-full h-full object-cover"
