@@ -28,7 +28,21 @@ const E2E_RECIPE_ID =
   process.env.E2E_RECIPE_ID?.trim() || "seed-v2-mediterranean-butter-bean-shakshuka";
 
 test.describe("Visual regression — deep authenticated routes", () => {
-  test.describe.configure({ mode: "serial" });
+  // ENG-1639 (2026-07-21) — was `mode: "serial"`, with no comment explaining
+  // why. Each test below does its own independent page.goto() and loads auth
+  // from the same storageState file (Playwright's project-level
+  // dependencies: ["setup"] mechanism, playwright.config.ts) — nothing here
+  // shares mutable state across tests, so nothing requires sequential
+  // execution. Serial mode's real effect was liability, not a requirement:
+  // Playwright aborts every LATER test in a serial block the moment one
+  // fails. Confirmed twice in one afternoon regenerating baselines for this
+  // exact file: a flaky, wholly-unrelated `profile targets tab` click
+  // (fixed/retired, #1003) and then `settings preferences band desktop`
+  // (`locator.scrollIntoViewIfNeeded` timeout, tracked separately) each took
+  // down every test declared after them in the file — including recipe
+  // detail and upgrade paywall dialog, the two ENG-1142 cohesion-gate
+  // surfaces this file exists to protect. Default (parallel/independent)
+  // mode means one broken test reports its own failure and nothing else.
   test.use({ storageState: visualStorageState });
   test.beforeEach(async ({ page }) => {
     test.skip(

@@ -51,6 +51,19 @@ describe("visual cohesion gate manifest (ENG-1142)", () => {
     expect(DEEP_SPEC).toMatch(/deep\/paywall-dialog-\$\{vp\.name\}\.png/);
   });
 
+  it("ENG-1639 — visual-regression-deep's describe block is NOT mode:'serial' (one flaky test must not cascade-skip the cohesion-gate surfaces)", () => {
+    // Playwright aborts every LATER test in a serial block the moment one
+    // fails — confirmed twice in one afternoon regenerating baselines for
+    // this file: an unrelated flaky test declared earlier in the file took
+    // down recipe detail + upgrade paywall dialog, the two ENG-1142
+    // cohesion-gate surfaces this file exists to protect. No test in this
+    // file shares mutable state, so nothing requires serial execution.
+    // Strip `//` line comments before matching — this assertion's own
+    // explanatory prose above would otherwise self-match the pattern.
+    const codeOnly = DEEP_SPEC.replace(/\/\/[^\n]*/g, "");
+    expect(codeOnly).not.toMatch(/mode:\s*["']serial["']/);
+  });
+
   it("pins ENG-838 flag-ON visual coverage", () => {
     expect(VISUAL_UTILS).toContain("REDESIGN_VISUAL_FLAGS");
     expect(VISUAL_UTILS).toContain('"design_system_elevation"');
