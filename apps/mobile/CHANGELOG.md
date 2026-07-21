@@ -1,5 +1,23 @@
 # Mobile App Changelog
 
+## 2026-07-20 — OTA launch hardening
+
+ENG-1564 hardens the TestFlight/production launch path after the build 66/67
+expo-updates crash class:
+
+- `expo-updates` is pinned to the SDK 54 bugfix tag (`~29.0.19`).
+- `app.json` now uses `updates.checkAutomatically = "ON_ERROR_RECOVERY"`,
+  keeps the embedded update enabled, and explicitly keeps Expo's
+  anti-bricking measures on.
+- `expo-build-properties` forces iOS production prebuilds to compile React
+  Native from source, avoiding stale prebuilt RN/Hermes framework skew.
+- `easUpdateConfig.test.ts` now fails CI if the launch-safe OTA posture or
+  build-from-source guardrail drifts.
+
+Operational follow-up still lives with the release owner: clean/supersede the
+production EAS update channel and run a fresh-install launch smoke before
+promotion.
+
 ## 2026-05-02 — Weekly check-in ritual modal
 
 PR claude/weekly-checkin-ritual-v2 (rebuild of #26 on top of current
