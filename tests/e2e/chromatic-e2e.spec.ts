@@ -7,7 +7,7 @@
  * Chromatic's archive script (inline script-src).
  */
 import { test, expect } from "@chromatic-com/playwright";
-import { dismissVisualOverlays, stabilizeForScreenshot } from "./utils/visual";
+import { dismissVisualOverlays, seedConsent, stabilizeForScreenshot } from "./utils/visual";
 
 const screens = [
   { name: "landing", path: "/" },
@@ -24,6 +24,7 @@ test.describe("Chromatic — public shell", () => {
     ] as const) {
       test(`${screen.name} ${vp.name}`, async ({ page }) => {
         await page.setViewportSize({ width: vp.width, height: vp.height });
+        await seedConsent(page);
         await page.goto(screen.path, { waitUntil: "domcontentloaded" });
         await dismissVisualOverlays(page);
         await stabilizeForScreenshot(page, screen.name === "landing" ? 3000 : 2500);
