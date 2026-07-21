@@ -185,6 +185,12 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3100
           E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
           E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          # Tells rateLimit.ts's isProductionRuntime() this `next start`
+          # process is serving Playwright, not a real deploy, so it uses the
+          # in-memory fallback instead of failing closed with no Upstash
+          # configured (found 2026-07-21: rate-limited routes 429'd on their
+          # first request every run). See rateLimit.ts's isProductionRuntime doc.
+          SUPPR_E2E_SERVER: "1"
         run: |
           npm run start -- --port 3100 &
           npx wait-on http://127.0.0.1:3100/login
@@ -194,6 +200,7 @@ jobs:
         env:
           SUPPR_TEST_API_BASE: http://127.0.0.1:3100
           SUPPR_TEST_AUTH_BEARER: ${{ secrets.SUPPR_TEST_AUTH_BEARER }}
+          SUPPR_E2E_SERVER: "1"
           FATSECRET_CLIENT_ID: ${{ secrets.FATSECRET_CLIENT_ID }}
           FATSECRET_CLIENT_SECRET: ${{ secrets.FATSECRET_CLIENT_SECRET }}
           FATSECRET_TIER: premier

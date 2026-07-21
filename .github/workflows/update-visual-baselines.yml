@@ -133,6 +133,12 @@ jobs:
       - name: Start Next server (mirror visual-review.yml)
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3100
+          # Tells rateLimit.ts's isProductionRuntime() this `next start`
+          # process is serving Playwright, not a real deploy, so it uses the
+          # in-memory fallback instead of failing closed with no Upstash
+          # configured (found 2026-07-21: food search 429'd on its first
+          # request every run). See rateLimit.ts's isProductionRuntime doc.
+          SUPPR_E2E_SERVER: "1"
         run: |
           npm run start -- --port 3100 &
           npx wait-on http://127.0.0.1:3100/login

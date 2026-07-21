@@ -21,9 +21,22 @@ function nowMs() {
  * This matches the prod-gating convention in `middleware.ts`. Falling back to
  * `NODE_ENV` keeps non-Vercel prod hosts fail-closed too. Preview + CI are NOT
  * treated as production, so they keep the in-memory fallback instead of 429ing.
+ *
+ * Found 2026-07-21: the `NODE_ENV` fallback also caught CI's own `next start`
+ * server (started to serve E2E/visual Playwright runs), which has neither
+ * Upstash configured nor a real user to protect — every rate-limited route
+ * (food search's `/api/{usda,off,edamam,fatsecret}/search` among them) 429'd
+ * on its very first request, with no actual quota exhausted. `SUPPR_E2E_SERVER`
+ * is set ONLY on the handful of CI steps that boot `next start` purely to serve
+ * Playwright (see ci.yml / visual-review.yml / update-visual-baselines.yml) —
+ * never on a real deploy — so it narrows the carve-out to that exact case
+ * without loosening the fail-closed guarantee for a genuine non-Vercel prod
+ * host (still caught by the `NODE_ENV` fallback below). See
+ * `rateLimitStrictFail.test.ts` for both guarded cases.
  */
 function isProductionRuntime(): boolean {
   if (process.env.VERCEL_ENV) return process.env.VERCEL_ENV === "production";
+  if (process.env.SUPPR_E2E_SERVER) return false;
   return process.env.NODE_ENV === "production";
 }
 
