@@ -20,6 +20,7 @@
 
 import type { Metadata } from "next";
 import { LandingPage } from "./(landing)/LandingPage.tsx";
+import { isEurStripePricingConfigured } from "../src/lib/stripe/resolveProStripePrice.ts";
 
 export const metadata: Metadata = {
   title: "Sloe — The recipe and nutrition platform for people who actually cook",
@@ -33,6 +34,20 @@ export const metadata: Metadata = {
 // prerender static means TikTok/Instagram cold-opens hit Vercel's CDN
 // instead of paying a function invocation per visit. Saves ~150–400ms
 // TTFB + protects function budget under viral-spike traffic.
+//
+// ENG-1441 (2026-07-21): the two props below are `process.env` reads,
+// NOT `headers()`/`cookies()` — Next only opts a route out of static
+// rendering for the latter, so this does not touch the static-rendering
+// behaviour the comment above protects. Region/currency detection
+// itself is deliberately NOT done here for the same reason — see
+// `detectRegionFromNavigatorLanguage`'s doc comment
+// (`src/lib/region/detectRegion.ts`): `LandingPage`'s `Pricing` section
+// resolves it client-side instead.
 export default function Page() {
-  return <LandingPage />;
+  return (
+    <LandingPage
+      stripeTaxEnabled={process.env.STRIPE_TAX_ENABLED === "true"}
+      eurPricingReady={isEurStripePricingConfigured()}
+    />
+  );
 }
