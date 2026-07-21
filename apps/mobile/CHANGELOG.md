@@ -1,5 +1,18 @@
 # Mobile App Changelog
 
+## 2026-07-21 — ENG-1585 weekly check-in weight delta wired through
+
+The weekly TDEE check-in modal's weight-delta row was passed a hardcoded
+`weightDeltaKg: null` from `TodayScreen` (an honest suppression, not a
+fabricated value, but a real gap — see the 2026-05-02 entry below).
+`useTodayWeeklyCheckin` now computes the real trailing-7-day weigh-in
+delta via `buildWeightRangeStats` (`src/lib/nutrition/progressRangeStats.ts`,
+the same helper the Progress tab's WEIGHT card uses) against
+`profiles.weight_kg_by_day`, rounded to 0.1 kg. The modal's existing
+null-handling is untouched: `weightDeltaKg` is still `null` — and the
+row still suppresses rather than fabricating "+0.0 kg" — whenever fewer
+than 2 weigh-ins fall in the trailing 7-day window.
+
 ## 2026-07-21 — ENG-1336 first-class nutrition-label logging
 
 - Added the v3 LogSheet Label method and a dedicated camera → OCR → editable
@@ -71,10 +84,6 @@ MacroFactor users pay for the surface.
   `tdeeDeltaKcal`, `daysLoggedThisWeek` so the funnel can slice
   acceptance rate by delta size.
 
-### Deferred: see ENG-1585
-- The modal passes `weightDeltaKg: null` until the host wires real
-  7-day weigh-in data through. The modal honestly suppresses the
-  weight-delta row rather than fabricate "+0.0 kg".
 ## 2026-05-02 — Cancel-flow export prompt (replaces stale PR #43)
 
 journey-architect P1. Pre-2026-05-02 the CSV-export prompt was buried
