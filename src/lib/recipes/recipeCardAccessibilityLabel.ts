@@ -2,7 +2,7 @@
  * Descriptive accessibility label for a Discover / Library recipe card.
  *
  * Recipe cards on Discover (web `DiscoverFeed.tsx` + mobile
- * `(tabs)/discover.tsx`) render title + macros + cook time as visual
+ * `(tabs)/discover.tsx`) render title + macros + a time chip as visual
  * chrome, but the tappable card itself (a `<button>` on web, a
  * `Pressable` on mobile) carried no accessible name — VoiceOver /
  * screen readers announced an empty "button", so the whole feed was
@@ -13,7 +13,7 @@
  * `aria-label`; mobile passes it as `accessibilityLabel`.
  *
  * Shape: `"{title}. Estimated {kcal} calories, {protein}g protein,
- * {carbs}g carbs, {fat}g fat[, {cookTime}]. View recipe."`
+ * {carbs}g carbs, {fat}g fat[, {timeLabel}]. View recipe."`
  *
  * "Estimated" is mandatory per the trust posture — nutrition is always
  * estimated, never absolute (see `_project-context.md`). Macros are
@@ -31,8 +31,15 @@ export interface RecipeCardAccessibilityInput {
   protein?: number | null;
   carbs?: number | null;
   fat?: number | null;
-  /** Display cook-time string already formatted by the caller (e.g. "25 min"). */
-  cookTime?: string | null;
+  /**
+   * Display TOTAL-time string already formatted by the caller (e.g.
+   * "25 min") — prep + cook via `totalDuration.ts`'s
+   * `formatTotalRecipeDuration` (ENG-1617: this used to be named
+   * `cookTime` and callers fed it cook-time-only, so the announced
+   * label silently disagreed with the visual card's own prep+cook
+   * total. Renamed so a future caller can't repeat that mistake).
+   */
+  timeLabel?: string | null;
 }
 
 function macroPart(label: string, value: number | null | undefined): string | null {
@@ -64,16 +71,16 @@ export function recipeCardAccessibilityLabel(
     if (part) nutrition.push(part);
   }
 
-  const cookTime = input.cookTime?.trim();
+  const timeLabel = input.timeLabel?.trim();
 
   const segments: string[] = [];
   if (title) segments.push(title);
   if (nutrition.length > 0) {
     segments.push(
-      cookTime ? `${nutrition.join(", ")}, ${cookTime}` : nutrition.join(", "),
+      timeLabel ? `${nutrition.join(", ")}, ${timeLabel}` : nutrition.join(", "),
     );
-  } else if (cookTime) {
-    segments.push(cookTime);
+  } else if (timeLabel) {
+    segments.push(timeLabel);
   }
   segments.push("View recipe");
 

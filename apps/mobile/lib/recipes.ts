@@ -739,6 +739,9 @@ export function toNorthStarLibrary(recipes: RecipeCard[]): NorthStarRecipe[] {
     fat: r.fat ?? 0,
     thumbnail: r.image,
     mealType: r.mealSlots,
+    // ENG-1617 — prep alongside cook so the North Star hero can show the
+    // combined total instead of cook time alone.
+    prepTimeMin: r.prepTimeMin ?? undefined,
     cookTimeMin: r.cookTimeMin ?? undefined,
     isVerified: r.isVerified,
   }));

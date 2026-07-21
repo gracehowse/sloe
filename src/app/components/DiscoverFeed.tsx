@@ -11,13 +11,11 @@ import type { RecipeCard } from "../../types/recipe.ts";
 import { computeRecipeFitPercent } from "../../lib/nutrition/recipeFitPercent.ts";
 import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { discoverQualifiesAsPopular } from "../../lib/recipes/discoverPopularQualification.ts";
-import {
-  matchesRecipeCategory,
-  type RecipeCategoryId,
-} from "../../lib/recipes/recipeCategoryFilters.ts";
+import { matchesRecipeCategory, type RecipeCategoryId } from "../../lib/recipes/recipeCategoryFilters.ts";
 import { DiscoverFilterChips } from "./DiscoverFilterChips";
 import { recipeSearchMatch } from "../../lib/recipes/recipeSearchMatch.ts";
 import { displayAttribution } from "../../lib/recipes/displayAttribution.ts";
+import { formatTotalRecipeDuration } from "../../lib/recipes/totalDuration.ts";
 import { recipeCardAccessibilityLabel } from "../../lib/recipes/recipeCardAccessibilityLabel.ts";
 import { useLibraryDiscoverSearch } from "../../lib/libraryDiscoverSearchStore.ts";
 import {
@@ -628,8 +626,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                       {items.map((recipe, idx) => {
                         const kcal = Math.round(recipe.calories);
                         const protein = Math.round(recipe.protein);
-                        const cookTime =
-                          recipe.cookTime ?? (recipe.cookTimeMin ? `${recipe.cookTimeMin} min` : null);
+                        const timeLabel = formatTotalRecipeDuration(recipe.prepTimeMin, recipe.cookTimeMin); // ENG-1617: total, not cook alone
                         const isHero = idx === 0;
                         return (
                           <button
@@ -640,7 +637,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                               title: recipe.title,
                               calories: kcal,
                               protein,
-                              cookTime,
+                              timeLabel,
                             })}
                             className={`group shrink-0 snap-start text-left rounded-card-lg overflow-hidden relative cursor-pointer hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out ${isHero ? "w-[280px] md:w-[320px]" : "w-[200px] md:w-[240px]"}`}
                           >
@@ -675,10 +672,10 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                                     <Icons.protein className="w-3 h-3 text-white/70" />
                                     {protein}g
                                   </span>
-                                  {cookTime ? (
+                                  {timeLabel ? (
                                     <span className="inline-flex items-center gap-1">
                                       <Icons.time className="w-3 h-3 text-white/70" />
-                                      {cookTime}
+                                      {timeLabel}
                                     </span>
                                   ) : null}
                                 </div>
@@ -705,7 +702,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
               const protein = Math.round(recipe.protein);
               const carbs = Math.round(recipe.carbs);
               const fat = Math.round(recipe.fat);
-              const cookTime = recipe.cookTime ?? (recipe.cookTimeMin ? `${recipe.cookTimeMin} min` : null);
+              const timeLabel = formatTotalRecipeDuration(recipe.prepTimeMin, recipe.cookTimeMin); // ENG-1617: total, not cook alone
               // Calm the stale curated-seed brand byline to the live
               // brand + drop internal seed sources at the display boundary
               // (see displayAttribution). Mobile parity: discover.tsx uses
@@ -728,7 +725,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     protein,
                     carbs,
                     fat,
-                    cookTime,
+                    timeLabel,
                   })}
                   padding="none"
                   radius="lg"
@@ -792,10 +789,10 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         <Icons.fat className="w-[11px] h-[11px]" style={{ color: "var(--macro-fat)" }} aria-hidden />
                         {fat}g
                       </span>
-                      {cookTime ? (
+                      {timeLabel ? (
                         <span className="inline-flex items-center gap-1">
                           <Icons.time className="w-[11px] h-[11px]" aria-hidden />
-                          {cookTime}
+                          {timeLabel}
                         </span>
                       ) : null}
                     </div>
@@ -834,6 +831,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                 const carbs = Math.round(recipe.carbs);
                 const fat = Math.round(recipe.fat);
                 const byline = displayAttribution({ creatorName: recipe.creatorName });
+                const timeLabel = formatTotalRecipeDuration(recipe.prepTimeMin, recipe.cookTimeMin); // ENG-1617: total, not cook alone
                 void computeRecipeFitPercent;
                 void nutritionTargets;
                 return (
@@ -848,7 +846,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                       protein,
                       carbs,
                       fat,
-                      cookTime: recipe.cookTime ?? null,
+                      timeLabel,
                     })}
                     className="group text-left rounded-card-lg overflow-hidden cursor-pointer w-full relative hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out"
                   >
@@ -908,10 +906,10 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                             <Icons.fat className="w-3 h-3 text-white/60" />
                             {fat}g
                           </span>
-                          {recipe.cookTime ? (
+                          {timeLabel ? (
                             <span className="inline-flex items-center gap-1 text-[11px] text-white/80">
                               <Icons.time className="w-3 h-3 text-white/60" />
-                              {recipe.cookTime}
+                              {timeLabel}
                             </span>
                           ) : null}
                         </div>
@@ -935,6 +933,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                     const protein = Math.round(recipe.protein);
                     const carbs = Math.round(recipe.carbs);
                     const byline = displayAttribution({ creatorName: recipe.creatorName });
+                    const timeLabel = formatTotalRecipeDuration(recipe.prepTimeMin, recipe.cookTimeMin); // ENG-1617: total, not cook alone
                     return (
                       <button
                         key={recipe.id}
@@ -946,7 +945,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                           calories: kcal,
                           protein,
                           carbs,
-                          cookTime: recipe.cookTime ?? null,
+                          timeLabel,
                         })}
                         className={`w-full flex items-center gap-3 p-3 text-left hover:bg-muted/40 transition-colors ${idx > 0 ? "border-t border-border" : ""}`}
                       >
@@ -976,7 +975,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                             ) : (
                               byline
                             )}
-                            {recipe.cookTime ? ` · ${recipe.cookTime}` : ""}
+                            {timeLabel ? ` · ${timeLabel}` : ""}
                           </span>
                         </span>
                         <span className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap shrink-0">

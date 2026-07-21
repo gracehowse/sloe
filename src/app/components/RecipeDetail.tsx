@@ -113,6 +113,7 @@ import {
 } from "./ui/dropdown-menu.tsx";
 import { MoreVertical } from "lucide-react";
 import { formatRecipeMinutes } from "../../lib/recipe/formatRecipeMinutes.ts";
+import { totalRecipeDurationMin } from "../../lib/recipes/totalDuration.ts";
 import {
   composeRecipeMeta,
   composeSubtitleParts,
@@ -1319,10 +1320,10 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
     autoVerifyRetryToken,
   ]);
 
-  const prepDisplay =
-    formatRecipeMinutes(dbPrepMin) ?? recipe.prepTime ?? "—";
-  const cookDisplay =
-    formatRecipeMinutes(dbCookMin) ?? recipe.cookTime ?? "—";
+  // ENG-1617 — shared total-time selector for the Method-tab subtitle.
+  // (removed dead `prepDisplay`/`cookDisplay` locals that computed the same
+  // inputs but were never read anywhere in this file.)
+  const stepsTotalMin = totalRecipeDurationMin(dbPrepMin, dbCookMin);
 
   const displayRecipe = useMemo(() => {
     if (isCatalogRecipe || !dbMacros) {
@@ -3144,9 +3145,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
                 </h3>
                 <span className="text-xs text-foreground-tertiary">
                   {instructionSteps.length} steps
-                  {(dbPrepMin ?? 0) + (dbCookMin ?? 0) > 0
-                    ? ` · ${(dbPrepMin ?? 0) + (dbCookMin ?? 0)} min`
-                    : ""}
+                  {stepsTotalMin != null ? ` · ${stepsTotalMin} min` : ""}
                 </span>
               </div>
             ) : null}

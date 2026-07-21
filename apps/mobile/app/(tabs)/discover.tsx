@@ -36,6 +36,7 @@ import {
 import { recipeSearchMatch } from "@suppr/shared/recipes/recipeSearchMatch";
 import { displayAttribution } from "@suppr/shared/recipes/displayAttribution";
 import { recipeCardAccessibilityLabel } from "@suppr/shared/recipes/recipeCardAccessibilityLabel";
+import { formatTotalRecipeDuration } from "@suppr/shared/recipes/totalDuration";
 // GW-08 (audit 2026-04-28): `TrustChip` + `recipeLevelTrust` imports
 // dropped — the Discover hero card no longer renders the chip because
 // the underlying source signal is fabricated (see the comment by the
@@ -398,6 +399,7 @@ export default function DiscoverScreen() {
       const protein = Math.round(item.protein);
       const carbs = Math.round(item.carbs);
       const fat = Math.round(item.fat);
+      const timeLabel = formatTotalRecipeDuration(item.prepTimeMin, item.cookTimeMin); // ENG-1617: total, not cook alone
       // F-45: fitPct no longer rendered, but keep the computation
       // shape intact for future ranking.
       void computeRecipeFitPercent;
@@ -422,7 +424,7 @@ export default function DiscoverScreen() {
             protein,
             carbs,
             fat,
-            cookTime: item.cookTime ?? null,
+            timeLabel,
           })}
           style={{
             borderRadius: RECIPE_CARD_RADIUS,
@@ -486,20 +488,17 @@ export default function DiscoverScreen() {
                 {displayAttribution({ creatorName: item.creatorName, source: item.source })}
               </Text>
             )}
-            {/* MacroIconRow — shared with Library + Today (2026-05-22
-                consolidation per Grace: "everything in library and
-                discover should display like this"). Was 60 lines of
-                inline duplicate; component owns the icon/colour/letter
-                grammar so any palette token shift cascades cleanly. */}
-            {/* iconSize 13 + emphasiseProtein + proteinTextColor = full ink so
-                protein reads unmistakably heavier at card scale (Gap-6). */}
+            {/* MacroIconRow — shared with Library + Today (2026-05-22 consolidation
+                per Grace: "everything in library and discover should display like
+                this"). iconSize 13 + emphasiseProtein + proteinTextColor = full ink
+                so protein reads unmistakably heavier at card scale (Gap-6). */}
             <MacroIconRow
               kcal={kcal > 0 ? kcal : null}
               protein={protein}
               carbs={carbs}
               fat={fat}
               fiber={item.fiberG}
-              cookTime={item.cookTime}
+              cookTime={timeLabel /* ENG-1617: total prep+cook, not cook alone */}
               textColor={colors.textSecondary}
               textTertiaryColor={colors.textTertiary}
               emphasiseProtein

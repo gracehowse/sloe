@@ -55,6 +55,7 @@ import {
 import { classifyLibraryEntry } from "@suppr/shared/recipes/libraryEntryKind";
 import { recipeSearchMatch } from "@suppr/shared/recipes/recipeSearchMatch";
 import { deriveLibraryComposition } from "@suppr/shared/recipes/libraryShelves";
+import { formatTotalRecipeDuration } from "@suppr/shared/recipes/totalDuration";
 import { RecipesTabChrome } from "@/components/tabs/RecipesTabChrome";
 import { CreateRecipeActionSheet } from "@/components/recipe/CreateRecipeActionSheet";
 import { LibraryShelvesHeader } from "@/components/library/LibraryShelvesHeader";
@@ -99,14 +100,6 @@ function entryKindForCard(
     },
     userId,
   );
-}
-
-/** Human-readable total time for the card metadata row. */
-function formatTotalTime(card: RecipeCard): string | null {
-  const prep = typeof card.prepTimeMin === "number" ? card.prepTimeMin : 0;
-  const cook = typeof card.cookTimeMin === "number" ? card.cookTimeMin : 0;
-  const total = prep + cook;
-  return total > 0 ? `${total} min` : null;
 }
 
 export default function LibraryScreen() {
@@ -752,7 +745,8 @@ export default function LibraryScreen() {
 
   const renderRecipe = useCallback(
     ({ item }: { item: RecipeCard }) => {
-      const totalTime = formatTotalTime(item);
+      // ENG-1617 — one shared total (prep + cook) selector, not a local sum.
+      const totalTime = formatTotalRecipeDuration(item.prepTimeMin, item.cookTimeMin);
       const savesCount = typeof item.savedCount === "number" ? item.savedCount : 0;
       const kind = entryKindForCard(item, userId);
       const showDraft = kind !== "saved" && item.isPublished === false;

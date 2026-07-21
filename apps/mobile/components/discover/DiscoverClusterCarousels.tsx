@@ -7,6 +7,7 @@ import { Radius, Spacing, Type } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 import { decodeEntities } from "@/lib/decodeEntities";
 import { recipeCardAccessibilityLabel } from "@suppr/shared/recipes/recipeCardAccessibilityLabel";
+import { formatTotalRecipeDuration } from "@suppr/shared/recipes/totalDuration";
 import {
   isSeedRecipeId,
   SEED_CLUSTERS,
@@ -35,7 +36,8 @@ function ClusterRecipeCard({
   const router = useRouter();
   const kcal = Math.round(recipe.calories);
   const protein = Math.round(recipe.protein);
-  const cookTime = recipe.cookTime ?? (recipe.cookTimeMin ? `${recipe.cookTimeMin} min` : null);
+  // ENG-1617 — total (prep + cook), not cook alone.
+  const timeLabel = formatTotalRecipeDuration(recipe.prepTimeMin, recipe.cookTimeMin);
   const width = hero ? 280 : 200;
   const aspectRatio = hero ? 3 / 4 : 4 / 5;
 
@@ -46,7 +48,7 @@ function ClusterRecipeCard({
         title: decodeEntities(recipe.title),
         calories: kcal,
         protein,
-        cookTime,
+        timeLabel,
       })}
       onPress={() => router.push(`/recipe/${recipe.id}`)}
       style={{ width, borderRadius: RECIPE_CARD_RADIUS, overflow: "hidden" }}
@@ -85,7 +87,7 @@ function ClusterRecipeCard({
           </Text>
           <Text style={{ ...Type.caption, color: "rgba(255,255,255,0.82)", marginTop: 4 }}>
             {kcal} kcal · {protein}g protein
-            {cookTime ? ` · ${cookTime}` : ""}
+            {timeLabel ? ` · ${timeLabel}` : ""}
           </Text>
         </View>
       </View>

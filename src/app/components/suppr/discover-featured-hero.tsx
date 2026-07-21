@@ -6,6 +6,7 @@ import type { RecipeCard } from "../../../types/recipe";
 import { Icons } from "../ui/icons";
 import { DiscoverRecipeImage } from "./discover-recipe-image";
 import { displayAttribution } from "../../../lib/recipes/displayAttribution";
+import { totalRecipeDurationMin } from "../../../lib/recipes/totalDuration";
 import { isFeatureEnabled } from "../../../lib/analytics/track";
 import {
   creatorInitialOf,
@@ -81,16 +82,15 @@ export function DiscoverFeaturedHeroCard({
 }: DiscoverFeaturedHeroCardProps) {
   const kcal = Math.round(recipe.calories);
   const protein = Math.round(recipe.protein);
-  const cookTimeMin =
-    recipe.cookTimeMin ??
-    (recipe.cookTime ? parseInt(recipe.cookTime, 10) || null : null);
+  // ENG-1617 — total (prep + cook), not cook alone.
+  const totalTimeMin = totalRecipeDurationMin(recipe.prepTimeMin, recipe.cookTimeMin);
   const byline = displayAttribution({ creatorName: recipe.creatorName });
   const creatorId = recipe.creatorId ?? null;
 
   const metrics: { label: string; value: string }[] = [
     { label: "Kcal", value: kcal > 0 ? String(kcal) : "—" },
     { label: "Protein", value: protein > 0 ? `${protein}g` : "—" },
-    ...(cookTimeMin ? [{ label: "Min", value: String(cookTimeMin) }] : []),
+    ...(totalTimeMin != null ? [{ label: "Min", value: String(totalTimeMin) }] : []),
   ];
 
   return (
