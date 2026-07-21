@@ -139,6 +139,11 @@ export function CreatorRecipeList({
                     `bg-muted`, banned under imagery), so a 404 or a failed
                     fallback mount never exposes page white. */}
                 {r.image_url ? (
+                  // ENG-1623 — decorative alt="" is deliberate: this thumb sits
+                  // inside the same <Link> as the visible recipe-title <p>
+                  // below, so the link's accessible name already carries the
+                  // name. See the decorative-vs-informative rule in
+                  // suppr/discover-recipe-image.tsx.
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={r.image_url}

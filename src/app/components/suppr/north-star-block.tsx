@@ -251,6 +251,10 @@ function NorthStarDefaultBlock({
         style={{ backgroundColor: recipeUnderlayColor({ id: suggestion.recipeId, title: suggestion.title }, fallbackScheme) }}
       >
         {suggestion.thumbnail ? (
+          /* ENG-1623 — decorative alt="" is deliberate: the visible
+             <span>{suggestion.title}</span> right next to this thumb already
+             names the recipe. See the decorative-vs-informative rule in
+             suppr/discover-recipe-image.tsx. */
           /* eslint-disable-next-line @next/next/no-img-element */
           <img src={suggestion.thumbnail} alt="" className="h-full w-full object-cover rounded-lg" />
         ) : (

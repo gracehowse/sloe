@@ -160,6 +160,74 @@ describe("DiscoverRecipeImage — accessibility + behaviour preserved", () => {
   });
 });
 
+describe("DiscoverRecipeImage — ENG-1623 decorative-vs-informative alt contract", () => {
+  it("defaults to decorative (alt=\"\") on the hero variant with no `decorative` prop passed — every current call site relies on this", () => {
+    const { container } = render(
+      <DiscoverRecipeImage id="c1" title="Kale Bowl" image={UNSPLASH} />,
+    );
+    expect(imgFor(container)!.getAttribute("alt")).toBe("");
+  });
+
+  it("defaults to decorative (alt=\"\") on the thumb variant too (More ideas rows)", () => {
+    const { container } = render(
+      <DiscoverRecipeImage id="c2" title="Thumb title" image={UNSPLASH} variant="thumb" />,
+    );
+    expect(imgFor(container)!.getAttribute("alt")).toBe("");
+  });
+
+  it("hero case: `decorative={false}` exposes the recipe name as informative alt text", () => {
+    const { container } = render(
+      <DiscoverRecipeImage id="c3" title="Tomato Pasta" image={UNSPLASH} decorative={false} />,
+    );
+    expect(imgFor(container)!.getAttribute("alt")).toBe("Tomato Pasta");
+  });
+
+  it("thumb case: `decorative={false}` also exposes the recipe name (the switch is independent of `variant`)", () => {
+    const { container } = render(
+      <DiscoverRecipeImage
+        id="c4"
+        title="Salmon Teriyaki"
+        image={UNSPLASH}
+        variant="thumb"
+        decorative={false}
+      />,
+    );
+    expect(imgFor(container)!.getAttribute("alt")).toBe("Salmon Teriyaki");
+  });
+
+  it("carousel-card case: an explicitly decorative image never duplicates the surrounding card's aria-label announcement", () => {
+    // Mirrors the real DiscoverFeed cluster-carousel call site: a labelled
+    // button wraps the (decorative) image plus a visible title overlay.
+    const { container } = render(
+      <button type="button" aria-label="Katsu Curry, estimated 540 calories. View recipe.">
+        <DiscoverRecipeImage id="c5" title="Katsu Curry" image={UNSPLASH} />
+        <span>Katsu Curry</span>
+      </button>,
+    );
+    // The accessible name comes from aria-label alone — the decorative image
+    // (alt="", so it drops out of the accessibility tree as presentational)
+    // contributes nothing, so there is exactly one announcement of the title.
+    expect(
+      screen.getByRole("button", { name: "Katsu Curry, estimated 540 calories. View recipe." }),
+    ).toBeInTheDocument();
+    expect(imgFor(container)!.getAttribute("alt")).toBe("");
+  });
+
+  it("broken/fallback media stays labelled through the card: an errored decorative image still swaps to the (aria-hidden) fallback without introducing its own name", () => {
+    const { container } = render(
+      <DiscoverRecipeImage id="c6" title="Stale seed" image={UNSPLASH} decorative={false} />,
+    );
+    fireEvent.error(imgFor(container)!);
+    // The <img alt="Stale seed"> is gone; the fallback glyph never carries
+    // its own accessible name (its SVG is aria-hidden) — the recipe name
+    // must come from whatever the caller names the surrounding card with,
+    // exactly as it does for the loaded-photo state.
+    expect(container.querySelector("img")).toBeNull();
+    const fallback = screen.getByTestId("recipe-hero-fallback-c6");
+    expect(fallback.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
+  });
+});
+
 describe("DiscoverRecipeImage — never-white wrapper underlay (ENG-1374 PR 2)", () => {
   // jsdom serialises inline hex backgrounds to rgb(); normalise for compare.
   const hexToRgb = (hex: string) => {

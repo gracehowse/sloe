@@ -33,7 +33,7 @@ import { recipeSearchMatch } from "../../lib/recipes/recipeSearchMatch.ts";
 import { deriveLibraryComposition } from "../../lib/recipes/libraryShelves.ts";
 import { useLibraryDiscoverSearch } from "../../lib/libraryDiscoverSearchStore.ts";
 
-/** Recipe image with the shared fallback for missing or failed URLs. */
+/** Recipe image with the shared fallback for missing or failed URLs. ENG-1623: alt="" is DECORATIVE — the adjacent `<h3>{recipe.title}</h3>` in this same button-role card already names it (contract: suppr/discover-recipe-image.tsx). */
 function RecipeCardImage({
   src,
   recipeId,
