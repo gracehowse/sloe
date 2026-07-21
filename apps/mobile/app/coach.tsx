@@ -42,6 +42,8 @@ type TodayMeal = {
   name?: string | null;
   calories?: number | null;
   protein?: number | null;
+  carbs?: number | null;
+  fat?: number | null;
 };
 
 export default function CoachScreen() {
@@ -125,6 +127,8 @@ export default function CoachScreen() {
               name: e.name,
               calories: e.calories,
               protein: e.protein,
+              carbs: e.carbs,
+              fat: e.fat,
             })),
           );
         }
@@ -145,18 +149,25 @@ export default function CoachScreen() {
     for (const m of mealsToday) {
       calories += Number(m.calories) || 0;
       protein += Number(m.protein) || 0;
-      carbs += Number((m as { carbs?: number }).carbs) || 0;
-      fat += Number((m as { fat?: number }).fat) || 0;
+      carbs += Number(m.carbs) || 0;
+      fat += Number(m.fat) || 0;
     }
     return { calories, protein, carbs, fat };
   }, [mealsToday]);
 
+  // ENG-1603 — matches web's remaining computation
+  // (src/app/components/suppr/coach-screen-client.tsx) exactly: a plain
+  // target-minus-logged subtraction, no floor at 0. Clamping here would
+  // re-diverge from web whenever a macro is logged past its target — the
+  // shared northStarSuggestion/coach scorer needs the SAME signed
+  // remaining-macro numbers on both platforms to rank suggestions
+  // identically for the same user/state.
   const remaining = useMemo(
     () => ({
       calories: targets.calories - totals.calories,
-      protein: Math.max(0, targets.protein - totals.protein),
-      carbs: Math.max(0, targets.carbs - totals.carbs),
-      fat: Math.max(0, targets.fat - totals.fat),
+      protein: targets.protein - totals.protein,
+      carbs: targets.carbs - totals.carbs,
+      fat: targets.fat - totals.fat,
       dailyCalorieTarget: targets.calories,
     }),
     [targets, totals],
