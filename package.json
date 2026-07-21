@@ -255,6 +255,11 @@
     "vitest": "^3.2.4",
     "wait-on": "^8.0.5"
   },
+  "overrides": {
+    "next": {
+      "postcss": "^8.5.10"
+    }
+  },
   "pnpm": {
     "overrides": {
       "vite": "6.3.5"
