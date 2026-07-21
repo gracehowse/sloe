@@ -73,7 +73,7 @@
   "src/app/components/HouseholdSettingsPage.tsx": 865,
   "src/app/components/Library.tsx": 684,
   "src/app/components/MacroDetailPanel.tsx": 463,
-  "src/app/components/MealPlanner.tsx": 2705,
+  "src/app/components/MealPlanner.tsx": 2692,
   "src/app/components/NutritionTracker.tsx": 3066,
   "src/app/components/onboarding/steps/reveal.tsx": 518,
   "src/app/components/onboarding/web-flow.tsx": 575,
