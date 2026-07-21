@@ -8,20 +8,23 @@
  * Ported from the 2026-04-19 Claude Design prototype
  * (`docs/ux/claude-design-bundles/prototype/project/flows.jsx`, `HealthPage`).
  *
- * ─── Current UI status (2026-07-21) ────────────────────────────────────
- * Neither platform's real settings screen renders from this list yet.
+ * ─── Current UI status (2026-07-21, re-confirmed in ENG-1635) ──────────
+ * Neither platform's real settings screen renders from this list.
  * Mobile's `apps/mobile/app/health-sync.tsx` hand-codes its own five
  * `HealthCategoryRow`s (steps/weight/active energy/resting energy/
  * workouts) rather than mapping over `HEALTH_SYNC_TYPES`; there is no
- * `app/settings/health/page.tsx` on web at all. The per-type toggle
- * persistence layer that DOES consume this file
- * (`apps/mobile/lib/healthSyncTypePrefs.ts`) has no UI caller either —
- * see that file's header for detail. In other words: this SSOT is
- * prepared for a future settings screen that renders one row per
- * `HEALTH_SYNC_TYPES` entry, but that screen doesn't exist yet
- * (ENG-1635). Until it does, `supported`/`defaultOn` here describe what
- * a *future* renderer should show, not live UI state — don't assume
- * flipping a value here changes anything a user sees today.
+ * `app/settings/health/page.tsx` on web at all. ENG-1635 found this
+ * SSOT's only other consumer (`apps/mobile/lib/healthSyncTypePrefs.ts`,
+ * a per-type toggle storage layer) had zero live callers of its own and
+ * deleted it rather than build the settings screen it was scaffolding
+ * for — Grace's call: no evidence of demand for granular per-type sync
+ * control, and the all-or-nothing Connect Health toggle works today.
+ * This SSOT list itself stays (real, tested spec — ENG-1584 pins
+ * `sleep`'s `supported` flag against it) for the real feature, tracked
+ * separately as ENG-1644 if it's ever picked up. Until then,
+ * `supported`/`defaultOn` describe what a *future* renderer should
+ * show, not live UI state — don't assume flipping a value here changes
+ * anything a user sees today.
  *
  * ─── Why an SSOT anyway? ────────────────────────────────────────────────
  * When that settings screen is built, web and mobile should render the
@@ -155,16 +158,20 @@ export const HEALTH_SYNC_TYPES: readonly HealthSyncTypeDef[] = [
   },
 ] as const;
 
-/** Default preferences map — what a brand new user sees before they
- *  flip anything. Unsupported types always default off. */
-export function defaultHealthSyncTypePrefs(): Record<HealthSyncTypeKey, boolean> {
-  const out = {} as Record<HealthSyncTypeKey, boolean>;
-  for (const t of HEALTH_SYNC_TYPES) {
-    out[t.key] = t.supported && t.defaultOn;
-  }
-  return out;
-}
-
+// ENG-1635 (2026-07-21) — removed `defaultHealthSyncTypePrefs()` and its
+// sole consumer `apps/mobile/lib/healthSyncTypePrefs.ts` (the whole
+// per-type toggle storage layer — getHealthSyncTypePrefs/
+// setHealthSyncTypePref/markHealthSyncedNow/getHealthLastSyncAt/
+// relativeTimeAgo). Confirmed zero live callers for any export in that
+// file (not just the toggle prefs — the "last synced" helpers its own
+// header claimed feed the Connected card were unused too). Decided not
+// to build the real settings UI now (no evidence of user demand for
+// granular per-type control; Connect Health's current all-or-nothing
+// toggle works); tracked as a genuine future feature in ENG-1644 rather
+// than leaving live dead code as if the decision were still open. This
+// SSOT list stays — it's real, tested spec (ENG-1584 pins `sleep`'s
+// `supported` flag against it) for whenever ENG-1644 is picked up.
+//
 // ENG-1469 (2026-07-08) — removed the dead `HEALTH_SYNC_FOOTNOTE` export.
 // It had zero importers (neither `app/settings/health/page.tsx` nor
 // `apps/mobile/app/health-sync.tsx` ever rendered it — both screens use
