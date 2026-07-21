@@ -30,8 +30,9 @@ import {
 } from "@/lib/household/householdClient";
 
 type Handler = (op: string, ctx: { payload?: unknown; filters: Record<string, unknown> }) => { data: unknown; error: unknown };
+type RpcHandler = (fn: string, params: Record<string, unknown>) => { data: unknown; error: unknown };
 
-function makeSupabase(handlers: Partial<Record<string, Handler>>) {
+function makeSupabase(handlers: Partial<Record<string, Handler>>, rpcHandler?: RpcHandler) {
   const calls: Array<{ op: string; table: string; payload?: unknown; filters: Record<string, unknown> }> = [];
 
   function builder(table: string, op: string, payload?: unknown) {
@@ -70,7 +71,18 @@ function makeSupabase(handlers: Partial<Record<string, Handler>>) {
 
   return {
     from: (table: string) => builder(table, "select"),
-    rpc: async () => ({ data: null, error: new Error("no rpc handler") }),
+    rpc: async (fn: string, params: Record<string, unknown>) => {
+      if (rpcHandler) return rpcHandler(fn, params);
+      // ENG-1602 (2026-07-21): `getMyHousehold` now always calls
+      // `get_household_shared_targets` for co-member data (targets +
+      // consumed-today no longer come from a direct cross-member
+      // `profiles`/`nutrition_entries` read — that read was RLS-inert in
+      // production, which was the bug). Default to an empty co-member
+      // set so tests below that don't exercise the opt-in reveal path
+      // don't need to wire a handler.
+      if (fn === "get_household_shared_targets") return { data: [], error: null };
+      return { data: null, error: new Error(`no rpc handler for ${fn}`) };
+    },
     calls,
   };
 }
@@ -228,47 +240,118 @@ describe("F-16 member-macro strip", () => {
   });
 
   it("other member's targets are revealed when they have share_targets=true (H4 opt-in)", async () => {
-    // Hand-rolled fixture with u2 opted in.
-    const sb = makeSupabase({
-      household_members: (op) => {
-        if (op === "select:maybeSingle") {
-          return { data: { household_id: "h1", role: "owner", joined_at: "2026-01-01" }, error: null };
-        }
-        if (op === "select") {
-          return {
-            data: [
-              { id: "mem-1", user_id: "u1", role: "owner", display_name: "Ada", joined_at: "2026-01-01", share_targets: false },
-              { id: "mem-2", user_id: "u2", role: "member", display_name: "Bea", joined_at: "2026-02-01", share_targets: true },
-            ],
-            error: null,
-          };
-        }
-        return { data: null, error: null };
+    // Hand-rolled fixture with u2 opted in. ENG-1602 (2026-07-21): u2's
+    // targets/consumed no longer come from the `profiles` /
+    // `nutrition_entries` mocks below — those tables' SELECT RLS is
+    // self-only in production, so a cross-member read of them is
+    // RLS-inert (that was the bug). The mocks intentionally carry ONLY
+    // u1 (caller) rows now, to prove the opted-in co-member's numbers
+    // are sourced from `get_household_shared_targets` and nowhere else.
+    const sb = makeSupabase(
+      {
+        household_members: (op) => {
+          if (op === "select:maybeSingle") {
+            return { data: { household_id: "h1", role: "owner", joined_at: "2026-01-01" }, error: null };
+          }
+          if (op === "select") {
+            return {
+              data: [
+                { id: "mem-1", user_id: "u1", role: "owner", display_name: "Ada", joined_at: "2026-01-01", share_targets: false },
+                { id: "mem-2", user_id: "u2", role: "member", display_name: "Bea", joined_at: "2026-02-01", share_targets: true },
+              ],
+              error: null,
+            };
+          }
+          return { data: null, error: null };
+        },
+        households: (op) =>
+          op === "select:single"
+            ? { data: { id: "h1", name: "Fam", owner_id: "u1", invite_code: "inv", created_at: "2026-01-01", share_lunch: false }, error: null }
+            : { data: null, error: null },
+        household_meals: () => ({ data: [], error: null }),
+        // Self (u1) only — mirrors the RLS boundary in production.
+        profiles: () => ({
+          data: [{ id: "u1", target_calories: 2200, target_protein: 150, target_carbs: 250, target_fat: 70, display_name: "Ada" }],
+          error: null,
+        }),
+        nutrition_entries: () => ({ data: [], error: null }),
       },
-      households: (op) =>
-        op === "select:single"
-          ? { data: { id: "h1", name: "Fam", owner_id: "u1", invite_code: "inv", created_at: "2026-01-01", share_lunch: false }, error: null }
-          : { data: null, error: null },
-      household_meals: () => ({ data: [], error: null }),
-      profiles: () => ({
-        data: [
-          { id: "u1", target_calories: 2200, target_protein: 150, target_carbs: 250, target_fat: 70, display_name: "Ada" },
-          { id: "u2", target_calories: 1800, target_protein: 120, target_carbs: 200, target_fat: 60, display_name: "Bea" },
-        ],
-        error: null,
-      }),
-      nutrition_entries: () => ({
-        data: [
-          { user_id: "u2", calories: 400, protein: 20, carbs: 50, fat: 15 },
-        ],
-        error: null,
-      }),
-    });
+      (fn, params) => {
+        expect(fn).toBe("get_household_shared_targets");
+        // The caller's own local today-key, not a hardcoded literal —
+        // pins that the client passes its own `todayKey()` rather than
+        // letting the RPC fall back to `current_date` (see the
+        // migration's UTC-vs-local rationale).
+        expect(params).toHaveProperty("p_date_key");
+        return {
+          data: [
+            {
+              user_id: "u2",
+              target_calories: 1800,
+              target_protein: 120,
+              target_carbs: 200,
+              target_fat: 60,
+              consumed_calories: 400,
+              consumed_protein: 20,
+              consumed_carbs: 50,
+              consumed_fat: 15,
+            },
+          ],
+          error: null,
+        };
+      },
+    );
     const res = await getMyHousehold(sb as any, "u1");
     const other = res.data!.members.find((m) => m.userId === "u2")!;
     expect(other.shareTargets).toBe(true);
     expect(other.targets?.calories).toBe(1800);
     expect(other.remaining?.calories).toBe(1400);
+  });
+
+  it("opted-in co-member with no matching RPC row renders the private/no-data state, never a fabricated fallback (ENG-1602)", async () => {
+    // Narrow edge case the ticket calls out explicitly: share_targets=true
+    // on the household_members row, but the RPC legitimately has nothing
+    // to return (race between the membership read and the RPC call, or
+    // the co-member has never set numeric targets). Must NOT render
+    // 2000/130/250/65 — must render the same "nothing to show" state as
+    // an opted-out member.
+    const sb = makeSupabase(
+      {
+        household_members: (op) => {
+          if (op === "select:maybeSingle") {
+            return { data: { household_id: "h1", role: "owner", joined_at: "2026-01-01" }, error: null };
+          }
+          if (op === "select") {
+            return {
+              data: [
+                { id: "mem-1", user_id: "u1", role: "owner", display_name: "Ada", joined_at: "2026-01-01", share_targets: false },
+                { id: "mem-2", user_id: "u2", role: "member", display_name: "Bea", joined_at: "2026-02-01", share_targets: true },
+              ],
+              error: null,
+            };
+          }
+          return { data: null, error: null };
+        },
+        households: (op) =>
+          op === "select:single"
+            ? { data: { id: "h1", name: "Fam", owner_id: "u1", invite_code: "inv", created_at: "2026-01-01", share_lunch: false }, error: null }
+            : { data: null, error: null },
+        household_meals: () => ({ data: [], error: null }),
+        profiles: () => ({
+          data: [{ id: "u1", target_calories: 2200, target_protein: 150, target_carbs: 250, target_fat: 70, display_name: "Ada" }],
+          error: null,
+        }),
+        nutrition_entries: () => ({ data: [], error: null }),
+      },
+      () => ({ data: [], error: null }), // RPC returns nothing for u2.
+    );
+    const res = await getMyHousehold(sb as any, "u1");
+    const other = res.data!.members.find((m) => m.userId === "u2")!;
+    expect(other.shareTargets).toBe(true);
+    // No fabricated numbers — same null shape as the opted-out branch.
+    expect(other.targets).toBeNull();
+    expect(other.remaining).toBeNull();
+    expect(other.targets?.calories).not.toBe(2000);
   });
 });
 

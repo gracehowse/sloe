@@ -34,7 +34,17 @@ type RpcHandler = (params: Record<string, unknown>) => { data: unknown; error: u
 
 function makeSupabase(
   handlers: Partial<Record<string, Handler>>,
-  rpcHandler?: RpcHandler,
+  // Historically this only ever backed `household_join_by_invite_code`
+  // (a single rpc surface), so a single catch-all handler was enough.
+  // ENG-1602 (2026-07-21) added a second rpc surface
+  // (`get_household_shared_targets`, called unconditionally from every
+  // `getMyHousehold` with a household). Callers may still pass one
+  // function to handle every `.rpc(...)` call (existing join tests), OR
+  // a map keyed by function name for tests that need to distinguish.
+  // Either way, `get_household_shared_targets` defaults to an empty
+  // co-member set when nothing is wired, so tests that don't care about
+  // cross-member sharing don't need to know this surface exists.
+  rpcHandler?: RpcHandler | Partial<Record<string, RpcHandler>>,
 ) {
   const calls: Array<{ op: string; table: string; payload?: unknown; filters: Record<string, unknown> }> = [];
   const rpcCalls: Array<{ fn: string; params: Record<string, unknown> }> = [];
@@ -100,7 +110,11 @@ function makeSupabase(
     from: (table: string) => builder(table, "select"),
     rpc: async (fn: string, params: Record<string, unknown>) => {
       rpcCalls.push({ fn, params });
-      return rpcHandler ? rpcHandler(params) : { data: null, error: new Error("no rpc handler") };
+      if (typeof rpcHandler === "function") return rpcHandler(params);
+      const scoped = rpcHandler?.[fn];
+      if (scoped) return scoped(params);
+      if (fn === "get_household_shared_targets") return { data: [], error: null };
+      return { data: null, error: new Error(`no rpc handler for ${fn}`) };
     },
     calls,
     rpcCalls,
@@ -538,6 +552,147 @@ describe("getMyHousehold", () => {
     const res = await getMyHousehold(sb as any, "u1");
     expect(res.data?.household?.isOwner).toBe(false);
     expect(res.data?.household?.myRole).toBe("member");
+  });
+});
+
+/**
+ * ENG-1602 (2026-07-21) — household share_targets opt-in never delivered
+ * real cross-member numbers.
+ *
+ * CONFIRMED ROOT CAUSE (verified live against prod): `profiles` and
+ * `nutrition_entries` SELECT RLS is strictly self-only with no household
+ * carve-out, so the OLD cross-member `.in(...)` read in `getMyHousehold`
+ * silently returned zero rows in production (RLS just filters, no error).
+ * The client masked that with hardcoded 2000/130/250/65 fallback numbers
+ * — every opted-in member rendered identical fabricated data regardless
+ * of their real goals or intake.
+ *
+ * THE FIX: co-member targets/consumed now come exclusively from the
+ * `get_household_shared_targets` SECURITY DEFINER RPC (see
+ * `supabase/migrations/20260721100000_eng1602_household_shared_targets_rpc.sql`),
+ * which re-verifies co-membership + `share_targets = true` server-side.
+ * These tests pin:
+ *   1. An opted-in member's REAL numbers (from the RPC) render — not the
+ *      old 2000/130/250/65 fallback.
+ *   2. A non-opted-in member still renders the distinct "not sharing"
+ *      state (null targets/remaining) — never fabricated numbers.
+ *   3. No cross-member direct table query remains: the nutrition_entries
+ *      read is scoped to the caller only (`eq:user_id`, never
+ *      `in:user_id` with the full member list), and the RPC is the only
+ *      path that ever supplies another member's data.
+ */
+describe("getMyHousehold — ENG-1602 shared-targets RPC", () => {
+  function makeSharedTargetsFixture(rpcData: unknown) {
+    return makeSupabase(
+      {
+        household_members: (op, ctx) => {
+          if (op === "select:maybeSingle") {
+            return { data: { household_id: "h1", role: "owner", joined_at: "2026-01-01" }, error: null };
+          }
+          if (op === "select") {
+            expect(ctx.filters["eq:household_id"]).toBe("h1");
+            return {
+              data: [
+                { id: "m1", user_id: "u1", role: "owner", display_name: "Ada", joined_at: "2026-01-01", share_targets: false },
+                { id: "m2", user_id: "u2", role: "member", display_name: "Bea", joined_at: "2026-02-01", share_targets: true },
+                { id: "m3", user_id: "u3", role: "member", display_name: "Cy", joined_at: "2026-03-01", share_targets: false },
+              ],
+              error: null,
+            };
+          }
+          return { data: null, error: null };
+        },
+        households: (op) =>
+          op === "select:single"
+            ? { data: { id: "h1", name: "Fam", owner_id: "u1", invite_code: "inv", created_at: "2026-01-01" }, error: null }
+            : { data: null, error: null },
+        household_meals: () => ({ data: [], error: null }),
+        // Self (u1) only — RLS never actually returns u2/u3 here in
+        // production, so the fixture doesn't pretend otherwise.
+        profiles: () => ({
+          data: [{ id: "u1", target_calories: 2400, target_protein: 160, target_carbs: 260, target_fat: 75, display_name: "Ada" }],
+          error: null,
+        }),
+        nutrition_entries: (op, ctx) => {
+          if (op === "select") {
+            // The critical assertion: self-scoped ONLY. No `.in(...)`
+            // with the full member list survives — that was the
+            // RLS-inert cross-member query this ticket removes.
+            expect(ctx.filters["eq:user_id"]).toBe("u1");
+            expect(ctx.filters["in:user_id"]).toBeUndefined();
+            return { data: [{ user_id: "u1", calories: 600, protein: 40, carbs: 60, fat: 20 }], error: null };
+          }
+          return { data: null, error: null };
+        },
+      },
+      { get_household_shared_targets: () => ({ data: rpcData, error: null }) },
+    );
+  }
+
+  it("renders an opted-in member's REAL numbers from the RPC, not the 2000/130/250/65 fallback", async () => {
+    const sb = makeSharedTargetsFixture([
+      {
+        user_id: "u2",
+        target_calories: 1900,
+        target_protein: 140,
+        target_carbs: 180,
+        target_fat: 55,
+        consumed_calories: 700,
+        consumed_protein: 50,
+        consumed_carbs: 60,
+        consumed_fat: 25,
+      },
+    ]);
+    const res = await getMyHousehold(sb as any, "u1");
+    expect(res.error).toBeNull();
+    const bea = res.data!.members.find((m) => m.userId === "u2")!;
+    expect(bea.shareTargets).toBe(true);
+    // Real RPC numbers, not the fallback.
+    expect(bea.targets).toEqual({ calories: 1900, protein: 140, carbs: 180, fat: 55 });
+    expect(bea.targets?.calories).not.toBe(2000);
+    expect(bea.targets?.protein).not.toBe(130);
+    expect(bea.consumed).toEqual({ calories: 700, protein: 50, carbs: 60, fat: 25 });
+    expect(bea.remaining).toEqual({ calories: 1200, protein: 90, carbs: 120, fat: 30 });
+
+    // The RPC was actually invoked, with the caller's own local date key.
+    expect(sb.rpcCalls).toHaveLength(1);
+    expect(sb.rpcCalls[0]?.fn).toBe("get_household_shared_targets");
+    expect(sb.rpcCalls[0]?.params).toHaveProperty("p_date_key");
+  });
+
+  it("a non-opted-in member renders the distinct 'not sharing' state — never fabricated numbers", async () => {
+    // Cy (u3) has share_targets=false; even if the RPC somehow returned
+    // a row for u3 (it shouldn't — server-side re-check), the client
+    // must never reach for it once share_targets is false client-side.
+    const sb = makeSharedTargetsFixture([
+      { user_id: "u2", target_calories: 1900, target_protein: 140, target_carbs: 180, target_fat: 55, consumed_calories: 0, consumed_protein: 0, consumed_carbs: 0, consumed_fat: 0 },
+    ]);
+    const res = await getMyHousehold(sb as any, "u1");
+    const cy = res.data!.members.find((m) => m.userId === "u3")!;
+    expect(cy.shareTargets).toBe(false);
+    // Explicitly null (the distinct "not sharing" state), not a
+    // fabricated-but-plausible-looking number.
+    expect(cy.targets).toBeNull();
+    expect(cy.remaining).toBeNull();
+    expect(cy.consumed).toBeUndefined();
+  });
+
+  it("an opted-in member with no matching RPC row renders null, never the old fallback numbers", async () => {
+    const sb = makeSharedTargetsFixture([]); // RPC returns nothing for u2.
+    const res = await getMyHousehold(sb as any, "u1");
+    const bea = res.data!.members.find((m) => m.userId === "u2")!;
+    expect(bea.shareTargets).toBe(true);
+    expect(bea.targets).toBeNull();
+    expect(bea.remaining).toBeNull();
+  });
+
+  it("the caller's own row is unaffected by the RPC path (self reads stay direct-RLS)", async () => {
+    const sb = makeSharedTargetsFixture([]);
+    const res = await getMyHousehold(sb as any, "u1");
+    const self = res.data!.members.find((m) => m.userId === "u1")!;
+    expect(self.targets).toEqual({ calories: 2400, protein: 160, carbs: 260, fat: 75 });
+    expect(self.consumed).toEqual({ calories: 600, protein: 40, carbs: 60, fat: 20 });
+    expect(self.remaining).toEqual({ calories: 1800, protein: 120, carbs: 200, fat: 55 });
   });
 });
 

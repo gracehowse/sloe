@@ -17,12 +17,34 @@
  *
  * Runtime RLS is exercised by Supabase's own tests and the integration
  * suite. This is the migration-level belt-and-braces, per spec §6.6.
+ *
+ * ENG-1602 (2026-07-21) exception: `get_household_shared_targets`
+ * (20260721100000) is a SECURITY DEFINER RPC — deliberately, not an RLS
+ * policy — that reads `profiles`/`nutrition_entries` to serve the H4
+ * `share_targets` opt-in for real. The opt-in was previously a silent
+ * no-op: those tables' SELECT RLS is self-only, so a direct cross-member
+ * read returned nothing and the client papered over it with fabricated
+ * numbers (see the migration's own header for the full root-cause
+ * writeup). This does NOT weaken invariants (1) or (2) above — no RLS
+ * policy is added, and every returned row re-checks co-membership +
+ * `share_targets = true` inside the definer boundary — but it DOES read
+ * from those two tables by design, which the blanket "no household
+ * migration ever reads from these tables" regex scan below cannot tell
+ * apart from a leak. That one migration is excluded from the two
+ * leak-pattern checks and instead gets its own dedicated safety-property
+ * suite: `tests/unit/eng1602HouseholdSharedTargetsRpc.test.ts`. Keep this
+ * exclusion list to exactly that one entry — growing it casually is how
+ * the privacy boundary erodes.
  */
 import { describe, expect, it } from "vitest";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const MIGRATIONS_DIR = join(process.cwd(), "supabase/migrations");
+
+const DELIBERATE_CROSS_MEMBER_READ_EXCEPTIONS = new Set([
+  "20260721100000_eng1602_household_shared_targets_rpc.sql",
+]);
 
 function householdMigrations(): { name: string; sql: string }[] {
   return readdirSync(MIGRATIONS_DIR)
@@ -77,6 +99,11 @@ describe("Household RLS privacy boundary", () => {
 
   it("no household RLS predicate joins through profiles / weight / nutrition state", () => {
     for (const { name, sql } of householdMigrations()) {
+      // ENG-1602: the one deliberate, reviewed exception — see the file
+      // header. This is a SECURITY DEFINER RPC read, not an RLS
+      // predicate, and is covered by its own dedicated safety-property
+      // test suite instead.
+      if (DELIBERATE_CROSS_MEMBER_READ_EXCEPTIONS.has(name)) continue;
       // A household policy clause referencing e.g. `profiles.weight_kg`
       // or selecting from profiles inside a USING/WITH CHECK would be a
       // leakage vector. We allow a single known benign case: the

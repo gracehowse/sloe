@@ -23,6 +23,16 @@
  *     an auth'd non-member cannot `select` the target household via
  *     RLS (so cannot validate the invite code client-side). See
  *     `supabase/migrations/20260422100000_household_join_rpc.sql`.
+ *   - `getMyHousehold`'s co-member targets/consumed-today (the H4
+ *     `share_targets` opt-in) go through a second `security definer`
+ *     RPC, `get_household_shared_targets`, for the same underlying
+ *     reason: `profiles` and `nutrition_entries` SELECT RLS is
+ *     strictly self-only with no household carve-out, so a direct
+ *     cross-member read is RLS-inert (silently returns zero rows, no
+ *     error). ENG-1602 (2026-07-21) fixed a real bug here — the
+ *     RLS-inert read was previously masked by hardcoded fallback
+ *     numbers instead of routed through this RPC. See
+ *     `supabase/migrations/20260721100000_eng1602_household_shared_targets_rpc.sql`.
  *
  * The Next.js REST routes are NOT removed — they still work for any
  * server-rendered caller (none today, but planner-grade safety). The
@@ -84,6 +94,14 @@ export type MemberSummary = {
    * callers must render {@link TARGETS_PRIVATE_LABEL} (or similar) in
    * place of numbers. The caller's own row always carries this flag
    * plus targets/consumed/remaining regardless.
+   *
+   * ENG-1602 (2026-07-21): `shareTargets: true` does NOT guarantee
+   * `targets`/`remaining` are non-null for another member — the
+   * `get_household_shared_targets` RPC can legitimately return no row
+   * for an opted-in member (narrow read-time race, or targets never
+   * set). Callers must branch on `targets`/`remaining` being non-null,
+   * not on `shareTargets` alone, and render the same private/no-data
+   * state either way — never a fabricated number.
    */
   shareTargets?: boolean;
   targets?: { calories: number; protein: number; carbs: number; fat: number } | null;
@@ -440,11 +458,30 @@ export async function getMyHousehold(
     slotAllowedForPreset(viewerPreset, m.date_key, m.meal_label, customGrid),
   );
 
-  // Member macros: targets from profiles + today's logged entries.
-  // T8: also fetch profiles for `added_by` cooks who may not be current
-  // household members (left / deleted) — so we can resolve the meal
-  // cook name against a live `profiles.display_name` instead of the
-  // stale `cook_display_name` snapshot that would leak dead-names.
+  // Member macros: caller's OWN targets from `profiles` + today's OWN
+  // logged entries — both reads are self-scoped and satisfied directly
+  // by RLS (`profiles_select_own` / "Own nutrition entries": both
+  // `auth.uid() = <id column>`). Also fetch profiles for `added_by`
+  // cooks who may not be current household members (left / deleted) —
+  // so we can resolve the meal cook name against a live
+  // `profiles.display_name` instead of the stale `cook_display_name`
+  // snapshot that would leak dead-names. NOTE: RLS means this `.in(...)`
+  // profiles read only ever returns the CALLER's own row in production
+  // regardless of how many ids are requested — other members' rows are
+  // silently filtered by RLS, which is why display name still falls
+  // back to the `household_members.display_name` snapshot below.
+  //
+  // ENG-1602 (2026-07-21): co-members' targets + today's consumed macros
+  // used to come from a second cross-member `.in(...)` query against
+  // these SAME two tables. That query was RLS-inert (self-only SELECT,
+  // no household carve-out on `profiles` or `nutrition_entries`) — it
+  // silently returned zero rows, and the fallback below masked that with
+  // hardcoded 2000/130/250/65 numbers. Every opted-in member saw
+  // identical fabricated data. Fixed by routing co-member reads through
+  // `get_household_shared_targets`, a SECURITY DEFINER RPC that
+  // re-verifies co-membership + `share_targets = true` itself and
+  // returns ONLY the derived numbers (see the migration file for the
+  // full root-cause writeup + why an RPC beats an RLS carve-out here).
   const memberIds = members.map((m) => m.user_id);
   const cookIds = Array.from(
     new Set(
@@ -454,23 +491,33 @@ export async function getMyHousehold(
     ),
   );
   const profileLookupIds = Array.from(new Set([...memberIds, ...cookIds]));
-  const [profilesResp, entriesResp] = await Promise.all([
+  const [profilesResp, entriesResp, sharedResp] = await Promise.all([
     profileLookupIds.length
       ? supabase
           .from("profiles")
           .select("id, target_calories, target_protein, target_carbs, target_fat, display_name")
           .in("id", profileLookupIds)
       : Promise.resolve({ data: [], error: null }),
-    memberIds.length
-      ? supabase
-          .from("nutrition_entries")
-          .select("user_id, calories, protein, carbs, fat")
-          .in("user_id", memberIds)
-          .eq("date_key", todayKey())
-      : Promise.resolve({ data: [], error: null }),
+    // Self-scoped only — RLS would filter anything else anyway. Kept
+    // explicit (`.eq("user_id", userId)` rather than `.in(memberIds)`)
+    // so the query shape documents the real access boundary instead of
+    // implying a cross-member read that RLS silently no-ops.
+    supabase
+      .from("nutrition_entries")
+      .select("user_id, calories, protein, carbs, fat")
+      .eq("user_id", userId)
+      .eq("date_key", todayKey()),
+    // ENG-1602: co-members' targets + today's consumed macros, computed
+    // server-side. `p_date_key` is passed explicitly as the CALLER's own
+    // local `todayKey()` — never left to the RPC's `current_date`
+    // default, which would read the DB session's (UTC) day and
+    // reintroduce the Build-41 UTC-vs-local mismatch for any non-UTC
+    // household member.
+    supabase.rpc("get_household_shared_targets", { p_date_key: todayKey() }),
   ]);
   if (profilesResp.error) throw profilesResp.error;
   if (entriesResp.error) throw entriesResp.error;
+  if (sharedResp.error) throw sharedResp.error;
   const profiles = (profilesResp.data ?? []) as Array<{
     id: string;
     target_calories: number | null;
@@ -479,6 +526,36 @@ export async function getMyHousehold(
     target_fat: number | null;
     display_name: string | null;
   }>;
+  // Keyed by co-member user_id. Only opted-in co-members the RPC's own
+  // server-side checks approved ever appear here — absence means "not
+  // opted in" or "RPC found nothing to share", and both render the same
+  // private/no-data UI state below (never a fabricated number).
+  const sharedTargetsByUserId = new Map<
+    string,
+    {
+      target_calories: number | null;
+      target_protein: number | null;
+      target_carbs: number | null;
+      target_fat: number | null;
+      consumed_calories: number | null;
+      consumed_protein: number | null;
+      consumed_carbs: number | null;
+      consumed_fat: number | null;
+    }
+  >();
+  for (const row of (sharedResp.data ?? []) as Array<{
+    user_id: string;
+    target_calories: number | null;
+    target_protein: number | null;
+    target_carbs: number | null;
+    target_fat: number | null;
+    consumed_calories: number | null;
+    consumed_protein: number | null;
+    consumed_carbs: number | null;
+    consumed_fat: number | null;
+  }>) {
+    sharedTargetsByUserId.set(row.user_id, row);
+  }
 
   // T8: resolve cook attribution at read-time from live profile data.
   // Profile missing / display_name missing → null → UI renders "A member".
@@ -529,6 +606,74 @@ export async function getMyHousehold(
       };
     }
 
+    if (!isSelf) {
+      // ENG-1602: opted-in co-member. `profile?.target_*` is NOT used
+      // here — RLS means `profile` never resolves for anyone but the
+      // caller, which is exactly the bug this fix removes. The RPC
+      // result is the only legitimate source for another member's
+      // targets/consumed, and it has already re-verified co-membership
+      // + share_targets=true server-side.
+      const shared = sharedTargetsByUserId.get(m.user_id);
+      if (!shared || shared.target_calories == null) {
+        // Legitimately nothing to show: either the RPC found no
+        // matching row (e.g. `share_targets` flipped off between the
+        // `household_members` read above and this RPC call — a narrow
+        // read-time race, not a steady-state outcome) or the co-member
+        // has opted in but has never set numeric targets (pre-onboarding
+        // profile). Either way, render the SAME private/no-data state as
+        // the opted-out branch above — never fabricate 2000/130/250/65
+        // or any other placeholder. Intentional reuse of that state, not
+        // a gap: a distinct "unavailable" vs "private" copy would need a
+        // product decision this ticket doesn't make.
+        return {
+          userId: m.user_id,
+          role: m.role,
+          displayName,
+          shareTargets: true,
+          targets: null,
+          remaining: null,
+          sharePreset: memberPreset,
+        };
+      }
+      const targets = {
+        calories: Number(shared.target_calories) || 0,
+        protein: Number(shared.target_protein) || 0,
+        carbs: Number(shared.target_carbs) || 0,
+        fat: Number(shared.target_fat) || 0,
+      };
+      const consumed = {
+        calories: Number(shared.consumed_calories) || 0,
+        protein: Number(shared.consumed_protein) || 0,
+        carbs: Number(shared.consumed_carbs) || 0,
+        fat: Number(shared.consumed_fat) || 0,
+      };
+      return {
+        userId: m.user_id,
+        role: m.role,
+        displayName,
+        shareTargets: true,
+        targets,
+        consumed: {
+          calories: Math.round(consumed.calories),
+          protein: roundTo1(consumed.protein),
+          carbs: roundTo1(consumed.carbs),
+          fat: roundTo1(consumed.fat),
+        },
+        remaining: {
+          calories: Math.max(0, Math.round(targets.calories - consumed.calories)),
+          protein: Math.max(0, roundTo1(targets.protein - consumed.protein)),
+          carbs: Math.max(0, roundTo1(targets.carbs - consumed.carbs)),
+          fat: Math.max(0, roundTo1(targets.fat - consumed.fat)),
+        },
+        sharePreset: memberPreset,
+      };
+    }
+
+    // Self: unchanged from pre-ENG-1602 behaviour. `profile` here always
+    // resolves to the caller's own row (RLS self-read), so this was never
+    // part of the cross-member RLS bug. The 2000/130/250/65 fallback is a
+    // long-standing, separate product decision for "no target set yet"
+    // (pre-onboarding), not a fabrication of someone else's data.
     const todays = entries.filter((e) => e.user_id === m.user_id);
     const consumed = {
       calories: todays.reduce((s, e) => s + (Number(e.calories) || 0), 0),
@@ -546,7 +691,7 @@ export async function getMyHousehold(
       userId: m.user_id,
       role: m.role,
       displayName,
-      shareTargets: isSelf ? sharesTargets : true,
+      shareTargets: sharesTargets,
       targets,
       consumed: {
         calories: Math.round(consumed.calories),
