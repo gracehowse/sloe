@@ -22,6 +22,7 @@ export const CANONICAL_NUTRITION_ENTRY_SOURCES = [
   "apple_health",
   "AI voice",
   "AI photo",
+  "Nutrition label",
   "Suppr",
   "Estimated",
   "Unverified",
@@ -70,6 +71,9 @@ export function canonicalNutritionEntrySource(
   if (low.includes("edamam")) return "Edamam";
   if (low === "ai voice" || low === "voice" || low === "ai_voice") return "AI voice";
   if (low === "ai photo" || low === "photo" || low === "ai_photo") return "AI photo";
+  if (low === "nutrition label" || low === "label" || low === "scan label") {
+    return "Nutrition label";
+  }
   if (low.includes("apple health") || low === "apple_health" || low === "healthkit") {
     return "apple_health";
   }

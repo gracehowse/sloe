@@ -17,6 +17,7 @@ describe("canonicalNutritionEntrySource", () => {
     expect(canonicalNutritionEntrySource("Meal plan")).toBe("Recipe");
     expect(canonicalNutritionEntrySource("Quick entry")).toBe("manual");
     expect(canonicalNutritionEntrySource("Custom food")).toBe("custom_food");
+    expect(canonicalNutritionEntrySource("Scan label")).toBe("Nutrition label");
   });
 
   it("maps CSV import provenance tags", () => {

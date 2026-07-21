@@ -76,6 +76,7 @@ function open(props?: Partial<LogSheetProps>) {
       saved={{ meals: [], onPick: () => {} }}
       voice={{ onStart: () => {}, locked: true }}
       photo={{ onCapture: () => {}, locked: false }}
+      label={{ onCapture: () => {}, locked: false }}
       onAddManually={() => {}}
       describe={{ onParse: async () => ({ ok: true, items: [] }), onCommit: () => {} }}
       {...props}
@@ -90,12 +91,20 @@ describe("LogSheet input-method row — v3 tile grammar (web)", () => {
     open();
     const row = screen.getByTestId("log-sheet-input-mode-row");
     expect(row.getAttribute("data-variant")).toBe("v3-grid");
-    // The four tiles render (Photo / Voice / Describe / Quick add) — ENG-1532
+    // Five tiles render (Photo / Voice / Label / Describe / Quick add) — ENG-1532
     // drops the Scan tile (the loud CTA is the single scanner entry).
-    for (const key of ["photo", "voice", "describe", "quick"]) {
+    for (const key of ["photo", "voice", "label", "describe", "quick"]) {
       expect(screen.getByTestId(`log-sheet-method-${key}`)).toBeTruthy();
     }
     expect(screen.queryByTestId("log-sheet-method-scan")).toBeNull();
+  });
+
+  it("opens the first-class nutrition-label flow from the Label tile", () => {
+    forceLogFlag(true);
+    const onCapture = vi.fn();
+    open({ label: { onCapture } });
+    fireEvent.click(screen.getByTestId("log-sheet-method-label"));
+    expect(onCapture).toHaveBeenCalledTimes(1);
   });
 
   it("ENG-1532 kill switch — `component_grammar_dedup` OFF restores the Scan tile, byte-intact", () => {

@@ -66,6 +66,7 @@ import {
 } from "@/lib/healthDietaryNutrients";
 import { computeDayMacroTotals } from "@suppr/nutrition-core/microNutrientDisplay";
 import { supabase } from "@/lib/supabase";
+import { getSupprApiBase } from "@/lib/supprWeb";
 // ENG-73 (2026-05-13): Today moved off `@expo/vector-icons`
 // (Ionicons) to lucide-react-native to bring the screen's supporting
 // glyphs in line with the prototype carryover rule #2 (icons must be
@@ -91,6 +92,7 @@ import CopyMealSheet from "@/components/CopyMealSheet";
 import DuplicateDaySheet from "@/components/DuplicateDaySheet";
 import VoiceLogSheet from "@/components/VoiceLogSheet";
 import PhotoLogSheet from "@/components/PhotoLogSheet";
+import { useTodayLabelLog } from "@/components/label-log/useTodayLabelLog";
 import AiPaywallSheet, { type AiPaywallFeature } from "@/components/AiPaywallSheet";
 import {
   computeActivityBonusKcal,
@@ -2476,28 +2478,21 @@ export default function TrackerScreen() {
   const totalBurnKcal = (activityBurnKcal ?? 0) + basalBurnKcal;
   const hasBurnData = activityBurnRecorded || basalBurnKcal > 0 || dayWorkouts.length > 0;
 
-  // Batch 5.13 — resolve the web API base from expo-constants once per
-  // render so the gated sheets don't each import Constants independently.
-  const [apiBase, setApiBase] = useState<string>("");
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const Constants = (await import("expo-constants")).default;
-        const extra = Constants.expoConfig?.extra as { supprApiUrl?: string } | undefined;
-        if (!cancelled) setApiBase(extra?.supprApiUrl ?? "");
-      } catch {
-        if (!cancelled) setApiBase("");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const apiBase = getSupprApiBase();
 
-  // Batch 5.13 — commit AI-logged items (voice / photo) as journal meals.
-  // Shared by the VoiceLogSheet + PhotoLogSheet. Mirrors the web's
-  // `commitAiLoggedItems` in `NutritionTracker.tsx`.
+  const { openLabelLog, labelLogSheet } = useTodayLabelLog({
+    activeMealSlot,
+    accessToken: session?.access_token ?? null,
+    apiBase,
+    colors,
+    dayKey,
+    profileTimeZone,
+    persistMealsImmediate,
+    setByDay,
+    onBeforeOpen: () => setFabSheetOpen(false),
+  });
+
+  // Shared VoiceLogSheet/PhotoLogSheet journal commit; mirrors web.
   const commitAiLoggedItems = useCallback(
     (aiItems: import("@suppr/nutrition-core/aiLogging").AiLoggedItem[]) => {
       if (!aiItems.length) return;
@@ -4945,6 +4940,7 @@ export default function TrackerScreen() {
           // Lock badge removed (2026-05-02).
           locked: false,
         }}
+        label={{ onCapture: openLabelLog, locked: false }}
         aiMethodTooltipVisible={aiMethodTooltipVisible}
         onAddManually={() => {
           // Footer "Or add manually" link → escape hatch into the
@@ -5615,6 +5611,8 @@ export default function TrackerScreen() {
           primaryForeground: colors.primaryForeground,
         }}
       />
+
+      {labelLogSheet}
 
       {/* Pattern #9 (`AN8GJ1Dr3M` + F-131 `AMmlpVOqMnaKKdV2dobjjjg`,
           2026-05-08): "Where this comes from" provenance sheet —

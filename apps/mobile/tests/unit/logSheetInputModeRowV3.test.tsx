@@ -4,7 +4,7 @@
  * the LogSheet input-method row, gated on `sloe_v3_log` (default-ON).
  *
  * Mounts the real `<LogSheet>` and asserts:
- *   - FLAG ON  → the four method tiles (Photo / Voice / Describe / Quick add)
+ *   - FLAG ON  → five method tiles (Photo / Voice / Label / Describe / Quick add)
  *     render with their `log-sheet-method-*` handles, a frost lock
  *     badge on the locked AI method, and NO "PRO" text pill.
  *   - FLAG OFF → the legacy circular chips: a "PRO" text pill on the locked AI
@@ -115,6 +115,7 @@ function open(props?: Partial<LogSheetProps>) {
       saved={{ meals: [], onPick: () => {} }}
       voice={{ onStart: () => {}, locked: true }}
       photo={{ onCapture: () => {}, locked: false }}
+      label={{ onCapture: () => {}, locked: false }}
       onAddManually={() => {}}
       describe={{ onParse: async () => ({ ok: true, items: [] }), onCommit: () => {} }}
       {...props}
@@ -123,13 +124,20 @@ function open(props?: Partial<LogSheetProps>) {
 }
 
 describe("LogSheet input-method row — v3 tile grammar (mobile)", () => {
-  it("renders the four method tiles when the flag is ON (default) — no Scan tile (ENG-1532)", () => {
+  it("renders the five method tiles when the flag is ON (default) — no Scan tile (ENG-1532)", () => {
     const { getByTestId, queryByTestId } = open();
-    for (const key of ["photo", "voice", "describe", "quick"]) {
+    for (const key of ["photo", "voice", "label", "describe", "quick"]) {
       expect(getByTestId(`log-sheet-method-${key}`)).toBeTruthy();
     }
     // ENG-1532 — the loud "Scan barcode" CTA is the single scanner entry.
     expect(queryByTestId("log-sheet-method-scan")).toBeNull();
+  });
+
+  it("opens the first-class nutrition-label flow from the Label tile", () => {
+    const onCapture = vi.fn();
+    const { getByTestId } = open({ label: { onCapture } });
+    fireEvent.press(getByTestId("log-sheet-method-label"));
+    expect(onCapture).toHaveBeenCalledTimes(1);
   });
 
   it("shows the frost lock badge (not a PRO text pill) on the locked AI method when flag ON", () => {

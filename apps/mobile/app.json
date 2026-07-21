@@ -154,7 +154,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Sloe to scan product barcodes."
+          "cameraPermission": "Allow Sloe to take meal photos and scan product barcodes or nutrition labels."
         }
       ],
       [
