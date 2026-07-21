@@ -66,15 +66,24 @@ describe("ENG-1584 — apps/mobile/lib/healthSync.ts reads SleepAnalysis", () =>
 });
 
 describe("ENG-1584 — apps/mobile/app/health-sync.tsx surfaces a sleep sync in the summary", () => {
-  it("adds 'sleep' to the Sync Now result summary, same precedent as body fat", () => {
+  it("calls the shared summary-parts helper (screen-line-budget ratchet — ENG-717 — bars inlining it)", () => {
     // `health-sync.tsx` doesn't get a dedicated Sleep settings row (same as
     // body fat — see the module docblock in healthSyncSleep.ts / this
     // file's sibling describe blocks), but it DOES fold every updated
-    // flag into a plain-text "Updated: …" summary after Sync Now. Body
-    // fat already does this (`parts.push("body fat")`); sleep should
-    // match rather than sync silently with zero user-visible feedback.
+    // flag into a plain-text "Updated: …" summary after Sync Now. The
+    // per-flag `parts.push(...)` logic itself lives in
+    // `healthSyncResultSummaryParts` (`lib/healthSync.ts`), not inlined
+    // here — health-sync.tsx is a legacy `check:screen-budget` allow-listed
+    // file that may only shrink, so the screen just calls the helper.
     const screen = read("app/health-sync.tsx");
-    expect(screen).toContain('if (result.sleepUpdated) parts.push("sleep")');
+    expect(screen).toContain("healthSyncResultSummaryParts");
+    expect(screen).toContain("const parts = healthSyncResultSummaryParts(result);");
+  });
+
+  it("healthSyncResultSummaryParts (lib/healthSync.ts) folds sleep in, same precedent as body fat", () => {
+    const lib = read("lib/healthSync.ts");
+    expect(lib).toContain('if (result.sleepUpdated) parts.push("sleep")');
+    expect(lib).toContain('if (result.bodyFatUpdated) parts.push("body fat")');
   });
 });
 

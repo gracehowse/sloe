@@ -2394,6 +2394,38 @@ export async function syncHealthData(
   };
 }
 
+/**
+ * Human-readable category labels for the flags `syncHealthData` just
+ * updated — the "Updated: steps, weight, …" clause of the Sync Now result
+ * message in `apps/mobile/app/health-sync.tsx`. Order matches the
+ * `HealthCategoryRow` order on that screen.
+ *
+ * ENG-1584 — pulled out of the screen file rather than inlined there: the
+ * screen is a legacy `check:screen-budget` (ENG-717) allow-listed
+ * offender that may only shrink, so new logic belongs in a lib module,
+ * not another `if (...) parts.push(...)` line on the screen itself. Pure
+ * + exported so it's unit-testable without a native bridge.
+ */
+export function healthSyncResultSummaryParts(result: {
+  stepsUpdated: boolean;
+  weightUpdated: boolean;
+  bodyFatUpdated: boolean;
+  activeEnergyUpdated: boolean;
+  workoutsUpdated: boolean;
+  basalBurnUpdated: boolean;
+  sleepUpdated: boolean;
+}): string[] {
+  const parts: string[] = [];
+  if (result.stepsUpdated) parts.push("steps");
+  if (result.weightUpdated) parts.push("weight");
+  if (result.bodyFatUpdated) parts.push("body fat");
+  if (result.activeEnergyUpdated) parts.push("active energy");
+  if (result.workoutsUpdated) parts.push("workouts");
+  if (result.basalBurnUpdated) parts.push("resting energy");
+  if (result.sleepUpdated) parts.push("sleep");
+  return parts;
+}
+
 const HEALTH_BODY_SYNC_MIN_MS = 4 * 60 * 1000;
 /** Tab-focus sync only needs recent days; full lookback stays on manual / pull-to-refresh. */
 export const HEALTH_FOCUS_SYNC_LOOKBACK_DAYS = 21;
