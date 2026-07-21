@@ -194,7 +194,7 @@ npm run mobile:verify
 
 GitHub Actions (`.github/workflows/ci.yml`):
 
-**Web job:** `npm ci` → `verify:production-env` → `tsc` → `npm run test:coverage` → `check:today-captures` → `check:type-scale` → `check:spacing-scale` → `check:token-scale` → `check:type-scale-mobile` → `check:copy-voice` → `check:screen-budget` → Playwright install → `npm run build` → `next start` on port 3100 → `npm run test:e2e`.
+**Web job:** `npm ci` → `verify:production-env` → `tsc` → `npm run test:coverage` → `check:today-captures` → `check:type-scale` → `check:spacing-scale` → `check:web-spacing-scale` → `check:token-scale` → `check:type-scale-mobile` → `check:copy-voice` → `check:screen-budget` → Playwright install → `npm run build` → `next start` on port 3100 → `npm run test:e2e`.
 
 **Static line/scale ratchets (web job):**
 
@@ -207,6 +207,18 @@ GitHub Actions (`.github/workflows/ci.yml`):
   `scripts/spacing-budget.json`; a pinned file may only shrink, and any
   un-pinned file that introduces an off-scale literal fails. Re-pin with
   `npm run check:spacing-scale:write`.
+- `check:web-spacing-scale` (ENG-1592) — the web leg ENG-1007's own code
+  comment promised and never built until 2026-07-21. Off-scale Tailwind
+  `p-*/m-*/gap-*` spacing (any directional variant) in web `src/app` +
+  `app` `.tsx`: arbitrary `p-[Npx]` bracket values AND off-scale numeric
+  Tailwind steps, mapped step→px via Tailwind's `step * 0.25rem`
+  convention (`p-6` = 24px is legal, `p-7` = 28px is not) — checked
+  against the same 4/8/12/16/20/24/32/40 scale `check:spacing-scale` reads.
+  `*-pm-N` semantic token classes (`px-pm-6`) are never flagged, the same
+  way a `Spacing.*` reference is clean on mobile. Per-file off-scale
+  counts are pinned in `scripts/web-spacing-budget.json` (261 files /
+  1033 instances at the 2026-07-21 baseline); only-shrink. Re-pin with
+  `npm run check:web-spacing-scale:write`.
 - `check:token-scale` (ENG-1007) — raw 6-digit `#RRGGBB` hexes + raw Tailwind
   palette colour classes (`bg-/text-/border-<hue>-<NNN>`) + off-scale
   `borderRadius` literals (legal `Radius` read from theme.ts: 4/6/8/12/full)

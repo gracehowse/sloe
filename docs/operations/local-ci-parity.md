@@ -17,6 +17,7 @@ deterministic CI gate:
 | Today capture pairs (ENG-629) | ✅ | `check:today-captures` |
 | Type-scale lint (ENG-119) | ✅ | `check:type-scale` |
 | Spacing-scale ratchet (ENG-1007) | ✅ | `check:spacing-scale` |
+| Web spacing-scale ratchet (ENG-1592) | ✅ | `check:web-spacing-scale` |
 | Colour/radius token ratchet (ENG-1007) | ✅ | `check:token-scale` |
 | Copy-voice ratchet (ENG-1378) | ✅ | `check:copy-voice` |
 | Screen line-count ratchet (ENG-717) | ✅ | `check:screen-budget` |

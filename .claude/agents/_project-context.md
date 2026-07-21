@@ -120,12 +120,21 @@ enforced at write time as well as review time.
 - **Spacing:** 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 (12 = `Spacing.dense`,
   adopted 2026-06-10 ENG-1012) (`Spacing`,
   `apps/mobile/constants/theme.ts`; same rhythm on web). An 18px padding or
-  10px gap is a bug even if it "looks fine". **Enforced by the spacing-scale
-  ratchet** `npm run check:spacing-scale` (`scripts/check-spacing-scale.mjs`,
+  10px gap is a bug even if it "looks fine". **Enforced by two spacing-scale
+  ratchets:** `npm run check:spacing-scale` (`scripts/check-spacing-scale.mjs`,
   ENG-1007; in `npm run ci` + CI): scans mobile `.tsx`, reads the legal scale
   from `theme.ts`, pins per-file off-scale counts in
   `scripts/spacing-budget.json` (only-shrink). Re-pin with
-  `npm run check:spacing-scale:write`.
+  `npm run check:spacing-scale:write`. And `npm run check:web-spacing-scale`
+  (`scripts/check-web-spacing-scale.mjs`, ENG-1592 — the web leg ENG-1007's
+  own code comment promised and never built until 2026-07-21; also in
+  `npm run ci` + CI): scans web `src/app` + `app` `.tsx` for off-scale
+  Tailwind `p-*/m-*/gap-*` spacing (arbitrary `[Npx]` brackets AND
+  off-scale numeric steps, mapped step→px via Tailwind's `step * 4px`
+  convention), reads the same legal scale, pins per-file counts in
+  `scripts/web-spacing-budget.json` (only-shrink; 261 files / 1033
+  instances at the 2026-07-21 baseline). Re-pin with
+  `npm run check:web-spacing-scale:write`.
 - **Radius:** 4 / 6 / 8 / 12 / full (`Radius` — 2026-05-22 lock; bigger reads
   "kids' tablet"). Off-scale `borderRadius` literals are caught by the token
   ratchet (below).
