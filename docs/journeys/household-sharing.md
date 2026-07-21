@@ -222,23 +222,49 @@ planned dinners with everyone in this household. If the household turns on
 lunch sharing, lunches are shared too. Breakfasts, snacks, your calorie and
 macro targets, and your remaining-today numbers all stay private."*
 
-**Known limitation — the cross-account reveal is unverified.** The
-`share_targets`-on path in `getMyHousehold`
-(`src/lib/household/householdClient.ts`) computes another member's exposed
-targets/remaining by querying `profiles` and `nutrition_entries` for that
-member's user ID directly from the caller's own client session. `profiles`
-SELECT RLS is `profiles_select_own` (self-scoped), and no household-scoped
-SELECT policy exists for `profiles` or `nutrition_entries` under the privacy
-boundary above. If that scoping holds as written, an opted-in member's
-*real* numbers never actually reach another member's client — RLS silently
-returns zero rows for those IDs, and the code's `|| 2000` / `|| 130`
-fallbacks render generic placeholder numbers instead. That would fail safe
-(no real data leaks) but would mean the toggle **doesn't deliver on its own
-copy** — the other member would see plausible-looking but fake numbers
-rather than a real reveal. This has not yet been exercised with two live,
-distinct household accounts, so it isn't confirmed either way; it needs
-verification with a real second account before the toggle can be documented
-as working, or referenced in marketing copy. See Open product questions.
+**How the cross-account reveal actually works (ENG-1602, fixed 2026-07-21).**
+`profiles` and `nutrition_entries` SELECT RLS is `profiles_select_own` /
+"Own nutrition entries" — both strictly self-scoped, with no household-level
+grant under the privacy boundary above. A direct cross-member `.in(...)`
+read of those tables from the caller's own client session is therefore
+RLS-inert: it silently returns zero rows, no error. Before this fix,
+`getMyHousehold` tried exactly that direct read, and masked the empty result
+with hardcoded `2000`/`130`/`250`/`65` fallback numbers — every opted-in
+member saw identical fabricated data regardless of their real goals or
+intake. It failed safe (no real data ever leaked to the wrong person — the
+inverse direction, reveal when `share_targets` is off, was checked and does
+not exist) but it did not deliver on its own copy: the toggle looked like it
+worked and silently didn't.
+
+The fix routes the opted-in reveal through
+`get_household_shared_targets` — a `security definer` RPC
+(`supabase/migrations/20260721100000_eng1602_household_shared_targets_rpc.sql`)
+that re-verifies, server-side, both that the caller and the target are
+co-members of the same household AND that the target's `share_targets` is
+`true`, then returns ONLY `target_calories/protein/carbs/fat` plus
+today's aggregated `consumed_calories/protein/carbs/fat` for that member —
+never a raw `profiles` or `nutrition_entries` row, never any other column
+(no `display_name`, no email, no weight). `getMyHousehold` calls this RPC
+once per load and keys the results back to the `household_members` list it
+already has; a member who hasn't opted in still gets the `null`
+targets/remaining "Targets private" state exactly as before. If the RPC
+ever legitimately has nothing for an opted-in member (a narrow read-time
+race, or a member who opted in before ever setting numeric targets), the
+client renders that same private/no-data state rather than any fallback
+number — the fabricated-numbers failure mode this fix closes cannot recur
+by construction, since there is no hardcoded fallback left in the opted-in
+code path at all.
+
+**Why an RPC and not an RLS carve-out.** RLS in Postgres is row-level, not
+column-level — a household-scoped SELECT policy added to `profiles` would
+expose the *whole* row (email, every other column) to co-members, not just
+the four target columns; a much bigger leak than the one being fixed.
+Column-level GRANTs are the only other real alternative and this codebase
+has no precedent for them. A `security definer` RPC returning a narrow,
+derived, explicitly-approved set of fields is the established pattern here
+(23+ existing precedents, closest being `household_join_by_invite_code` for
+the join-by-code read RLS also can't express) — see the migration file's
+header for the full comparison.
 
 **Web:** `src/app/components/HouseholdSettingsPage.tsx` (Privacy section),
 `src/lib/household/scopeCopy.ts`.
@@ -418,7 +444,7 @@ real route is an open product question — see Open product questions.
 | Invite by email + code (Step 1) | Identical — same dialog/sheet pair, same RPCs |
 | Members list (Step 1) | Identical — self row → `/targets`, other rows non-interactive |
 | Presets + 7×4 grid (Step 2) | Identical logic; picker affordance is platform-idiomatic (right-click vs long-press) |
-| `share_targets` privacy toggle (Step 3) | Identical copy + behaviour; the cross-account reveal path is unverified on both — see Open product questions |
+| `share_targets` privacy toggle (Step 3) | Identical copy + behaviour on both — same `getMyHousehold` call, same `get_household_shared_targets` RPC (ENG-1602) |
 | Plan-tab threading (Step 4) | v3 banner is a direct parity pair; `HouseholdSummaryRow` (mobile) vs always-on `HouseholdBar` (web) is a deliberate chrome difference, not a gap |
 | Shopping-list threading (Step 5) | Identical — see `shopping-list.md` §6 |
 | Custom grid persistence (Known gap) | **Broken on both, identically** — device-local storage on both platforms, no cross-device sync for either |
@@ -442,14 +468,6 @@ per-cell server table or JSONB column — versus treating "presets sync,
 custom doesn't" as an acceptable permanent posture, given household size is
 typically small and often single-device-per-person. That's a product call,
 not something to patch around client-side.
-
-**Does the `share_targets` reveal actually deliver real numbers to the other
-member?** The RLS read path for `profiles` and `nutrition_entries` looks
-self-scoped with no household-level grant (see Step 3 above), which would
-mean an opted-in member's real targets never reach another member's client
-— only fallback placeholder numbers would. This needs verification with two
-real, distinct household accounts before the toggle can be documented as
-working or referenced in marketing copy.
 
 **Should `/home?view=household-settings` become a first-class route?** The
 alias works today but doesn't behave like a real address — no bookmarkable

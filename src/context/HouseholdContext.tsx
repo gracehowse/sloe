@@ -87,7 +87,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
         const { data } = await getMyHousehold(
           supabase as unknown as {
             from: (t: string) => unknown;
-            rpc: (f: string, p: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
+            rpc: (f: string, p?: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>;
           },
           authedUserId,
         );

@@ -388,11 +388,11 @@ export function HouseholdPanel() {
           </label>
         </div>
 
-        {/* Members list. Per F-16 legal approval, only the caller's own
-            row shows remaining-today numbers. Other members show name
-            + role only — the server already strips targets/remaining
-            from those rows; this UI matches so a future code path
-            that accidentally re-shared them would render nothing.
+        {/* Members list. Per F-16 legal approval, other members show
+            name + role only by default — private unless opted in via
+            `share_targets` (H4). `getMyHousehold()` sources an opted-in
+            co-member's numbers via `get_household_shared_targets` (RPC,
+            ENG-1602, re-verifies co-membership + opt-in server-side).
 
             G-5 (2026-04-19, TestFlight `AJKHqJeCi83sCHF3_7CZMhY`): the
             four numbers under a member's row were ambiguous ("target?
