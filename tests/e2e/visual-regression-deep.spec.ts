@@ -64,11 +64,19 @@ test.describe("Visual regression — deep authenticated routes", () => {
       // Preferences panel — and settings-fasting-link inside it — stays
       // display:none at desktop until its nav item is clicked. Without this,
       // scrollIntoViewIfNeeded can never bring a display:none element to a
-      // stable rect and times out. Mirrors the same guard already used for
-      // the privacy nav in authenticated-views.spec.ts. No-ops on mobile,
-      // where the nav (`hidden md:block`) isn't rendered at all.
-      const preferencesNav = page.getByTestId("settings-pane-nav-preferences");
-      if (await preferencesNav.isVisible({ timeout: 2000 }).catch(() => false)) {
+      // stable rect and times out.
+      //
+      // `locator.isVisible({ timeout })` does NOT wait — Playwright's own
+      // types mark that option deprecated/ignored, "returns immediately" —
+      // so an isVisible-based guard called right after goto() races
+      // hydration and silently no-ops before the nav ever mounts (this is
+      // what actually broke here: 2026-07-21, confirmed via a CI trace).
+      // `waitFor({ state: "visible" })` genuinely retries. Gated on
+      // vp.name so mobile (where this nav never renders — `hidden md:block`)
+      // doesn't pay a real wait for a locator that will never appear.
+      if (vp.name === "desktop") {
+        const preferencesNav = page.getByTestId("settings-pane-nav-preferences");
+        await preferencesNav.waitFor({ state: "visible", timeout: 10_000 });
         await preferencesNav.click();
       }
       const fastingLink = page.getByTestId("settings-fasting-link");

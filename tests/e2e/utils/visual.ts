@@ -62,12 +62,26 @@ export async function seedConsent(page: Page): Promise<void> {
  *  /login and /signin visual capture to the marketing landing (same defect
  *  class already fixed in scripts/web-drive.mjs#dismissOverlays, 2026-07-01).
  *  "continue" is dropped entirely — it collides with real nav/auth CTAs
- *  ("Continue with email", pricing "Continue to checkout"). */
+ *  ("Continue with email", pricing "Continue to checkout").
+ *
+ *  Every callsite here invokes this right after `page.goto(..., {
+ *  waitUntil: "domcontentloaded" })` with no settle in between. `isVisible({
+ *  timeout })` does NOT wait — Playwright's own types mark that option
+ *  deprecated/ignored ("returns immediately") — so the old `isVisible`-based
+ *  guards raced hydration and silently no-op'd before these one-shot
+ *  overlays had mounted, leaking them into the golden screenshot instead of
+ *  dismissing them (2026-07-21, same failure class as the settings
+ *  two-pane-nav guard fixed alongside this). `waitFor({ state: "visible" })`
+ *  genuinely retries for the given timeout before concluding "absent". */
 export async function dismissVisualOverlays(page: Page): Promise<void> {
   const acceptBtn = page
     .locator('[data-testid="cookie-consent-banner"]')
     .getByRole("button", { name: /accept all/i });
-  if (await acceptBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
+  const hasAcceptBtn = await acceptBtn
+    .waitFor({ state: "visible", timeout: 1500 })
+    .then(() => true)
+    .catch(() => false);
+  if (hasAcceptBtn) {
     await acceptBtn.click();
     await page.waitForTimeout(400);
   }
@@ -75,7 +89,11 @@ export async function dismissVisualOverlays(page: Page): Promise<void> {
   const dismissBtn = page
     .locator('[data-testid="first-run-checklist"]')
     .getByRole("button", { name: /dismiss checklist/i });
-  if (await dismissBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+  const hasDismissBtn = await dismissBtn
+    .waitFor({ state: "visible", timeout: 1000 })
+    .then(() => true)
+    .catch(() => false);
+  if (hasDismissBtn) {
     await dismissBtn.click();
     await page.waitForTimeout(400);
   }
@@ -87,7 +105,11 @@ export async function dismissVisualOverlays(page: Page): Promise<void> {
     .locator('[role="dialog"], [role="alertdialog"]')
     .getByRole("button", { name: /^(keep going|got it|close)$/i })
     .first();
-  if (await keepGoing.isVisible({ timeout: 1000 }).catch(() => false)) {
+  const hasKeepGoing = await keepGoing
+    .waitFor({ state: "visible", timeout: 1000 })
+    .then(() => true)
+    .catch(() => false);
+  if (hasKeepGoing) {
     await keepGoing.click().catch(() => undefined);
     await page.waitForTimeout(400);
   }
