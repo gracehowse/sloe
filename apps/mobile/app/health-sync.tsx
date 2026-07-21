@@ -29,6 +29,7 @@ import { useCardElevation } from "@/hooks/useCardElevation";
 import { useSettingsWinMoment } from "@/hooks/useSettingsWinMoment";
 import {
   formatNutritionImportSummary,
+  healthSyncResultSummaryParts,
   isExpoGoRuntime,
   isHealthSyncAvailable,
   probeHealthAccess,
@@ -427,13 +428,7 @@ export default function HealthSyncScreen() {
         return;
       }
       const result = raced;
-      const parts: string[] = [];
-      if (result.stepsUpdated) parts.push("steps");
-      if (result.weightUpdated) parts.push("weight");
-      if (result.bodyFatUpdated) parts.push("body fat");
-      if (result.activeEnergyUpdated) parts.push("active energy");
-      if (result.workoutsUpdated) parts.push("workouts");
-      if (result.basalBurnUpdated) parts.push("resting energy");
+      const parts = healthSyncResultSummaryParts(result);
 
       // 2026-05-14 (premium-bar audit Group J #9): persist a per-category
       // last-sync timestamp for every flag that updated. Stamps the
