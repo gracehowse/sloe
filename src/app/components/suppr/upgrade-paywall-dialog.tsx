@@ -13,14 +13,12 @@
  * one Pro upsell.
  *
  * Pro users should never see this dialog — callers must guard at the
- * open-site. If a Pro user somehow reaches this with `userTier === "pro"`
- * the component renders nothing. Legacy Base-tier users (any
- * grandfathered `userTier === "base"` row) are treated as Free for
- * upsell purposes — they get the same Pro pitch.
+ * open-site; if `userTier === "pro"` the component renders nothing.
+ * Legacy (grandfathered) Base-tier users are treated as Free for
+ * upsell purposes — same Pro pitch.
  *
- * Edge case: Free users on a Pro-gated trigger surface (`voice_log`
- * / `photo_log`) get the same Pro upsell — there's no longer a
- * "Base unlocks everything else" intermediate step.
+ * Edge case: Free users on a Pro-gated trigger (`voice_log`/`photo_log`)
+ * get the same Pro upsell — no more "Base unlocks everything" step.
  *
  * Frequency cap: one dialog open per session (sessionStorage key
  * `suppr-upsell-dialog-shown-v2` — bumped from v1 when the variant
@@ -42,7 +40,7 @@
  *
  * Prices are read from `PRICING_TIERS` at render time — never
  * hardcoded. Web-only scope; mobile paywall is handled by
- * `apps/mobile/app/paywall.tsx`.
+ * `apps/mobile/app/paywall.tsx`. Tax clause is region/flag-aware (ENG-1441) — see `useUpgradeDialogTaxClause.ts`.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -51,6 +49,7 @@ import { supabase } from "../../../lib/supabase/browserClient.ts";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { PRICING_TIERS } from "../../../lib/landing/pricingTiers.ts";
+import { useUpgradeDialogTaxClause } from "./useUpgradeDialogTaxClause.ts";
 import { PaywallTrustStrip } from "../../../../app/pricing/PaywallTrustStrip.tsx";
 import { TrialEndReminderUpgradeBlock, type TrialEndReminderUpgradeBlockHandle } from "../paywall/TrialEndReminderUpgradeBlock.tsx";
 import { UPGRADE_PAYWALL_PRO_FEATURES } from "../paywall/upgradePaywallProFeatures.ts";
@@ -176,6 +175,7 @@ export function UpgradePaywallDialog({
   const proPeriodShort = proPeriodLabel.replace(/^\//, "");
 
   const annualSavingsLabel = proTier?.annualSavings ?? "Save 37%";
+  const taxClause = useUpgradeDialogTaxClause(); // ENG-1441
 
   // --- StrictMode double-fire guard (shared across new + legacy emits) ---
   const viewedForOpenRef = useRef(false);
@@ -366,7 +366,7 @@ export function UpgradePaywallDialog({
   const trialLead = isAnnual
     ? "Starts with a 7-day free trial — no payment due today, first charge on Day 7. "
     : "";
-  const renewalNote = `${trialLead}${productName} renews automatically at ${priceLabel} per ${periodNoun}${altLine} until cancelled. Cancel anytime from Account → Billing. Prices include any applicable VAT. 7-day refund policy: support@getsloe.com.`;
+  const renewalNote = `${trialLead}${productName} renews automatically at ${priceLabel} per ${periodNoun}${altLine} until cancelled. Cancel anytime from Account → Billing. ${taxClause} 7-day refund policy: support@getsloe.com.`;
 
   const primaryCtaLabel = `Upgrade to Pro · ${priceLabel}/${periodShort}`;
   const secondaryCtaLabel = "Continue for free";

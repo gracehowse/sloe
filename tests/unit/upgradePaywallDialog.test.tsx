@@ -52,6 +52,17 @@ vi.mock("@supabase/supabase-js", () => ({
   }),
 }));
 
+// ENG-1441 — the dialog resolves `STRIPE_TAX_ENABLED` via
+// `useStripeTaxEnabled()` (a fetch to `/api/stripe/tax-status`, see
+// that hook's doc comment for why this is a fetch rather than a
+// prop). Mocked directly so tests are synchronous/deterministic rather
+// than racing a real fetch in jsdom; default `false` matches the real
+// hook's fail-safe default and the pre-launch `.env.example` value.
+const stripeTaxEnabledMock = vi.fn(() => false);
+vi.mock("../../src/lib/stripe/useStripeTaxEnabled.ts", () => ({
+  useStripeTaxEnabled: () => stripeTaxEnabledMock(),
+}));
+
 import { UpgradePaywallDialog } from "../../src/app/components/suppr/upgrade-paywall-dialog";
 
 function Harness({
@@ -83,9 +94,24 @@ function Harness({
   );
 }
 
+/** ENG-1441 — deterministic client-side region for
+ *  `detectRegionFromNavigatorLanguage()`, same rationale + pattern as
+ *  `subscriptionCard.test.tsx` ("Deterministic region —
+ *  navigator.language drives detectRegionClient"). */
+function stubNavigatorLanguage(lang: string) {
+  Object.defineProperty(window.navigator, "language", {
+    value: lang,
+    configurable: true,
+  });
+}
+
 describe("UpgradePaywallDialog (PR-01 post-collapse, 2026-04-28)", () => {
   beforeEach(() => {
     trackCalls.length = 0;
+    stripeTaxEnabledMock.mockReturnValue(false);
+    // Default-region baseline for every test that doesn't override it —
+    // matches the ENG-1441 default (`detectRegion`'s `defaultRegion`).
+    stubNavigatorLanguage("en-US");
     try {
       window.sessionStorage.clear();
     } catch {
@@ -304,7 +330,13 @@ describe("UpgradePaywallDialog (PR-01 post-collapse, 2026-04-28)", () => {
       /Pro renews automatically at .* per month until cancelled\./i,
     );
     expect(renewal).toHaveTextContent(/Cancel anytime from Account → Billing/i);
-    expect(renewal).toHaveTextContent(/Prices include any applicable VAT/i);
+    // ENG-1441: default region (this test's `beforeEach` stubs
+    // `navigator.language` to "en-US") + `STRIPE_TAX_ENABLED=false` (the
+    // real default) must render the honest tax-EXCLUSIVE line, never
+    // the unconditional "Prices include any applicable VAT." claim this
+    // dialog used to hardcode regardless of region or the flag.
+    expect(renewal).toHaveTextContent(/Price excludes any applicable taxes\./i);
+    expect(renewal).not.toHaveTextContent(/Prices include any applicable VAT/i);
     expect(renewal).toHaveTextContent(/7-day refund policy/i);
     // ENG-1285: monthly stays trial-less — no trial claim on the
     // default (monthly) disclosure.
@@ -312,6 +344,60 @@ describe("UpgradePaywallDialog (PR-01 post-collapse, 2026-04-28)", () => {
     // PR-01: Base must not appear in the disclosure.
     expect(renewal).not.toHaveTextContent(/Suppr Base/i);
     expect(renewal).not.toHaveTextContent(/keep base/i);
+  });
+
+  // ENG-1441 (2026-07-21) — the dialog's tax clause used to be a
+  // hardcoded, unconditional "Prices include any applicable VAT."
+  // regardless of the visitor's region or whether Stripe Tax was even
+  // active. Now mirrors `BillingDisclosure`'s `taxClause` branch exactly
+  // (`app/pricing/BillingDisclosure.tsx`): UK/EU + flag-on wins outright,
+  // otherwise the flag alone decides, default is the honest non-claim.
+  describe("region + STRIPE_TAX_ENABLED tax clause (ENG-1441)", () => {
+    it("UK region + flag ON: 'Prices include VAT.'", () => {
+      stubNavigatorLanguage("en-GB");
+      stripeTaxEnabledMock.mockReturnValue(true);
+      render(<Harness userTier="free" />);
+      const renewal = screen.getByTestId("upsell-renewal-note");
+      expect(renewal).toHaveTextContent(/Prices include VAT\./i);
+      expect(renewal).not.toHaveTextContent(/excludes any applicable taxes/i);
+    });
+
+    it("UK region + flag OFF: still the honest tax-exclusive line (no false VAT claim)", () => {
+      stubNavigatorLanguage("en-GB");
+      stripeTaxEnabledMock.mockReturnValue(false);
+      render(<Harness userTier="free" />);
+      const renewal = screen.getByTestId("upsell-renewal-note");
+      expect(renewal).toHaveTextContent(/Price excludes any applicable taxes\./i);
+      expect(renewal).not.toHaveTextContent(/Prices include VAT/i);
+      expect(renewal).not.toHaveTextContent(/Price includes any applicable VAT/i);
+    });
+
+    it("EU region (de-DE) + flag ON: 'Prices include VAT.'", () => {
+      stubNavigatorLanguage("de-DE");
+      stripeTaxEnabledMock.mockReturnValue(true);
+      render(<Harness userTier="free" />);
+      const renewal = screen.getByTestId("upsell-renewal-note");
+      expect(renewal).toHaveTextContent(/Prices include VAT\./i);
+    });
+
+    it("default region (en-US) + flag ON: the flag-only inclusive-VAT branch, not the UK/EU wording", () => {
+      stubNavigatorLanguage("en-US");
+      stripeTaxEnabledMock.mockReturnValue(true);
+      render(<Harness userTier="free" />);
+      const renewal = screen.getByTestId("upsell-renewal-note");
+      // Mirrors BillingDisclosure exactly: outside UK/EU, the flag alone
+      // decides and renders the generic "Price includes any applicable
+      // VAT." (not the UK/EU-specific "Prices include VAT.").
+      expect(renewal).toHaveTextContent(/Price includes any applicable VAT\./i);
+    });
+
+    it("default region (en-US) + flag OFF: tax-exclusive — the majority real-world state today", () => {
+      stubNavigatorLanguage("en-US");
+      stripeTaxEnabledMock.mockReturnValue(false);
+      render(<Harness userTier="free" />);
+      const renewal = screen.getByTestId("upsell-renewal-note");
+      expect(renewal).toHaveTextContent(/Price excludes any applicable taxes\./i);
+    });
   });
 
   it("ENG-1241: defaultPeriod='annual' (onboarding See Pro) preselects annual + leads with the 7-day trial", () => {

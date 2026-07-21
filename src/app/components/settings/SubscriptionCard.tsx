@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { Icons } from "../ui/icons";
-import { detectRegion, type RegionInfo } from "../../../lib/region/detectRegion";
+import { detectRegionFromNavigatorLanguage } from "../../../lib/region/detectRegion";
 import { SupprCard } from "../ui/suppr-card";
 import { useSubscriptionStatus } from "../../../lib/stripe/useSubscriptionStatus";
 import {
@@ -45,23 +45,6 @@ import {
  * for this card (noted in the ENG-748 report).
  */
 
-/** Client-side region detection. The server `detectRegion` reads
- *  request headers; in this client component we feed it a synthetic
- *  `accept-language` from `navigator.language` so we REUSE the same
- *  region logic instead of inventing a second path (legal P0). Falls
- *  back to the default (no VAT note) region during SSR / when navigator
- *  is unavailable. */
-function detectRegionClient(): RegionInfo {
-  if (typeof navigator === "undefined") {
-    return detectRegion({ get: () => null });
-  }
-  const lang = navigator.language || "";
-  return detectRegion({
-    get: (name: string) =>
-      name.toLowerCase() === "accept-language" ? lang : null,
-  });
-}
-
 export interface SubscriptionCardProps {
   userTier: "free" | "base" | "pro";
   /** Fires the existing cancel-export prompt → /account/billing flow. */
@@ -78,7 +61,7 @@ export function SubscriptionCard({ userTier, onManageSubscription }: Subscriptio
   // `managedVia` flows into the view helper below (it decides the
   // IAP / none / stripe branch).
 
-  const region = useMemo(() => detectRegionClient(), []);
+  const region = useMemo(() => detectRegionFromNavigatorLanguage(), []);
 
   const view: SubscriptionCardView = useMemo(
     () =>

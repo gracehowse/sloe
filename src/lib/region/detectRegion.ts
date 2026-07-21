@@ -37,8 +37,28 @@
  *      Trusted when present because the request passed through Cloudflare.
  *   2. `Accept-Language` — falls back to locale sniffing when no CF header
  *      exists (most local-dev / direct-to-Vercel paths).
- *   3. Default: GBP / en-GB / no VAT note — safe for unknown regions
- *      because Stripe checkout defaults to GBP today.
+ *   3. Default: USD / en-US / no VAT note. ENG-1441 (2026-07-21):
+ *      previously this branch returned GBP — mislabelling the largest
+ *      single visitor cohort (US, and every other non-UK/non-EU region)
+ *      as GBP with no indication their currency wasn't recognised at
+ *      all. USD is a DISPLAY/label change only — `displayAmountsInGbp`
+ *      stays `true` because there is no USD Stripe Price object yet
+ *      (`CheckoutCurrency` in `src/lib/stripe/resolveProStripePrice.ts`
+ *      is `"GBP" | "EUR"` — no USD SKU exists). Checkout is unaffected:
+ *      `resolveProStripePriceId` already treats any non-EUR currency as
+ *      GBP, so tagging the default region "USD" instead of "GBP"
+ *      changes zero Stripe-side behaviour, only the region label +
+ *      the "pricing coming soon" note surfaced via
+ *      `resolveRegionPricingNote` below (mirrors the EUR
+ *      `isEurStripePricingConfigured()` gate ENG-1442 already shipped —
+ *      same "recognise the region, be honest the amount is still GBP"
+ *      pattern, now applied to the cohort that was previously silently
+ *      mislabelled rather than flagged). Launching real USD pricing
+ *      (a pricing decision + Stripe USD Price ids + a
+ *      `displayByCurrency.USD` slot, same readiness-guard shape as
+ *      `eurSkuDisplayGuard.ts`) is separate, un-started product work —
+ *      this change does not attempt it and does not fabricate USD
+ *      numbers by converting the GBP figures.
  *
  * Region → currency map is deliberately coarse (UK vs EU vs other). A
  * country like Norway / Switzerland isn't in the EU but we treat it as
@@ -150,9 +170,15 @@ function euRegion(): RegionInfo {
 }
 
 function defaultRegion(): RegionInfo {
+  // ENG-1441 (2026-07-21) — was `currency: "GBP", locale: "en-GB"`. See
+  // the file-level doc comment: this is a label change (the default
+  // cohort — US and every other non-UK/non-EU region — is now tagged
+  // USD instead of silently GBP), NOT a pricing change.
+  // `displayAmountsInGbp: true` is unchanged — the rendered digits stay
+  // the flat GBP `PRICING_TIERS` fields until real USD pricing ships.
   return {
-    currency: "GBP",
-    locale: "en-GB",
+    currency: "USD",
+    locale: "en-US",
     vatNote: "",
     displayAmountsInGbp: true,
   };
@@ -180,4 +206,78 @@ export function resolveRenderedVatNote(
 ): string {
   if (!stripeTaxEnabled) return "";
   return rawVatNote;
+}
+
+/**
+ * ENG-1441 (2026-07-21) — best-effort region guess for client
+ * components that have no request headers to read: the marketing
+ * landing page (`app/(landing)/LandingPage.tsx`, kept fully static for
+ * viral-traffic TTFB per the 2026-05-15 decision recorded in
+ * `app/page.tsx` — calling `headers()`/`cookies()` in any Server
+ * Component on that route would opt it back into dynamic rendering,
+ * reverting that optimisation) and the in-app upgrade dialog
+ * (`UpgradePaywallDialog`, mounted from multiple call sites with no
+ * single Server Component choke point, and explicitly barred from
+ * self-fetching per D12 §6.3 — "no loading spinner on an intent-driven
+ * modal").
+ *
+ * Reuses `detectRegion` itself rather than a second classification
+ * path (legal P0 — same rule `subscriptionCardView`'s region branch
+ * follows) by feeding it a synthetic `RegionHeaders` whose
+ * `accept-language` is `navigator.language`. This is the exact pattern
+ * already shipped in `SubscriptionCard.tsx`'s local `detectRegionClient`
+ * (ENG-748 #11) — extracted here so it has one definition instead of
+ * three near-identical copies once the landing page + dialog need it
+ * too. `SubscriptionCard.tsx` now imports this instead of its own copy.
+ *
+ * Weaker than server-side `detectRegion`: it never sees `CF-IPCountry`
+ * (the trusted edge-geo signal), only the browser's reported language,
+ * so a UK visitor on an `en-US`-locale browser reads as default. That
+ * trade-off is deliberate — it's a display-only VAT-note / "pricing
+ * coming soon" label; the actual charged amount + currency is always
+ * resolved authoritatively server-side in the Stripe checkout route
+ * (`detectRegion(req.headers)`), which this helper never touches.
+ *
+ * SSR-safe: returns the default region when `navigator` is unavailable
+ * (this runs during Next's prerender pass for any `"use client"`
+ * component that also renders on the server before hydration).
+ */
+export function detectRegionFromNavigatorLanguage(): RegionInfo {
+  if (typeof navigator === "undefined") {
+    return detectRegion({ get: () => null });
+  }
+  const lang = navigator.language || "";
+  return detectRegion({
+    get: (name: string) => (name.toLowerCase() === "accept-language" ? lang : null),
+  });
+}
+
+/**
+ * ENG-1441 (2026-07-21) — the "pricing coming soon" banner shown above
+ * a tier grid for a region whose Stripe SKU isn't real yet. Extracted
+ * from the inline ternary `/pricing/page.tsx` already used for EUR
+ * (ENG-1442) so the landing page + upgrade dialog can share the exact
+ * same copy/logic instead of drifting three separate copies of it.
+ *
+ * `eurPricingReady` is `isEurStripePricingConfigured()`
+ * (`src/lib/stripe/resolveProStripePrice.ts`) — passed in rather than
+ * imported here so this region-detection module doesn't reach into the
+ * Stripe SKU module (kept as a leaf-ish, narrowly-scoped file).
+ *
+ * USD has no readiness concept to check — there is no
+ * `STRIPE_PRICE_PRO_*_USD` env var and no `isUsdStripePricingConfigured`
+ * (see the `defaultRegion` doc comment above): the note is unconditional
+ * whenever the resolved currency is USD, until real USD pricing ships.
+ */
+export function resolveRegionPricingNote(
+  currency: RegionCurrency,
+  opts: { eurPricingReady: boolean },
+): string {
+  if (currency === "EUR" && !opts.eurPricingReady) {
+    return "EU pricing coming soon — current prices in GBP";
+  }
+  if (currency === "USD") {
+    return "US pricing coming soon — current prices in GBP";
+  }
+  return "";
 }

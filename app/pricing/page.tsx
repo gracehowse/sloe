@@ -5,7 +5,11 @@ import { ChevronDown } from "lucide-react";
 import { PageViewTracker, PageDismissTracker } from "../../src/app/components/PageViewTracker.tsx";
 import { AnalyticsEvents, type PaywallViewedFrom } from "../../src/lib/analytics/events.ts";
 import { FREE_SAVE_LIMIT, NUTRITION_SOURCES, PRICING_TIERS } from "../../src/lib/landing/content.ts";
-import { detectRegion, resolveRenderedVatNote } from "../../src/lib/region/detectRegion.ts";
+import {
+  detectRegion,
+  resolveRenderedVatNote,
+  resolveRegionPricingNote,
+} from "../../src/lib/region/detectRegion.ts";
 import { isEurStripePricingConfigured } from "../../src/lib/stripe/resolveProStripePrice.ts";
 import { PricingHero } from "./PricingHero.tsx";
 import { PricingHeroCta } from "./PricingHeroCta.tsx";
@@ -286,11 +290,15 @@ export default async function PricingPage({
             process.env.STRIPE_TAX_ENABLED === "true",
           )}
           regionCurrency={region.currency}
-          regionNote={
-            region.currency === "EUR" && !isEurStripePricingConfigured()
-              ? "EU pricing coming soon — current prices in GBP"
-              : ""
-          }
+          // ENG-1441 (2026-07-21): was an inline EUR-only ternary — now
+          // the shared helper so /pricing, the landing page, and the
+          // upgrade dialog can't drift on this copy. Adds the USD
+          // "pricing coming soon" case (previously unreachable — the
+          // default region used to be tagged GBP, not USD; see
+          // `detectRegion`'s `defaultRegion` doc comment).
+          regionNote={resolveRegionPricingNote(region.currency, {
+            eurPricingReady: isEurStripePricingConfigured(),
+          })}
         />
 
         <PricingLegacyTrustSignals />
