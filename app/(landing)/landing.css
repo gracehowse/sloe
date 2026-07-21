@@ -722,6 +722,21 @@
   }
 }
 
+/* ENG-1441 — region "pricing coming soon" banner, mirrors /pricing's
+   `pricing-region-note` pill (`app/pricing/PricingTiersGrid.tsx`). */
+.lp-region-note {
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--lp-ink-faint);
+  text-align: center;
+  max-width: 32rem;
+  margin: 0 auto 20px;
+  padding: 8px 16px;
+  border: 1px solid var(--lp-line);
+  border-radius: 9999px;
+}
+
 .lp-price-card {
   border: 1px solid var(--lp-line);
   border-radius: 24px;
@@ -753,6 +768,15 @@
   font-size: 1rem;
   color: var(--lp-ink-faint);
   margin-left: 4px;
+}
+
+/* ENG-1441 — VAT-inclusive note under the Pro price, mirrors
+   /pricing's `pricing-vat-inclusive-*` line (`PricingTiersGrid.tsx`). */
+.lp-vat-note {
+  font-family: var(--font-inter), Inter, sans-serif;
+  font-size: 12px;
+  color: var(--lp-ink-faint);
+  margin: 4px 0 0;
 }
 
 .lp-price-features {
