@@ -58,6 +58,10 @@ function CoachCandidateRow({
         style={{ backgroundColor: recipeUnderlayColor({ id: candidate.recipeId, title: candidate.title }, fallbackScheme) }}
       >
         {candidate.thumbnail ? (
+          // ENG-1623 — decorative alt="" is deliberate: the visible
+          // <p>{candidate.title}</p> right next to this thumb already names
+          // the recipe. See the decorative-vs-informative rule in
+          // suppr/discover-recipe-image.tsx.
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={candidate.thumbnail}

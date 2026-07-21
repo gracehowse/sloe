@@ -259,7 +259,7 @@ export default async function RecipePage({ params }: Props) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={recipe.image}
-              alt={recipe.title}
+              alt={recipe.title} /* ENG-1623 — INFORMATIVE: sole namer of the recipe here, no adjacent title (contract: src/app/components/suppr/discover-recipe-image.tsx) */
               className="w-full aspect-video object-cover"
             />
           </RecipeUnderlaySurface>
