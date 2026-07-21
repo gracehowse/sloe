@@ -287,7 +287,7 @@ export default function CookModeScreen() {
   /** Voice handsfree (Paprika parity, 2026-05-01). v1 ships the
    *  opt-in shell only — the toggle, the persistence, and an
    *  explanatory banner. Real audio capture is intentionally deferred
-   *  per `docs/decisions/2026-05-01-cook-voice-handsfree.md` so the
+   *  (see `apps/mobile/lib/cookHandsfree.ts`'s header) so the
    *  TestFlight build doesn't ship a mic permission prompt + binary
    *  bloat for a feature with zero users yet (solo-tester posture).
    *  The toggle still mirrors to AsyncStorage so v2 lights up

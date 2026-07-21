@@ -1332,9 +1332,9 @@ export default function TrackerScreen() {
   // Eat-again state retired (ENG-984, 2026-06-17). The candidate
   // pipeline + per-day dismiss store existed only to feed the Eat-again
   // card, which was suppressed from Today on 2026-05-22 (v4) and never
-  // re-surfaced — so it is removed here. (The shared `eatAgainDismiss` /
-  // food-history modules stay as independently-tested utilities; this is
-  // not a deferral.)
+  // re-surfaced — so it is removed here. The shared `eatAgainDismiss` /
+  // food-history helpers they depended on were confirmed fully unused
+  // and deleted 2026-07-21 (ENG-1604) — see food-tracking.md.
 
   // ── Weekly Check-in banner (MacroFactor parity, 2026-04-30) ──
   // Visible only on the first day of a fresh week (Sun for Sunday-

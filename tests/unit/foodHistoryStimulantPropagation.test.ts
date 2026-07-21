@@ -1,10 +1,10 @@
 /**
  * Tracking-extras autoupdate (2026-05-01) — pins the new caffeine /
  * alcohol propagation through `computeFrequentMeals` /
- * `computeRecentMeals` / `computeEatAgainForSlot`. Without this, a
- * cortado logged via search would forget its 128 mg caffeine
- * contribution the moment the user re-logged it from Quick Add /
- * Eat-again — exactly the regression TestFlight Build 40 flagged.
+ * `computeRecentMeals`. Without this, a cortado logged via search
+ * would forget its 128 mg caffeine contribution the moment the user
+ * re-logged it from Quick Add — exactly the regression TestFlight
+ * Build 40 flagged.
  *
  * The bucket builder reads `micros.caffeineMg` first (canonical for
  * meals committed via the food-search / barcode / voice / photo paths)
@@ -14,7 +14,6 @@
  */
 import { describe, it, expect } from "vitest";
 import {
-  computeEatAgainForSlot,
   computeFrequentMeals,
   computeRecentMeals,
   type FoodHistoryMealLike,
@@ -166,46 +165,13 @@ describe("foodHistory alcohol propagation", () => {
   });
 });
 
-describe("foodHistory recent + eat-again propagation", () => {
+describe("foodHistory recent propagation", () => {
   it("computeRecentMeals carries caffeineMg forward", () => {
     const byDay = {
       "2026-04-30": [meal("Cortado", 29, { micros: { caffeineMg: 128 } })],
     };
     const out = computeRecentMeals(byDay);
     expect(out[0]!.caffeineMg).toBe(128);
-  });
-
-  it("computeEatAgainForSlot carries caffeineMg forward", () => {
-    const byDay = {
-      "2026-04-29": [
-        meal("Cortado", 29, {
-          name: "Breakfast",
-          micros: { caffeineMg: 128 },
-        }),
-      ],
-    };
-    // Today is 2026-04-30; eat-again should pull the prior-day cortado.
-    const out = computeEatAgainForSlot(
-      byDay,
-      "Breakfast",
-      new Date("2026-04-30T09:00:00Z"),
-    );
-    expect(out).not.toBeNull();
-    expect(out!.caffeineMg).toBe(128);
-  });
-
-  it("eat-again with no caffeine on the source row leaves caffeineMg undefined", () => {
-    const byDay = {
-      "2026-04-29": [meal("Toast", 200, { name: "Breakfast" })],
-    };
-    const out = computeEatAgainForSlot(
-      byDay,
-      "Breakfast",
-      new Date("2026-04-30T09:00:00Z"),
-    );
-    expect(out).not.toBeNull();
-    expect(out!.caffeineMg).toBeUndefined();
-    expect(out!.alcoholG).toBeUndefined();
   });
 });
 

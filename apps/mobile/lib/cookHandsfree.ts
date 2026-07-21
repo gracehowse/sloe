@@ -15,10 +15,14 @@
  *      to one of the canonical handsfree commands. Useful now for
  *      tests, ready to drop into a real listener later.
  *
- * v2 (deferred — see `docs/decisions/2026-05-01-cook-voice-handsfree.md`)
- * will add the real audio capture path. This file's API is the seam
- * the listener will plug into so the cook screen never grows a direct
- * dep on the recognition backend.
+ * v2 (deferred, no target date) will add the real audio capture path.
+ * This file's API is the seam the listener will plug into so the cook
+ * screen never grows a direct dep on the recognition backend. (A
+ * decision doc for this shell-now/listener-later split was intended
+ * but never made it into the repo — see
+ * `docs/journeys/discover-and-library.md`'s Cook-mode section for the
+ * open question this leaves: whether the approach is still right, or
+ * the dark toggle should come out until v2 is properly scoped.)
  *
  * Storage: a single AsyncStorage key `suppr.cook.handsfree.enabled` with
  * the value `"1"` or `"0"`. Local-only by design — pushing this into
@@ -34,11 +38,10 @@ export const COOK_HANDSFREE_ENABLED_KEY = "suppr.cook.handsfree.enabled";
 /**
  * Feature flag — gates whether the in-cook header toggle renders at
  * all. Defaults to **OFF** because v1 ships the SHELL only; the audio
- * listener itself is queued for v2 (see
- * `docs/decisions/2026-05-01-cook-voice-handsfree.md`). Shipping the
- * toggle dark avoids the journey-architect concern that users will
- * tap it, see no microphone behaviour, and conclude the app is
- * broken.
+ * listener itself is queued for v2 (no decision doc — see the file
+ * header). Shipping the toggle dark avoids the journey-architect
+ * concern that users will tap it, see no microphone behaviour, and
+ * conclude the app is broken.
  *
  * Opt-in via `EXPO_PUBLIC_COOK_HANDSFREE_ENABLED=true`. The flag is
  * read once at module load — flipping it requires a JS reload (or

@@ -30,3 +30,29 @@ Ship the real surfaces behind `onboarding_conversion_funnel_v1` (default-ON per 
 - Wire first-log chip selection to open Today log sheet with slot pre-selected (currently records choice only)
 - RevenueCat trial start from onboarding upgrade CTA (mobile paywall / web pricing)
 - Extract mobile `rowMenu` into `PlanMealActionSheet.tsx` to shrink pinned `planner.tsx`
+
+## Addendum (2026-07-02 — launch-blocker review, PR #692)
+
+The step order shipped above (`upgrade` → `first-log`) was reordered to
+**`first-log` → `upgrade` (terminal)** in the same PR, in response to
+launch-blocker review the day after this doc was written. Rationale
+(captured in `src/lib/onboarding/state.ts`'s `STEP_IDS` comment, which is
+the canonical citation going forward):
+
+- `first-log` (ENG-1233) is the ACTIVATION step; `upgrade` (ENG-1241) is
+  the MONETISE step — activate first, ask for money last.
+- Making `upgrade` terminal is what lets "skip lands straight on Today, no
+  detour through any other screen" hold literally: "Continue on Free" runs
+  the completion handler directly; "Start free trial" routes into the
+  paywall, which itself lands on Today. Neither path re-enters another
+  onboarding step.
+- Both steps stay flag-gated behind `onboarding_conversion_funnel_v1`
+  together, so the legacy data-bridges-terminal flow is unaffected when
+  the flag is off.
+
+No separate decision doc was ever written for this reorder — a source
+comment in `state.ts` cited a
+`docs/decisions/2026-07-01-onboarding-see-pro-eng1241.md` that doesn't
+exist on disk. This addendum is that missing record, backfilled 2026-07-21
+(ENG-1605) from the PR #692 commit history once the broken citation was
+found.

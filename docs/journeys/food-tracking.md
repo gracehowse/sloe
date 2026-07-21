@@ -251,12 +251,14 @@ prioritising the fasting-window feature over the eat-again suggestion — see
 `NutritionTracker.tsx`'s inline comment and
 `docs/ux/teardown-2026-04-28-daily-loop.md` for the full reasoning.
 
-The shared helpers it depended on — `computeEatAgainForSlot`
-(`src/lib/nutrition/foodHistory.ts`) and `eatAgainDismiss`
-(`src/lib/nutrition-core/eatAgainDismiss.ts`) — are dead code today: nothing
-calls them from either host, but they're still shipped and still covered by
-a live test (`tests/unit/eatAgainDismiss.test.ts`). Neither the helpers nor
-the test have been removed yet.
+The shared helpers it depended on — `computeEatAgainForSlot` /
+`computeEatAgainCandidatesForSlot` (`src/lib/nutrition/foodHistory.ts`) and
+`eatAgainDismiss` (`src/lib/nutrition/eatAgainDismiss.ts`, re-exported at
+`src/lib/nutrition-core/eatAgainDismiss.ts`) — sat as dead code for months:
+nothing called them from either host, but they stayed shipped and covered
+by a live test (`tests/unit/eatAgainDismiss.test.ts`). Confirmed unused on
+both platforms and deleted 2026-07-21 (ENG-1604), along with their test
+and the barrel export.
 
 **Next in this loop:** re-logging now happens via the slot-header "Log
 usual" pill or the Quick Add panel — see "Save a usual meal" and "Adding
