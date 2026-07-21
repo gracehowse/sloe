@@ -101,7 +101,11 @@ async function dismissChrome(page: Page): Promise<void> {
     .then(() => true)
     .catch(() => false);
   if (hasAccept) {
-    await accept.click();
+    // Bounded + caught (not bare): a best-effort dismiss for a clean
+    // capture, not an assertion the banner is interactable — a page-nav
+    // element deliberately winning the tap (ENG-1386, see
+    // CookieConsent.tsx / tests/e2e/utils/visual.ts) shouldn't hang this.
+    await accept.click({ timeout: 3000 }).catch(() => undefined);
   }
   // ENG-633 — suppress first-run completion toast noise on Today captures.
   await page.evaluate(() => {
@@ -119,9 +123,12 @@ async function dismissChrome(page: Page): Promise<void> {
       .then(() => true)
       .catch(() => false);
     if (hasKeep) {
-      await keep.click();
+      await keep.click({ timeout: 3000 }).catch(() => undefined);
     } else {
-      await milestone.getByRole("button", { name: /^close$/i }).click();
+      await milestone
+        .getByRole("button", { name: /^close$/i })
+        .click({ timeout: 3000 })
+        .catch(() => undefined);
     }
     await expect(milestone).toBeHidden({ timeout: 5000 });
   }
