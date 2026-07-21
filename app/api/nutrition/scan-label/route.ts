@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { rateLimit } from "@/lib/server/rateLimit";
-import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
+import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
+import {
+  FREE_PHOTO_LOG_WEEKLY_LIMIT,
+  FREE_PHOTO_LOG_WINDOW_MS,
+} from "@/lib/nutrition/photoLogQuota";
 import { AiBudgetExceededError, callAiVision } from "@/lib/server/aiProvider";
 import { normalizeImageForAi } from "@/lib/server/normalizeImageForAi";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
@@ -170,19 +174,46 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  // Same per-user budget as photo-log to avoid burning the AI budget
-  // on a single user spamming label scans.
-  const limited = await rateLimit({
-    keyPrefix: "api:scan-label",
-    userId,
-    limit: 30,
-    windowMs: 24 * 60 * 60_000,
-  });
-  if (!limited.ok) {
-    return NextResponse.json(
-      { ok: false, error: "rate_limited", retryAfterSec: limited.retryAfterSec },
-      { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
-    );
+  // ENG-1487 finding #2 (2026-07-10): this route previously had no tier
+  // gate at all — every account, free or Pro, shared the same flat 30/day
+  // cap. That made it a cheap fleet-DoS/cost vector: farmed FREE accounts
+  // could each burn 30 vision calls/day at ~2p apiece with no entitlement
+  // check. Free tier now gets the same small weekly taster bucket as
+  // photo-log (a comparable vision-call cost class); Pro keeps the
+  // existing 30/day cap unchanged.
+  const tier = await getUserTier(userId);
+  if (tier !== "pro") {
+    const freeLimited = await rateLimit({
+      keyPrefix: "api:scan-label:free-quota",
+      userId,
+      limit: FREE_PHOTO_LOG_WEEKLY_LIMIT,
+      windowMs: FREE_PHOTO_LOG_WINDOW_MS,
+    });
+    if (!freeLimited.ok) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "upgrade_required",
+          message:
+            "You've used all your free label scans this week. Pro unlocks label scanning up to 30 a day.",
+          freeQuotaRemaining: 0,
+        },
+        { status: 403 },
+      );
+    }
+  } else {
+    const limited = await rateLimit({
+      keyPrefix: "api:scan-label",
+      userId,
+      limit: 30,
+      windowMs: 24 * 60 * 60_000,
+    });
+    if (!limited.ok) {
+      return NextResponse.json(
+        { ok: false, error: "rate_limited", retryAfterSec: limited.retryAfterSec },
+        { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } },
+      );
+    }
   }
 
   const ct = req.headers.get("content-type") ?? "";

@@ -35,6 +35,16 @@ let insertResult: { error: { code?: string; message: string } | null } = { error
 const insertMock = vi.fn(() => Promise.resolve(insertResult));
 const profileUpdateEqMock = vi.fn(() => Promise.resolve({ error: null }));
 const profileUpdateMock = vi.fn(() => ({ eq: profileUpdateEqMock }));
+// ENG-1490 #3: persistTrialStartedAtIfTrialing does
+// .update({trial_started_at}).eq("id", userId).is("trial_started_at", null)
+// — a 3-link chain distinct from profileUpdateMock's 2-link
+// (.update().eq()) chain used by persistStripeCustomerId /
+// updateProfileTierServiceRoleDetailed. Tracked separately so tests can
+// assert on trial-timestamp writes without disturbing the existing
+// stripe_customer_id / tier-write assertions above.
+const trialUpdateIsMock = vi.fn(() => Promise.resolve({ error: null }));
+const trialUpdateEqMock = vi.fn(() => ({ is: trialUpdateIsMock }));
+const trialUpdateMock = vi.fn(() => ({ eq: trialUpdateEqMock }));
 
 vi.mock("@/lib/supabase/serverAnonClient", () => ({
   createSupabaseServiceRoleClient: () => ({
@@ -42,8 +52,16 @@ vi.mock("@/lib/supabase/serverAnonClient", () => ({
       if (table === "stripe_webhook_events") {
         return { insert: insertMock };
       }
-      // profiles.update({...}).eq(...)
-      return { update: profileUpdateMock };
+      // profiles: two distinct call shapes land here —
+      //   .update({user_tier|stripe_customer_id}).eq("id", userId)              (2-link)
+      //   .update({trial_started_at}).eq("id", userId).is("trial_started_at", null) (3-link)
+      // Route by inspecting the update payload's keys.
+      return {
+        update: (payload: Record<string, unknown>) => {
+          if ("trial_started_at" in payload) return trialUpdateMock();
+          return profileUpdateMock(payload);
+        },
+      };
     },
   }),
   supabasePublicUrl: () => "https://example.supabase.co",
@@ -420,5 +438,132 @@ describe("processStripeWebhookEvent — subscription status branches", () => {
 
     await expect(processStripeWebhookEvent(stripe, event)).resolves.toBeUndefined();
     expect(mockUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("processStripeWebhookEvent — trial_started_at persistence (ENG-1490 #3)", () => {
+  const mockUpdate = vi.mocked(updateProfileTierServiceRole);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    _clearProcessedEventsForTesting();
+    insertResult = { error: null };
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test_service_role";
+    process.env.STRIPE_PRICE_BASE_MONTHLY = "price_base_monthly_test";
+    process.env.STRIPE_PRICE_PRO_MONTHLY = "price_pro_monthly_test";
+  });
+
+  afterEach(() => {
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    delete process.env.STRIPE_PRICE_BASE_MONTHLY;
+    delete process.env.STRIPE_PRICE_PRO_MONTHLY;
+  });
+
+  it("customer.subscription.created with status=trialing persists trial_started_at (once-only WHERE guard)", async () => {
+    const stripe = {} as Stripe;
+    const event = {
+      id: "evt_trial_persist",
+      type: "customer.subscription.created",
+      data: {
+        object: {
+          id: "sub_x",
+          status: "trialing",
+          metadata: { supabase_user_id: userId },
+          items: { data: [{ price: { id: "price_pro_monthly_test" } }] },
+        },
+      },
+    } as Stripe.Event;
+
+    await processStripeWebhookEvent(stripe, event);
+    expect(trialUpdateMock).toHaveBeenCalledOnce();
+    expect(trialUpdateEqMock).toHaveBeenCalledWith("id", userId);
+    // The once-only guard — WHERE trial_started_at IS NULL — so a second
+    // trialing event (webhook retry) never overwrites the original.
+    expect(trialUpdateIsMock).toHaveBeenCalledWith("trial_started_at", null);
+  });
+
+  it("checkout.session.completed with status=trialing persists trial_started_at", async () => {
+    const stripe = {
+      subscriptions: {
+        retrieve: vi.fn().mockResolvedValue({
+          id: "sub_1",
+          status: "trialing",
+          items: { data: [{ price: { id: "price_pro_monthly_test" } }] },
+        }),
+      },
+    } as unknown as Stripe;
+    const event = {
+      id: "evt_checkout_trialing",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          mode: "subscription",
+          client_reference_id: userId,
+          subscription: "sub_1",
+        },
+      },
+    } as Stripe.Event;
+
+    await processStripeWebhookEvent(stripe, event);
+    expect(trialUpdateMock).toHaveBeenCalledOnce();
+  });
+
+  it("status=active does NOT persist trial_started_at (never entered a trial)", async () => {
+    const stripe = {} as Stripe;
+    const event = {
+      id: "evt_active_no_trial",
+      type: "customer.subscription.updated",
+      data: {
+        object: {
+          id: "sub_x",
+          status: "active",
+          metadata: { supabase_user_id: userId },
+          items: { data: [{ price: { id: "price_pro_monthly_test" } }] },
+        },
+      },
+    } as Stripe.Event;
+
+    await processStripeWebhookEvent(stripe, event);
+    expect(mockUpdate).toHaveBeenCalledWith(userId, "pro");
+    expect(trialUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("a failed trial_started_at write is best-effort — does not block or throw past the tier grant", async () => {
+    trialUpdateIsMock.mockResolvedValueOnce({ error: { message: "rls denied" } });
+    const stripe = {} as Stripe;
+    const event = {
+      id: "evt_trial_persist_fails",
+      type: "customer.subscription.created",
+      data: {
+        object: {
+          id: "sub_x",
+          status: "trialing",
+          metadata: { supabase_user_id: userId },
+          items: { data: [{ price: { id: "price_pro_monthly_test" } }] },
+        },
+      },
+    } as Stripe.Event;
+
+    await expect(processStripeWebhookEvent(stripe, event)).resolves.toBeUndefined();
+    expect(mockUpdate).toHaveBeenCalledWith(userId, "pro");
+  });
+
+  it("no resolvable user id → no trial_started_at write (never throws)", async () => {
+    const stripe = {} as Stripe;
+    const event = {
+      id: "evt_trial_no_user",
+      type: "customer.subscription.updated",
+      data: {
+        object: {
+          id: "sub_x",
+          status: "trialing",
+          metadata: {},
+          items: { data: [{ price: { id: "price_pro_monthly_test" } }] },
+        },
+      },
+    } as Stripe.Event;
+
+    await expect(processStripeWebhookEvent(stripe, event)).resolves.toBeUndefined();
+    expect(trialUpdateMock).not.toHaveBeenCalled();
   });
 });

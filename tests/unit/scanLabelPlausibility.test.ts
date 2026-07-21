@@ -22,6 +22,11 @@ vi.mock("@/lib/server/rateLimit", () => ({
 }));
 vi.mock("@/lib/supabase/serverAnonClient", () => ({
   getUserIdFromRequest: vi.fn(async () => "user-1"),
+  // ENG-1487 finding #2: this route now tier-gates. Default Pro so this
+  // file's plausibility-gate assertions (unrelated to tier) stay
+  // authoritative unmodified — tier-gating itself has dedicated coverage
+  // in tests/integration/scanLabelRoute.test.ts.
+  getUserTier: vi.fn(async () => "pro"),
 }));
 vi.mock("@/lib/server/featureFlags", () => ({
   isServerFeatureEnabled: vi.fn(async () => false),

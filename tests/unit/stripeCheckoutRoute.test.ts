@@ -38,9 +38,18 @@ vi.mock("stripe", () => {
 // --- Supabase auth-header resolver mock -------------------------------------
 
 const getUserIdFromAuthHeaderMock = vi.fn();
+// ENG-1490 #3: `hasAlreadyTrialed` calls createSupabaseServiceRoleClient().
+// Defaulting to null (service-role unconfigured) makes it fail-open to
+// "never trialed" — same as every existing test's implicit assumption
+// before this option was added — so the whole Trial-wiring describe block
+// below stays authoritative unmodified. The dedicated
+// "trial eligibility (ENG-1490 #3)" describe block further down provides
+// its own richer mock to exercise the real gating.
+const createSupabaseServiceRoleClientMock = vi.fn(() => null);
 
 vi.mock("@/lib/supabase/serverAnonClient", () => ({
   getUserIdFromAuthHeader: (h: string | null) => getUserIdFromAuthHeaderMock(h),
+  createSupabaseServiceRoleClient: () => createSupabaseServiceRoleClientMock(),
 }));
 
 // --- Rate limiter mock (always allow) ---------------------------------------
@@ -85,6 +94,8 @@ beforeEach(() => {
   sessionsCreateMock.mockResolvedValue({ url: "https://checkout.stripe.test/s/abc" });
   getUserIdFromAuthHeaderMock.mockReset();
   getUserIdFromAuthHeaderMock.mockResolvedValue("user-1");
+  createSupabaseServiceRoleClientMock.mockReset();
+  createSupabaseServiceRoleClientMock.mockReturnValue(null);
 });
 
 afterEach(() => {
@@ -235,6 +246,80 @@ describe("POST /api/stripe/checkout — 7-day trial on Pro annual (ENG-1285)", (
     const payload = sessionsCreateMock.mock.calls[0][0];
     expect(payload.subscription_data).not.toHaveProperty("trial_period_days");
     expect(payload).not.toHaveProperty("payment_method_collection");
+  });
+});
+
+// --- Trial eligibility (ENG-1490 #3) -----------------------------------------
+
+describe("POST /api/stripe/checkout — trial eligibility (ENG-1490 #3)", () => {
+  // ENG-1490 finding #3 (2026-07-10): checkout unconditionally set
+  // trial_period_days on every annual checkout with no prior-trial check,
+  // and Checkout mints a fresh Stripe Customer each session — an unbounded
+  // free-Pro loop via repeat checkout. `profiles.trial_started_at` (set
+  // once, server-side, by the webhook) is now the eligibility gate.
+  function mockProfile(trialStartedAt: string | null) {
+    createSupabaseServiceRoleClientMock.mockReturnValue({
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({ data: { trial_started_at: trialStartedAt }, error: null }),
+          }),
+        }),
+      }),
+    } as unknown as ReturnType<typeof createSupabaseServiceRoleClientMock>);
+  }
+
+  it("annual + never trialed (trial_started_at null): grants the trial as before", async () => {
+    mockProfile(null);
+    const POST = await loadRoute();
+    const res = await POST(makeReq({ tier: "pro", period: "annual" }));
+    expect(res.status).toBe(200);
+    const payload = sessionsCreateMock.mock.calls[0][0];
+    expect(payload.subscription_data.trial_period_days).toBe(7);
+    expect(payload.payment_method_collection).toBe("always");
+  });
+
+  it("annual + already trialed (trial_started_at set): NO trial_period_days, checkout still succeeds", async () => {
+    mockProfile("2026-06-01T00:00:00.000Z");
+    const POST = await loadRoute();
+    const res = await POST(makeReq({ tier: "pro", period: "annual" }));
+    expect(res.status).toBe(200);
+    const payload = sessionsCreateMock.mock.calls[0][0];
+    expect(payload.subscription_data).not.toHaveProperty("trial_period_days");
+    expect(payload).not.toHaveProperty("payment_method_collection");
+    // Still a normal paid annual checkout — not blocked, just no 2nd trial.
+    expect(payload.subscription_data.metadata).toEqual({
+      supabase_user_id: "user-1",
+      tier: "pro",
+      period: "annual",
+      currency: "GBP",
+    });
+  });
+
+  it("read failure (service-role error) fails OPEN — still grants the trial rather than 500ing checkout", async () => {
+    createSupabaseServiceRoleClientMock.mockReturnValue({
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({ data: null, error: { message: "connection reset" } }),
+          }),
+        }),
+      }),
+    } as unknown as ReturnType<typeof createSupabaseServiceRoleClientMock>);
+    const POST = await loadRoute();
+    const res = await POST(makeReq({ tier: "pro", period: "annual" }));
+    expect(res.status).toBe(200);
+    const payload = sessionsCreateMock.mock.calls[0][0];
+    expect(payload.subscription_data.trial_period_days).toBe(7);
+  });
+
+  it("monthly checkout never checks trial eligibility at all (not annual, short-circuits first)", async () => {
+    mockProfile("2026-06-01T00:00:00.000Z");
+    const POST = await loadRoute();
+    const res = await POST(makeReq({ tier: "pro", period: "monthly" }));
+    expect(res.status).toBe(200);
+    const payload = sessionsCreateMock.mock.calls[0][0];
+    expect(payload.subscription_data).not.toHaveProperty("trial_period_days");
   });
 });
 

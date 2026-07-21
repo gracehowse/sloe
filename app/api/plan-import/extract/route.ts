@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { AiBudgetExceededError, callAiVision } from "@/lib/server/aiProvider";
 import { rateLimit } from "@/lib/server/rateLimit";
-import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
+import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
 import { captureRouteError } from "@/lib/observability/captureRouteError";
 import { isServerFeatureEnabled } from "@/lib/server/featureFlags";
 import { normalizeImageForAi } from "@/lib/server/normalizeImageForAi";
@@ -14,6 +14,18 @@ export const runtime = "nodejs";
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
 const MAX_TEXT_LEN = 64_000;
+
+// ENG-1487 finding #2 (2026-07-10): the image branch below is a Sonnet
+// vision call at maxTokens 8000 (~20p/call per the red-team's estimate) —
+// roughly 10x the cost class of a photo-log Haiku call — but this route had
+// no tier gate at all, so a farmed free account could hit the flat 30/day
+// cap for ~£6/account/day. The free allowance is set tighter than
+// photo-log's 5/week (FREE_PHOTO_LOG_WEEKLY_LIMIT) to keep per-account
+// free-tier vision cost roughly comparable across features despite the
+// higher per-call price. Scoped to the image path only — the PDF path
+// above never calls the AI vision budget, so it isn't gated by tier.
+const FREE_IMAGE_EXTRACT_WEEKLY_LIMIT = 3;
+const FREE_IMAGE_EXTRACT_WINDOW_MS = 7 * 24 * 60 * 60_000;
 
 type ExtractSource = "pdf" | "image";
 
@@ -113,6 +125,31 @@ export async function POST(req: Request) {
       { ok: false, error: "file_too_large", maxBytes: MAX_IMAGE_BYTES },
       { status: 413 },
     );
+  }
+
+  // ENG-1487 finding #2: tier gate on the image (vision-call) path only —
+  // see FREE_IMAGE_EXTRACT_WEEKLY_LIMIT above for why this is separate from,
+  // and tighter than, the flat per-request rateLimit already applied above.
+  const tier = await getUserTier(userId);
+  if (tier !== "pro") {
+    const freeLimited = await rateLimit({
+      keyPrefix: "api:plan-import-extract:image:free-quota",
+      userId,
+      limit: FREE_IMAGE_EXTRACT_WEEKLY_LIMIT,
+      windowMs: FREE_IMAGE_EXTRACT_WINDOW_MS,
+    });
+    if (!freeLimited.ok) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "upgrade_required",
+          message:
+            "You've used all your free plan-photo imports this week. Pro unlocks more imports a day.",
+          freeQuotaRemaining: 0,
+        },
+        { status: 403 },
+      );
+    }
   }
 
   const rawBuffer = Buffer.from(await file.arrayBuffer());

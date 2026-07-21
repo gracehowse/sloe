@@ -36,6 +36,48 @@ async function persistStripeCustomerId(
   }
 }
 
+/**
+ * ENG-1490 finding #3 (2026-07-10): the annual-Pro 7-day trial was farmable
+ * — Checkout mints a fresh Stripe Customer on every session (no `customer`
+ * param passed), so a user could cancel a trialing subscription, re-checkout,
+ * and get another free trial indefinitely, unboundedly.
+ *
+ * Fix: persist `profiles.trial_started_at` the first time we observe a
+ * subscription go `trialing` for a user, and have the checkout route
+ * (`app/api/stripe/checkout/route.ts`) refuse to set `trial_period_days`
+ * once that column is non-null — regardless of how many Stripe Customers
+ * the user has since minted.
+ *
+ * `trial_started_at` is already forward-compat-protected as client-non-
+ * writable by the `profiles_tier_column_lockdown` / `_insert_lockdown`
+ * trigger functions' `forward_banned` array (see
+ * supabase/migrations/20260503102000_profiles_lockdown_forward_compat.sql)
+ * — service-role writes here bypass that trigger via `auth.role() =
+ * 'service_role'`, same as every other webhook write in this file.
+ *
+ * WHERE trial_started_at IS NULL makes this idempotent and first-trial-only:
+ * a second `trialing` event (e.g. a webhook retry, or the rare subsequent
+ * trial Stripe itself might allow) never overwrites the original timestamp.
+ * Best-effort (warn-only) — never let a cosmetic column write block or
+ * throw out of the tier grant, mirroring `persistStripeCustomerId` below.
+ */
+async function persistTrialStartedAtIfTrialing(
+  userId: string,
+  status: Stripe.Subscription.Status,
+): Promise<void> {
+  if (status !== "trialing") return;
+  const sb = createSupabaseServiceRoleClient();
+  if (!sb) return;
+  const { error } = await sb
+    .from("profiles")
+    .update({ trial_started_at: new Date().toISOString() })
+    .eq("id", userId)
+    .is("trial_started_at", null);
+  if (error) {
+    console.warn("[stripe_webhook] failed to persist trial_started_at", error.message);
+  }
+}
+
 function isUuid(s: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
 }
@@ -121,6 +163,7 @@ async function applyTierForSubscription(sub: Stripe.Subscription): Promise<void>
   const userId = resolveUserIdFromSubscription(sub);
   if (!userId) return;
   await applyTierDecision(userId, tierDecisionForSubscription(sub));
+  await persistTrialStartedAtIfTrialing(userId, sub.status);
 }
 
 /**
@@ -189,6 +232,7 @@ export async function processStripeWebhookEvent(stripe: Stripe, event: Stripe.Ev
       // decision) rather than granting from price IDs alone — an
       // `incomplete`/`unpaid` checkout must NOT grant Pro.
       await applyTierDecision(userId, tierDecisionForSubscription(sub));
+      await persistTrialStartedAtIfTrialing(userId, sub.status);
       break;
     }
     case "customer.subscription.updated":

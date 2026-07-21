@@ -20,10 +20,15 @@ import {
 
 vi.mock("@/lib/supabase/serverAnonClient", () => ({
   getUserIdFromRequest: vi.fn(),
+  getUserTier: vi.fn(),
 }));
 
+// We mock per-call so tests can simulate "free quota exhausted" by
+// returning ok=false from the *first* rateLimit call (the free-taster
+// bucket) while leaving the second (Pro 30/day) untouched — same pattern
+// as tests/integration/photoLogRoute.test.ts.
 vi.mock("@/lib/server/rateLimit", () => ({
-  rateLimit: vi.fn(async () => ({ ok: true, retryAfterSec: 0 })),
+  rateLimit: vi.fn(async () => ({ ok: true, remaining: 29, resetAtMs: 0, retryAfterSec: 0 })),
 }));
 
 // 2026-05-08 — sharp can't decode the 4-byte test fixture; mock the
@@ -36,9 +41,16 @@ vi.mock("@/lib/server/normalizeImageForAi", () => ({
 }));
 
 import { POST } from "../../app/api/nutrition/scan-label/route";
-import { getUserIdFromRequest } from "@/lib/supabase/serverAnonClient";
+import { getUserIdFromRequest, getUserTier } from "@/lib/supabase/serverAnonClient";
+import { rateLimit } from "@/lib/server/rateLimit";
+import {
+  FREE_PHOTO_LOG_WEEKLY_LIMIT,
+  FREE_PHOTO_LOG_WINDOW_MS,
+} from "@/lib/nutrition/photoLogQuota";
 
 const mockUserId = getUserIdFromRequest as ReturnType<typeof vi.fn>;
+const mockTier = getUserTier as ReturnType<typeof vi.fn>;
+const mockRateLimit = rateLimit as ReturnType<typeof vi.fn>;
 
 function pngFormBody(barcode = "1234567890123") {
   const fd = new FormData();
@@ -64,6 +76,12 @@ describe("POST /api/nutrition/scan-label", () => {
     vi.clearAllMocks();
     isolateAiBudgetForIntegrationTest();
     vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-test");
+    // Default every pre-existing test in this describe block to Pro tier
+    // (the 30/day bucket, unchanged by ENG-1487) so they stay authoritative
+    // unmodified — the free-tier gating itself gets its own describe block
+    // below with explicit tier + rateLimit mocking per test.
+    mockTier.mockResolvedValue("pro");
+    mockRateLimit.mockResolvedValue({ ok: true, remaining: 29, resetAtMs: 0, retryAfterSec: 0 });
   });
 
   afterEach(() => {
@@ -229,5 +247,88 @@ describe("POST /api/nutrition/scan-label", () => {
     );
     expect(res.status).toBe(502);
     expect((await res.json()).error).toBe("model_unparseable");
+  });
+});
+
+describe("POST /api/nutrition/scan-label — tier gating (ENG-1487 finding #2)", () => {
+  // 2026-07-10 red-team: this route had NO tier gate at all — every
+  // account, free or Pro, shared the flat 30/day cap, making it a cheap
+  // fleet-cost farming vector. Free tier now gets the same weekly taster
+  // bucket as photo-log; Pro is unchanged (30/day).
+  beforeEach(() => {
+    vi.clearAllMocks();
+    isolateAiBudgetForIntegrationTest();
+    vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-test");
+  });
+
+  it("free user with quota remaining is admitted past the gate (free-taster bucket only)", async () => {
+    mockUserId.mockResolvedValue("u1");
+    mockTier.mockResolvedValue("free");
+    mockRateLimit.mockResolvedValueOnce({ ok: true, remaining: 4, resetAtMs: 0 });
+    stubClaude(
+      JSON.stringify({
+        name: "Test",
+        perServing: { servingSizeG: 100, calories: 100, protein: 1, carbs: 1, fat: 1 },
+        per100g: { calories: 100, protein: 1, carbs: 1, fat: 1 },
+        confidence: "high",
+      }),
+    );
+    const res = await POST(
+      new Request("http://localhost/api/nutrition/scan-label", { method: "POST", body: pngFormBody() }),
+    );
+    expect(res.status).toBe(200);
+    expect(mockRateLimit).toHaveBeenCalledTimes(1);
+    expect(mockRateLimit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        keyPrefix: "api:scan-label:free-quota",
+        userId: "u1",
+        limit: FREE_PHOTO_LOG_WEEKLY_LIMIT,
+        windowMs: FREE_PHOTO_LOG_WINDOW_MS,
+      }),
+    );
+  });
+
+  it("free user with quota exhausted returns 403 upgrade_required (never calls the AI vendor)", async () => {
+    mockUserId.mockResolvedValue("u1");
+    mockTier.mockResolvedValue("free");
+    mockRateLimit.mockResolvedValueOnce({
+      ok: false,
+      remaining: 0,
+      resetAtMs: 0,
+      retryAfterSec: 60,
+      ip: null,
+    });
+    const res = await POST(
+      new Request("http://localhost/api/nutrition/scan-label", { method: "POST", body: pngFormBody() }),
+    );
+    expect(res.status).toBe(403);
+    const json = await res.json();
+    expect(json.error).toBe("upgrade_required");
+    expect(json.freeQuotaRemaining).toBe(0);
+    // Short-circuits before the Pro bucket AND before any AI call.
+    expect(mockRateLimit).toHaveBeenCalledTimes(1);
+  });
+
+  it("pro user does NOT hit the free-taster bucket — only the existing 30/day bucket", async () => {
+    mockUserId.mockResolvedValue("u1");
+    mockTier.mockResolvedValue("pro");
+    mockRateLimit.mockResolvedValueOnce({ ok: true, remaining: 29, resetAtMs: 0 });
+    stubClaude(
+      JSON.stringify({
+        name: "Test",
+        perServing: { servingSizeG: 100, calories: 100, protein: 1, carbs: 1, fat: 1 },
+        per100g: { calories: 100, protein: 1, carbs: 1, fat: 1 },
+        confidence: "high",
+      }),
+    );
+    const res = await POST(
+      new Request("http://localhost/api/nutrition/scan-label", { method: "POST", body: pngFormBody() }),
+    );
+    expect(res.status).toBe(200);
+    expect(mockRateLimit).toHaveBeenCalledTimes(1);
+    const call = mockRateLimit.mock.calls[0]?.[0] as { keyPrefix: string; limit: number };
+    expect(call.keyPrefix).toBe("api:scan-label");
+    expect(call.limit).toBe(30);
+    expect(call.keyPrefix).not.toBe("api:scan-label:free-quota");
   });
 });

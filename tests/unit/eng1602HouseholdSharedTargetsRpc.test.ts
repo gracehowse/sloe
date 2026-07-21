@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 /**
@@ -31,22 +31,15 @@ const SQL = readFileSync(resolve(process.cwd(), MIGRATION_PATH), "utf-8");
 // a statement assertion.
 const CODE = SQL.replace(/--[^\n]*/g, "").replace(/\s+/g, " ").toLowerCase();
 
-describe("ENG-1602 get_household_shared_targets — filename + migration ordering", () => {
-  it("is timestamped after every currently-committed migration", () => {
-    const dir = resolve(process.cwd(), "supabase/migrations");
-    const files = readdirSync(dir).filter((f: string) => f.endsWith(".sql"));
-    const thisVersion = "20260721100000";
-    for (const f of files) {
-      const m = f.match(/^(\d{14})_/);
-      if (!m) continue;
-      if (f === "20260721100000_eng1602_household_shared_targets_rpc.sql") continue;
-      expect(
-        m[1] <= thisVersion,
-        `${f} (${m[1]}) is not monotonically before this migration (${thisVersion})`,
-      ).toBe(true);
-    }
-  });
-});
+// The original "is timestamped after every currently-committed migration"
+// check here asserted this migration was the newest file in the directory
+// at test-run time — an inherently non-durable invariant that breaks on
+// every subsequent migration added by ANY later PR (not a defect in
+// theirs, or in this one; see ENG-1630, filed 2026-07-21, for the general
+// "ratchet/snapshot assertions go stale under this repo's concurrent-agent
+// editing" pattern this is an instance of). Removed 2026-07-21 by the
+// ENG-1490 migration that legitimately postdates it — there is no real
+// ordering dependency between the two (unrelated tables, unrelated RPCs).
 
 describe("ENG-1602 get_household_shared_targets — definer + search_path", () => {
   it("is SECURITY DEFINER with a pinned search_path (no mutable-search_path advisor hit)", () => {
