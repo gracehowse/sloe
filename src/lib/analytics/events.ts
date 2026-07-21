@@ -340,10 +340,9 @@ export const AnalyticsEvents = {
   /** Paprika parity (2026-05-01): user toggled the "Voice handsfree"
    *  preference. Payload: `{ enabled }`.
    *  v1 ships the opt-in shell only — actual audio capture is queued
-   *  for a follow-up release per
-   *  `docs/decisions/2026-05-01-cook-voice-handsfree.md`. The pref
-   *  fires from settings AND the in-cook surface so the funnel doesn't
-   *  have to UNION two events to count opt-ins. */
+   *  for a follow-up release (see `apps/mobile/lib/cookHandsfree.ts`'s
+   *  header). The pref fires from settings AND the in-cook surface so
+   *  the funnel doesn't have to UNION two events to count opt-ins. */
   cook_handsfree_pref_changed: "cook_handsfree_pref_changed",
   /** Paprika parity (2026-05-01): user tapped the in-cook mic toggle
    *  to enable/disable handsfree mode for the active session. Payload:

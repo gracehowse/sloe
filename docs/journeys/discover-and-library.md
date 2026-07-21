@@ -471,11 +471,15 @@ transcript fragment to next/previous/repeat/pause/resume) — but there is no
 audio capture behind it. `COOK_HANDSFREE_FEATURE_ENABLED` defaults to
 `false` (only flips via an explicit
 `EXPO_PUBLIC_COOK_HANDSFREE_ENABLED=true` env override), so the in-cook
-header toggle doesn't even render by default. The file's own header comment
-points to a decision record for the real listener,
-`docs/decisions/2026-05-01-cook-voice-handsfree.md` — that file doesn't
-exist in the repo, so the shell references a record that was either never
-written or was lost. Web has no handsfree concept at all, not even a shell.
+header toggle doesn't even render by default. The file's header comment
+used to cite a decision record for the real listener,
+`docs/decisions/2026-05-01-cook-voice-handsfree.md`, that never existed in
+the repo (confirmed by direct path check) — the citation was corrected
+2026-07-21 (ENG-1605) to stop pointing at a nonexistent file; no decision
+doc was backfilled because the record itself was never written (or was
+lost) and the "still the right approach?" question below is exactly why
+one shouldn't be fabricated now. Web has no handsfree concept at all, not
+even a shell.
 Handsfree should not be described as a shipped or in-progress feature in
 customer-facing copy; it's an inert seam for a future listener. Whether the
 shell-now, listener-later approach is still the right one, or whether the

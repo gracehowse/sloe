@@ -1,6 +1,6 @@
 /**
- * Food history helpers — build Frequent / Recent / Eat-again lists from
- * a user's journal `byDay` map.
+ * Food history helpers — build Frequent / Recent lists from a user's
+ * journal `byDay` map.
  *
  * Pure: no React, no Supabase, no Date (callers must pass `now`).
  * Importing this file from a React Native component is safe, and it is
@@ -17,10 +17,15 @@
  *    protects against tiny rounding drift from different sources).
  *  - "Missing title" rows are coerced to "Unnamed food" rather than
  *    dropped, so the user can still see + re-log them.
+ *
+ * A third builder, `computeEatAgainForSlot` / `computeEatAgainCandidatesForSlot`,
+ * used to live here to power the "Eat again" banner. That banner was
+ * retired on both platforms 2026-04-28 (ENG-984); the two helpers plus
+ * their `eatAgainDismiss` storage sibling were deleted 2026-07-21
+ * (ENG-1604) once the documentation sweep confirmed neither host still
+ * called them. See `docs/journeys/food-tracking.md` ("Retired: Eat-again
+ * card") for the full history.
  */
-
-import { normaliseMealSlot } from "./mealSlots";
-import { isHealthImportFallbackTitle } from "./healthImportLabels";
 
 /** Shape of a journal meal that this helper can consume. Narrow on
  * purpose so both `JournalMeal` (mobile) and `LoggedMeal` (web) fit. */
@@ -39,8 +44,8 @@ export type FoodHistoryMealLike = {
   createdAt?: string | null;
   /**
    * Tracking-extras autoupdate (2026-05-01) — surface caffeine + alcohol
-   * micros from the original journal row so re-logging from Quick Add /
-   * Eat-again carries the same per-serving stimulant payload that the
+   * micros from the original journal row so re-logging from Quick Add
+   * carries the same per-serving stimulant payload that the
    * search-result commit captured. The bucket builder reads
    * `micros.caffeineMg` / `micros.alcoholG` first and falls back to the
    * top-level fields, so callers from either platform fit.
@@ -356,8 +361,8 @@ function finaliseBucket(b: Bucket): FoodHistoryItem {
   if (b.lastLoggedAt) item.lastLoggedAt = b.lastLoggedAt;
   if (b.recipeId) item.recipeId = b.recipeId;
   // Premium-bar audit DC3 polish (2026-05-14) — surface the last-seen
-  // image URL so the Eat-Again banner / Quick Add rows can render a
-  // thumbnail when present. Never invented.
+  // image URL so Quick Add rows can render a thumbnail when present.
+  // Never invented.
   if (b.imageUrl) item.imageUrl = b.imageUrl;
   return item;
 }
@@ -427,96 +432,6 @@ export function computeRecentMeals<M extends FoodHistoryMealLike>(
   });
   const capped = limit >= 0 ? buckets.slice(0, limit) : buckets;
   return capped.map(finaliseBucket);
-}
-
-/**
- * "Eat again from yesterday's lunch?" — find the most recent *prior*
- * day that has a meal in `slot` and return a deduped summary of the
- * last meal in that slot.
- *
- * Today is excluded on purpose: the card suggests re-logging something
- * the user has already eaten on another day, not the meal they just
- * logged. Callers pass `now` so this function stays pure.
- *
- * N1 (2026-05-03): synthetic HealthKit-import-fallback rows are skipped.
- * Re-logging a row literally titled "MyFitnessPal entry · 250 kcal"
- * (or the legacy "Food log (250 kcal)") gives the user no leverage —
- * it's a placeholder for an unknown food, not a real recipe to re-log.
- * If every prior meal in the slot is a fallback, return null rather
- * than promote a meaningless suggestion.
- */
-export function computeEatAgainForSlot<M extends FoodHistoryMealLike & { name?: string }>(
-  byDay: Record<string, M[]>,
-  slot: string,
-  now: Date,
-): FoodHistoryItem | null {
-  const candidates = computeEatAgainCandidatesForSlot(byDay, slot, now, 1);
-  return candidates[0] ?? null;
-}
-
-/**
- * Premium-bar audit DC3 polish (2026-05-14) — return up to `limit`
- * distinct Eat-Again candidates for `slot`, ordered most-recently
- * logged first. Powers the horizontal scroller on Today (MacroFactor
- * stacked-suggestions parity). Each candidate is deduped by the
- * `${title}|${rounded-kcal}` key so the user never sees the same meal
- * twice in the same scroller.
- *
- * The candidate ordering matches the single-suggestion function: most
- * recent prior day first, latest meal in that slot on each day. Days
- * are walked newest→oldest; today is excluded; HealthKit-import
- * fallback rows are skipped per the original N1 rule.
- *
- * Returns `[]` (never `null`) so the host can treat "no suggestions"
- * uniformly without a null-check branch.
- */
-export function computeEatAgainCandidatesForSlot<
-  M extends FoodHistoryMealLike & { name?: string },
->(
-  byDay: Record<string, M[]>,
-  slot: string,
-  now: Date,
-  limit = 3,
-): FoodHistoryItem[] {
-  if (!slot || !(now instanceof Date) || Number.isNaN(now.getTime())) return [];
-  if (!Number.isFinite(limit) || limit <= 0) return [];
-  const todayKey = formatDayKey(now);
-  const targetSlot = normaliseMealSlot(slot);
-  if (!targetSlot) return [];
-  const seen = new Set<string>();
-  const out: FoodHistoryItem[] = [];
-  // Walk days newest → oldest, skipping today.
-  const dayKeys = Object.keys(byDay).sort().reverse();
-  for (const dk of dayKeys) {
-    if (out.length >= limit) break;
-    if (dk >= todayKey) continue;
-    const meals = byDay[dk];
-    if (!Array.isArray(meals) || meals.length === 0) continue;
-    // Walk this day's slot-matching meals newest→oldest so the
-    // latest item in the slot surfaces first for that day.
-    for (let i = meals.length - 1; i >= 0; i -= 1) {
-      if (out.length >= limit) break;
-      const m = meals[i]!;
-      if (normaliseMealSlot(m.name) !== targetSlot) continue;
-      const title = titleOf(m);
-      if (isHealthImportFallbackTitle(title)) continue;
-      const cal = Math.round(safeNumber(m.calories));
-      const key = foodHistoryKey(title, cal);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const bucket = emptyBucket(title, cal, key);
-      addToBucket(bucket, m, dk, i);
-      out.push(finaliseBucket(bucket));
-    }
-  }
-  return out;
-}
-
-function formatDayKey(d: Date): string {
-  const y = d.getFullYear();
-  const mo = String(d.getMonth() + 1).padStart(2, "0");
-  const da = String(d.getDate()).padStart(2, "0");
-  return `${y}-${mo}-${da}`;
 }
 
 /**

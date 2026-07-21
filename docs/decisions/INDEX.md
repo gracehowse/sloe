@@ -9,11 +9,12 @@
   Generator: scripts/generate-decisions-index.mjs (ENG-1370)
 -->
 
-350 decision docs, newest first. Generated 2026-07-20.
+351 decision docs, newest first. Generated 2026-07-21.
 
 | Date | Decision | Summary |
 |------|----------|---------|
 | 2026-07-20 | [User-avatar monogram — Rule 7 serif + frost-ring, one shared primitive (ENG-1593)](./2026-07-20-avatar-monogram-rule7-frost-ring.md) | The 2026-07-17 design sweep (`docs/audits/2026-07-17-design-sweep/report.md`) flagged the persistent user/household avatar monogram as a **Rule 7** violation on every screen it appears on, with the specifics differing ac… |
+| 2026-07-20 | [Estimated grocery cost per recipe (ENG-1274)](./2026-07-20-eng1274-recipe-cost-estimate.md) | ENG-867 shipped import loading, cook-step chips, and graceful load — but the **Est. Cost per recipe** signal carved out as ENG-1274. Julienne shows a US pricing estimate on recipe detail; our prototype (`Sloe-App.html`)… |
 | 2026-07-20 | [Production readiness — hardening tail (ENG-1414, PRA-015/IM-16 + PRA-016)](./2026-07-20-eng1414-production-readiness-hardening-tail.md) | This bundles two unrelated sev-2 findings from the 2026-07-05 deep audit (`docs/audits/2026-07-05-deep-audits/audit2-production-readiness/findings.json`) into one ticket, per how the ticket itself is scoped. They're docu… |
 | 2026-07-20 | [Currency display guard — per-currency pricing SSOT fields + EUR-SKU boot assertion (ENG-1442)](./2026-07-20-eng1442-currency-display-guard.md) | A latent shown-£/charged-€ mismatch would activate the day EUR Stripe Price env vars are set, with no other code change: the checkout route already resolves a EUR-denominated Stripe Price the instant `STRIPE_PRICE_PRO_MO… |
 | 2026-07-20 | [Today — collapse the strip→hero dead band (ENG-1609)](./2026-07-20-eng1609-today-strip-hero-dead-band.md) | `apps/mobile/app/(tabs)/_today/TodayScreen.tsx` no longer wraps `<TodayDateHeader stripOnly>` (the week strip) in an extra `marginBottom: Spacing.md` (16px) `<View>`. The strip→hero gap is now the same single 24px `Spaci… |

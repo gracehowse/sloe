@@ -102,7 +102,11 @@ export type Goal = "lose" | "maintain" | "gain" | "recomp";
  *  Both steps stay flag-gated behind `onboarding_conversion_funnel_v1`
  *  (default-ON both platforms) and auto-skip together when OFF, so the
  *  legacy data-bridges-terminal flow is byte-identical when the flag is
- *  down. See docs/decisions/2026-07-01-onboarding-see-pro-eng1241.md. */
+ *  down. See `docs/decisions/2026-06-28-onboarding-conversion-funnel-and-plan-actions.md`
+ *  (the ENG-1241 decision doc — its "Addendum" section records this
+ *  reorder; the original citation here pointed at a
+ *  2026-07-01-onboarding-see-pro-eng1241.md that was never written,
+ *  corrected 2026-07-21 per ENG-1605). */
 export const STEP_IDS = [
   "welcome", // 01
   "app-choice", // 02 — "Coming from another app?" (ENG-990) — auto-skipped when the `onboarding-app-choice` flag is OFF
