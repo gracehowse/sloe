@@ -132,7 +132,7 @@ enforced at write time as well as review time.
   Tailwind `p-*/m-*/gap-*` spacing (arbitrary `[Npx]` brackets AND
   off-scale numeric steps, mapped step→px via Tailwind's `step * 4px`
   convention), reads the same legal scale, pins per-file counts in
-  `scripts/web-spacing-budget.json` (only-shrink; 261 files / 1033
+  `scripts/web-spacing-budget.json` (only-shrink; 264 files / 1037
   instances at the 2026-07-21 baseline). Re-pin with
   `npm run check:web-spacing-scale:write`.
 - **Radius:** 4 / 6 / 8 / 12 / full (`Radius` — 2026-05-22 lock; bigger reads

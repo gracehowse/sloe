@@ -77,7 +77,7 @@ contract: "Design craft contract" in `.claude/agents/_project-context.md`.
   (`src/app`, `app`) — arbitrary `p-[Npx]` brackets AND off-scale numeric
   Tailwind steps, mapped step→px via Tailwind's `step * 4px` convention
   (`p-6` = 24px is legal, `p-7` = 28px is not); pinned in
-  `scripts/web-spacing-budget.json`, 261 files / 1033 legacy instances at
+  `scripts/web-spacing-budget.json`, 264 files / 1037 legacy instances at
   2026-07-21 baseline) and `check:token-scale`
   (`scripts/check-token-scale.mjs` — raw hexes, raw `rgb()`/`rgba()` hue
   literals (ENG-1520; pure black/white scrims carved out), raw Tailwind
