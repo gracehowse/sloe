@@ -72,6 +72,7 @@ test.describe("Visual regression — deep authenticated routes", () => {
         await preferencesNav.click();
       }
       const fastingLink = page.getByTestId("settings-fasting-link");
+      await expect(fastingLink).toBeVisible({ timeout: 10_000 });
       await fastingLink.scrollIntoViewIfNeeded();
       await stabilizeForScreenshot(page, 1500);
       await expect(page).toHaveScreenshot(
