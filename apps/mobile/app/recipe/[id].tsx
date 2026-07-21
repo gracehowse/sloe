@@ -137,6 +137,7 @@ import {
   composeRecipeMeta,
   computeFitsYourDayVerdict,
 } from "../../lib/recipe/recipeDetailLayout";
+import { useRecipeHeroOverlay } from "../../hooks/useRecipeHeroOverlay";
 import { RecipeDetailHero } from "../../components/recipe/RecipeDetailHero";
 import { RecipeDetailLoadingSkeleton } from "../../components/recipe/RecipeDetailLoadingSkeleton";
 import { RecipeTitleBlock } from "../../components/recipe/RecipeTitleBlock";
@@ -1530,6 +1531,24 @@ export default function RecipeDetailScreen() {
     }
     return picked;
   }, [recipe?.image_source, recipe?.image_url, recipe?.source_url]);
+
+  // ENG-1247 / ENG-1274 — hero overlay + cost (before early returns).
+  const { heroOverlay, heroOverlayActive, heroTotalTimeMin } = useRecipeHeroOverlay({
+    recipeDetailV3,
+    heroImageUrl,
+    heroImageBroken,
+    saved,
+    title: recipe ? normaliseRecipeDisplayTitle(decodeEntities(recipe.title)) : "",
+    prepMin: recipe?.prep_time_min,
+    cookMin: recipe?.cook_time_min,
+    kcal: macros.calories,
+    viewServings,
+    viewMultiplier,
+    ingredients: ingredientsForIngredientsTab,
+    userTier,
+    onCostLockedPress: () => router.push("/paywall?from=recipe_cost" as never),
+  });
+
   const isAiGeneratedHero = recipe?.image_source === "ai_generated";
   const canGenerateSloeHero =
     isRecipeOwner && !heroImageUrl && !isSeedRecipeId(recipeId);
@@ -1993,25 +2012,6 @@ export default function RecipeDetailScreen() {
     cookMin: recipe.cook_time_min,
     ingredientCount: ingredientsForIngredientsTab.length,
   });
-
-  // ENG-1247 — v3 hero title OVERLAY. Only when the flag is ON AND a real photo
-  // shows (the placeholder fallback never carries the overlay — the title then
-  // lives in the body block). Kicker: "From your cookbook" when saved, else the
-  // honest "Fits your day" (no `cuisine` field exists in the recipe pipeline —
-  // we do not fake one). Time = total prep+cook when known.
-  const heroShowsPhoto = Boolean(heroImageUrl) && !heroImageBroken;
-  const heroOverlayActive = recipeDetailV3 && heroShowsPhoto;
-  const heroTotalTimeMin =
-    (recipe.prep_time_min ?? 0) + (recipe.cook_time_min ?? 0) || null;
-  const heroOverlay = heroOverlayActive
-    ? {
-        kicker: saved ? "From your cookbook" : "Fits your day",
-        title: displayTitle,
-        timeMin: heroTotalTimeMin,
-        kcal: Math.round(macros.calories) > 0 ? Math.round(macros.calories) : null,
-        servings: viewServings,
-      }
-    : null;
 
   // Macro strip cells (Figma §4) — CAL / PRO / CARB(/NET) / FAT, per-macro
   // coloured downstream. Net-carbs lens swaps the carb column.

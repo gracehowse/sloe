@@ -62,10 +62,10 @@ export function CookbookImportReviewRow({
             {item.confidence} confidence
           </p>
           {trustKcal != null && nutritionMode === "match" && item.authorNutrition?.calories ? (
-            <p className="text-[13px] text-muted-foreground mt-0.5">author {item.authorNutrition.calories}</p>
+            <p className="text-[13px] text-muted-foreground mt-1">author {item.authorNutrition.calories}</p>
           ) : null}
           {trustKcal != null && nutritionMode === "author" ? (
-            <p className="text-[13px] text-muted-foreground mt-0.5">Sloe {item.supprNutrition.calories}</p>
+            <p className="text-[13px] text-muted-foreground mt-1">Sloe {item.supprNutrition.calories}</p>
           ) : null}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">

@@ -23,6 +23,7 @@ import {
 
 import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { ProMethodBadge } from "@/components/today/ProMethodBadge";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { SmartImage } from "@/components/ui/SmartImage";
 import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
@@ -45,6 +46,11 @@ export type RecipeHeroOverlay = {
   timeMin: number | null;
   kcal: number | null;
   servings: number;
+  /** ENG-1274 — per-serving grocery cost label (Pro). Null when estimate unavailable. */
+  costLabel?: string | null;
+  /** When true, show locked upsell copy instead of `costLabel`. */
+  costLocked?: boolean;
+  onCostLockedPress?: () => void;
 };
 
 type RecipeDetailHeroProps = {
@@ -230,26 +236,53 @@ export function RecipeDetailHero({
               {overlay!.title}
             </Text>
             <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: Spacing.md }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
                 <Clock size={14} color="rgba(255,255,255,0.9)" />
                 <Text style={heroMetaStyle} numberOfLines={1}>
                   {overlay!.timeMin != null ? `${overlay!.timeMin} min` : "—"}
                 </Text>
               </View>
               {overlay!.kcal != null ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
                   <Flame size={14} color="rgba(255,255,255,0.9)" />
                   <Text style={heroMetaStyle} numberOfLines={1}>
                     {overlay!.kcal} kcal
                   </Text>
                 </View>
               ) : null}
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
                 <UtensilsCrossed size={14} color="rgba(255,255,255,0.9)" />
                 <Text style={heroMetaStyle} numberOfLines={1}>
                   Serves {overlay!.servings}
                 </Text>
               </View>
+              {overlay!.costLabel || overlay!.costLocked ? (
+                overlay!.costLocked ? (
+                  <PressableScale
+                    haptic="selection"
+                    onPress={overlay!.onCostLockedPress}
+                    accessibilityRole="button"
+                    accessibilityLabel="Estimated grocery cost — Pro feature"
+                    style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}
+                    testID="recipe-cost-estimate-locked"
+                  >
+                    <Text style={heroMetaStyle} numberOfLines={1}>
+                      Est. cost
+                    </Text>
+                    <ProMethodBadge />
+                  </PressableScale>
+                ) : (
+                  <View
+                    style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}
+                    testID="recipe-cost-estimate"
+                  >
+                    <Text style={heroMetaStyle} numberOfLines={1}>
+                      {overlay!.costLabel}
+                    </Text>
+                    <ProMethodBadge />
+                  </View>
+                )
+              ) : null}
             </View>
           </View>
         </>

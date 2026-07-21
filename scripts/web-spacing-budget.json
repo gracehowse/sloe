@@ -110,7 +110,7 @@
     "src/app/components/ProgressDashboard.tsx": 15,
     "src/app/components/ProgressMetricDetail.tsx": 5,
     "src/app/components/recipe/AddToShoppingListAction.tsx": 1,
-    "src/app/components/RecipeDetail.tsx": 29,
+    "src/app/components/RecipeDetail.tsx": 26,
     "src/app/components/RecipeUpload.tsx": 4,
     "src/app/components/Settings.tsx": 15,
     "src/app/components/settings/BarcodeContributionsSection.tsx": 2,

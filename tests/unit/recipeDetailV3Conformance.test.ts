@@ -49,6 +49,10 @@ describe("ENG-1247 — hero title overlay (web)", () => {
   });
 
   it("overlay carries kicker + serif H1 + clock/flame/serves meta row", () => {
+    const META = readFileSync(
+      resolve(__dirname, "../../src/app/components/recipe/RecipeHeroMetaRow.tsx"),
+      "utf8",
+    );
     expect(WEB_SRC).toContain('data-testid="recipe-hero-kicker"');
     expect(WEB_SRC).toContain('data-testid="recipe-hero-overlay-title"');
     // Kicker: "From your cookbook" when saved, else "Fits your day".
@@ -59,8 +63,9 @@ describe("ENG-1247 — hero title overlay (web)", () => {
       WEB_SRC.indexOf('data-testid="recipe-hero-overlay-title"') + 200,
     );
     expect(overlay).toContain('fontFamily: "var(--font-headline)"');
-    // Meta row icons: time + serves (utensils) always, kcal when known.
-    expect(WEB_SRC).toContain("Serves {servings}");
+    // Meta row extracted (ENG-1274) — time + serves always, kcal when known.
+    expect(WEB_SRC).toContain("RecipeHeroMetaRow");
+    expect(META).toContain("Serves {servings}");
   });
 
   it("hides the duplicate body H1 when the overlay is active", () => {

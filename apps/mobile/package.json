@@ -124,7 +124,11 @@
   "overrides": {
     "@xmldom/xmldom": "^0.9.8",
     "postcss": "^8.5.10",
-    "shell-quote": "^1.8.4"
+    "shell-quote": "^1.8.5",
+    "brace-expansion@1": "1.1.16",
+    "brace-expansion@2": "2.1.2",
+    "brace-expansion@5": "5.0.7",
+    "js-yaml": "^4.3.0"
   },
   "private": true
 }

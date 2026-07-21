@@ -60,10 +60,15 @@ describe("ENG-1247 — hero title overlay (mobile)", () => {
   });
 
   it("the screen composes the overlay only when flag ON AND a photo shows", () => {
-    expect(SCREEN).toContain("const heroOverlayActive = recipeDetailV3 && heroShowsPhoto");
+    const OVERLAY_HOOK = read("../../hooks/useRecipeHeroOverlay.ts");
+    const OVERLAY_BUILD = read("../../lib/recipe/buildRecipeHeroOverlay.ts");
+    expect(SCREEN).toContain("useRecipeHeroOverlay");
     expect(SCREEN).toContain("overlay={heroOverlay}");
+    expect(OVERLAY_HOOK).toContain(
+      "const heroOverlayActive = args.recipeDetailV3 && heroShowsPhoto",
+    );
     // Kicker: "From your cookbook" when saved, else the honest "Fits your day".
-    expect(SCREEN).toContain('saved ? "From your cookbook" : "Fits your day"');
+    expect(OVERLAY_BUILD).toContain('args.saved ? "From your cookbook" : "Fits your day"');
   });
 
   it("hides the duplicate body title when the overlay is active", () => {

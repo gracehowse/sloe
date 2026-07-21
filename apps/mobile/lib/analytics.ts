@@ -374,6 +374,10 @@ export function reset(): void {
  *   (ios-simulator MCP unavailable). Flag-off keeps every current
  *   monogram render (sans initial, no ring, existing per-site fill)
  *   byte-identical as the kill switch. Keep in sync with web.
+ * - `recipe_estimated_cost_v1` (ENG-1274) — per-serving grocery cost estimate
+ *   in the v3 recipe-detail hero meta row (Pro signal; static UK reference
+ *   prices, honest range). DEFAULT-OFF until Grace ramps in PostHog after a
+ *   web + mobile glance. Keep in sync with web.
  *
  * (The 5 cook-mode flags moved to `REDESIGN_DEFAULT_ON` in the 2026-06-22
  *  flag-collapse sweep, after the ENG-1230 swipe-surface render bug was
@@ -832,6 +836,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "plan_alert_to_toast_v1", // ENG-1344 first slice — planner.tsx's 7 non-blocking Alert.alert calls migrate to the shared Toast primitive; else = legacy Alert.alert (unchanged). Mobile-only: web has no Alert.alert-as-toast pattern to migrate (already native sonner).
   "library_single_filter_row_v1", // ENG-1607 — Cookbook single provenance chip row (v3); off = legacy two-row stack (kill switch). Web + mobile.
   "ingredient_text_rows_v1", // ENG-1611 — foods/ingredients render as TEXT (no glyph/monogram/photo tiles) on log-sheet rows + recipe-detail ingredients; off = legacy tiles (kill switch). Web + mobile.
+  "recipe_estimated_cost_v1", // ENG-1274 — per-serving grocery cost estimate (Pro) on recipe-detail hero meta; off = hidden (kill switch). Web + mobile.
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

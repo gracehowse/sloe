@@ -104,7 +104,7 @@ export function CookbookImportReview({
         </p>
       ) : null}
 
-      <div className="flex-1 space-y-3 pb-32">
+      <div className="flex-1 space-y-3 pb-10">
         {recipes.map((item) => (
           <CookbookImportReviewRow
             key={item.key}
