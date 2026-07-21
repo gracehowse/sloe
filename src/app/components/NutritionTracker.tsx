@@ -81,6 +81,7 @@ import { buildPostLogSuggestion } from "../../lib/nutrition/postLogSuggestion";
 import { dayActivityBudgetAddonWeb } from "../../lib/nutrition/trackerLocalState.ts";
 import { VoiceLogDialog } from "./suppr/voice-log-dialog";
 import { PhotoLogDialog } from "./suppr/photo-log-dialog";
+import { useLabelLogHost } from "./suppr/use-label-log-host";
 import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialog";
 import { TodayLoadingSkeleton } from "./suppr/today-loading-skeleton.tsx";
 import { TodayHeroStats } from "./suppr/today-hero-stats";
@@ -374,11 +375,7 @@ export const NutritionTracker = memo(function NutritionTracker({
   const [manualFat, setManualFat] = useState(0);
   const [manualFiber, setManualFiber] = useState(0);
   const [manualWater, setManualWater] = useState(0);
-  // Phase 3 / B2.1 (D-2026-04-27-15) — canonical LogSheet open state.
-  // The web LogSheet wires its sub-tabs to existing flows (FoodSearch
-  // dialog, barcode dialog, voice dialog, photo dialog) rather than
-  // re-implementing them. Opening the sheet replaces the Phase 2
-  // "Coming in Phase 3" alert path.
+  // Canonical LogSheet host state; child logging dialogs close it before opening.
   const [logSheetOpen, setLogSheetOpen] = useState(false);
   const [logSheetConfirmation, setLogSheetConfirmation] = useState<
     NonNullable<React.ComponentProps<typeof LogSheet>["confirmation"]> | null
@@ -388,14 +385,13 @@ export const NutritionTracker = memo(function NutritionTracker({
       setLogSheetConfirmation(null);
     }
   }, [logSheetOpen]);
-  // 2026-04-30 (web mobile-web parity with mobile commit `6633d2d`):
-  // consume the `?openLog=1` URL param dispatched by the centered
-  // raised Plus button in the App.tsx mobile-web `<nav>` (mirrors the
-  // mobile `<SupprTabBar>` raised-button pattern). The button lives
-  // globally across all tabs; tapping it from Recipes / Plan / You
-  // routes to Today and stamps `openLog=1`. We open the canonical
-  // `<LogSheet>` here (which owns the journal write path) and clear
-  // the param so a back-nav doesn't re-open the sheet.
+  const { openLabelLog, labelLogDialog } = useLabelLogHost({
+    addLoggedMeal,
+    mealSlot,
+    timeLabel,
+    onBeforeOpen: () => setLogSheetOpen(false),
+  });
+  // The global plus deep-link opens LogSheet and consumes its one-shot query params.
   const trackerRouter = useRouter();
   const trackerSearchParams = useSearchParams();
   const openLogParam = trackerSearchParams.get("openLog");
@@ -2505,6 +2501,8 @@ export const NutritionTracker = memo(function NutritionTracker({
         }}
       />
 
+      {labelLogDialog}
+
       {/* Batch 5.13 — Factual Pro paywall for voice / photo logging. */}
       <AiPaywallDialog
         open={aiPaywallFeature !== null}
@@ -2984,6 +2982,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           },
           locked: false,
         }}
+        label={{ onCapture: openLabelLog, locked: false }}
         aiMethodTooltipVisible={aiMethodTooltipVisible}
         onAddManually={() => {
           // Footer "Or add manually" → close LogSheet, open the

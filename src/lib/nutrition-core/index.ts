@@ -64,6 +64,7 @@ export * from "../nutrition/inferAllergens";
 export * from "../nutrition/inferNaturalServing";
 export * from "../nutrition/ingredientOverrides";
 export * from "../nutrition/journalWriteQueue";
+export * from "../nutrition/labelLogging";
 export * from "../nutrition/leftoversPlanner";
 export * from "../nutrition/macroCalorieSplit";
 export * from "../nutrition/macroFormat";

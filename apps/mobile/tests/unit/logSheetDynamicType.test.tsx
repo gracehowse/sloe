@@ -101,6 +101,7 @@ function open(props?: Partial<LogSheetProps>) {
       saved={{ meals: [], onPick: () => {} }}
       voice={{ onStart: () => {}, locked: true }}
       photo={{ onCapture: () => {}, locked: false }}
+      label={{ onCapture: () => {}, locked: false }}
       onAddManually={() => {}}
       describe={{ onParse: async () => ({ ok: true, items: [] }), onCommit: () => {} }}
       {...props}
@@ -113,11 +114,11 @@ describe("LogSheet Dynamic Type (ENG-1529)", () => {
     // ENG-1532 — `component_grammar_dedup` (mocked ON with every flag here)
     // drops the Scan tile; the loud CTA is the single scanner entry.
     const { getByTestId, getByText } = open();
-    for (const key of ["photo", "voice", "describe", "quick"]) {
+    for (const key of ["photo", "voice", "label", "describe", "quick"]) {
       const style = StyleSheet.flatten(getByTestId(`log-sheet-method-${key}`).props.style);
       expect(style?.height, `tile ${key} must not fix its height`).toBeUndefined();
     }
-    for (const label of ["Photo", "Voice", "Describe", "Quick add"]) {
+    for (const label of ["Photo", "Voice", "Label", "Describe", "Quick add"]) {
       expect(getByText(label).props.maxFontSizeMultiplier).toBe(1.2);
     }
   });

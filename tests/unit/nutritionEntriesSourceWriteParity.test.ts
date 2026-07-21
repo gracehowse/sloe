@@ -2,8 +2,8 @@
  * ENG-689 / ENG-674 — provenance write parity for `nutrition_entries.source`.
  *
  * Every INSERT/upsert into `nutrition_entries` must stamp a value that
- * satisfies `nutrition_entries_source_canonical` (see
- * `supabase/migrations/20260527200000_nutrition_entries_source_check.sql`).
+ * satisfies `nutrition_entries_source_canonical` (original constraint plus
+ * the latest forward allow-list migration).
  *
  * Client paths route through `canonicalNutritionEntrySource()` so legacy
  * in-memory labels cannot re-hit the CHECK constraint. Server CSV import
@@ -113,10 +113,12 @@ const CANONICAL_SET = new Set<string>(CANONICAL_NUTRITION_ENTRY_SOURCES);
 
 describe("nutrition_entries.source write parity (ENG-674 / ENG-689)", () => {
   it("CANONICAL_NUTRITION_ENTRY_SOURCES matches the migration CHECK allow-list", () => {
-    const migration = readFileSync(
-      resolve(REPO, "supabase/migrations/20260527200000_nutrition_entries_source_check.sql"),
-      "utf8",
-    );
+    const migration = [
+      "supabase/migrations/20260527200000_nutrition_entries_source_check.sql",
+      "supabase/migrations/20260721095900_eng1336_nutrition_label_source.sql",
+    ]
+      .map((file) => readFileSync(resolve(REPO, file), "utf8"))
+      .join("\n");
     for (const label of CANONICAL_NUTRITION_ENTRY_SOURCES) {
       expect(migration).toContain(`'${label.replace(/'/g, "''")}'`);
     }

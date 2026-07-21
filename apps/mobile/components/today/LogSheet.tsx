@@ -311,20 +311,8 @@ export interface LogSheetProps {
     onRequestPortion?: (meal: LogSheetSavedMeal) => void;
     state?: LogSheetTabState;
   };
-  /** Library tab -- user's saved recipes, surfaced inline so one-tap
-   *  logging no longer requires routing through Recipes -> Library ->
-   *  Detail. Sourced from TestFlight Build 40 feedback
-   *  `AECfotBlQgwfgxYHr4dDaM8` ("No way to add recipes saved to
-   *  library from here") + sibling reports, 2026-05-01.
-   *
-   *  Browse-tab order is Recent / Library / Saved meals -- Recent
-   *  remains the most-frequent default (eat-again loop); Library
-   *  sits next so the saved-recipe path is discoverable but doesn't
-   *  steal first-tap from the eat-again user.
-   *
-   *  When `library` is undefined the tab is hidden entirely. When
-   *  `library` is provided with an empty list, the empty state with
-   *  a "Browse recipes" CTA renders. */
+  /** Saved-recipe Library tab. Undefined hides it; an empty list shows
+   * the Browse recipes CTA. Mirrors web. */
   library?: {
     recipes: LogSheetLibraryRecipe[];
     onPick: (recipe: LogSheetLibraryRecipe) => void;
@@ -348,6 +336,12 @@ export interface LogSheetProps {
     locked?: boolean;
     /** @deprecated */ shutterSlot?: React.ReactNode;
     /** @deprecated */ state?: LogSheetTabState;
+  };
+  /** Nutrition-label log. Opens the dedicated capture → OCR → editable
+   * review flow. First-class only in the v3 method grid (ENG-1336). */
+  label?: {
+    onCapture?: () => void;
+    locked?: boolean;
   };
   /**
    * ENG-1252 — host-gated discoverability tooltip ("AI logging — available
@@ -445,6 +439,7 @@ function LogSheetImpl({
   library,
   voice,
   photo,
+  label,
   aiMethodTooltipVisible = false,
   onAddManually,
   copyYesterday,
@@ -608,6 +603,7 @@ function LogSheetImpl({
                 library={library}
                 voice={voice}
                 photo={photo}
+                label={label}
                 aiMethodTooltipVisible={aiMethodTooltipVisible}
                 browseTab={browseTab}
                 onBrowseTabChange={setBrowseTab}
@@ -644,6 +640,7 @@ function DefaultComposition({
   library,
   voice,
   photo,
+  label,
   aiMethodTooltipVisible,
   browseTab,
   onBrowseTabChange,
@@ -664,6 +661,7 @@ function DefaultComposition({
   library: LogSheetProps["library"];
   voice: LogSheetProps["voice"];
   photo: LogSheetProps["photo"];
+  label: LogSheetProps["label"];
   aiMethodTooltipVisible?: boolean;
   browseTab: BrowseTab;
   onBrowseTabChange: (tab: BrowseTab) => void;
@@ -809,6 +807,7 @@ function DefaultComposition({
           barcode={barcode}
           voice={voice}
           photo={photo}
+          label={label}
           describe={describe ? { locked: describe.locked } : undefined}
           aiMethodTooltipVisible={aiMethodTooltipVisible}
           onQuickAdd={onAddManually}

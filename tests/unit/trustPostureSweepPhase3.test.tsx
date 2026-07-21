@@ -54,6 +54,7 @@ describe("mapMealSourceToDot — canonical source mapper", () => {
     ["FatSecret", "fatsecret"],
     ["Custom", "manual"],
     ["Manual entry", "manual"],
+    ["Nutrition label", "manual"],
     ["AI photo", "ai"],
     ["AI voice", "ai"],
     ["Estimated", "ai"],

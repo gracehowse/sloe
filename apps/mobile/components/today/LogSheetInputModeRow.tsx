@@ -6,7 +6,7 @@
  *
  * Two renders, gated on `sloe_v3_log` (ENG-1303, default-ON):
  *   - FLAG ON  → the v3 method-grid TILE grammar: equal-width rounded tiles on
- *     the secondary surface (Photo / Voice / Describe / Quick add), a
+ *     the secondary surface (Photo / Voice / Label / Describe / Quick add), a
  *     frost lock badge in place of the "PRO" text pill on locked AI methods.
  *   - FLAG OFF → the legacy circular input chips (Voice / Photo / Quick add)
  *     with the "PRO" text pill — the kill-switch path, byte-for-byte
@@ -36,10 +36,11 @@ import {
   Mic,
   PencilLine,
   ScanBarcode,
+  ScanLine,
   type Search,
 } from "lucide-react-native";
 
-import { Accent, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -49,7 +50,7 @@ import { ProMethodBadge } from "@/components/today/ProMethodBadge";
 import type { LogSheetProps } from "./LogSheet";
 
 type Mode = {
-  key: "scan" | "photo" | "voice" | "describe" | "quick";
+  key: "scan" | "photo" | "voice" | "label" | "describe" | "quick";
   label: string;
   Icon: typeof Search;
   onPress?: () => void;
@@ -62,6 +63,7 @@ export function LogSheetInputModeRow({
   barcode,
   voice,
   photo,
+  label,
   describe,
   aiMethodTooltipVisible = false,
   onQuickAdd,
@@ -71,6 +73,8 @@ export function LogSheetInputModeRow({
   barcode: LogSheetProps["barcode"];
   voice: LogSheetProps["voice"];
   photo: LogSheetProps["photo"];
+  /** ENG-1336 — first-class scan-nutrition-label flow, v3 grid only. */
+  label: LogSheetProps["label"];
   /** ENG-1303 — Describe as a first-class method tile. Present only when the
    *  host wires the inline describe flow; `locked` mirrors `describe.locked`. */
   describe?: { locked?: boolean };
@@ -106,6 +110,13 @@ export function LogSheetInputModeRow({
     locked: photo?.locked ?? false,
     aiMethod: true,
   };
+  const labelMode: Mode = {
+    key: "label",
+    label: "Label",
+    Icon: ScanLine,
+    onPress: label?.onCapture,
+    locked: label?.locked ?? false,
+  };
   const describeMode: Mode = {
     key: "describe",
     label: "Describe",
@@ -121,8 +132,8 @@ export function LogSheetInputModeRow({
   // the pre-ENG-1303 render.
   const modes: Mode[] = v3
     ? dedup
-      ? [photoMode, voiceMode, describeMode, quick]
-      : [scan, photoMode, voiceMode, describeMode, quick]
+      ? [photoMode, voiceMode, labelMode, describeMode, quick]
+      : [scan, photoMode, voiceMode, labelMode, describeMode, quick]
     : dedup
       ? [voiceMode, photoMode, quick]
       : [scan, voiceMode, photoMode, quick];

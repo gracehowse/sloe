@@ -18,6 +18,7 @@ export function formatMealSourceLabelForRow(source: string | null | undefined): 
   if (low.includes("usda")) return "USDA";
   if (low.includes("ai photo")) return "AI photo";
   if (low.includes("ai voice")) return "AI voice";
+  if (low.includes("nutrition label")) return "Nutrition label";
   if (low.includes("quick entry")) return "Quick entry";
   if (low === "manual" || low.includes("manual")) return "Manual";
   if (low.includes("meal plan")) return "Meal plan";

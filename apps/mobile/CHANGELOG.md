@@ -1,5 +1,14 @@
 # Mobile App Changelog
 
+## 2026-07-21 — ENG-1336 first-class nutrition-label logging
+
+- Added the v3 LogSheet Label method and a dedicated camera → OCR → editable
+  per-serving review flow, in parity with web.
+- Label values are never auto-logged: low-confidence and implausible reads are
+  visibly flagged, and the user confirms the core macros before commit.
+- Journal rows now retain the truthful `Nutrition label` source and emit the
+  label-log analytics funnel.
+
 ## 2026-07-20 — OTA launch hardening
 
 ENG-1564 hardens the TestFlight/production launch path after the build 66/67

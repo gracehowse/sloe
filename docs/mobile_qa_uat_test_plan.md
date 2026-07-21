@@ -469,6 +469,19 @@ Component: `apps/mobile/components/PhotoLogSheet.tsx`. Route: `/api/nutrition/ph
 - EXP: same review UI as voice log (confidence + AI badges, inline macro edit, low-confidence amber + alert). Items carry `source: "AI photo"`.
 - EXP: tap Log all → `food_logged { source: "photo", count }` and `ai_photo_log_committed { itemCount, avgConfidence }`.
 
+### 7.13c Nutrition-label log (ENG-1336)
+Components: mobile `apps/mobile/components/LabelLogSheet.tsx`, web `src/app/components/suppr/label-log-dialog.tsx`. Route: `/api/nutrition/scan-label`. Shared model: `src/lib/nutrition/labelLogging.ts`.
+
+- EXP: with `sloe_v3_log` ON, LogSheet shows Label between Voice and Describe; flag OFF keeps the legacy method row unchanged.
+- EXP: tap Label → LogSheet closes and the dedicated label flow opens. No Pro gate in this release.
+- EXP: camera permission granted + capture succeeds → reading state disables duplicate actions while the label-specific OCR request runs.
+- NEG: denied camera permission, missing API base, timeout, non-JSON response, and non-2xx response each return to capture with visible retry copy.
+- EXP: endpoint per-100g values scale to `servingSizeG`; when no serving size is present, the review basis is explicitly 100g rather than an invented household portion.
+- EXP: review exposes editable food name, serving grams, calories, protein, carbs, and fat. Blank name, non-positive serving, or negative calories/macros cannot commit; zero-calorie labels remain valid.
+- EXP: low-confidence or Atwater-implausible response shows the amber double-check warning but keeps the values editable; nothing auto-logs.
+- EXP: commit writes one Today journal row with source `Nutrition label`, forwards scanned fibre/sugar/saturated-fat/sodium where present, emits `food_logged { source: "label" }` plus `nutrition_label_log_committed`, and dismisses the flow.
+- PARITY: web and iOS use the same response normalization, rounding, validation, analytics names, tile order, and source label.
+
 **Deferred**
 - Android mic permission prompt for Voice log on Android dev builds — handled by Expo's generic request flow; UAT on a physical Android device before GA.
 - Server-side Whisper audio upload — the current release uses OS STT + typed fallback only.

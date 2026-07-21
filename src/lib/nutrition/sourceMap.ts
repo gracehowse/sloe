@@ -43,6 +43,7 @@ export function mapMealSourceToDot(source: string | null | undefined): SourceDot
     return "off";
   }
   if (s.includes("fatsecret")) return "fatsecret";
+  if (s.includes("nutrition label") || s === "label") return "manual";
   if (s.includes("ai") || s.includes("photo") || s.includes("voice") || s.includes("estimat")) {
     return "ai";
   }

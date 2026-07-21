@@ -255,6 +255,7 @@ Every event name lives in `src/lib/analytics/events.ts`. The table below locks t
 "barcode"        // Barcode scanner commit
 "voice"          // Voice log commit
 "photo"          // AI photo log commit
+"label"          // Nutrition-label OCR + user-confirmed commit
 "recipe"         // Logged from recipe detail / recipe mode
 "planner"        // Logged from planner slot
 ```

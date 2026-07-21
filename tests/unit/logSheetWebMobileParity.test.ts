@@ -162,6 +162,14 @@ describe("LogSheet — web ↔ mobile structural parity", () => {
     expect(read(MOBILE_INPUT_MODE_ROW)).toContain("Quick add");
   });
 
+  it("both surfaces ship Label as a first-class v3 method", () => {
+    for (const src of [read(WEB_INPUT_MODE_ROW), read(MOBILE_INPUT_MODE_ROW)]) {
+      expect(src).toContain('key: "label"');
+      expect(src).toContain('label: "Label"');
+      expect(src).toMatch(/label\?\.onCapture/);
+    }
+  });
+
   it("both surfaces ship the daily-progress footer test handle", () => {
     expect(web).toContain("log-sheet-daily-progress");
     expect(mobile).toContain("log-sheet-daily-progress");
@@ -208,14 +216,14 @@ describe("LogSheet v3 method-grid tile grammar — web ↔ mobile parity (ENG-13
     }
   });
 
-  it("both rows render the v3 order Photo / Voice / Describe / Quick add, gated on the ENG-1532 dedup flag", () => {
+  it("both rows render the v3 order Photo / Voice / Label / Describe / Quick add, gated on the ENG-1532 dedup flag", () => {
     // ENG-1532 (`component_grammar_dedup`, default-ON) drops the Scan tile
     // from both renders — the loud CTA is the single scanner entry. The
     // dedup-OFF arrays keep Scan leading, byte-intact (kill switch).
     for (const src of [webRow, mobileRow]) {
       expect(src).toContain('isFeatureEnabled("component_grammar_dedup")');
       expect(src).toMatch(
-        /v3\s*\?\s*dedup\s*\?\s*\[\s*photoMode,\s*voiceMode,\s*describeMode,\s*quick\s*\]\s*:\s*\[\s*scan,\s*photoMode,\s*voiceMode,\s*describeMode,\s*quick\s*\]/,
+        /v3\s*\?\s*dedup\s*\?\s*\[\s*photoMode,\s*voiceMode,\s*labelMode,\s*describeMode,\s*quick\s*\]\s*:\s*\[\s*scan,\s*photoMode,\s*voiceMode,\s*labelMode,\s*describeMode,\s*quick\s*\]/,
       );
       expect(src).toMatch(
         /dedup\s*\?\s*\[\s*voiceMode,\s*photoMode,\s*quick\s*\]\s*:\s*\[\s*scan,\s*voiceMode,\s*photoMode,\s*quick\s*\]/,

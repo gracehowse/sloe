@@ -380,6 +380,15 @@ export const AnalyticsEvents = {
    * 1:1. Distinct from `barcode_scan_label_succeeded` (the not-found-barcode
    * path); this fires from the standalone custom-food form. */
   custom_food_label_scanned: "custom_food_label_scanned",
+  /** ENG-1336 — user opened the first-class nutrition-label capture flow.
+   * Payload: `{ platform: "web" | "ios" }`. */
+  nutrition_label_log_started: "nutrition_label_log_started",
+  /** Label OCR produced an editable review. Payload:
+   * `{ platform, confidence, implausible }`. */
+  nutrition_label_log_parsed: "nutrition_label_log_parsed",
+  /** User confirmed the reviewed label values and committed the journal row.
+   * Payload: `{ platform, confidence, implausible }`. */
+  nutrition_label_log_committed: "nutrition_label_log_committed",
   /** User moved a planned meal from one slot/day to another (Batch 3.10 — drag-drop
    * on web, long-press + drag on mobile). Payload: `{ fromSlot, toSlot, crossDay }`.
    * `crossDay` is true iff the source and destination days differ. */
@@ -1239,6 +1248,7 @@ export type FoodLoggedSource =
   | "barcode"        // Barcode scanner commit
   | "voice"          // Voice log commit
   | "photo"          // AI photo log commit
+  | "label"          // Nutrition-label OCR + user-confirmed commit
   | "recipe"         // Logged from recipe detail / recipe mode
   | "planner"        // Logged from planner slot
   // ENG-1301 (VERIFIED V13) — one-tap quick-log on suggestion surfaces. The

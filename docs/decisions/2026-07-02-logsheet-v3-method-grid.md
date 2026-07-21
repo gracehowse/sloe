@@ -7,6 +7,17 @@
 **Closes:** the LogHub method-grid + title conformance items in
 `docs/ux/redesign/v3/conformance-backlog.md` (§ "🔒 LogHub — search-first IA").
 
+## 2026-07-21 addendum — Label delivered (ENG-1336)
+
+The original Label deferral below is now superseded. The existing
+`/api/nutrition/scan-label` parser gained a dedicated capture → reading →
+editable per-serving review → journal commit surface on web and iOS. Label now
+sits between Voice and Describe in the flag-on grid. With the default
+`component_grammar_dedup` flag the grid has five methods (Photo / Voice / Label /
+Describe / Quick add); with dedup off, Barcode leads the six-method set. Label
+is not Pro-gated in this release. The `sloe_v3_log` flag-off legacy row remains
+byte-intact and does not show Label.
+
 ## Decision (Grace, 2026-07-02)
 
 1. **Adopt the v3 method-grid TILE grammar** for the Log-sheet input-method row,
@@ -58,8 +69,8 @@ flag-off path renders the exact pre-ENG-1303 circular chips + "Log a meal" heade
 
 ## Deliberate deviations from the prototype
 
-- **`Label` tile omitted** — no OCR/scan-label flow exists (see above). Follow-up
-  ticket, not a gap.
+- **`Label` tile omitted (superseded 2026-07-21 by ENG-1336)** — this was correct
+  at the original decision date; see the addendum above for the shipped flow.
 - **Radius 12, not 14** — 14 is off the Sloe radius scale {4,6,8,12,full}; 12 is
   the nearest legal token (design-craft contract: tokens only, no off-scale).
 - **Horizontal tile padding 4 (not the prototype's 6)** — 6 is off the spacing
