@@ -11,7 +11,7 @@ import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { canAdvance as canAdvanceStep } from "@/lib/onboarding";
-import { APP_CHOICE_FLAG, CONVERSION_FUNNEL_FLAG, useOnboarding } from "./context";
+import { CONVERSION_FUNNEL_FLAG, useOnboarding } from "./context";
 import { MOBILE_STEP_COMPONENTS } from "./steps";
 import { OnboardingSegmentedProgress } from "./OnboardingSegmentedProgress";
 import { useOnboardingCompletion } from "./useOnboardingCompletion";
@@ -111,17 +111,15 @@ export function MobileFlow() {
     }
   }, [isWelcome, isRefreshPlan, go]);
 
-  // ENG-990 — the app-choice step is flag-gated. `go()` already skips it
-  // when the flag is OFF, but a user whose persisted AsyncStorage `step`
-  // points at app-choice (reached it while the flag was ON, then it was
-  // ramped back to 0) would render it directly on remount. Defensive
-  // auto-skip, same shape as the signup already-authed skip above.
-  // `isFeatureEnabled` is cold-safe (false → skip), and we also skip it
-  // on refresh-plan (a returning user resetting their plan has no app to
-  // switch from).
+  // ENG-990 — app-choice auto-skip on refresh-plan: a returning user
+  // resetting their plan has no app to switch from, so bump them past
+  // the step. (The flag-OFF half of this defensive skip collapsed out
+  // 2026-07-22, ENG-1651 — `onboarding-app-choice` was permanently ON, so
+  // the step is unconditionally reachable now; only the refresh-plan skip
+  // remains.)
   const isAppChoice = currentStepId === "app-choice";
   React.useEffect(() => {
-    if (isAppChoice && (!isFeatureEnabled(APP_CHOICE_FLAG) || isRefreshPlan === true)) {
+    if (isAppChoice && isRefreshPlan === true) {
       go(1);
     }
   }, [isAppChoice, isRefreshPlan, go]);

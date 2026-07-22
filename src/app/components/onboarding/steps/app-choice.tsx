@@ -16,10 +16,9 @@
  * the mobile mirror at
  * `apps/mobile/components/onboarding/steps/app-choice.tsx`.
  *
- * Flag-gated behind `onboarding-app-choice`: when the flag is OFF the
- * flow shell auto-skips this step entirely, so it's inert until the flag
- * ramps. (The gate + auto-skip live in `web-flow.tsx`, mirroring the
- * maintain/weight pace auto-skip.)
+ * The `onboarding-app-choice` flag that used to gate this step collapsed
+ * out (2026-07-22, ENG-1651) — it was permanently ON in production, so
+ * the step is now unconditionally reachable on both flow shells.
  */
 
 import * as React from "react";

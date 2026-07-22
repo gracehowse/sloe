@@ -28,9 +28,10 @@ import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
  * The selectable apps come from the shared `buildAppChoiceOptions()`
  * helper (derived from the CSV-import adapter registry) so the tiles are
  * byte-for-byte the same set + order as web — only apps with a live
- * adapter are shown. Flag-gated behind `onboarding-app-choice`: when OFF
- * the flow shell auto-skips this step (see `mobile-flow.tsx` +
- * `context.tsx`), so it's inert until the flag ramps.
+ * adapter are shown. The `onboarding-app-choice` flag that used to gate
+ * this step collapsed out (2026-07-22, ENG-1651) — it was permanently ON
+ * in production, so the step is now unconditionally reachable on both
+ * flow shells.
  */
 export function MobileAppChoiceStep() {
   const { state, set } = useOnboarding();

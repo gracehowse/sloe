@@ -16,12 +16,6 @@ import {
 } from "@/lib/onboarding";
 import { isFeatureEnabled } from "@/lib/analytics";
 
-/** ENG-990 — feature flag gating the "Coming from another app?"
- *  (`app-choice`) step. Same flag name on web (see
- *  `src/app/components/onboarding/context.tsx#APP_CHOICE_FLAG`). When OFF
- *  the step is auto-skipped in `go()` and dropped from `displayTotal`. */
-export const APP_CHOICE_FLAG = "onboarding-app-choice";
-
 /** ENG-1233/1241 — conversion funnel (upgrade + first-log after data-bridges). */
 export const CONVERSION_FUNNEL_FLAG = "onboarding_conversion_funnel_v1";
 
@@ -172,14 +166,6 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
     })();
   }, [state, hasInitial]);
 
-  // ENG-990 — resolve the app-choice flag once per render. Cold-safe:
-  // `isFeatureEnabled` returns false when PostHog isn't ready, which is
-  // exactly the safe default (skip the new step) so the live flow is
-  // untouched until the flag ramps. Held in a ref so `go()` (a stable
-  // callback) always reads the latest value.
-  const appChoiceEnabled = isFeatureEnabled(APP_CHOICE_FLAG);
-  const appChoiceEnabledRef = React.useRef(appChoiceEnabled);
-  appChoiceEnabledRef.current = appChoiceEnabled;
   const conversionFunnelEnabled = isFeatureEnabled(CONVERSION_FUNNEL_FLAG);
   const conversionFunnelEnabledRef = React.useRef(conversionFunnelEnabled);
   conversionFunnelEnabledRef.current = conversionFunnelEnabled;
@@ -195,7 +181,6 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
     setState((prev) => ({
       ...prev,
       step: resolveNextStep(prev.step, delta, prev, {
-        appChoiceEnabled: appChoiceEnabledRef.current,
         conversionFunnelEnabled: conversionFunnelEnabledRef.current,
       }),
     }));
@@ -255,12 +240,11 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
   );
 
   // 1-indexed display, counting only the steps visible for this flow —
-  // mirror of the web context. ENG-990: the shared `displayPosition`
-  // helper drops the flag-hidden `app-choice` step from both the index
-  // and the total. Welcome is "Step 1 of N" (its overline + top bar are
-  // hidden). The refresh-plan adjustment below composes on top.
+  // mirror of the web context. `app-choice` is always counted since its
+  // `onboarding-app-choice` flag collapsed out (2026-07-22, ENG-1651).
+  // Welcome is "Step 1 of N" (its overline + top bar are hidden). The
+  // refresh-plan adjustment below composes on top.
   const base = displayPosition(state.step, {
-    appChoiceEnabled,
     conversionFunnelEnabled,
   });
 

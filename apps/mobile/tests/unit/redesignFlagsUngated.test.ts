@@ -26,6 +26,13 @@
  * call sites (brand mark unified unconditionally 2026-06-04), so removing it
  * from the default-on set is pure vestigial-reference cleanup — no behavior
  * changes. It no longer appears in this suite's flag lists.
+ *
+ * `onboarding-app-choice` collapsed out of REDESIGN_DEFAULT_ON (ENG-1651):
+ * the flag was removed entirely and the "Coming from another app?" step now
+ * ships unconditionally on both flow shells. It was never in this suite's
+ * flag lists (it's a Gate 1.5 flow-logic flag, not a redesign visual flag —
+ * see redesignDefaultOnParity.test.ts's GATE_15_SHARED), so there's nothing
+ * to remove there either.
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from "vitest";

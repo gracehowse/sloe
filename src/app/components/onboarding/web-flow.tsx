@@ -11,7 +11,7 @@ import { useAuthSession } from "@/context/AuthSessionContext";
 import { supabase } from "@/lib/supabase/browserClient";
 import { saveLocalProfile } from "@/lib/profile/profileStorage";
 import { type UserProfile } from "@/types/profile";
-import { APP_CHOICE_FLAG, CONVERSION_FUNNEL_FLAG, WHY_NOW_FLAG, useOnboarding } from "./context";
+import { CONVERSION_FUNNEL_FLAG, WHY_NOW_FLAG, useOnboarding } from "./context";
 import { isFeatureEnabled } from "@/lib/analytics/track";
 import { STEP_COMPONENTS } from "./steps";
 import { NARRATIVE } from "./narrative";
@@ -54,8 +54,10 @@ export function WebFlow() {
   const conversionFunnelEnabled = isFeatureEnabled(CONVERSION_FUNNEL_FLAG);
   // Flag-gated steps auto-skip in `go()` when OFF; persisted `step` on a
   // hidden step still renders on remount — advance past it defensively.
+  // (`app-choice`'s own flag-OFF branch collapsed out 2026-07-22,
+  // ENG-1651 — `onboarding-app-choice` was permanently ON, so the step no
+  // longer needs a defensive auto-skip here.)
   const flagGatedStepOff =
-    (currentStepId === "app-choice" && !isFeatureEnabled(APP_CHOICE_FLAG)) ||
     (currentStepId === "why-now" && !isFeatureEnabled(WHY_NOW_FLAG)) ||
     ((currentStepId === "upgrade" || currentStepId === "first-log") &&
       !conversionFunnelEnabled);
@@ -63,7 +65,7 @@ export function WebFlow() {
     if (!flagGatedStepOff) return;
     // ENG-1241 — funnel steps (first-log → upgrade) sit at the tail, so a
     // hidden funnel step with the flag OFF steps BACK to data-bridges;
-    // mid-flow app-choice / why-now still step forward.
+    // mid-flow why-now still steps forward.
     const isFunnelStep =
       currentStepId === "first-log" || currentStepId === "upgrade";
     go(isFunnelStep && !conversionFunnelEnabled ? -1 : 1);
@@ -283,7 +285,7 @@ export function WebFlow() {
             state.manualTargetsCarbsG != null &&
             state.manualTargetsFatG != null,
           // ENG-990 — the app the user said they're switching from
-          // (`null` when the app-choice step was skipped / flag OFF).
+          // (`null` when the user advanced without picking a tile).
           // Lets the funnel slice activation by chosen-app cohort.
           app_choice: state.appChoice,
         });

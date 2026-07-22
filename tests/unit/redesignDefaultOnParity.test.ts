@@ -100,7 +100,6 @@ const GATE_15_SHARED = [
   "cook_log_servings_confirm",
   "plan_web_parity_v1",
   "import-save-first-v1",
-  "onboarding-app-choice",
   // ENG-1246 (Gap #16) — shared editorial Profile block, default-on both platforms.
   "sloe_v3_profile",
   // ENG-1233/1241 (Gap #15) — onboarding conversion funnel (first-log → the
@@ -192,6 +191,12 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
   // source file and no longer belongs in the "core design-system flags" list
   // above.)
 
+  // (ENG-1651 — `design_system_icons` collapsed out of REDESIGN_DEFAULT_ON on
+  // both platforms: the flag was removed entirely and the Lucide icon swap
+  // (HydrationStimulantsCard, CreatorRecipeList) now ships unconditionally,
+  // so it's no longer parsed out of either source file and no longer belongs
+  // in the "core design-system flags" list above.)
+
   // (ENG-1651 round 2, slice 3 — `today_log_usual_row_v2` collapsed out of
   // REDESIGN_DEFAULT_ON and GATE_15_SHARED on both platforms: the flag was
   // removed entirely and the dedicated "Log usual" row now ships
@@ -203,9 +208,8 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
   // unconditionally in NutritionTracker.tsx, so it no longer belongs in the
   // WEB_ONLY carve-out above.)
 
-  // (ENG-1651 — `design_system_icons` collapsed out of REDESIGN_DEFAULT_ON on
-  // both platforms: the flag was removed entirely and the Lucide icon swap
-  // (HydrationStimulantsCard, CreatorRecipeList) now ships unconditionally,
-  // so it's no longer parsed out of either source file and no longer belongs
-  // in the "core design-system flags" list above.)
+  // (ENG-1651 — `onboarding-app-choice` collapsed out of REDESIGN_DEFAULT_ON
+  // and GATE_15_SHARED on both platforms: the flag was removed entirely and
+  // the "Coming from another app?" app-choice step now ships unconditionally,
+  // so it's no longer parsed out of either source file.)
 });

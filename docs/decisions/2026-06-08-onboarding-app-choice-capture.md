@@ -1,7 +1,8 @@
 # Onboarding "Coming from another app?" capture (ENG-990)
 
 **Date:** 2026-06-08
-**Status:** Resolved (flag-gated rollout)
+**Status:** Resolved — flag collapsed permanently ON 2026-07-22 (ENG-1651,
+see "Update" below). Originally shipped flag-gated.
 **Area:** Onboarding / MFP-refugee capture
 **Owner:** Grace
 **Authority:** Yazio teardown (`docs/research/2026-06-08-yazio-teardown.md` §7
@@ -154,3 +155,36 @@ documented iOS-only Apple Health card carve-out, unrelated to this work.)
 Add a row to the Decisions log DB linking back to this file. The
 MFP-refugee capture roadmap item should reference ENG-990 as the
 front-of-funnel capture for the existing CSV import.
+
+## Update — 2026-07-22 (ENG-1651, flag-collapse sweep round 2)
+
+`onboarding-app-choice` held at 100% far longer than the planned two-week
+ramp with no rollback, so a stale-flag audit flagged it for collapse per
+this doc's own "Out of scope" row above. Collapsed to the ON branch
+permanently on both platforms:
+
+- `app-choice` is now unconditionally step 2 in the flow — no auto-skip,
+  no flag read. The `resolveNextStep` / `displayPosition` skip-and-count
+  logic in `src/lib/onboarding/state.ts` that branched on
+  `appChoiceEnabled` was removed (the option no longer exists on
+  `ResolveStepOptions`), not just short-circuited.
+- `isFeatureEnabled(APP_CHOICE_FLAG)` and the `APP_CHOICE_FLAG` /
+  `appChoiceEnabled` constants were removed from both flow shells
+  (`context.tsx`, `mobile-flow.tsx`, `web-flow.tsx` on each platform).
+  The mobile defensive auto-skip effect keeps its (unrelated)
+  refresh-plan skip.
+- The flag string was removed from `REDESIGN_DEFAULT_ON` (both
+  platforms), the `GATE_15_SHARED` list in
+  `tests/unit/redesignDefaultOnParity.test.ts`, and the mobile dev
+  flag-override picker (`DevFlagOverrides.tsx`). It was never in the
+  e2e visual-flag registry (`tests/e2e/redesign-flag-registry.json`) —
+  this was a flow-logic gate, not a visual redesign flag.
+- `tests/unit/onboardingState.test.ts` and
+  `tests/unit/onboardingWhyNowWiring.test.tsx` dropped their
+  `appChoiceEnabled` ON/OFF matrices (that branch no longer exists) while
+  keeping coverage that app-choice is always reachable and always counted
+  in `displayPosition`.
+- The PostHog flag row itself is the one to archive as part of this
+  ticket's cleanup — no further code depends on it.
+
+"Removing the flag gate" (the deferred row above) is now done.
