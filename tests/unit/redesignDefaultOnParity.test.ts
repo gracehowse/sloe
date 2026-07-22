@@ -105,7 +105,6 @@ const GATE_15_SHARED = [
   "plan_web_parity_v1",
   "import-save-first-v1",
   "onboarding-app-choice",
-  "today_planned_empty_state",
   // ENG-1246 (Gap #16) — shared editorial Profile block, default-on both platforms.
   "sloe_v3_profile",
   // ENG-1233/1241 (Gap #15) — onboarding conversion funnel (first-log → the

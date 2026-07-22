@@ -2119,15 +2119,15 @@ export const NutritionTracker = memo(function NutritionTracker({
         )}
       {/* Planned meals — show meals from today's plan so the user can
           one-tap log them at a chosen portion (½× / 1× / 1½× / 2×).
-          F-178/F-179 (ENG-1065): when `today_planned_empty_state` is ON the
-          "Planned" card persists on empty days too — it renders an empty-state
-          branch (same shell + header) instead of vanishing, so the Today scroll
-          keeps its section grammar whether or not a plan exists. Flag OFF keeps
-          the prior render-only-when-populated behaviour exactly. The card owns
+          F-178/F-179 (ENG-1065): the "Planned" card persists on empty days
+          too — it renders an empty-state branch (same shell + header)
+          instead of vanishing, so the Today scroll keeps its section grammar
+          whether or not a plan exists. `today_planned_empty_state` collapsed
+          (ENG-1651) — permanently ON via REDESIGN_DEFAULT_ON. The card owns
           the empty/populated fork off `plannedMeals.length`. Mobile parity:
           `apps/mobile/app/(tabs)/index.tsx` planned section. */}
       {(mealPlan && mealPlan.length > 0 && (mealPlan[0]?.meals ?? []).length > 0) ||
-      (viewMode === "day" && isFeatureEnabled("today_planned_empty_state")) ? (
+      viewMode === "day" ? (
         <TodayPlannedMealsCard
           plannedMeals={mealPlan?.[0]?.meals ?? []}
           onLogPlannedMealWithPortion={async (meal, portion) => {

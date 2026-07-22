@@ -73,10 +73,11 @@ describe("TodayPlannedMealsCard", () => {
 
 /**
  * F-178/F-179 (ENG-1065) — empty-state branch, web parity with mobile
- * `TodayPlannedMealsCard`. When the host mounts the card with no planned meals
- * (flag-ON path, `today_planned_empty_state`), the card keeps the SAME shell +
- * "Planned" header and shows a calm one-liner plus a ghost "Plan your day →"
- * link into the Plan tab (`/plan`).
+ * `TodayPlannedMealsCard`. When the host mounts the card with no planned
+ * meals, the card keeps the SAME shell + "Planned" header and shows a calm
+ * one-liner plus a ghost "Plan your day →" link into the Plan tab (`/plan`).
+ * `today_planned_empty_state` collapsed (ENG-1651) — the host always mounts
+ * this now on the day view.
  */
 describe("TodayPlannedMealsCard — empty-state branch (F-178/F-179)", () => {
   it("renders the SAME 'Planned' header in the empty state", () => {

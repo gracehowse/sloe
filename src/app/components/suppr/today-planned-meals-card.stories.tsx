@@ -9,7 +9,7 @@ import type { DayPlanMeal } from "../../../types/recipe.ts";
  *
  *   - With meals → row list, each with macro line + "Log today" trigger.
  *   - Empty      → same card shell + "Nothing planned" + "Plan your day →"
- *     ghost link (the `today_planned_empty_state` branch, ENG-1065).
+ *     ghost link (ENG-1065; `today_planned_empty_state` collapsed ENG-1651).
  *
  * Mirrors mobile `apps/mobile/components/today/TodayPlannedMealsCard.tsx`.
  */

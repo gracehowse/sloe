@@ -14,14 +14,14 @@ import type { DayPlanMeal } from "../../../types/recipe.ts";
  * portion picker (½× / 1× / 1½× / 2×) so the user can one-tap log a
  * planned meal at a non-default serving.
  *
- * Visibility / empty state: when `today_planned_empty_state` is ON the host
- * mounts this card even on empty days; the card then renders an empty-state
- * branch carrying the SAME card shell + "Planned" header, a calm one-liner
- * ("Nothing planned for today"), and a ghost "Plan your day →" link into the
- * Plan tab — so the Today scroll keeps its section grammar whether or not a
- * plan exists (F-178/F-179, ENG-1065). Flag OFF: parent only mounts the card
- * when `plannedMeals.length > 0`, the prior hide-when-empty behaviour. Mobile
- * parity: `apps/mobile/components/today/TodayPlannedMealsCard.tsx`.
+ * Visibility / empty state: the host mounts this card on every day view, even
+ * empty days; the card then renders an empty-state branch carrying the SAME
+ * card shell + "Planned" header, a calm one-liner ("Nothing planned for
+ * today"), and a ghost "Plan your day →" link into the Plan tab — so the
+ * Today scroll keeps its section grammar whether or not a plan exists
+ * (F-178/F-179, ENG-1065). `today_planned_empty_state` collapsed (ENG-1651)
+ * — this was permanently ON via REDESIGN_DEFAULT_ON. Mobile parity:
+ * `apps/mobile/components/today/TodayPlannedMealsCard.tsx`.
  */
 
 export interface TodayPlannedMealsCardProps {

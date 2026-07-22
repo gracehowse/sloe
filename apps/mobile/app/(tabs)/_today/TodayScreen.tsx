@@ -4296,17 +4296,17 @@ export default function TrackerScreen() {
             />
           )}
         {/* Planned meals from the planner.
-            F-178/F-179 (ENG-1065): when `today_planned_empty_state` is ON the
-            "Planned" section persists on empty days too — the card renders an
-            empty-state branch (same shell + header) instead of vanishing, so the
-            Today scroll keeps its section grammar whether or not a plan exists.
-            Flag OFF keeps the old hide-when-empty behaviour exactly. The card
-            itself owns the empty/populated render fork off `plannedMeals.length`.
-            Section break is `marginTop: 0` (ENG-1099/ENG-1356) — the one 24
-            `Spacing.xl` `styles.scroll` gap carries the rhythm now, matching
-            Meals / Activity / Hydration. */}
-        {viewMode === "day" &&
-          (plannedMeals.length > 0 || isFeatureEnabled("today_planned_empty_state")) && (
+            F-178/F-179 (ENG-1065): the "Planned" section persists on empty
+            days too — the card renders an empty-state branch (same shell +
+            header) instead of vanishing, so the Today scroll keeps its
+            section grammar whether or not a plan exists. The card itself
+            owns the empty/populated render fork off `plannedMeals.length`.
+            `today_planned_empty_state` collapsed (ENG-1651) — this was
+            permanently ON via REDESIGN_DEFAULT_ON. Section break is
+            `marginTop: 0` (ENG-1099/ENG-1356) — the one 24 `Spacing.xl`
+            `styles.scroll` gap carries the rhythm now, matching Meals /
+            Activity / Hydration. */}
+        {viewMode === "day" && (
             <View style={{ marginTop: 0 }}>
               <TodayPlannedMealsCard
                 plannedMeals={plannedMeals}
