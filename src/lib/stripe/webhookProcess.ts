@@ -159,11 +159,103 @@ async function applyTierDecision(userId: string, decision: TierDecision): Promis
   // "skip" → intentionally no write.
 }
 
-async function applyTierForSubscription(sub: Stripe.Subscription): Promise<void> {
+/**
+ * ENG-1490 finding #2 (2026-07-21): Stripe does not guarantee webhook
+ * delivery order (https://stripe.com/docs/webhooks#event-ordering) — a
+ * `customer.subscription.*` event embeds a point-in-time snapshot of the
+ * subscription as of when Stripe generated it, not one re-fetched at
+ * delivery time. A chronologically OLDER-but-distinct event (retry
+ * backoff, network jitter, concurrent dispatch) can arrive AFTER a newer
+ * one for the SAME subscription already applied its tier decision — e.g.
+ * a late `active` snapshot re-granting Pro after a subsequent
+ * cancellation already correctly downgraded the user.
+ * `updateProfileTierServiceRole` only floor-protects `lifetime_pro`, so a
+ * plain pro→free downgrade has no protection against this.
+ *
+ * This is SEPARATE from `isAlreadyProcessed` (T23): that guards against
+ * exact redelivery of the SAME event.id. This guards against a
+ * DIFFERENT, older event for the same subscription landing after a newer
+ * one already applied. Both run — dedup first (cheaper, catches the
+ * common case), then this, only on the `customer.subscription.*` path
+ * (see `stripe_subscription_event_versions`'s migration comment for why
+ * `checkout.session.completed` doesn't need it: it re-fetches the
+ * subscription live rather than trusting the webhook payload).
+ *
+ * Fail-open on read error — mirrors `isAlreadyProcessed`'s own philosophy
+ * elsewhere in this file: if we can't determine the last-applied
+ * timestamp, apply the event rather than silently dropping a legitimate
+ * tier change.
+ */
+async function isStaleSubscriptionEvent(
+  subscriptionId: string | undefined,
+  eventCreated: number | null | undefined,
+): Promise<boolean> {
+  if (!subscriptionId || !eventCreated) return false;
+  const sb = createSupabaseServiceRoleClient();
+  if (!sb) return false; // env not configured (tests, dev) → never treat as stale
+  const { data, error } = await sb
+    .from("stripe_subscription_event_versions")
+    .select("last_event_created")
+    .eq("subscription_id", subscriptionId)
+    .maybeSingle();
+  if (error) {
+    console.warn(
+      "[stripe_webhook] failed to read last-applied subscription event version; fail-open (applying):",
+      error.message,
+    );
+    return false;
+  }
+  const lastEventCreated = (data as { last_event_created?: string } | null)?.last_event_created;
+  if (!lastEventCreated) return false; // no prior record → not stale
+  const lastAppliedSeconds = Math.floor(new Date(lastEventCreated).getTime() / 1000);
+  return eventCreated < lastAppliedSeconds;
+}
+
+/** Persist the high-water mark after a `customer.subscription.*` tier
+ * decision is applied (or explicitly skipped as a no-grant status like
+ * `incomplete` — see call sites). Best-effort/warn-only, matching every
+ * other bookkeeping write in this file; a failed write here just means
+ * the next event's staleness check fails open, not a lost tier update. */
+async function recordAppliedSubscriptionEvent(
+  subscriptionId: string | undefined,
+  eventCreated: number | null | undefined,
+  eventId: string,
+): Promise<void> {
+  if (!subscriptionId || !eventCreated) return;
+  const sb = createSupabaseServiceRoleClient();
+  if (!sb) return;
+  const { error } = await sb.from("stripe_subscription_event_versions").upsert(
+    {
+      subscription_id: subscriptionId,
+      last_event_created: new Date(eventCreated * 1000).toISOString(),
+      last_event_id: eventId,
+    },
+    { onConflict: "subscription_id" },
+  );
+  if (error) {
+    console.warn(
+      "[stripe_webhook] failed to persist last-applied subscription event version",
+      error.message,
+    );
+  }
+}
+
+async function applyTierForSubscription(
+  sub: Stripe.Subscription,
+  eventCreated: number | null | undefined,
+  eventId: string,
+): Promise<void> {
   const userId = resolveUserIdFromSubscription(sub);
   if (!userId) return;
+  if (await isStaleSubscriptionEvent(sub.id, eventCreated)) {
+    console.warn(
+      `[stripe_webhook] skipping stale out-of-order event ${eventId} for subscription ${sub.id}`,
+    );
+    return;
+  }
   await applyTierDecision(userId, tierDecisionForSubscription(sub));
   await persistTrialStartedAtIfTrialing(userId, sub.status);
+  await recordAppliedSubscriptionEvent(sub.id, eventCreated, eventId);
 }
 
 /**
@@ -238,14 +330,25 @@ export async function processStripeWebhookEvent(stripe: Stripe, event: Stripe.Ev
     case "customer.subscription.updated":
     case "customer.subscription.created": {
       const sub = event.data.object as Stripe.Subscription;
-      await applyTierForSubscription(sub);
+      await applyTierForSubscription(sub, event.created, event.id);
       break;
     }
     case "customer.subscription.deleted": {
       const sub = event.data.object as Stripe.Subscription;
       const userId = resolveUserIdFromSubscription(sub);
       if (userId) {
+        // ENG-1490 #2: same stale-out-of-order guard as the updated/created
+        // path — a late `deleted` for a subscription the user has since
+        // resubscribed under (or a late-arriving delete racing a newer
+        // `updated`) must not clobber a newer tier state.
+        if (await isStaleSubscriptionEvent(sub.id, event.created)) {
+          console.warn(
+            `[stripe_webhook] skipping stale out-of-order deleted event ${event.id} for subscription ${sub.id}`,
+          );
+          break;
+        }
         await updateProfileTierServiceRole(userId, "free");
+        await recordAppliedSubscriptionEvent(sub.id, event.created, event.id);
       }
       break;
     }
