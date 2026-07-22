@@ -1,5 +1,4 @@
 {
-  "onlyChanged": true,
   "zip": true,
   "externals": ["public/**"]
 }

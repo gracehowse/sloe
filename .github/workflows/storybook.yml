@@ -60,7 +60,7 @@ jobs:
           configFile: chromatic.storybook.config.json
           storybookBuildDir: storybook-static
           exitZeroOnChanges: true
-          onlyChanged: true
+          # Curated contract only — mutually exclusive with onlyChanged.
           onlyStoryFiles: |
             src/app/components/ui/suppr-card.stories.tsx
             src/app/components/ui/suppr-notice.stories.tsx

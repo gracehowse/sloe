@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import type { PlanDayMealLike } from "@suppr/shared/planning/distributeAroundAnchor";
+import type { PlanDayMealLike } from "@suppr/nutrition-core/distributeAroundAnchor";
 const placeholder = (name: string): PlanDayMealLike => ({ name, recipeTitle: "", calories: 0, protein: 0, carbs: 0, fat: 0, isPlaceholder: true });
 const lockedDinner: PlanDayMealLike = { name: "Dinner", recipeTitle: "Spaghetti bolognese", calories: 780, protein: 42, carbs: 88, fat: 24, isLocked: true };
 

@@ -20,7 +20,7 @@ A second risk surfaced the same day: publishing **all** ~1,600 stories as Chroma
 4. **Chromatic snapshots** are limited to the visual contract:
    - Default in `.storybook/preview.tsx`: `chromatic.disableSnapshot: true`
    - Opt-in via `.storybook/chromaticVisualContract.ts` + `scripts/chromatic-storybook-visual-contract.txt`
-   - CI passes `onlyStoryFiles` for that list and uses `chromatic.storybook.config.json` (TurboSnap `onlyChanged: true`)
+   - CI passes `onlyStoryFiles` for that list via `chromatic.storybook.config.json` (mutually exclusive with TurboSnap `onlyChanged`)
 5. **Separate Chromatic projects** (preferred):
    - `CHROMATIC_PROJECT_TOKEN` → Playwright E2E archives (`.github/workflows/chromatic.yml`)
    - `CHROMATIC_STORYBOOK_PROJECT_TOKEN` → Storybook library + curated snapshots (`.github/workflows/storybook.yml`)

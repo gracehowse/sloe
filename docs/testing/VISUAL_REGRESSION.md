@@ -146,7 +146,7 @@ Pair with TestFlight (`npm run testflight:feedback`) for ASC screenshot threads;
 
 Hosted PR visual review for **web** (and mobile UI via RN-web Storybook). Two tracks:
 
-**Storybook components (required catalog — always current):** full library always builds + publishes for browse. Chromatic *snapshots* are curated (`scripts/chromatic-storybook-visual-contract.txt`, preview `disableSnapshot: true` by default). TurboSnap/`onlyChanged` applies to that contract only. Local:
+**Storybook components (required catalog — always current):** full library always builds + publishes for browse. Chromatic *snapshots* are curated (`scripts/chromatic-storybook-visual-contract.txt`, preview `disableSnapshot: true` by default). CI uses `onlyStoryFiles` for that contract (not TurboSnap `onlyChanged` — Chromatic forbids combining them). Local:
 
 ```bash
 export CHROMATIC_STORYBOOK_PROJECT_TOKEN=chpt_…   # preferred; else CHROMATIC_PROJECT_TOKEN
