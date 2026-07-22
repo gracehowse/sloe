@@ -7,12 +7,17 @@ import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { GradientAvatar } from "@/components/GradientAvatar";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { SupprButton } from "@/components/ui/SupprButton";
 import { RecipeCardImage } from "@/components/library/RecipeCardImage";
 import { isFeatureEnabled } from "@/lib/analytics";
 import {
   type EditorialProfileBlockModel,
   type StreakDotState,
 } from "@/lib/editorialProfileBlock";
+import {
+  PROFILE_UPGRADE_BANNER_TDEE_GLOSS,
+  PROFILE_UPGRADE_BANNER_TDEE_PLAIN,
+} from "@suppr/shared/onboarding/figmaCopy";
 
 /** Recipe subset the grid needs — matches the mobile RecipeCard fields used. */
 export interface EditorialProfileRecipe {
@@ -37,6 +42,8 @@ export interface EditorialProfileBlockProps {
   onOpenRecipe: (recipeId: string) => void;
   /** "See all" → the Recipes tab. */
   onSeeAllRecipes: () => void;
+  /** ENG-1641 — single primary Upgrade CTA for non-Pro (footer). */
+  onUpgrade?: () => void;
 }
 
 /** Max recipes rendered in the preview grid — one tidy 3-up row. */
@@ -64,6 +71,7 @@ function EditorialProfileBlockImpl({
   recipeCount,
   onOpenRecipe,
   onSeeAllRecipes,
+  onUpgrade,
 }: EditorialProfileBlockProps) {
   const colors = useThemeColors();
   const accent = useAccent();
@@ -75,6 +83,7 @@ function EditorialProfileBlockImpl({
   // the ENG-1593 audit traced as the "two different plum shades" gap
   // against the Today header's already-canonical Accent.purple).
   const avatarFrostRingV1 = isFeatureEnabled("avatar_monogram_frost_ring_v1");
+  const glossOn = isFeatureEnabled("onboarding_jargon_gloss_v1");
 
   const gridRecipes = recipes.slice(0, RECIPE_GRID_LIMIT);
   const freezeCount = model.freezesAvailable;
@@ -236,6 +245,22 @@ function EditorialProfileBlockImpl({
           </View>
         )}
       </View>
+
+      {/* ENG-1641 — one primary Upgrade CTA in the editorial footer for non-Pro. */}
+      {!isPro && onUpgrade ? (
+        <View style={styles.upgradeWrap}>
+          <SupprButton
+            variant="primary"
+            label="Upgrade to Pro"
+            onPress={onUpgrade}
+            accessibilityLabel="Upgrade to Pro"
+            testID="editorial-profile-upgrade"
+          />
+          <Text style={styles.upgradeHint}>
+            {glossOn ? PROFILE_UPGRADE_BANNER_TDEE_GLOSS : PROFILE_UPGRADE_BANNER_TDEE_PLAIN}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -348,6 +373,12 @@ function makeStyles(
       backgroundColor: colors.cardBorder,
     },
     tileImage: { width: "100%", height: "100%" },
+    upgradeWrap: { gap: Spacing.sm },
+    upgradeHint: {
+      ...Type.caption,
+      color: colors.textSecondary,
+      textAlign: "center",
+    },
   });
 }
 

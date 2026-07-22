@@ -5,9 +5,16 @@
  * module tracks reserved image spend directly in pence. It enforces hard daily
  * and monthly caps before a fal request is made, emits one 70% alarm per period,
  * and refunds the reservation when the vendor call/download/upload fails.
+ *
+ * ENG-1411 — Redis fail-policy mirrors `aiBudget.ts`: 5 minutes fail-OPEN after
+ * the first Upstash failure, then fail-CLOSED while enforcement is on (deny
+ * new image grants). Sustained Redis unavailability must not be a free pass
+ * for image spend.
  */
 
 import { Redis } from "@upstash/redis";
+
+import { recordUpstashFailure } from "./upstashMonitoring";
 
 export type FalBudgetPeriod = "daily" | "monthly";
 export type FalBudgetGrant = {
@@ -21,7 +28,7 @@ export type FalBudgetGrant = {
 };
 export type FalBudgetDenied = {
   ok: false;
-  reason: "daily_spend" | "monthly_spend";
+  reason: "daily_spend" | "monthly_spend" | "upstash_unavailable";
   retryAfterSec: number;
 };
 
@@ -29,6 +36,7 @@ const DEFAULT_DAILY_GBP = 10;
 const DEFAULT_MONTHLY_GBP = 150;
 const ALARM_THRESHOLD = 0.7;
 const COUNTER_TTL_SEC = 65 * 24 * 60 * 60;
+const FAIL_OPEN_WINDOW_MS = 5 * 60 * 1000;
 
 const MODEL_PRICE_PENCE: Record<string, number> = {
   "fal-ai/nano-banana-pro": 11, // ~$0.13/image at £0.85/$.
@@ -41,7 +49,52 @@ const g = globalThis as unknown as {
   __pm_falBudgetRedis?: Redis;
   __pm_falBudgetMemStore?: Map<string, { value: number; expiresAtMs: number }>;
   __pm_falBudgetGrants?: Map<string, FalBudgetGrant & { settled: boolean }>;
+  __pm_falBudgetUpstashState?: {
+    firstFailureAt: number | null;
+    failOpenUntil: number | null;
+  };
 };
+
+function upstashState() {
+  if (!g.__pm_falBudgetUpstashState) {
+    g.__pm_falBudgetUpstashState = { firstFailureAt: null, failOpenUntil: null };
+  }
+  return g.__pm_falBudgetUpstashState;
+}
+
+function noteUpstashFailure(err: unknown): void {
+  const state = upstashState();
+  const now = Date.now();
+  if (state.firstFailureAt == null) {
+    state.firstFailureAt = now;
+    state.failOpenUntil = now + FAIL_OPEN_WINDOW_MS;
+    console.error("[fal-budget] Upstash failure — entering 5-minute fail-OPEN window", err);
+    recordUpstashFailure(
+      { subsystem: "fal_budget", mode: "call_threw", operation: "budget_window", failBehavior: "open" },
+      err,
+    );
+  } else if (state.failOpenUntil != null && now > state.failOpenUntil) {
+    console.error("[fal-budget] Upstash still failing past fail-open window — failing CLOSED", err);
+    recordUpstashFailure(
+      { subsystem: "fal_budget", mode: "call_threw", operation: "budget_window", failBehavior: "closed" },
+      err,
+    );
+  }
+}
+
+function noteUpstashSuccess(): void {
+  const state = upstashState();
+  if (state.firstFailureAt != null) {
+    state.firstFailureAt = null;
+    state.failOpenUntil = null;
+  }
+}
+
+function isInFailOpenWindow(): boolean {
+  const state = upstashState();
+  if (state.failOpenUntil == null) return false;
+  return Date.now() <= state.failOpenUntil;
+}
 
 function getRedis(): Redis | null {
   const url = process.env.UPSTASH_REDIS_REST_URL?.trim();
@@ -72,12 +125,18 @@ function memGet(key: string): number {
   return existing.value;
 }
 
-async function incrBy(key: string, delta: number): Promise<number> {
+async function incrBy(key: string, delta: number): Promise<number | null> {
   const redis = getRedis();
   if (!redis) return memIncrBy(key, delta, COUNTER_TTL_SEC);
-  const next = await redis.incrby(key, delta);
-  await redis.expire(key, COUNTER_TTL_SEC);
-  return next;
+  try {
+    const next = await redis.incrby(key, delta);
+    await redis.expire(key, COUNTER_TTL_SEC);
+    noteUpstashSuccess();
+    return next;
+  } catch (err) {
+    noteUpstashFailure(err);
+    return null;
+  }
 }
 
 async function setIfAbsent(key: string): Promise<boolean> {
@@ -87,7 +146,14 @@ async function setIfAbsent(key: string): Promise<boolean> {
     memIncrBy(key, 1, COUNTER_TTL_SEC);
     return true;
   }
-  return (await redis.set(key, 1, { nx: true, ex: COUNTER_TTL_SEC })) === "OK";
+  try {
+    const ok = (await redis.set(key, 1, { nx: true, ex: COUNTER_TTL_SEC })) === "OK";
+    noteUpstashSuccess();
+    return ok;
+  } catch (err) {
+    noteUpstashFailure(err);
+    return false;
+  }
 }
 
 function parsePositiveIntEnv(name: string, fallback: number): number {
@@ -168,16 +234,51 @@ export async function reserveFalImageBudget(args: {
   const monthlyAfter = await incrBy(monthlyKey, reservedPence);
   const dailyCap = dailyCapPence();
   const monthlyCap = monthlyCapPence();
+  const enforcement = isFalBudgetEnforcementEnabled();
+
+  // ENG-1411 — Redis throw path: fail-OPEN for 5 min, then fail-CLOSED.
+  if (dailyAfter == null || monthlyAfter == null) {
+    if (isInFailOpenWindow()) {
+      console.warn("[fal-budget] Upstash unhealthy — failing OPEN (within 5min window)");
+      const grant: FalBudgetGrant = {
+        ok: true,
+        grantId: newGrantId(),
+        modelId: args.modelId,
+        imageClass: args.imageClass,
+        reservedPence: 0,
+        dailyKey,
+        monthlyKey,
+      };
+      grants().set(grant.grantId, { ...grant, settled: false });
+      return grant;
+    }
+    if (enforcement) {
+      return { ok: false, reason: "upstash_unavailable", retryAfterSec: 60 };
+    }
+    // Tracking-only mode with Redis down past the window: allow through,
+    // same posture as shadow AI budget when enforcement is off.
+    const grant: FalBudgetGrant = {
+      ok: true,
+      grantId: newGrantId(),
+      modelId: args.modelId,
+      imageClass: args.imageClass,
+      reservedPence: 0,
+      dailyKey,
+      monthlyKey,
+    };
+    grants().set(grant.grantId, { ...grant, settled: false });
+    return grant;
+  }
 
   void maybeAlarm("daily", day, dailyAfter, dailyCap);
   void maybeAlarm("monthly", month, monthlyAfter, monthlyCap);
 
-  if (dailyAfter > dailyCap && isFalBudgetEnforcementEnabled()) {
+  if (dailyAfter > dailyCap && enforcement) {
     void incrBy(dailyKey, -reservedPence);
     void incrBy(monthlyKey, -reservedPence);
     return { ok: false, reason: "daily_spend", retryAfterSec: secondsToNextUtcDay() };
   }
-  if (monthlyAfter > monthlyCap && isFalBudgetEnforcementEnabled()) {
+  if (monthlyAfter > monthlyCap && enforcement) {
     void incrBy(dailyKey, -reservedPence);
     void incrBy(monthlyKey, -reservedPence);
     return { ok: false, reason: "monthly_spend", retryAfterSec: secondsToNextUtcMonth() };
@@ -213,7 +314,14 @@ export function commitFalImageBudget(grantId: string): void {
 export function _resetFalBudgetForTest(): void {
   g.__pm_falBudgetMemStore = new Map();
   g.__pm_falBudgetGrants = new Map();
+  g.__pm_falBudgetUpstashState = { firstFailureAt: null, failOpenUntil: null };
   delete g.__pm_falBudgetRedis;
+}
+
+/** Test-only — inject a Redis client (e.g. one that throws) before reserve. */
+export function _setFalBudgetRedisForTest(redis: Redis | null): void {
+  if (redis == null) delete g.__pm_falBudgetRedis;
+  else g.__pm_falBudgetRedis = redis;
 }
 
 export function _readFalBudgetCounterForTest(key: string): number {

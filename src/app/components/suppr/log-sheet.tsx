@@ -435,10 +435,15 @@ export function LogSheet({
   initialQuery,
 }: LogSheetProps) {
   const [browseTab, setBrowseTab] = React.useState<BrowseTab>("recent");
+  // ENG-1652 — hide session tray while FoodSearchPanel portion preview is open.
+  const [portionPreviewActive, setPortionPreviewActive] = React.useState(false);
   React.useEffect(() => {
     if (!open) setBrowseTab("recent");
     else if (goTos && goTos.entries.length > 0) setBrowseTab("gotos");
   }, [open, goTos]);
+  React.useEffect(() => {
+    if (!open) setPortionPreviewActive(false);
+  }, [open]);
 
   const inManualEntryMode = !!barcode?.manualEntry;
   const inConfirmationMode = !!confirmation;
@@ -624,13 +629,15 @@ export function LogSheet({
               describe={describe}
               initialQuery={initialQuery}
               slotName={slot?.current ?? null}
+              onPreviewActiveChange={setPortionPreviewActive}
             />
           )}
 
           {/* ENG-1643 — session-tray receipt, pinned as the sheet's bottom-most
               persistent bar. Renders nothing until ≥ 1 item is committed this
-              session. Mirror of mobile `LogSheet`. */}
-          {sessionTray ? <LogSessionTray {...sessionTray} /> : null}
+              session. Mirror of mobile `LogSheet`.
+              ENG-1652 — hide while portion preview is open (one filled CTA). */}
+          {sessionTray && !portionPreviewActive ? <LogSessionTray {...sessionTray} /> : null}
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
     </DrawerPrimitive.Root>
@@ -663,6 +670,7 @@ function DefaultComposition({
   describe,
   initialQuery,
   slotName,
+  onPreviewActiveChange,
 }: {
   open: boolean;
   search: LogSheetProps["search"];
@@ -685,6 +693,8 @@ function DefaultComposition({
   initialQuery?: string;
   /** Active meal slot — feeds the food-thumb slot tier (ENG-1448). */
   slotName?: string | null;
+  /** ENG-1652 — portion-preview open → hide session tray. */
+  onPreviewActiveChange?: (active: boolean) => void;
 }) {
   const [describeReviewActive, setDescribeReviewActive] = React.useState(false);
   const [describeSeedText, setDescribeSeedText] = React.useState<string | null>(null);
@@ -886,6 +896,7 @@ function DefaultComposition({
             onToggleFavorite={search?.onToggleFavorite}
             favoritePendingKeys={search?.favoritePendingKeys}
             mode="compact"
+            onPreviewActiveChange={onPreviewActiveChange}
             onSelect={(result) => {
               search?.onSelect?.(result);
               setQuery("");

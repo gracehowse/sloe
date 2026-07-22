@@ -75,14 +75,21 @@ describe("deriveIngredientVerificationTier", () => {
     ).toBe("verified");
   });
 
-  it("returns 'verified' when confidence >= 0.75 and no other signal", () => {
+  it("ENG-1425 — untrusted confidence >= 0.75 caps at 'partial' (Verify CTA stays)", () => {
     expect(
       deriveIngredientVerificationTier({
         isVerified: null,
         confidence: 0.92,
         source: null,
       }),
-    ).toBe("verified");
+    ).toBe("partial");
+    expect(
+      deriveIngredientVerificationTier({
+        isVerified: false,
+        confidence: 0.75,
+        source: "ai",
+      }),
+    ).toBe("partial");
   });
 
   it("returns 'partial' for unverified rows with confidence in [0.55, 0.75)", () => {
@@ -140,14 +147,14 @@ describe("deriveIngredientVerificationTier", () => {
     ).toBe("unverified");
   });
 
-  it("treats numeric confidence boundaries inclusively at 0.55 and 0.75", () => {
+  it("treats numeric confidence boundaries inclusively at 0.55 (ENG-1425: 0.75 no longer verified for untrusted)", () => {
     expect(
       deriveIngredientVerificationTier({
         isVerified: false,
         confidence: 0.75,
         source: null,
       }),
-    ).toBe("verified");
+    ).toBe("partial");
 
     expect(
       deriveIngredientVerificationTier({

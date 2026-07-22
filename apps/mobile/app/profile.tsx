@@ -674,6 +674,11 @@ export default function ProfileScreen() {
             recipeCount={recipeCount}
             onOpenRecipe={(id) => router.push(`/recipe/${id}`)}
             onSeeAllRecipes={() => router.push("/(tabs)/library")}
+            onUpgrade={
+              userTier === "pro"
+                ? undefined
+                : () => router.push("/paywall?from=profile")
+            }
           />
         ) : profileShowcaseV1 ? (
           <ProfileShowcaseReadView
