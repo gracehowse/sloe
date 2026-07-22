@@ -847,17 +847,13 @@ export function FoodSearchPanel({
   // wrapper — see `<FoodSearchResultRow>`); OFF → today's grouped-card
   // render, byte-intact (the PostHog kill switch).
   const grammarDedup = isFeatureEnabled("component_grammar_dedup");
-  // ENG P5 parity (gap #5/#9). Two-flag relationship on this surface:
-  //   `redesign_search_results` = STRUCTURE (segmented control + grouped cards)
-  //   `design_system_elevation` = DEPTH — historically the soft
-  //     `--elev-card-soft` shadow.
-  // Flat-card surfaces (2026-06-12, Withings grammar — decision:
-  // docs/decisions/2026-06-12-flat-card-surfaces.md): the soft lift is RETIRED.
-  // The `elevated` ON path now means BORDERLESS-FLAT (drop the hairline, no
-  // shadow) — the quiet card fill on the cream ground is the separation,
-  // mirroring the mobile `useCardElevation` flat result. OFF keeps the legacy
-  // flat hairline.
-  const elevated = isFeatureEnabled("design_system_elevation");
+  // ENG P5 parity (gap #5/#9). `redesign_search_results` gates the STRUCTURE
+  // (segmented control + grouped cards). Flat-card surfaces (2026-06-12,
+  // Withings grammar — decision: docs/decisions/2026-06-12-flat-card-surfaces.md):
+  // result-group cards are BORDERLESS-FLAT (no hairline, no shadow) — the
+  // quiet card fill on the cream ground is the separation, mirroring the
+  // mobile `useCardElevation` flat result. `design_system_elevation` collapsed
+  // (ENG-1651) — this was permanently ON via REDESIGN_DEFAULT_ON.
   const [results, setResults] = useState<SearchResult[]>([]);
   // ENG-815 — one unified segmented control (replaces the prototype's two
   // clashing filter languages). Every category here has REAL backing logic —
@@ -2130,8 +2126,8 @@ export function FoodSearchPanel({
             queries — a parity break. Relaxed to render whenever the user has
             searched (`query.trim()`), so a no-result query keeps the filter
             control visible above the "No results" empty state, matching mobile.
-            The inactive pill's soft shadow is depth (`design_system_elevation`,
-            gap #5); the strip's STRUCTURE stays under `redesign_search_results`. */}
+            The strip's STRUCTURE stays under `redesign_search_results`
+            (`design_system_elevation`, gap #5, collapsed — ENG-1651). */}
         {searchResultsRedesign && query.trim() && (
           <div
             role="tablist"
@@ -2314,18 +2310,15 @@ export function FoodSearchPanel({
                     {/* ENG-1532 grammar dedup ON: plain rows with the
                         Past-logged group's hairline `divide-y` — no card
                         wrapper. OFF: the flat-card surface (2026-06-12) —
-                        the grouped result card is FLAT; the `elevated` ON
-                        path stays borderless (the Withings quiet-fill
-                        grammar) but the retired `--elev-card-soft` lift is
-                        dropped; the card fill on the cream ground is the
-                        separation. */}
+                        the grouped result card is FLAT and borderless (the
+                        Withings quiet-fill grammar); the retired
+                        `--elev-card-soft` lift is dropped; the card fill on
+                        the cream ground is the separation. */}
                     <div
                       className={
                         grammarDedup
                           ? "mb-3.5 divide-y divide-border"
-                          : `mb-3.5 overflow-hidden rounded-2xl bg-card ${
-                              elevated ? "border-0" : "border border-border"
-                            }`
+                          : "mb-3.5 overflow-hidden rounded-2xl border-0 bg-card"
                       }
                     >
                       {section.rows.map((item) => (

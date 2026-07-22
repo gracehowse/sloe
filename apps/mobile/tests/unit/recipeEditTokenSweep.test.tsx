@@ -7,11 +7,14 @@
  * "imported from a different design system": a hardcoded `#00000066` backdrop,
  * a border-as-depth sheet panel, and an off-token dashed add-button outline
  * (`Accent.primary + "50"`). This sweep aligns them to the one design language.
- * Resting cards take their soft-lift treatment from `useCardElevation` (now an
- * unconditional default — the shadow carries the separation); the sheet PANEL
- * keeps its own `design_system_elevation` read for the heavier sheet shadow:
+ * Resting cards AND the sheet panel take their soft-lift treatment from
+ * `useCardElevation` — an unconditional default, the shadow carries the
+ * separation. `design_system_elevation` has been collapsed (ENG-1651): the
+ * flag was permanently ON, and `RecipeEditSheet.tsx` never actually read it
+ * directly in the first place — it goes through the already-ungated
+ * `useCardElevation()` hook, same as everywhere else:
  *   - the sheet panel takes the real `Elevation.sheet` shadow + drops the
- *     border-as-depth when the flag is on (tonal lift on dark);
+ *     border-as-depth (tonal lift on dark, via `card.liftBg` + `card.useBorder`);
  *   - the backdrop uses the `colors.overlay` scrim token, not a raw hex;
  *   - the add-ingredient affordance renders via the shared AddRowButton
  *     primitive (AddControl ruling 2026-07-10, ENG-1375 S4 — superseded the
@@ -59,11 +62,15 @@ describe("ENG-821 — recipe edit sheet token sweep (mobile)", () => {
     expect(sheet()).not.toMatch(/#00000066/);
   });
 
-  it("RecipeEditSheet panel takes the real sheet shadow under the elevation flag", () => {
+  it("RecipeEditSheet panel takes the real sheet shadow via the ungated useCardElevation hook", () => {
     const src = sheet();
+    // design_system_elevation collapsed (ENG-1651) — RecipeEditSheet never
+    // read the flag directly; it goes through useCardElevation() like every
+    // other surface, and that hook is itself unconditional.
+    expect(src).not.toMatch(/isFeatureEnabled\("design_system_elevation"\)/);
     expect(src).toMatch(/useCardElevation/);
     expect(src).toMatch(/Elevation\.sheet/);
-    // border-as-depth is flag-gated, not static.
+    // border-as-depth is driven by the hook's card.useBorder, not a raw literal.
     expect(src).toMatch(/card\.useBorder\s*\?\s*1\s*:\s*0/);
   });
 

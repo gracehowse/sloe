@@ -158,10 +158,9 @@ function DesktopHeroStats({
   const hideBonusCell = showFreshDayGrammar && bonusKcal <= 0;
   return (
     // Design Direction 2026 (ENG-795): canonical SupprCard so the desktop hero
-    // adopts soft elevation (and drops its border) under
-    // `design_system_elevation`; flag OFF stays flat. `padding="none"` keeps
-    // the exact `px-4 py-4` geometry; `hidden md:block` display utility and
-    // the `data-testid` are preserved.
+    // adopts soft elevation (and drops its border) via the `elevation="card"`
+    // prop. `padding="none"` keeps the exact `px-4 py-4` geometry;
+    // `hidden md:block` display utility and the `data-testid` are preserved.
     <SupprCard
       elevation="card"
       radius="lg"

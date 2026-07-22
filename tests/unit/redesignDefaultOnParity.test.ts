@@ -170,7 +170,6 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
 
   it("core design-system flags default ON on both platforms", () => {
     const core = [
-      "design_system_elevation",
       "design_system_colours",
       "design_system_brandmark",
       "design_system_icons",
@@ -187,4 +186,10 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
 
   // (The `today_meals_figma_layout` kill-switch flag was removed in ENG-1096
   // along with the dead summary layout — no flag to keep out of default-on.)
+
+  // (ENG-1651 — `design_system_elevation` collapsed out of REDESIGN_DEFAULT_ON
+  // on both platforms: the flag was removed entirely and its ON-branch
+  // styling now ships unconditionally, so it's no longer parsed out of either
+  // source file and no longer belongs in the "core design-system flags" list
+  // above.)
 });

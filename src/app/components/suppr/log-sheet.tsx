@@ -440,17 +440,14 @@ export function LogSheet({
   // ENG-821 parity gap #19 — the sheet shadow was a hardcoded light-only
   // literal (`0 -8px 32px rgba(0,0,0,0.12)`) that under-renders the sheet in
   // dark mode (mobile's `Elevation.sheet` reads the `--elev-sheet` token whose
-  // dark variant is alpha 0.5, not 0.12). Under `design_system_elevation` we
-  // read the canonical token instead — a no-op in light (byte-identical value)
-  // and the correct deeper shadow in dark. The hardcoded literal stays alive in
-  // the flag-OFF else, consistent with the sibling dialog gating (CLAUDE.md
-  // feature-flag non-negotiable).
-  const elevated = isFeatureEnabled("design_system_elevation");
+  // dark variant is alpha 0.5, not 0.12). Reads the canonical token instead —
+  // a no-op in light (byte-identical value) and the correct deeper shadow in
+  // dark. Sheets keep their float per the 2026-07-10 card-grammar ruling
+  // (ENG-1497). `design_system_elevation` collapsed (ENG-1651) — this was
+  // permanently ON via REDESIGN_DEFAULT_ON.
   // ENG-1303 — v3 sheet header copy. OFF → the legacy "Log a meal" (kill switch).
   const sheetTitle = isFeatureEnabled("sloe_v3_log") ? "Add to today" : "Log a meal";
-  const sheetShadowCls = elevated
-    ? "shadow-[var(--elev-sheet)]"
-    : "shadow-[0_-8px_32px_rgba(0,0,0,0.12)]";
+  const sheetShadowCls = "shadow-[var(--elev-sheet)]";
 
   // ENG-812 parity gap #21 — the redesign_motion element→sheet open morph. The
   // shared web analog (`sheetTransition(open)` from src/lib/motion.ts) springs

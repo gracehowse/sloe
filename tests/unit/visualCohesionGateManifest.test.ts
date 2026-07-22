@@ -66,7 +66,6 @@ describe("visual cohesion gate manifest (ENG-1142)", () => {
 
   it("pins ENG-838 flag-ON visual coverage", () => {
     expect(VISUAL_UTILS).toContain("REDESIGN_VISUAL_FLAGS");
-    expect(VISUAL_UTILS).toContain('"design_system_elevation"');
     expect(VISUAL_UTILS).toContain('"web-subscription-card"');
     expect(VISUAL_UTILS).toContain('"redesign_search_results"');
     expect(AUTHED_SPEC).toContain("forceRedesignVisualFlagsOn(page)");

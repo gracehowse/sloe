@@ -128,27 +128,20 @@ export const Flat: Story = {
 };
 
 /**
- * `card` tier with `design_system_elevation` forced ON → the soft-elevation
- * branch: the hairline border is dropped, the resting shadow becomes
- * `--elev-card-soft`, and `data-soft-elevation="true"` is emitted. Covers the
- * `softElevation === true` branch in `suppr-card.tsx` (the elevation migration,
- * lines 159-161 + 175) so the 100% Storybook branch gate holds. Uses the same
- * per-story `window.__SUPPR_FORCE_FLAGS__` hook as `suppr-mark` / Playwright's
- * forceFlagsOn (track.ts); `beforeEach` cleanup resets it so the flag never
- * leaks to the sibling stories, which must keep rendering the flat treatment.
+ * `card` tier → the soft-elevation branch: the hairline border is dropped,
+ * the resting shadow becomes `--elev-card-soft`, and
+ * `data-soft-elevation="true"` is emitted. Covers the `softSlab === true`
+ * branch in `suppr-card.tsx` (elevation prop-driven, lines 167-168 + 177) so
+ * the 100% Storybook branch gate holds. `design_system_elevation` collapsed
+ * (ENG-1651) — `suppr-card.tsx` never read the flag itself (already
+ * ungated, driven purely by the `elevation` prop); the force-flags hook this
+ * story used to set was inert.
  */
 export const CardSoftElevation: Story = {
   args: {
     elevation: "card",
     tone: "neutral",
-    children: <p className="text-sm text-foreground">Soft resting elevation (flag on)</p>,
-  },
-  beforeEach() {
-    const w = window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> };
-    w.__SUPPR_FORCE_FLAGS__ = { design_system_elevation: true };
-    return () => {
-      delete w.__SUPPR_FORCE_FLAGS__;
-    };
+    children: <p className="text-sm text-foreground">Soft resting elevation</p>,
   },
 };
 

@@ -286,11 +286,9 @@ function EditEntryV2(props: TodayEditMealModalProps) {
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
             >
-              {/* NAME — a recessed input field. Under
-                  `design_system_elevation` it loses its hairline and takes
+              {/* NAME — a recessed input field. Loses its hairline and takes
                   the tonal lift bg (the soft drop-shadow stays reserved for
-                  the lifted *card* surfaces, not recessed inputs); flat
-                  hairline otherwise. */}
+                  the lifted *card* surfaces, not recessed inputs). */}
               <Text style={[Type.label, v2.sectionLabel, { color: colors.textTertiary }]}>Name</Text>
               <TextInput
                 style={[

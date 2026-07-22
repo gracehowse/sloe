@@ -120,20 +120,19 @@ export function TodayAddMealDialog(props: TodayAddMealDialogProps) {
   // footer that holds Cancel + Add meal. Mirrors P0 #1 (FoodSearch).
 
   // ENG-821 (Redesign — Design Direction 2026) parity gap #20: this was the
-  // ONLY suppr dialog never swept onto `design_system_elevation` — its three
-  // direct siblings (recipe-edit / add-ingredient / override-ingredient) all
-  // move from the pure-white `bg-card` + hairline border onto the warm-cream
-  // `bg-background` surface and let the real soft `--elev-card-soft` shadow
-  // carry separation (no border-as-depth) under the flag. Mirror them exactly;
-  // the flag-OFF path keeps today's white/hairline dialog alive (CLAUDE.md
-  // feature-flag non-negotiable). Inputs already use semantic borders; the
-  // Add CTA is the dialog's ONE primary action → solid-plum `SupprButton`
-  // primary (button system 2026-06-12), mirroring mobile quick-add
-  // "Add to Today".
-  const elevated = isFeatureEnabled("design_system_elevation");
-  const surfaceCls = elevated
-    ? "bg-background border-transparent shadow-[var(--elev-card-soft)]"
-    : "bg-card border-border";
+  // ONLY suppr dialog never swept onto the design-direction surface — its
+  // three direct siblings (recipe-edit / add-ingredient / override-ingredient)
+  // all move from the pure-white `bg-card` + hairline border onto the
+  // warm-cream `bg-background` surface and let the real soft
+  // `--elev-card-soft` shadow carry separation (no border-as-depth). Mirrors
+  // them exactly — dialogs keep their float per the 2026-07-10 card-grammar
+  // ruling (ENG-1497). `design_system_elevation` collapsed (ENG-1651) — this
+  // was permanently ON via REDESIGN_DEFAULT_ON. Inputs already use semantic
+  // borders; the Add CTA is the dialog's ONE primary action → solid-plum
+  // `SupprButton` primary (button system 2026-06-12), mirroring mobile
+  // quick-add "Add to Today".
+  const surfaceCls =
+    "bg-background border-transparent shadow-[var(--elev-card-soft)]";
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent

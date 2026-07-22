@@ -160,7 +160,7 @@ function flagOn(...flags: string[]) {
 
 describe("FoodSearchPanel results redesign (mobile, ENG-814)", () => {
   it("flag ON: renders unified labels, Best/More section headers and confidence chips", async () => {
-    flagOn("redesign_search_results", "design_system_elevation", "trust_source_name_v1");
+    flagOn("redesign_search_results", "trust_source_name_v1");
     const { findByText, findByTestId, queryByText } = render(
       <FoodSearchPanel
         query="chicken"

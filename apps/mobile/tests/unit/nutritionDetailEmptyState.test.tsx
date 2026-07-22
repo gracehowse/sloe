@@ -7,8 +7,9 @@
  * colours, one floating in a sea of whitespace).
  *
  * Pins the flag-gated visual behaviour so a regression breaks the test:
- *   - `design_system_elevation` ON  → the body wraps in an elevated card
- *     (modern radius + shadow); OFF → the legacy flat, card-less layout.
+ *   - the body always wraps in an elevated card (modern radius + shadow via
+ *     `useCardElevation`) — `design_system_elevation` collapsed (ENG-1651),
+ *     it was permanently ON; there is no more flat, card-less layout.
  *   - `design_system_colours` ON  → the CTA fills BLUE (`Accent.primary`,
  *     the single commit-action colour); OFF → the caller's legacy fill
  *     (e.g. the saturated macro hue passed via `ctaColorLegacy`).
@@ -125,8 +126,7 @@ describe("NutritionDetailEmptyState (mobile)", () => {
     expect(flatten(onBtn.props.style).backgroundColor).toBe(Accent.primary);
   });
 
-  it("structure — flag ON wraps the body in an elevated card (modern radius)", () => {
-    flagFn.mockImplementation((f: string) => f === "design_system_elevation");
+  it("structure — always wraps the body in an elevated card (modern radius)", () => {
     const { getByTestId } = render(
       <NutritionDetailEmptyState
         testID="empty-card"
@@ -135,21 +135,8 @@ describe("NutritionDetailEmptyState (mobile)", () => {
       />,
     );
     const style = flatten(getByTestId("empty-card").props.style);
-    // Radius.xl (12) — the modern corner the lane calls for; the flat path
-    // has no borderRadius on the outer container.
+    // Radius.xl (12) — the modern corner the lane calls for; unconditional
+    // since `design_system_elevation` collapsed (ENG-1651).
     expect(style.borderRadius).toBe(12);
-  });
-
-  it("structure — flag OFF stays flat (no card radius on the container)", () => {
-    flagFn.mockReturnValue(false);
-    const { getByTestId } = render(
-      <NutritionDetailEmptyState
-        testID="empty-flat"
-        icon={Salad}
-        title="No meals logged yet"
-      />,
-    );
-    const style = flatten(getByTestId("empty-flat").props.style);
-    expect(style.borderRadius).toBeUndefined();
   });
 });

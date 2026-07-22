@@ -129,11 +129,11 @@ export default function RecipeEditSheet({
   // ENG-821 (Redesign — Design Direction 2026): the edit sheet + ingredient
   // editor read as "imported from a different design system" — a hardcoded
   // backdrop hex, a border-as-depth sheet panel, an off-token dashed add-button
-  // outline. Under `design_system_elevation` the sheet panel takes the real
-  // `Elevation.sheet` shadow and drops the redundant border-as-depth (tonal
-  // lift on dark, via `card.liftBg` + `card.useBorder`). The flag-OFF path
-  // keeps today's flat/hairline panel alive (`useCardElevation`'s default
-  // branch). Mirrors `SavedMealPortionSheet`.
+  // outline. The sheet panel takes the real `Elevation.sheet` shadow and drops
+  // the redundant border-as-depth (tonal lift on dark, via `card.liftBg` +
+  // `card.useBorder`) via `useCardElevation`. `design_system_elevation`
+  // collapsed (ENG-1651) — the hook was already ungated. Mirrors
+  // `SavedMealPortionSheet`.
   const card = useCardElevation();
   // Secondary accent (Frost flag → damson, else clay) for the meal-type chips,
   // the add-ingredient affordance, the ingredient-load spinner, and the Save
@@ -381,11 +381,10 @@ export default function RecipeEditSheet({
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         {/* Sheet panel — overlays content, so it always takes the real
-            `Elevation.sheet` shadow (sheets keep their shadow in both flag
-            states, per the depth-ladder token comment). Under
-            `design_system_elevation` the redundant border-as-depth drops so the
-            shadow alone carries separation; the flag-OFF path keeps the hairline
-            (card.useBorder === true). Dark soft-elevation uses tonal lift. */}
+            `Elevation.sheet` shadow (sheets keep their shadow, per the
+            depth-ladder token comment). The redundant border-as-depth drops
+            so the shadow alone carries separation. Dark soft-elevation uses
+            tonal lift. */}
         <View
           style={[
             styles.sheet,

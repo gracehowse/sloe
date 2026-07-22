@@ -225,8 +225,7 @@ function SavedMealPortionSheetImpl({
               <PortionStepper value={mult} onChange={onPortionChange} colors={colors} testIDPrefix="saved-portion" />
 
               {/* Live scaled macro read-out — a resting card; takes the soft
-                  elevation token (no border) under `design_system_elevation`,
-                  the flat hairline otherwise. */}
+                  elevation token (no border) via `useCardElevation`. */}
               <View
                 style={[
                   s.macroRow,
