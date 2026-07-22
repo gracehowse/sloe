@@ -12,12 +12,12 @@ import {
   nutritionEntryDateKeyAndEatenAt,
 } from "@suppr/nutrition-core/mealEatenAt";
 import type { FoodHistoryItem } from "@suppr/nutrition-core/foodHistory";
-import { useLogSessionTray } from "@suppr/shared/nutrition/useLogSessionTray";
+import { useLogSessionTray } from "@suppr/nutrition-core/useLogSessionTray";
 import {
   committedToTrayItem,
   type CommittedLogItem,
   type LogSessionTrayItem,
-} from "@suppr/shared/nutrition/logSessionTray";
+} from "@suppr/nutrition-core/logSessionTray";
 import type { SelectedFood as FoodSearchSelectedFood } from "@/components/FoodSearchModal";
 import type { LogSheetProps } from "@/components/today/LogSheet";
 

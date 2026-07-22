@@ -279,7 +279,7 @@ import {
   committedToTrayItem,
   sessionTrayToSavedMealItems,
   sessionTrayTotals,
-} from "@suppr/shared/nutrition/logSessionTray";
+} from "@suppr/nutrition-core/logSessionTray";
 import { TodayDeficitInsight } from "@/components/today/TodayDeficitInsight";
 import { TodayPlannedMealsCard } from "@/components/today/TodayPlannedMealsCard";
 import { TodayCompleteDayButton } from "@/components/today/TodayCompleteDayButton";

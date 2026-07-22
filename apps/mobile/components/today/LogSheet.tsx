@@ -37,7 +37,7 @@ import { type SourceDotSource } from "@/components/ui/SourceDot";
 import { LoggedConfirmation } from "./LogSheetConfirmation";
 import { LogSessionTray } from "./LogSessionTray";
 import { SkeletonList } from "./LogSheetSkeletonList";
-import type { LogSessionTrayProps } from "@suppr/shared/nutrition/logSessionTray";
+import type { LogSessionTrayProps } from "@suppr/nutrition-core/logSessionTray";
 import { FatSecretBadge } from "@/components/ui/FatSecretBadge";
 import { TrustChip } from "@/components/ui/TrustChip";
 import FoodSearchPanel, {

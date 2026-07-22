@@ -569,7 +569,10 @@ describe("ENG-1643 — session tray web ↔ mobile parity", () => {
 
   it("the shared props + math are single-sourced (both platforms import from the shared module)", () => {
     expect(webTray).toMatch(/from "\.\.\/\.\.\/\.\.\/lib\/nutrition\/logSessionTray/);
-    expect(mobileTray).toMatch(/from "@suppr\/shared\/nutrition\/logSessionTray"/);
+    // ENG-1345 — mobile imports nutrition modules through the curated
+    // `@suppr/nutrition-core/*` boundary (never the dual-spelled
+    // `@suppr/shared/nutrition/*`); the shim re-exports the same shared file.
+    expect(mobileTray).toMatch(/from "@suppr\/nutrition-core\/logSessionTray"/);
   });
 });
 

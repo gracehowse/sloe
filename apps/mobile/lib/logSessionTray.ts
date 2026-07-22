@@ -1,1 +1,1 @@
-export * from "@suppr/shared/nutrition/logSessionTray";
+export * from "@suppr/nutrition-core/logSessionTray";

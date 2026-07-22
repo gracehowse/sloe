@@ -20,7 +20,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/react-native";
 
 import { LogSheet, type LogSheetProps } from "../../components/today/LogSheet";
-import type { LogSessionTrayItem } from "@suppr/shared/nutrition/logSessionTray";
+import type { LogSessionTrayItem } from "@suppr/nutrition-core/logSessionTray";
 
 vi.mock("expo-haptics", () => ({
   impactAsync: vi.fn(async () => undefined),

@@ -21,7 +21,7 @@ import {
   trayIsMultiSlot,
   type LogSessionTrayItem,
   type LogSessionTrayProps,
-} from "@suppr/shared/nutrition/logSessionTray";
+} from "@suppr/nutrition-core/logSessionTray";
 
 /**
  * ENG-1643 — the log-session tray (immediate-commit multi-add receipt). Shown
