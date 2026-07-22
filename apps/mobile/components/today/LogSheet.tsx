@@ -35,6 +35,9 @@ import { useHaptics } from "@/hooks/useHaptics";
 
 import { type SourceDotSource } from "@/components/ui/SourceDot";
 import { LoggedConfirmation } from "./LogSheetConfirmation";
+import { LogSessionTray } from "./LogSessionTray";
+import { SkeletonList } from "./LogSheetSkeletonList";
+import type { LogSessionTrayProps } from "@suppr/nutrition-core/logSessionTray";
 import { FatSecretBadge } from "@/components/ui/FatSecretBadge";
 import { TrustChip } from "@/components/ui/TrustChip";
 import FoodSearchPanel, {
@@ -425,6 +428,9 @@ export interface LogSheetProps {
      *  undefined. */
     onUndo?: () => void;
   } | null;
+  /** ENG-1643 — the session-tray receipt (immediate-commit multi-add). Present
+   *  only when `log_session_tray_v1` is on; absent = pre-ENG-1643 behaviour. */
+  sessionTray?: LogSessionTrayProps;
 }
 
 type BrowseTab = "gotos" | "recent" | "library" | "saved";
@@ -446,6 +452,7 @@ function LogSheetImpl({
   quickActions,
   slot,
   confirmation,
+  sessionTray,
   goTos,
   showBarcodeFreePromise = false,
   describe,
@@ -468,7 +475,12 @@ function LogSheetImpl({
   const inManualEntryMode = !!barcode?.manualEntry;
   const inConfirmationMode = !!confirmation;
   // ENG-1303 — v3 sheet header copy. OFF → the legacy "Log a meal" (kill switch).
-  const sheetTitle = isFeatureEnabled("sloe_v3_log") ? "Add to today" : "Log a meal";
+  // ENG-1643 — the session-tray count stays visible in EVERY sheet state
+  // (including the portion preview), applying the ENG-1449 "visible in every
+  // state" lesson to the receipt.
+  const trayCount = sessionTray?.items.length ?? 0;
+  const baseTitle = isFeatureEnabled("sloe_v3_log") ? "Add to today" : "Log a meal";
+  const sheetTitle = trayCount >= 1 ? `${baseTitle} · ${trayCount} added` : baseTitle;
 
   return (
     <Modal
@@ -617,6 +629,11 @@ function LogSheetImpl({
                 slotName={slot?.current ?? null}
               />
             )}
+
+            {/* ENG-1643 — session-tray receipt, pinned as the sheet's
+                bottom-most persistent bar (above the home-indicator inset).
+                Renders nothing until ≥ 1 item is committed this session. */}
+            {sessionTray ? <LogSessionTray {...sessionTray} /> : null}
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -1392,29 +1409,6 @@ function LibraryList({ library, slotName }: { library: NonNullable<LogSheetProps
   );
 }
 
-/* -------------------------- Skeleton -------------------------- */
-function SkeletonList({ colors }: { colors: ReturnType<typeof useThemeColors> }) {
-  const textRows = isFeatureEnabled("ingredient_text_rows_v1"); // ENG-1611 — text rows load as text
-  return (
-    <View style={{ padding: Spacing.md }}>
-      {[0, 1, 2, 3].map((i) => (
-        <View key={i} style={styles.skeletonRow}>
-          {textRows ? null : <View style={[styles.skeletonThumb, { backgroundColor: colors.skeleton }]} />}
-          <View style={{ flex: 1, marginLeft: textRows ? 0 : Spacing.sm }}>
-            <View style={[styles.skeletonLine, { backgroundColor: colors.skeleton, width: "65%" }]} />
-            <View
-              style={[
-                styles.skeletonLine,
-                { backgroundColor: colors.skeleton, width: "30%", marginTop: Spacing.xs, height: 8 },
-              ]}
-            />
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 /* -------------------------- Barcode manual entry -------------------------- */
 
 function BarcodeManualEntry({
@@ -1697,22 +1691,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
     borderRadius: Radius.xl,
-  },
-  skeletonRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: Spacing.sm,
-  },
-  skeletonThumb: {
-    width: 36,
-    height: 36,
-    borderRadius: Radius.lg,
-    opacity: 0.6,
-  },
-  skeletonLine: {
-    height: 10,
-    borderRadius: Radius.sm,
-    opacity: 0.6,
   },
   emptyBlock: {
     borderWidth: 1,

@@ -43,6 +43,9 @@ const MOBILE_TODAY_SCREEN = read("apps/mobile/app/(tabs)/_today/TodayScreen.tsx"
 const WEB_LOG_SHEET = read("src/app/components/suppr/log-sheet.tsx");
 const WEB_FOOD_SEARCH = read("src/app/components/food-search/FoodSearchPanel.tsx");
 const WEB_NUTRITION_TRACKER = read("src/app/components/NutritionTracker.tsx");
+const SHARED_TRAY = read("src/lib/nutrition/logSessionTray.ts");
+const MOBILE_TRAY = read("apps/mobile/components/today/LogSessionTray.tsx");
+const WEB_TRAY = read("src/app/components/suppr/log-session-tray.tsx");
 
 // Case-insensitive — catches `basket`, `Basket`, `LogBasket`, etc. Excludes
 // the unrelated PlanToolsV3 shopping-list "build your basket" copy (a
@@ -164,5 +167,97 @@ describe("ENG-1449 — \"Save a usual meal\" is reachable (the batching home now
   it("mobile LogSheet renders the 'Save a usual meal' / 'Save another usual meal' CTA in the Saved-tab empty/populated states", () => {
     expect(MOBILE_LOG_SHEET).toMatch(/Save a usual meal/);
     expect(MOBILE_LOG_SHEET).toMatch(/Save another usual meal/);
+  });
+});
+
+/**
+ * ENG-1643 — the session tray is a receipt, never a stage.
+ * Spec: `docs/specs/2026-07-21-log-session-tray.md` §9.
+ *
+ * The tray extends the ENG-1462 one-commit model's PRESENTATION (the sheet
+ * stays open + a running receipt) without weakening its commit SEMANTICS: every
+ * tray item is already committed (carries a `mealId`), so closing the sheet in
+ * any state still loses nothing. These source pins make the ENG-1449
+ * silent-discard failure class structurally unrepresentable for the tray too.
+ */
+describe("ENG-1643 — the session tray is a receipt, never a stage", () => {
+  it('"basket" stays banned in all six pinned files (the tray is committed, not a rename dodge)', () => {
+    // The tray uses "tray"; a re-introduced "basket" is a genuinely different
+    // (staged, un-committed) contract and must never come back.
+    expect(MOBILE_LOG_SHEET).not.toMatch(BASKET_RE);
+    expect(MOBILE_FOOD_SEARCH).not.toMatch(BASKET_RE);
+    expect(MOBILE_TODAY_SCREEN).not.toMatch(BASKET_RE);
+    expect(WEB_LOG_SHEET).not.toMatch(BASKET_RE);
+    expect(WEB_FOOD_SEARCH).not.toMatch(BASKET_RE);
+    expect(WEB_NUTRITION_TRACKER).not.toMatch(BASKET_RE);
+  });
+
+  it('"basket"/"cart" stay banned in the new tray files too', () => {
+    for (const src of [SHARED_TRAY, MOBILE_TRAY, WEB_TRAY]) {
+      expect(src).not.toMatch(BASKET_RE);
+      expect(src).not.toMatch(/\bcart\b/i);
+    }
+  });
+
+  it("the shared tray item type REQUIRES a committed mealId (a stage-less item is unrepresentable)", () => {
+    // `mealId: string` (non-optional) on the exported item interface — a tray
+    // item without a committed journal-row id cannot be constructed.
+    expect(SHARED_TRAY).toMatch(
+      /export interface LogSessionTrayItem \{[\s\S]{0,200}?\bmealId: string;/,
+    );
+  });
+
+  it("mobile: appendLogSessionTray only ever receives the RESULT of the synchronous commit call", () => {
+    // The commit call precedes the append within a tight window, and the append
+    // is fed the mapped commit result — never a pre-commit stage object.
+    expect(MOBILE_TODAY_SCREEN).toMatch(
+      /const committed = commitLogSheetFoodSelection\(result\);[\s\S]{0,120}?appendLogSessionTray\(committedToTrayItem\(committed\)\)/,
+    );
+  });
+
+  it("web: appendLogSessionTray only ever receives the RESULT of the synchronous commit call", () => {
+    expect(WEB_NUTRITION_TRACKER).toMatch(
+      /const result = commitFoodSearchSelection\(selection\);[\s\S]{0,120}?appendLogSessionTray\(committedToTrayItem\(result\)\)/,
+    );
+  });
+
+  it("mobile: the fabSheetOpen-close effect resets the tray (presentation only) — no delete/un-commit", () => {
+    const closeEffect = MOBILE_TODAY_SCREEN.match(
+      /useEffect\(\(\) => \{\s*if \(!fabSheetOpen\) \{([\s\S]{0,200}?)\}\s*\}, \[fabSheetOpen\]\)/,
+    );
+    expect(closeEffect).not.toBeNull();
+    const body = closeEffect![1];
+    expect(body).toMatch(/resetLogSessionTray\(\)/);
+    expect(body).not.toMatch(BASKET_RE);
+    expect(body).not.toMatch(/setStaged|setPending|setQueued/);
+    expect(body).not.toMatch(/deleteMeal|removeLoggedMeal|\.delete\(/);
+  });
+
+  it("web: the logSheetOpen-close effect resets the tray (presentation only) — no delete/un-commit", () => {
+    const closeEffect = WEB_NUTRITION_TRACKER.match(
+      /useEffect\(\(\) => \{\s*if \(!logSheetOpen\) \{([\s\S]{0,200}?)\}\s*\}, \[logSheetOpen\]\)/,
+    );
+    expect(closeEffect).not.toBeNull();
+    const body = closeEffect![1];
+    expect(body).toMatch(/resetLogSessionTray\(\)/);
+    expect(body).not.toMatch(BASKET_RE);
+    expect(body).not.toMatch(/setStaged|setPending|setQueued/);
+    expect(body).not.toMatch(/deleteMeal|removeLoggedMeal|\.delete\(/);
+  });
+
+  it("flag-OFF S13 path stays reachable in the same onSelect body (both hosts)", () => {
+    // The tray branch is an early return guarded by the flag; the S13
+    // presentLogSheetConfirmation call remains the else path.
+    expect(MOBILE_TODAY_SCREEN).toMatch(
+      /if \(sessionTrayEnabled\) \{ appendLogSessionTray\([\s\S]{0,80}?return; \}[\s\S]{0,120}?presentLogSheetConfirmation\(/,
+    );
+    expect(WEB_NUTRITION_TRACKER).toMatch(
+      /if \(sessionTrayEnabled\) \{ appendLogSessionTray\([\s\S]{0,80}?return; \}[\s\S]{0,120}?presentLogSheetConfirmation\(/,
+    );
+  });
+
+  it("both hosts register + read the log_session_tray_v1 flag", () => {
+    expect(MOBILE_TODAY_SCREEN).toMatch(/isFeatureEnabled\("log_session_tray_v1"\)/);
+    expect(WEB_NUTRITION_TRACKER).toMatch(/isFeatureEnabled\("log_session_tray_v1"\)/);
   });
 });

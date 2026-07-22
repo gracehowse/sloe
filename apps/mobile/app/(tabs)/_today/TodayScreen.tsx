@@ -274,6 +274,12 @@ import { NorthStarBlockHost } from "@/components/today/NorthStarBlockHost";
 import { useSavedLibraryRecipes, toNorthStarLibrary } from "@/lib/recipes";
 import { copyDuplicateBatchAlert } from "@/lib/copyDuplicateResultAlert";
 import { useCopyDuplicateMeal } from "@/hooks/useCopyDuplicateMeal";
+import { useLogSheetCommits } from "./useLogSheetCommits";
+import {
+  committedToTrayItem,
+  sessionTrayToSavedMealItems,
+  sessionTrayTotals,
+} from "@suppr/nutrition-core/logSessionTray";
 import { TodayDeficitInsight } from "@/components/today/TodayDeficitInsight";
 import { TodayPlannedMealsCard } from "@/components/today/TodayPlannedMealsCard";
 import { TodayCompleteDayButton } from "@/components/today/TodayCompleteDayButton";
@@ -710,8 +716,9 @@ export default function TrackerScreen() {
   useEffect(() => {
     if (!fabSheetOpen) {
       setLogSheetConfirmation(null);
+      resetLogSessionTray();
     }
-  }, [fabSheetOpen]);
+  }, [fabSheetOpen]); // eslint-disable-line react-hooks/exhaustive-deps -- resetLogSessionTray is stable; ENG-1449 pin keeps deps [fabSheetOpen]
   // Batch 5.13 — Pro-gated Voice + AI photo logging state.
   const [voiceLogOpen, setVoiceLogOpen] = useState(false);
   const [photoLogOpen, setPhotoLogOpen] = useState(false);
@@ -3228,159 +3235,32 @@ export default function TrackerScreen() {
     }
   }, [byDay, dayKey, userId]);
 
-  const presentLogSheetConfirmation = useCallback(
-    (payload: {
-      title: string;
-      kcal: number;
-      mealIds: string[];
-      /** ENG-1502 — per-item trust bit; absent = honest `~` (ENG-1417). */
-      kcalIsVerified?: boolean;
-    }) => {
-      setLogSheetConfirmation({
-        title: payload.title,
-        kcal: Math.round(payload.kcal),
-        ...(payload.kcalIsVerified !== undefined
-          ? { kcalIsVerified: payload.kcalIsVerified }
-          : {}),
-        slot: activeMealSlot,
-        onDone: () => {
-          setLogSheetConfirmation(null);
-          setFabSheetOpen(false);
-        },
-        onUndo: () => {
-          for (const mealId of payload.mealIds) deleteMeal(mealId);
-          setLogSheetConfirmation(null);
-        },
-      });
-    },
-    [activeMealSlot, deleteMeal],
-  );
-
-  const commitLogSheetFoodSelection = useCallback(
-    (
-      result: FoodSearchSelectedFood,
-    ): { id: string; title: string; kcal: number; kcalIsVerified: boolean } => {
-      const scaled = foodSelectionToMealMacros(result);
-      const {
-        calories: mealCalories,
-        protein: mealProtein,
-        carbs: mealCarbs,
-        fat: mealFat,
-        fiberG: mealFiberG,
-        micros,
-      } = scaled;
-      const source =
-        result.source === "CUSTOM"
-          ? "custom_food"
-          : result.source === "OFF"
-            ? "Open Food Facts"
-            : result.source === "Edamam"
-              ? "Edamam"
-              : result.source === "FatSecret"
-                ? "FatSecret"
-                : "USDA FoodData Central";
-      const eatenAt =
-        result.eatenAt ??
-        (isFeatureEnabled("editable_eaten_at")
-          ? defaultEatenAtForNewLog(dayKey, profileTimeZone)
-          : undefined);
-      const { dateKey: resolvedDateKey } = nutritionEntryDateKeyAndEatenAt(
-        { eatenAt },
-        dayKey,
-        null,
-        { timeZone: profileTimeZone },
-      );
-      const meal: JournalMeal = {
-        id: newMealId(),
-        name: activeMealSlot,
-        recipeTitle: result.name,
-        time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-        calories: mealCalories,
-        protein: mealProtein,
-        carbs: mealCarbs,
-        fat: mealFat,
-        source,
-        ...(mealFiberG > 0 ? { fiberG: mealFiberG } : {}),
-        ...(Object.keys(micros).length > 0 ? { micros } : {}),
-        ...(result.imageUrl ? { recipeImageUrl: String(result.imageUrl).trim() } : {}),
-        ...(eatenAt ? { eatenAt } : {}),
-      };
-      startTransition(() => {
-        setByDay((prev) => ({
-          ...prev,
-          [resolvedDateKey]: [...(prev[resolvedDateKey] ?? []), meal],
-        }));
-      });
-      void persistMealsImmediate(dayKey, [meal]);
-      try {
-        track(AnalyticsEvents.food_logged, {
-          source: foodSelectionAnalyticsSource(result.source),
-          calories: meal.calories,
-          slot: activeMealSlot,
-        });
-      } catch {
-        // noop
-      }
-      // ENG-1502 — the trust bit rides the selection from the search panel
-      // (true only for verified-USDA / Suppr-generic rows); the confirmation
-      // surface renders the unqualified kcal only when this is true.
-      return {
-        id: meal.id,
-        title: result.name,
-        kcal: mealCalories,
-        kcalIsVerified: result.verified === true,
-      };
-    },
-    [activeMealSlot, dayKey, persistMealsImmediate, profileTimeZone],
-  );
-
-  const logHistoryItemFromSheet = useCallback(
-    (item: FoodHistoryItem) => {
-      const micros: Record<string, number> = item.micros ? { ...item.micros } : {};
-      if (item.caffeineMg != null && item.caffeineMg > 0) micros.caffeineMg = item.caffeineMg;
-      if (item.alcoholG != null && item.alcoholG > 0) micros.alcoholG = item.alcoholG;
-      const meal: JournalMeal = {
-        id: newMealId(),
-        name: activeMealSlot,
-        recipeTitle: item.recipeTitle,
-        ...(item.recipeId ? { recipeId: item.recipeId } : {}),
-        time: new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-        calories: item.calories,
-        protein: item.protein,
-        carbs: item.carbs,
-        fat: item.fat,
-        ...(item.fiber != null ? { fiberG: item.fiber } : {}),
-        ...(item.source ? { source: item.source } : {}),
-        ...(Object.keys(micros).length > 0 ? { micros } : {}),
-        ...(isFeatureEnabled("editable_eaten_at")
-          ? { eatenAt: defaultEatenAtForNewLog(dayKey, profileTimeZone) }
-          : {}),
-      };
-      startTransition(() => {
-        setByDay((prev) => ({
-          ...prev,
-          [dayKey]: [...(prev[dayKey] ?? []), meal],
-        }));
-      });
-      // Commit confirm haptic fires once inside the funnel (ENG-1016).
-      void persistMealsImmediate(dayKey, [meal]);
-      try {
-        track(AnalyticsEvents.food_logged, { source: "quick_add", slot: activeMealSlot });
-      } catch {
-        // noop
-      }
-      presentLogSheetConfirmation({
-        title: item.recipeTitle,
-        kcal: item.calories,
-        mealIds: [meal.id],
-        // ENG-1502 — a history re-log copies a prior journal row, and the
-        // journal doesn't persist the ENG-1417 trust bit. Unknown trust must
-        // never read as confident → honest `~`.
-        kcalIsVerified: false,
-      });
-    },
-    [activeMealSlot, dayKey, persistMealsImmediate, presentLogSheetConfirmation, profileTimeZone],
-  );
+  // ENG-1643 — the LogSheet food-commit cluster (commit / history re-log / S13
+  // presentation) + the session-tray state moved to `useLogSheetCommits`
+  // (screen-budget ratchet + web-parity mirror of `useLogSheetFoodCommits`).
+  // Flag ON: participating adds append to the tray and keep the sheet open;
+  // flag OFF is byte-identical to the pre-ENG-1643 S13 flow.
+  const sessionTrayEnabled = isFeatureEnabled("log_session_tray_v1");
+  const {
+    commitLogSheetFoodSelection,
+    logHistoryItemFromSheet,
+    presentLogSheetConfirmation,
+    sessionTrayItems,
+    sessionTrayPendingUndoIds,
+    appendLogSessionTray,
+    undoLogSessionTray,
+    resetLogSessionTray,
+  } = useLogSheetCommits({
+    activeMealSlot,
+    dayKey,
+    profileTimeZone,
+    setByDay,
+    persistMealsImmediate,
+    setLogSheetConfirmation,
+    setFabSheetOpen,
+    deleteMeal,
+    sessionTrayEnabled,
+  });
 
   const logSheetGoTos = useMemo(() => {
     const slot = normaliseMealSlot(activeMealSlot);
@@ -4601,6 +4481,42 @@ export default function TrackerScreen() {
         visible={fabSheetOpen}
         onClose={() => setFabSheetOpen(false)}
         confirmation={logSheetConfirmation ?? undefined}
+        // ENG-1643 — flag ON: the session-tray receipt (count/kcal/per-item
+        // Undo/Save-as-usual-meal/Done). Absent when the flag is off, so the
+        // sheet renders exactly as pre-ENG-1643.
+        sessionTray={
+          sessionTrayEnabled
+            ? {
+                items: sessionTrayItems,
+                pendingUndoIds: sessionTrayPendingUndoIds,
+                onUndo: undoLogSessionTray,
+                onDone: () => {
+                  try {
+                    track(AnalyticsEvents.log_session_tray_done, {
+                      items: sessionTrayItems.length,
+                      kcal: sessionTrayTotals(sessionTrayItems).kcal,
+                    });
+                  } catch {
+                    // noop
+                  }
+                  setFabSheetOpen(false);
+                },
+                onSaveMeal: () => {
+                  try {
+                    track(AnalyticsEvents.log_session_tray_save_meal_opened, {
+                      items: sessionTrayItems.length,
+                    });
+                  } catch {
+                    // noop
+                  }
+                  openSaveMealSheetWithSeed(
+                    isMealSlot(activeMealSlot) ? activeMealSlot : "Snacks",
+                    sessionTrayToSavedMealItems(sessionTrayItems),
+                  );
+                },
+              }
+            : undefined
+        }
         initialQuery={logSheetInitialQuery}
         showBarcodeFreePromise
         // ENG-773 — log-time meal-slot selector (web parity with
@@ -4646,6 +4562,7 @@ export default function TrackerScreen() {
               return;
             }
             const committed = commitLogSheetFoodSelection(result);
+            if (sessionTrayEnabled) { appendLogSessionTray(committedToTrayItem(committed)); return; }
             presentLogSheetConfirmation({
               title: committed.title,
               kcal: committed.kcal,

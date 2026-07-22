@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { userEvent, within } from "storybook/test";
 
 import { LogSheet, type LogSheetProps } from "./log-sheet";
 
@@ -109,4 +110,123 @@ export const LoggedConfirmation: Story = {
 export const LunchDark: Story = {
   args: { slot: slot("Lunch") },
   globals: { theme: "dark" },
+};
+
+/**
+ * ENG-1643 — the log-session tray (immediate-commit multi-add receipt).
+ * Flag-independent (the tray renders whenever the host threads the
+ * `sessionTray` prop, exactly as `LogSheet` receives it in real use — the
+ * `log_session_tray_v1` gate lives in the HOST, not here), so these stories
+ * pin the tray's real states for pixel review without a PostHog ramp.
+ * Spec: `docs/specs/2026-07-21-log-session-tray.md`.
+ */
+const trayItem = (
+  over: Partial<import("../../../lib/nutrition/logSessionTray").LogSessionTrayItem>,
+): import("../../../lib/nutrition/logSessionTray").LogSessionTrayItem => ({
+  mealId: "m1",
+  title: "Chicken breast, grilled",
+  kcal: 165,
+  protein: 31,
+  carbs: 0,
+  fat: 3.6,
+  slot: "Lunch",
+  kcalIsVerified: true,
+  ...over,
+});
+
+export const SessionTrayCollapsed: Story = {
+  parameters: { a11y: { context: '[data-testid="log-session-tray"]' } },
+  args: {
+    slot: slot("Lunch"),
+    sessionTray: {
+      items: [trayItem({ mealId: "m1" })],
+      pendingUndoIds: [],
+      onUndo: () => {},
+      onDone: () => {},
+    },
+  },
+};
+
+export const SessionTrayMultiItem: Story = {
+  parameters: { a11y: { context: '[data-testid="log-session-tray"]' } },
+  args: {
+    slot: slot("Lunch"),
+    sessionTray: {
+      items: [
+        trayItem({ mealId: "m1" }),
+        trayItem({
+          mealId: "m2",
+          title: "Brown rice, cooked",
+          kcal: 216,
+          protein: 5,
+          carbs: 45,
+          fat: 1.8,
+          kcalIsVerified: true,
+        }),
+        trayItem({
+          mealId: "m3",
+          title: "Steamed broccoli",
+          kcal: 55,
+          protein: 3.7,
+          carbs: 11,
+          fat: 0.6,
+          kcalIsVerified: false,
+        }),
+      ],
+      pendingUndoIds: [],
+      onUndo: () => {},
+      onDone: () => {},
+      onSaveMeal: () => {},
+    },
+  },
+};
+
+/** Expanded panel, forced open via `expanded` play-arg equivalent — Storybook
+ *  can't drive internal component state directly, so this story renders the
+ *  same multi-item tray and a play function clicks the collapsed bar to open
+ *  it, pinning the row list + totals footer + Save-as-usual-meal CTA. */
+export const SessionTrayExpanded: Story = {
+  ...SessionTrayMultiItem,
+  parameters: {
+    ...SessionTrayMultiItem.parameters,
+    a11y: { context: '[data-testid="log-session-tray"]' },
+  },
+  play: async () => {
+    // The sheet renders through vaul's <DrawerPrimitive.Portal>, which
+    // mounts to document.body regardless of the `desktop` prop — outside
+    // canvasElement's subtree. `canvas.findByTestId` (scoped to
+    // canvasElement) can never find portalled content; query the portal
+    // target directly. 10s timeout: generous slack for a loaded CI runner
+    // mounting the full LogSheet, not a masked failure.
+    //
+    // `log-session-tray-bar` is the row CONTAINER (toggle + Done button);
+    // the click handler lives on the nested `log-session-tray-toggle`
+    // button (spec §8 deliberately names these separately) — click that,
+    // not the container, or nothing toggles.
+    const toggle = await within(document.body).findByTestId(
+      "log-session-tray-toggle",
+      {},
+      { timeout: 10000 },
+    );
+    await userEvent.click(toggle);
+  },
+};
+
+/** Multi-slot session (an item logged to Breakfast, another to Lunch) — pins
+ *  the per-row " · {Slot}" suffix that only renders when the tray spans more
+ *  than one slot. */
+export const SessionTrayMultiSlot: Story = {
+  ...SessionTrayExpanded,
+  args: {
+    slot: slot("Lunch"),
+    sessionTray: {
+      items: [
+        trayItem({ mealId: "m1", title: "Oatmeal, cooked", kcal: 158, protein: 6, carbs: 27, fat: 3, slot: "Breakfast" }),
+        trayItem({ mealId: "m2", title: "Chicken breast, grilled", slot: "Lunch" }),
+      ],
+      pendingUndoIds: [],
+      onUndo: () => {},
+      onDone: () => {},
+    },
+  },
 };

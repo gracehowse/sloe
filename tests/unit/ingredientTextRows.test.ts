@@ -14,9 +14,15 @@ import { describe, expect, it } from "vitest";
 const read = (p: string) => readFileSync(resolve(__dirname, "../..", p), "utf8");
 
 const MOBILE_ROWS = read("apps/mobile/components/today/LogSheetRows.tsx");
-const MOBILE_SHEET = read("apps/mobile/components/today/LogSheet.tsx");
+// ENG-1643 (screen-budget offset) extracted the loading skeleton — and its
+// ingredient_text_rows_v1 gate on the leading tile block — out of
+// LogSheet.tsx into its own file. Read the pin from there; behaviour is
+// byte-identical, only the file moved.
+const MOBILE_SKELETON = read("apps/mobile/components/today/LogSheetSkeletonList.tsx");
 const WEB_ROWS = read("src/app/components/suppr/log-sheet-rows.tsx");
-const WEB_SHEET = read("src/app/components/suppr/log-sheet.tsx");
+// ENG-1643 (screen-budget offset) made the same extraction on web — read the
+// gate from the extracted skeleton file, same as the mobile pin above.
+const WEB_SKELETON = read("src/app/components/suppr/log-sheet-skeleton-list.tsx");
 const MOBILE_DETAIL = read("apps/mobile/app/recipe/[id].tsx");
 const WEB_DETAIL = read("src/app/components/RecipeDetail.tsx");
 const MOBILE_TEXTROWS = read("apps/mobile/components/recipe/RecipeIngredientRows.tsx");
@@ -34,8 +40,8 @@ describe("ENG-1611 — ingredient_text_rows_v1 wiring", () => {
   });
 
   it("gates both loading skeletons' leading tile block", () => {
-    expect(MOBILE_SHEET).toMatch(/ingredient_text_rows_v1[\s\S]{0,400}skeletonThumb/);
-    expect(WEB_SHEET).toMatch(/ingredient_text_rows_v1[\s\S]{0,400}size-9 rounded-md bg-muted/);
+    expect(MOBILE_SKELETON).toMatch(/ingredient_text_rows_v1[\s\S]{0,400}skeletonThumb/);
+    expect(WEB_SKELETON).toMatch(/ingredient_text_rows_v1[\s\S]{0,400}size-9 rounded-md bg-muted/);
   });
 
   it("recipe detail: text rows when ON, legacy grid in the else, on both platforms", () => {

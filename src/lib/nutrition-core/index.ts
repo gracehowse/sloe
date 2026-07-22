@@ -66,6 +66,9 @@ export * from "../nutrition/ingredientOverrides";
 export * from "../nutrition/journalWriteQueue";
 export * from "../nutrition/labelLogging";
 export * from "../nutrition/leftoversPlanner";
+// ENG-1643 — session tray (co-located pure module + its React state hook).
+export * from "../nutrition/logSessionTray";
+export * from "../nutrition/useLogSessionTray";
 export * from "../nutrition/macroCalorieSplit";
 export * from "../nutrition/macroFormat";
 export * from "../nutrition/macroIngredientBreakdown";

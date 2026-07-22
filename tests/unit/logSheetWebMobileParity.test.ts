@@ -382,8 +382,12 @@ describe("ENG-1502 — per-item kcal verification threaded into the log-confirma
   const mobilePanel = read("apps/mobile/components/food-search/FoodSearchPanel.tsx");
   const webHost = read("src/app/components/NutritionTracker.tsx");
   // ENG-1502 — the web commit pair (search commit + history re-log) was
-  // extracted to this hook in the same slice (screen-budget ratchet).
+  // extracted to this hook in the same slice (screen-budget ratchet). ENG-1643
+  // extracted the mobile pair to its own co-located hook (closing the noted
+  // platform-structure divergence), so the commit internals now live in the
+  // parity mirror `useLogSheetCommits.ts` on both platforms.
   const webCommits = read("src/lib/nutrition/useLogSheetFoodCommits.ts");
+  const mobileCommits = read("apps/mobile/app/(tabs)/_today/useLogSheetCommits.ts");
   const mobileHost = read("apps/mobile/app/(tabs)/_today/TodayScreen.tsx");
 
   it("both selection contracts carry the optional `verified` trust bit", () => {
@@ -402,9 +406,9 @@ describe("ENG-1502 — per-item kcal verification threaded into the log-confirma
     }
   });
 
-  it("both hosts derive the confirmation's kcalIsVerified from the committed selection", () => {
+  it("both commit hooks derive the confirmation's kcalIsVerified from the committed selection", () => {
     expect(webCommits).toMatch(/kcalIsVerified:\s*selection\.verified === true/);
-    expect(mobileHost).toMatch(/kcalIsVerified:\s*result\.verified === true/);
+    expect(mobileCommits).toMatch(/kcalIsVerified:\s*result\.verified === true/);
     // …and the search onSelect threads it into presentLogSheetConfirmation.
     expect(webHost).toMatch(/kcalIsVerified:\s*result\.kcalIsVerified/);
     expect(mobileHost).toMatch(/kcalIsVerified:\s*committed\.kcalIsVerified/);
@@ -412,7 +416,7 @@ describe("ENG-1502 — per-item kcal verification threaded into the log-confirma
 
   it("both hosts pass the honest `false` on the paths that can never claim verification (history re-log + AI describe)", () => {
     // logHistoryItemFromSheet — journal rows don't persist the trust bit.
-    for (const src of [webCommits, mobileHost]) {
+    for (const src of [webCommits, mobileCommits]) {
       expect(src).toMatch(
         /title:\s*item\.recipeTitle,\s*\n\s*kcal:\s*item\.calories,[\s\S]{0,400}?kcalIsVerified:\s*false/,
       );
@@ -501,6 +505,74 @@ describe("FullNutrientPanelSheet — web ↔ mobile parity", () => {
       expect(src).toMatch(/row\.percentDv\s*>=\s*100/);
       expect(src).toMatch(/row\.percentDv\s*>=\s*80/);
     }
+  });
+});
+
+describe("ENG-1643 — session tray web ↔ mobile parity", () => {
+  const web = read(WEB_LOG_SHEET);
+  const mobile = read(MOBILE_LOG_SHEET);
+  const webTray = read("src/app/components/suppr/log-session-tray.tsx");
+  const mobileTray = read("apps/mobile/components/today/LogSessionTray.tsx");
+  const shared = read("src/lib/nutrition/logSessionTray.ts");
+
+  it("both LogSheets accept an optional `sessionTray?: LogSessionTrayProps` prop", () => {
+    for (const src of [web, mobile]) {
+      expect(src).toMatch(/sessionTray\?: LogSessionTrayProps;/);
+    }
+  });
+
+  it("both LogSheets mount <LogSessionTray {...sessionTray}> conditionally", () => {
+    for (const src of [web, mobile]) {
+      expect(src).toMatch(/sessionTray \? <LogSessionTray \{\.\.\.sessionTray\} \/> : null/);
+    }
+  });
+
+  it("both tray components share the same name + import the shared props shape", () => {
+    for (const src of [webTray, mobileTray]) {
+      expect(src).toMatch(/export function LogSessionTray/);
+      expect(src).toMatch(/type LogSessionTrayProps/);
+    }
+  });
+
+  it("both tray components emit the identical testID grammar", () => {
+    const ids = [
+      '"log-session-tray"',
+      '"log-session-tray-bar"',
+      '"log-session-tray-toggle"',
+      '"log-session-tray-list"',
+      "log-session-tray-row-",
+      "log-session-tray-undo-",
+      '"log-session-tray-done"',
+      '"log-session-tray-save-meal"',
+    ];
+    for (const src of [webTray, mobileTray]) {
+      for (const id of ids) expect(src).toContain(id);
+    }
+  });
+
+  it("both tray components use the identical normative copy", () => {
+    for (const src of [webTray, mobileTray]) {
+      expect(src).toContain("Added this session");
+      expect(src).toContain("Total");
+      expect(src).toContain(" added · ");
+      expect(src).toMatch(/label="Done"|label={"Done"}|"Done"/);
+      expect(src).toContain("Save as usual meal");
+    }
+  });
+
+  it("both platforms + the shared module keep `basket`/`cart` out of the tray vocabulary", () => {
+    for (const src of [webTray, mobileTray, shared]) {
+      expect(src).not.toMatch(/basket/i);
+      expect(src).not.toMatch(/\bcart\b/i);
+    }
+  });
+
+  it("the shared props + math are single-sourced (both platforms import from the shared module)", () => {
+    expect(webTray).toMatch(/from "\.\.\/\.\.\/\.\.\/lib\/nutrition\/logSessionTray/);
+    // ENG-1345 — mobile imports nutrition modules through the curated
+    // `@suppr/nutrition-core/*` boundary (never the dual-spelled
+    // `@suppr/shared/nutrition/*`); the shim re-exports the same shared file.
+    expect(mobileTray).toMatch(/from "@suppr\/nutrition-core\/logSessionTray"/);
   });
 });
 
