@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Sloe · Today v4 — hero prototype (PROPOSAL)</title>
+<!--
+  ══════════════════════════════════════════════════════════════════
+  SLOE TODAY v4 — HERO / TODAY PAGE PROTOTYPE (PROPOSAL, 2026-07-21)
+  ══════════════════════════════════════════════════════════════════
+  Status: PROPOSAL — not canonical. The canonical prototype remains
+  docs/ux/redesign/v3/Sloe-App.html until Grace ratifies this page.
+
+  Commission: Grace, 2026-07-21 — "I need a brand new prototype for
+  the hero / today page", after the ENG-1653 cluster-hero sim review
+  ("too much space", dead macros toggle, bonus suppression, "all the
+  macro variants should be visible in this view … this section needs
+  reimagining").
+
+  The one composition (no variants — D-2026-04-27-03):
+    wordmark → greeting (+8) → week strip (+20) → HERO (+4):
+      jewel dial (tap = Remaining ⇆ Consumed)
+      status line · fresh-day log pill
+      GOAL / EATEN / BONUS (bonus always renders, 0 on empty)
+      MACRO BAND — all three macros, values + micro-tracks, in the hero
+      guide-line — ONE coach entry (absorbs deficit line + Coach chip)
+      view hint (Remaining/Consumed · tap to switch)
+    → EAT NEXT recipe card (+24, the second act)
+    → Quick add → Today's meals.
+    The standalone macro section below the hero is RETIRED — the hero
+    band is the glance; tapping it opens macro detail (existing route).
+
+  Tokens verbatim from Sloe-App.html. Spacing scale 4/8/12/16/20/24/
+  32/40 only. Card grammar: page-ground flat + hairline (ENG-1497).
+  One filled CTA per screen (fresh-day log pill; FAB excepted).
+
+  Controls (top bar): day-state switcher (Fresh / Mid-day / Evening
+  over) · light/dark · dial tap or hint flips Remaining ⇆ Consumed.
+-->
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..600,0..100,0..1&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..500&family=Inter:wght@400..800&display=swap");
+
+:root{
+  --font-brand:"Fraunces","Georgia",serif;
+  --font-serif:"Newsreader","Georgia",serif;
+  --font-sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+
+  --fg:#221b26; --fg-secondary:#6a6072; --fg-tertiary:#9b93a3;
+  --primary:#3b2a4d; --primary-fg:#ffffff;
+  --accent-frost:#c9c2d6; --accent-frost-mist:#edeaf1;
+  --success:#5e7c5a; --warning:#cf6e3c;
+  --success-soft:#5e7c5a1f; --warning-soft:#cf6e3c1f;
+
+  --macro-protein:#3b2a4d; --macro-carbs:#c9892c; --macro-fat:#b25d7a;
+
+  --bg:#ffffff; --bg-secondary:#f1f0f4; --muted:#ebeaf1;
+  --card:#ffffff; --border:#eae7f0; --border-strong:#d9d4e0;
+  --ring-under-a:#4d7a50; --ring-under-b:#93c08c;
+  --ring-over-a:#925812;  --ring-over-b:#C9892C;
+  --ring-empty-a:#c4bcd4; --ring-empty-b:#e6e0f1;
+  --ring-cap-core:#ffffff; --ring-tick:rgba(59,42,77,.20);
+
+  --radius-md:8px; --radius-lg:12px; --radius-card-lg:24px; --radius-full:9999px;
+  --space-xs:4px; --space-sm:8px; --space-dense:12px; --space-md:16px;
+  --space-lg:20px; --space-xl:24px; --space-xxl:32px; --space-xxxl:40px;
+  --ease:cubic-bezier(.22,.61,.36,1);
+}
+[data-theme="dark"]{
+  --fg:#ece8f0; --fg-secondary:#b8b0c4; --fg-tertiary:#8a8198;
+  --bg:#120d18; --bg-secondary:#1a1422; --muted:#241c2e;
+  --card:#211a2a; --border:#332843; --border-strong:#443656;
+  --accent-frost-mist:#241c2e;
+  --ring-tick:rgba(236,232,240,.16);
+  --macro-protein:#b9a6d4;
+}
+
+*{ margin:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html,body{ background:#e9e6ee; font-family:var(--font-sans); }
+[data-theme="dark"] body{ background:#0a070d; }
+.tnum{ font-variant-numeric:tabular-nums; }
+
+/* ── prototype chrome (outside the phone) ── */
+.proto-bar{ position:sticky; top:0; z-index:40; max-width:520px; margin:0 auto; padding:16px 0 12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; background:linear-gradient(#e9e6ee 78%, transparent); }
+[data-theme="dark"] .proto-bar{ background:linear-gradient(#0a070d 78%, transparent); }
+.proto-chip{ font:600 12px var(--font-sans); color:#6a6072; background:#fff; border:1px solid #d9d4e0; border-radius:9999px; padding:8px 16px; cursor:pointer; }
+.proto-chip.on{ background:#3b2a4d; color:#fff; border-color:#3b2a4d; }
+.proto-note{ max-width:430px; margin:0 auto 16px; text-align:center; font:500 11px/1.5 var(--font-sans); color:#8a8198; letter-spacing:.02em; }
+
+/* ── phone frame ── */
+.phone{ width:390px; margin:0 auto 48px; background:var(--bg); border-radius:44px; border:1px solid var(--border-strong); box-shadow:0 24px 70px -18px rgba(36,23,51,.35); overflow:hidden; position:relative; }
+.screen{ padding:14px var(--space-lg) 0; }
+
+/* ── header cluster ── */
+.t-head{ display:flex; align-items:center; justify-content:space-between; padding-top:var(--space-xxl); }
+.wordmark{ font:400 25px var(--font-brand); color:var(--primary); letter-spacing:-.01em; }
+[data-theme="dark"] .wordmark{ color:var(--fg); }
+.t-acts{ display:flex; gap:var(--space-sm); align-items:center; }
+.icon-btn{ width:36px; height:36px; border:none; background:none; border-radius:var(--radius-full); color:var(--fg-secondary); display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; }
+.t-bell-dot{ position:absolute; top:7px; right:7px; width:7px; height:7px; border-radius:50%; background:var(--primary); border:1.5px solid var(--bg); }
+.avatar{ width:36px; height:36px; border-radius:50%; background:var(--primary); color:#fff; font:600 14px var(--font-sans); display:flex; align-items:center; justify-content:center; border:none; cursor:pointer; }
+
+.t-greet{ margin-top:var(--space-sm); }
+.tg-eyebrow{ display:flex; align-items:center; gap:var(--space-dense); margin-bottom:7px; }
+.t-overline{ font:700 11px var(--font-sans); letter-spacing:.1em; text-transform:uppercase; color:var(--primary); }
+[data-theme="dark"] .t-overline{ color:var(--fg-secondary); }
+.t-rule{ flex:1; height:1px; background:var(--border); }
+.tg-day{ font:500 33px/1 var(--font-serif); letter-spacing:-.015em; color:var(--fg); }
+.tg-sub{ font:400 13px var(--font-sans); color:var(--fg-tertiary); margin-top:5px; letter-spacing:.01em; }
+
+.day-strip{ display:flex; align-items:center; gap:var(--space-sm); margin-top:var(--space-lg); }
+.day-nav{ width:30px; height:30px; flex:none; border:none; background:none; color:var(--fg-tertiary); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.day-cells{ flex:1; display:flex; gap:var(--space-xs); }
+.day-cell{ flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:var(--space-sm) 0; border:none; background:none; border-radius:var(--radius-lg); cursor:pointer; font-family:var(--font-sans); }
+.dc-dow{ font:600 11px var(--font-sans); letter-spacing:.1em; color:var(--fg-tertiary); }
+.dc-date{ font:600 15px var(--font-sans); color:var(--fg-secondary); line-height:1; }
+.dc-dot{ width:4px; height:4px; border-radius:50%; background:var(--success); opacity:0; }
+.day-cell.has-log .dc-dot{ opacity:1; }
+.day-cell.is-sel{ background:var(--primary); }
+.day-cell.is-sel .dc-dow{ color:rgba(255,255,255,.7); }
+.day-cell.is-sel .dc-date{ color:#fff; }
+.day-cell.is-sel .dc-dot{ background:rgba(255,255,255,.85); }
+
+/* ── HERO ── */
+.hero{ text-align:center; padding-top:var(--space-xs); }
+.dial-tap{ border:none; background:none; cursor:pointer; padding:0; display:block; margin:0 auto; }
+.dial-wrap{ position:relative; width:224px; height:224px; margin:0 auto; }
+.dial-ctr{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.dial-num{ font:500 46px/1 var(--font-serif); letter-spacing:-.01em; color:var(--fg); }
+.dial-num.is-over{ color:var(--warning); }
+.dial-lbl{ font:600 11px var(--font-sans); letter-spacing:.1em; text-transform:uppercase; color:var(--fg-tertiary); margin-top:var(--space-xs); }
+
+.ring-status{ display:inline-flex; align-items:center; gap:var(--space-sm); margin-top:var(--space-sm); font:600 13px var(--font-sans); }
+.ring-status .rs-dot{ width:7px; height:7px; border-radius:50%; }
+.ring-status.is-under{ color:var(--success); } .ring-status.is-under .rs-dot{ background:var(--success); }
+.ring-status.is-over{ color:var(--warning); }  .ring-status.is-over .rs-dot{ background:var(--warning); }
+.ring-status.is-empty{ color:var(--fg-tertiary); } .ring-status.is-empty .rs-dot{ background:var(--accent-frost); }
+
+.log-pill{ display:inline-flex; align-items:center; gap:var(--space-sm); margin-top:var(--space-md); background:var(--primary); color:var(--primary-fg); border:none; border-radius:var(--radius-full); padding:var(--space-dense) var(--space-xl); font:500 18px var(--font-serif); cursor:pointer; }
+
+.hero-stats{ display:flex; margin-top:var(--space-md); padding-top:var(--space-dense); border-top:1px solid var(--border); }
+.hero-stats > div{ flex:1; position:relative; text-align:center; padding:0 var(--space-sm); }
+.hero-stats > div + div::before{ content:""; position:absolute; left:0; top:6px; bottom:6px; width:1px; background:var(--border); }
+.hs-v{ display:block; font:700 22px var(--font-sans); color:var(--fg); }
+.hs-v.is-bonus{ color:var(--success); }
+.hs-v.is-zero{ color:var(--fg-secondary); }
+.hs-l{ font:600 11px var(--font-sans); color:var(--fg-secondary); text-transform:uppercase; letter-spacing:.04em; }
+
+/* THE NEW ELEMENT — macro band inside the hero */
+.macro-band{ display:flex; margin-top:var(--space-md); border:none; background:none; padding:0; width:100%; cursor:pointer; }
+.mb-cell{ flex:1; padding:0 var(--space-sm); }
+.mb-top{ display:flex; align-items:center; justify-content:center; gap:5px; }
+.mb-dot{ width:7px; height:7px; border-radius:50%; }
+.mb-name{ font:600 11px var(--font-sans); letter-spacing:.08em; text-transform:uppercase; color:var(--fg-tertiary); }
+.mb-val{ margin-top:3px; font:600 13px var(--font-sans); color:var(--fg); }
+.mb-val small{ font-weight:500; color:var(--fg-tertiary); }
+.mb-track{ height:3px; border-radius:var(--radius-full); background:var(--bg-secondary); margin-top:6px; overflow:hidden; }
+.mb-fill{ height:100%; border-radius:var(--radius-full); transition:width .9s var(--ease); }
+
+/* ONE coach entry — the guide-line absorbs deficit-line + Coach chip */
+.guide-line{ display:inline-flex; align-items:center; gap:var(--space-sm); margin-top:var(--space-md); padding:var(--space-dense) var(--space-lg); border:none; border-radius:var(--radius-full); background:var(--accent-frost-mist); color:var(--fg); font:500 13px var(--font-sans); cursor:pointer; max-width:100%; }
+.guide-line b{ font-weight:600; }
+.guide-line .gl-ic{ color:var(--primary); flex:none; }
+[data-theme="dark"] .guide-line .gl-ic{ color:var(--fg-secondary); }
+.guide-line.is-over{ background:var(--warning-soft); }
+.guide-line.is-over .gl-ic{ color:var(--warning); }
+
+.view-hint{ display:block; margin:var(--space-dense) auto 0; border:none; background:none; font:600 11px var(--font-sans); color:var(--fg-tertiary); letter-spacing:.02em; cursor:pointer; }
+
+/* ── EAT NEXT (second act) ── */
+.section-gap{ height:var(--space-xl); }
+.recipe-hero{ display:block; width:100%; text-align:left; border:1px solid var(--border); border-radius:var(--radius-card-lg); background:var(--card); overflow:hidden; cursor:pointer; padding:0; }
+.rh-photo{ display:block; height:150px; position:relative;
+  background:
+    radial-gradient(90% 120% at 20% 10%, rgba(255,255,255,.35), transparent 50%),
+    radial-gradient(closest-side at 62% 58%, #e8f0dd 0 24%, transparent 25%),
+    radial-gradient(closest-side at 62% 58%, #7e9c62 0 21%, #5e7c5a 22% 23%, transparent 24%),
+    radial-gradient(closest-side at 40% 46%, #f3e3c8 0 12%, #d9a45b 13% 14%, transparent 15%),
+    radial-gradient(closest-side at 55% 40%, #f8f4ea 0 8%, transparent 9%),
+    linear-gradient(150deg, #f2ead9, #e2d3bd 55%, #cdb99b);
+}
+.rh-kick{ position:absolute; top:var(--space-dense); left:var(--space-dense); background:rgba(28,18,26,.55); backdrop-filter:blur(6px); color:#fff; font:700 11px var(--font-sans); letter-spacing:.1em; text-transform:uppercase; padding:var(--space-xs) var(--space-dense); border-radius:var(--radius-full); }
+.rh-body{ display:block; padding:var(--space-md) var(--space-md) var(--space-md); }
+.rh-eyebrow{ display:flex; align-items:center; gap:6px; font:600 12px var(--font-sans); color:var(--success); }
+.rh-title{ display:block; font:500 22px/1.2 var(--font-serif); color:var(--fg); margin-top:var(--space-xs); }
+.rh-meta{ display:block; font:500 13px var(--font-sans); color:var(--fg-secondary); margin-top:var(--space-xs); }
+.rh-acts{ display:flex; gap:var(--space-sm); margin-top:var(--space-dense); }
+.chip-stat{ font:600 12px var(--font-sans); color:var(--fg-secondary); background:var(--bg-secondary); border-radius:var(--radius-full); padding:6px var(--space-dense); }
+.btn-ghost{ margin-left:auto; font:600 13px var(--font-sans); color:var(--primary); background:none; border:none; cursor:pointer; padding:6px var(--space-dense); }
+[data-theme="dark"] .btn-ghost{ color:var(--fg); }
+
+/* ── quick add + meals ── */
+.section-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:var(--space-dense); }
+.section-head h2{ font:500 20px var(--font-serif); color:var(--fg); }
+.section-head .link{ font:600 13px var(--font-sans); color:var(--primary); background:none; border:none; cursor:pointer; }
+[data-theme="dark"] .section-head .link{ color:var(--fg-secondary); }
+.section-head .kcal{ font:500 20px var(--font-serif); color:var(--fg); }
+.section-head .kcal small{ font:400 13px var(--font-sans); color:var(--fg-secondary); }
+.quickrow{ display:flex; gap:var(--space-sm); overflow-x:auto; scrollbar-width:none; margin:0 calc(-1 * var(--space-lg)); padding:0 var(--space-lg); }
+.quickrow::-webkit-scrollbar{ display:none; }
+.qchip{ flex:none; display:inline-flex; align-items:center; gap:6px; font:500 13px var(--font-sans); color:var(--fg); background:var(--card); border:1px solid var(--border); border-radius:var(--radius-full); padding:var(--space-sm) var(--space-md); cursor:pointer; }
+.qchip b{ font-weight:600; color:var(--fg-secondary); }
+
+.meals-card{ background:var(--card); border:1px solid var(--border); border-radius:var(--radius-card-lg); }
+.mslot{ display:flex; align-items:center; gap:var(--space-dense); padding:var(--space-md); }
+.mslot + .mslot{ border-top:1px solid var(--border); }
+.ms-ic{ width:40px; height:40px; border-radius:var(--radius-lg); display:flex; align-items:center; justify-content:center; font-size:18px; flex:none; }
+.ms-name{ font:500 17px var(--font-serif); color:var(--fg); }
+.ms-sub{ font:400 12px var(--font-sans); color:var(--fg-tertiary); margin-top:1px; }
+.ms-kcal{ margin-left:auto; font:600 13px var(--font-sans); color:var(--fg-secondary); }
+.ms-add{ margin-left:auto; width:28px; height:28px; border-radius:var(--radius-full); border:none; background:var(--bg-secondary); color:var(--fg-secondary); font-size:16px; cursor:pointer; }
+
+/* ── tab bar ── */
+.tabbar{ position:sticky; bottom:0; margin:0 calc(-1 * var(--space-lg)); padding:10px var(--space-md) 22px; display:flex; align-items:flex-end; justify-content:space-around; background:linear-gradient(to top, var(--bg) 62%, transparent); }
+.tab{ display:flex; flex-direction:column; align-items:center; gap:3px; border:none; background:none; font:600 11px var(--font-sans); color:var(--fg-tertiary); cursor:pointer; }
+.tab.on{ color:var(--primary); }
+[data-theme="dark"] .tab.on{ color:var(--fg); }
+.tab-fab{ width:56px; height:56px; border-radius:50%; background:var(--primary); color:#fff; border:none; font-size:26px; cursor:pointer; box-shadow:0 10px 24px -8px rgba(36,23,51,.5); margin-top:-18px; }
+</style>
+</head>
+<body>
+
+<div class="proto-bar" id="stateBar">
+  <button class="proto-chip on" data-state="fresh">Fresh morning</button>
+  <button class="proto-chip" data-state="mid">Mid-day</button>
+  <button class="proto-chip" data-state="over">Evening · over</button>
+  <button class="proto-chip" id="themeBtn">◐ Dark</button>
+</div>
+<p class="proto-note">PROPOSAL — Today v4 hero. Tap the dial (or the hint under it) to flip Remaining ⇆ Consumed.<br/>Macro band lives IN the hero; the standalone macro section below is retired (tap band → macro detail).</p>
+
+<div class="phone" id="phone">
+  <div class="screen">
+
+    <div class="t-head">
+      <span class="wordmark">sloe</span>
+      <span class="t-acts">
+        <button class="icon-btn" aria-label="Notifications">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span class="t-bell-dot"></span>
+        </button>
+        <button class="avatar">G</button>
+      </span>
+    </div>
+
+    <div class="t-greet">
+      <div class="tg-eyebrow"><span class="t-overline">Today</span><span class="t-rule"></span></div>
+      <div class="tg-day">Tuesday</div>
+      <div class="tg-sub">21 July</div>
+    </div>
+
+    <div class="day-strip">
+      <button class="day-nav">‹</button>
+      <div class="day-cells" id="dayCells"></div>
+      <button class="day-nav">›</button>
+    </div>
+
+    <!-- ════════ HERO ════════ -->
+    <div class="hero">
+      <button class="dial-tap" id="dialTap" aria-label="Tap to switch remaining and consumed">
+        <div class="dial-wrap">
+          <svg id="dialSvg" width="224" height="224" aria-hidden="true"></svg>
+          <div class="dial-ctr">
+            <span class="dial-num tnum" id="dialNum">1,856</span>
+            <span class="dial-lbl" id="dialLbl">kcal left</span>
+          </div>
+        </div>
+      </button>
+
+      <div class="ring-status" id="ringStatus"><span class="rs-dot"></span><span id="ringStatusTxt">Under budget</span></div>
+
+      <div id="logPillWrap"><button class="log-pill" id="logPill">＋&nbsp; Log dinner</button></div>
+
+      <div class="hero-stats tnum" id="heroStats"></div>
+
+      <button class="macro-band" id="macroBand" aria-label="Macros — open detail"></button>
+
+      <div><button class="guide-line" id="guideLine">
+        <svg class="gl-ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v2M12 19v2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M3 12h2M19 12h2M5.6 18.4 7 17M17 7l1.4-1.4"/><circle cx="12" cy="12" r="3.5"/></svg>
+        <span id="guideTxt"><b>Log when you're ready</b> · no rush, the day is yours</span>
+      </button></div>
+
+      <button class="view-hint" id="viewHint">Remaining · tap to switch</button>
+    </div>
+
+    <div class="section-gap"></div>
+
+    <!-- ════════ EAT NEXT — the second act ════════ -->
+    <button class="recipe-hero" id="eatNext">
+      <span class="rh-photo"><span class="rh-kick" id="rhKick">Eat next · Dinner</span></span>
+      <span class="rh-body">
+        <span class="rh-eyebrow" id="rhEyebrow">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m5 13 4 4L19 7"/></svg>
+          Fits your day
+        </span>
+        <span class="rh-title">Chicken &amp; avocado salad</span>
+        <span class="rh-meta tnum" id="rhMeta">~550 kcal · closes your protein gap</span>
+        <span class="rh-acts">
+          <span class="chip-stat tnum" id="rhChip1">520–580 kcal</span>
+          <span class="chip-stat tnum" id="rhChip2">~42g protein</span>
+          <span class="btn-ghost">＋ Log this</span>
+        </span>
+      </span>
+    </button>
+
+    <div class="section-gap"></div>
+
+    <div class="section-head"><h2>Quick add</h2><button class="link">Search</button></div>
+    <div class="quickrow">
+      <button class="qchip">🕐 Greek yoghurt <b class="tnum">146</b></button>
+      <button class="qchip">🕐 Bread, naan <b class="tnum">137</b></button>
+      <button class="qchip">🕐 Flat white <b class="tnum">119</b></button>
+      <button class="qchip">🕐 Banana <b class="tnum">105</b></button>
+    </div>
+
+    <div class="section-gap"></div>
+
+    <div class="section-head"><h2>Today’s meals</h2><span class="kcal tnum" id="mealsKcal">0<small> kcal</small></span></div>
+    <div class="meals-card" id="mealsCard"></div>
+
+  </div>
+
+  <div class="tabbar">
+    <button class="tab on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="3"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Today</button>
+    <button class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V4a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 4.5z"/></svg>Plan</button>
+    <button class="tab-fab">＋</button>
+    <button class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3v8M11 3v8M9 11v10M17 3c-2 0-2 8-2 8h4s0-8-2-8ZM17 11v10"/></svg>Recipes</button>
+    <button class="tab"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18M7 21V9M12 21V3M17 21v-8"/></svg>Progress</button>
+  </div>
+</div>
+
+<script>
+/* ─── day states ─── */
+const STATES = {
+  fresh: { goal:1856, eaten:0,    bonus:0,   p:[0,139],  c:[0,195],  f:[0,62],
+           slot:"Dinner", meals:[] },
+  mid:   { goal:1981, eaten:1529, bonus:125, p:[91,139], c:[151,208],f:[58,62],
+           slot:"Dinner", meals:[["🥣","Breakfast","Overnight oats · 8:04",412],["☀️","Lunch","Chicken bowl · 12:47",633],["🍎","Snacks","Apple, flat white",484]] },
+  over:  { goal:1856, eaten:1901, bonus:0,   p:[93,130], c:[165,195],f:[72,62],
+           slot:null, meals:[["🥣","Breakfast","Eggs on toast · 8:31",488],["☀️","Lunch","Ramen · 13:02",702],["🌙","Dinner","Pizza, 3 slices · 20:15",711]] },
+};
+let state = "fresh", view = "remaining";
+
+const $ = (id)=>document.getElementById(id);
+const fmt = (n)=>Math.round(n).toLocaleString();
+
+/* jewel dial — 48 graduated ticks, gradient-lit, gem cap on the lead */
+function drawDial(s){
+  const N=48, SZ=224, cx=SZ/2, cy=SZ/2;
+  const pct = s.goal>0 ? Math.min(1, s.eaten/s.goal) : 0;
+  const over = s.goal>0 && s.eaten>s.goal, empty = s.eaten===0;
+  const key = over?"over":empty?"empty":"under";
+  const css = getComputedStyle(document.documentElement);
+  const ca = css.getPropertyValue(`--ring-${key}-a`).trim(), cb = css.getPropertyValue(`--ring-${key}-b`).trim();
+  const drawn = empty ? 0.004 : pct;
+  let svg = `<defs><linearGradient id="dg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${cb}"/><stop offset="1" stop-color="${ca}"/></linearGradient></defs>`;
+  for(let i=0;i<N;i++){
+    const ang=i*(360/N), frac=i/N, on=frac<=drawn+0.0001, lead=on&&((i+1)/N)>drawn;
+    svg += `<rect x="${cx-2.1}" y="11" width="4.2" height="14" rx="2.1" fill="var(--ring-tick)" opacity="0.7" transform="rotate(${ang} ${cx} ${cy})"/>`;
+    if(on) svg += `<rect x="${cx-2.1}" y="8.5" width="4.2" height="19" rx="2.1" fill="url(#dg)" transform="rotate(${ang} ${cx} ${cy})" style="opacity:0;animation:tick .4s var(--ease) ${ (frac*0.9).toFixed(2) }s forwards"/>`;
+    if(lead) svg += `<rect x="${cx-1.1}" y="9.5" width="2.2" height="6" rx="1.1" fill="var(--ring-cap-core)" opacity="0.92" transform="rotate(${ang} ${cx} ${cy})"/>`;
+  }
+  $("dialSvg").innerHTML = svg + `<style>@keyframes tick{to{opacity:1}}</style>`;
+}
+
+function render(){
+  const s = STATES[state];
+  const over = s.goal>0 && s.eaten>s.goal, empty = s.eaten===0;
+
+  drawDial(s);
+
+  /* centre numeral — remaining vs consumed */
+  const num = $("dialNum"), lbl = $("dialLbl");
+  num.classList.toggle("is-over", over && view==="remaining");
+  if(view==="consumed"){ num.textContent = fmt(s.eaten); lbl.textContent = "kcal eaten"; }
+  else if(over){ num.textContent = fmt(s.eaten-s.goal); lbl.textContent = "kcal over"; }
+  else { num.textContent = fmt(s.goal-s.eaten); lbl.textContent = "kcal left"; }
+  $("viewHint").textContent = (view==="remaining"?"Remaining":"Consumed")+" · tap to switch";
+
+  /* status */
+  const st = $("ringStatus");
+  st.className = "ring-status " + (empty?"is-empty":over?"is-over":"is-under");
+  $("ringStatusTxt").textContent = empty ? "A fresh plate" : over ? "Over budget" : "Under budget";
+
+  /* fresh-day log pill — the ONE filled CTA */
+  $("logPillWrap").style.display = (empty && s.slot) ? "" : "none";
+  if(s.slot) $("logPill").innerHTML = "＋&nbsp; Log " + s.slot.toLowerCase();
+
+  /* stats — BONUS always renders (0 on empty) */
+  $("heroStats").innerHTML = `
+    <div><span class="hs-v">${fmt(s.goal)}</span><span class="hs-l">Goal</span></div>
+    <div><span class="hs-v">${fmt(s.eaten)}</span><span class="hs-l">Eaten</span></div>
+    <div><span class="hs-v ${s.bonus>0?"is-bonus":"is-zero"}">${s.bonus>0?"+"+fmt(s.bonus):"0"}</span><span class="hs-l">Bonus</span></div>`;
+
+  /* macro band — ALL macros inside the hero */
+  const bands = [["Protein","--macro-protein",s.p],["Carbs","--macro-carbs",s.c],["Fat","--macro-fat",s.f]];
+  $("macroBand").innerHTML = bands.map(([name,tok,[v,t]])=>`
+    <span class="mb-cell">
+      <span class="mb-top"><span class="mb-dot" style="background:var(${tok})"></span><span class="mb-name">${name}</span></span>
+      <span class="mb-val tnum">${fmt(v)}<small> / ${fmt(t)}g</small></span>
+      <span class="mb-track"><span class="mb-fill" style="background:var(${tok});width:${Math.min(100,(v/t)*100)}%"></span></span>
+    </span>`).join("");
+
+  /* ONE coach entry */
+  const gl = $("guideLine");
+  gl.classList.toggle("is-over", over);
+  $("guideTxt").innerHTML = empty
+    ? "<b>Log when you’re ready</b> · no rush, the day is yours"
+    : over
+      ? "<b>Landed a little over</b> · a lighter tomorrow evens the week"
+      : "<b>Room for dinner</b> · ~550 kcal keeps you on pace";
+
+  /* eat next — hides when over budget (guide-line carries the coaching) */
+  $("eatNext").style.display = (!over && s.slot) ? "" : "none";
+  $("rhKick").textContent = "Eat next · " + (s.slot||"");
+  $("rhMeta").textContent = state==="fresh" ? "~620 kcal · a strong start to the day" : "~550 kcal · closes your protein gap";
+  $("rhChip2").style.display = state==="mid" ? "" : "none";
+
+  /* meals */
+  $("mealsKcal").innerHTML = fmt(s.eaten) + "<small> kcal</small>";
+  const slots = { "🥣":"#c9892c1f", "☀️":"#5e7c5a1f", "🌙":"#3b2a4d14", "🍎":"#b25d7a1f" };
+  const rows = s.meals.length ? s.meals.map(([ic,name,sub,kcal])=>`
+      <div class="mslot"><span class="ms-ic" style="background:${slots[ic]||"var(--bg-secondary)"}">${ic}</span>
+        <span><span class="ms-name">${name}</span><br/><span class="ms-sub">${sub}</span></span>
+        <span class="ms-kcal tnum">${fmt(kcal)} kcal</span></div>`)
+    : [["🥣","Breakfast","Aim ~465 kcal"],["☀️","Lunch","Aim ~555 kcal"],["🌙","Dinner","Aim ~555 kcal"],["🍪","Snacks",""]].map(([ic,name,sub])=>`
+      <div class="mslot"><span class="ms-ic" style="background:var(--bg-secondary)">${ic}</span>
+        <span><span class="ms-name">${name}</span><br/><span class="ms-sub">${sub}</span></span>
+        <button class="ms-add">＋</button></div>`);
+  $("mealsCard").innerHTML = rows.join("");
+}
+
+/* day strip */
+$("dayCells").innerHTML = ["M","T","W","T","F","S","S"].map((d,i)=>`
+  <button class="day-cell ${i===1?"is-sel":""} ${i<1?"has-log":""}">
+    <span class="dc-dow">${d}</span><span class="dc-date tnum">${20+i}</span><span class="dc-dot"></span>
+  </button>`).join("");
+
+/* interactions */
+document.querySelectorAll("[data-state]").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("[data-state]").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); state=b.dataset.state; render();
+}));
+const flip = ()=>{ view = view==="remaining"?"consumed":"remaining"; render(); };
+$("dialTap").addEventListener("click", flip);
+$("viewHint").addEventListener("click", flip);
+$("themeBtn").addEventListener("click", ()=>{
+  const el=document.documentElement;
+  el.dataset.theme = el.dataset.theme==="dark"?"":"dark";
+  $("themeBtn").textContent = el.dataset.theme==="dark"?"◑ Light":"◐ Dark";
+  render();
+});
+render();
+</script>
+</body>
+</html>
