@@ -221,6 +221,29 @@ describe("decideDeepLinkAction — well-known path aliases (ENG-800)", () => {
   });
 });
 
+describe("decideDeepLinkAction — meal share deep link must NOT be intercepted (ENG-1642)", () => {
+  // `suppr:///meal-shared?token=<hex>` is a real Expo Router route
+  // (`app/meal-shared.tsx`), resolved natively — this pipeline must never
+  // intercept it. Two things make that non-obvious:
+  //   1. `meal-shared` isn't a recipe-URL host/path, so it must fall
+  //      through `urlFromDeepLink` to "ignore" rather than "forward-to-import".
+  //   2. The query param is `token`, deliberately NOT one of `resolveImportUrl`'s
+  //      `ROUTER_KEYS` (`url`/`link`/`sharedUrl`/`shared_url`/`u`/`text`) — if a
+  //      share token ever collided with one of those keys, a token that
+  //      happened to look like a URL could get hijacked into the import flow.
+  it("ignores suppr:///meal-shared?token=<hex> (own route, not a recipe import)", () => {
+    expect(decideDeepLinkAction("suppr:///meal-shared?token=abc123")).toEqual({
+      kind: "ignore",
+    });
+  });
+
+  it("ignores suppr://meal-shared?token=<hex> (two-slash / host form)", () => {
+    expect(decideDeepLinkAction("suppr://meal-shared?token=abc123")).toEqual({
+      kind: "ignore",
+    });
+  });
+});
+
 describe("decideDeepLinkAction — defers to Siri handler", () => {
   it("returns siri for log_water shortcut", () => {
     expect(decideDeepLinkAction("suppr://log/water?ml=500")).toEqual({ kind: "siri" });

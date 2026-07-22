@@ -37,6 +37,7 @@ PostgreSQL via Supabase. Row-Level Security (RLS) enabled on all tables.
 | `user_custom_foods` | User-defined custom foods (e.g. homemade granola). Macros per `base_grams`, natural-portion shortcuts in `servings jsonb`, optional detailed micros (`sugar_g`, `saturated_fat_g`, `sodium_mg`), `servings_per_container`, and `barcode` for scan-same-package recall | Relational |
 | `user_plan_templates` | Named reusable snapshots of a 1–7 day meal plan slice (Batch 3.10) | Relational — JSONB `slots` array |
 | `recipe_claims` | **(ENG-870)** Server-owned audit/request log for verified creator recipe claims. Client roles have no direct grants; claimed recipe state is written only by a future verified server/RPC flow after OAuth handle, bio-code, or DNS/meta proof. | Relational audit log |
+| `meal_shares` | **(ENG-1642)** Immutable snapshot of one logged meal (items + macros), addressed by an unguessable 32-hex token for `/m/<token>` link sharing. Writes/reads mediated entirely by RPCs — see § below. | Relational (append-only; rows only ever gain `revoked_at`) |
 
 ## Key Design Decisions
 
@@ -126,6 +127,9 @@ self-named fallback line — correct, but lossy.
 | `public_author_follower_count(uuid)` | Count author followers | SECURITY DEFINER |
 | `my_recipe_save_stats()` | Author's own recipe save counts | SECURITY DEFINER |
 | `my_recipe_plan_add_stats()` | Author's own recipe plan-add counts | SECURITY DEFINER |
+| `create_meal_share(text, text, jsonb)` | **(ENG-1642)** Snapshot one logged meal's items into a `meal_shares` row; whitelist-rebuilds items server-side, 100/24h rate limit | SECURITY DEFINER |
+| `get_meal_share(text)` | **(ENG-1642)** Token-addressed recipient read. First anon-executable RPC in the schema (the `/m/<token>` landing renders for signed-out visitors) | SECURITY DEFINER, `anon` + `authenticated` |
+| `revoke_meal_share(uuid)` | **(ENG-1642)** Sharer revokes their own share link | SECURITY DEFINER |
 
 ## Entity Relationships
 
@@ -211,6 +215,7 @@ Some state is stored **only** in the browser's `localStorage` (`suppr-app-v1` ke
 | `meal_plan_days.servings_used`, `meal_plan_meals.is_leftover`, `meal_plan_meals.leftover_of_recipe_id` | Migration `20260421160000` — Batch 3.10 leftovers distribution state |
 | `profiles.streak_freeze_budget_max`, `profiles.streak_freezes_earned_at`, `profiles.streak_freezes_used_history`, `profiles.weekly_recap_push_enabled`, `profiles.weekly_recap_last_seen_week_key` | Migration `20260421170000` — Batch 4.11 streak freeze + weekly recap |
 | `nutrition_entry_ingredients` | Migration `20260619120000` — **ENG-751** per-item AI/photo/voice meal snapshot. **Types not yet regenerated** (the table doesn't exist in the live schema until `supabase db push --linked` runs). Accessed via the explicit `NutritionEntryIngredientRow` interface + typed `as` casts (`src/lib/nutrition/nutritionEntryIngredients.ts`). **Post-apply follow-up (ENG-751): run `npm run db:types` and drop the casts.** |
+| `meal_shares` | Migration `20260722090000` — **ENG-1642** meal share links. **Staged, not yet applied** as of 2026-07-21 — must be run via `supabase db push --linked` (never MCP `apply_migration`) before the `meal_share_links_v1` flag is ramped. Types not regenerated; see § below. |
 
 **To wire up**: apply all pending migrations to the remote DB, regenerate types, then add `<Database>` generic to `createBrowserClient` and `createClient` calls.
 
@@ -335,6 +340,21 @@ Exported as `WidgetSnapshotTrigger`. First-write after hydrate is `"scheduled_re
 ```
 Exported as `ConfidenceBucket`. Added path reuses `classifyConfidence` from `src/lib/nutrition/aiLogging.ts` (`>=0.75 → high, >=0.5 → medium, else low`). Override + clear paths classify from `ingredient.isVerified` (true → high, false → medium), matching the UI's `<ConfidenceDot level={ing.isVerified ? "high" : "medium"} />` decision.
 
+### Meal share links (ENG-1642)
+
+Four new events. `meal_share_links_v1` (default off — see `KNOWN_DEFAULT_OFF_FLAGS` in `src/lib/analytics/track.ts` / `apps/mobile/lib/analytics.ts`) gates link CREATION only, not redemption (see `docs/journeys/meal-sharing.md` § Status), so only `meal_share_link_created` and the `mode: "link"` value on `meal_share_invoked` are flag-scoped in practice. `meal_share_link_opened`, `shared_meal_logged`, and `shared_meal_signup_started` fire on the un-gated redemption path and can fire regardless of the flag:
+
+```
+meal_share_link_created   { surface: string, itemCount: number }
+meal_share_link_opened    { status: MealShareStatus, authed: boolean }
+shared_meal_logged        { surface: string, itemCount: number, slot: "Breakfast" | "Lunch" | "Dinner" | "Snacks" }
+shared_meal_signup_started { surface: string }
+```
+
+`MealShareStatus` is `"ok" | "invalid" | "expired" | "revoked"` (`src/lib/share/mealShareLink.ts`). `meal_share_link_opened` fires once per load at each of its two mount points — the web `/m/<token>` landing (`MealShareLandingClient.tsx`) and the `/home` post-auth resume (`SharedMealAcceptHost`, `src/app/components/suppr/shared-meal-accept-host.tsx`) both ref-guard it so a re-render or a retried lookup can't double-count at that mount point — but a web accept that goes through the landing page legitimately fires it twice total (once pre-auth, once post-auth resume), distinguishable by `authed`. Mobile's `/meal-shared` route fires it once. `FoodLoggedSource` also gained `"shared_meal"` for the recipient's re-logged rows; the accept flow DOES additionally fire `food_logged` once per item on both platforms (via `addLoggedMealForDate` on web, per-row on mobile's `nutrition_entries` upsert) — `shared_meal_logged` is the batch-level confirm event, `food_logged {source: "shared_meal"}` is the per-item logging event, and both fire on a successful accept.
+
+The pre-existing `meal_share_invoked` event (ENG-25, the outbound-text-only share) gains an optional `mode: "link" | "text"` property — `"link"` when the flag is on and a share URL was successfully created, `"text"` for the pre-ENG-1642 fallback (flag off, or link creation failed). Existing dashboards reading `meal_share_invoked` without inspecting `mode` are unaffected — this is an additive property, not a rename.
+
 ### `streak_reset` event (G8)
 New event. Payload `{ priorStreak: number }`. Fires once per `>=1 → 0` transition of `computeProtectedStreak(...).streakLength`. Predicate: `didStreakReset(prior, current)` in `src/lib/nutrition/streakReset.ts`.
 
@@ -380,3 +400,27 @@ Exported helper type: `RecipeImportedSource = "url" \| "image"`. Collision / dro
 Claim merge is forward-only and non-destructive: a verified claim creates or upgrades the claimant's own published `content_origin='claimed'` recipe. Existing users' private imported stubs are never rewritten; they can show an exact-`source_url` "✓ Official version available" prompt with an opt-in switch.
 
 ENG-1235 adds the owner "Claim → Official" macros-confirmed path: web/mobile show an owner-only action behind `official_recipe_claim_v1`; `POST /api/recipes/claim-official` validates the caller from the Supabase session/JWT, fetches the recipe with the service-role client, asserts `recipes.author_id === userId` in-route, requires a published recipe with `source_url` and every ingredient row verified, then writes `recipes.is_verified`, `content_origin='claimed'`, `claimed_by`, `claimed_at`, and `claim_verification` through the service-role client. The audit row is idempotent via `recipe_claims_verified_recipe_claimant_uidx`. Apply `supabase/migrations/20260702120800_eng1235_recipe_claim_idempotency.sql` with `supabase db push --linked`; do not apply it via MCP.
+
+### `meal_shares` — meal share links (ENG-1642)
+
+**Staged, not applied.** Migration `supabase/migrations/20260722090000_eng1642_meal_share_links.sql` exists on disk but has not been run against the live DB as of 2026-07-21. **Grace must run `supabase db push --linked` before the `meal_share_links_v1` flag is ramped** — per the project-wide rule, this is never applied via MCP `apply_migration` (it would rewrite `schema_migrations.version` to wall-clock NOW(), and this file's timestamp is deliberately dated).
+
+**Why it exists:** the pre-existing per-meal share (ENG-25, `meal_share_invoked`) is outbound text only — nothing lands in the recipient's log. `meal_shares` adds the durable half: an immutable snapshot of one logged meal, addressed by an unguessable token, that a recipient (including a signed-out visitor) can re-log into their own diary as brand-new `nutrition_entries` rows they own.
+
+Columns:
+- `id uuid` — primary key.
+- `token text` — 32 lowercase-hex chars (`gen_random_bytes(16)`, 128 bits — sized above the 6-byte household invite code because this token gates an *unauthenticated* read). Unique index.
+- `created_by uuid references auth.users(id) on delete cascade`.
+- `title text` — 1..200 chars.
+- `meal_slot text` — `Breakfast | Lunch | Dinner | Snacks`.
+- `items jsonb` — server-rebuilt against a whitelist (never trusts the client payload verbatim): `recipe_title`, `calories`/`protein`/`carbs`/`fat` (bounded numeric ranges), optional `fiber_g`/`water_ml`/`portion_multiplier`/`source`/`nutrition_micros` (numeric-only, ≤100 keys, each value bounded `0..100000` — the payload is anon-served, so no negatives and no absurd magnitudes)/`recipe_id` (kept only when it resolves to a *published* recipe — a private id would leak through the anon-readable payload; re-checked at **read time** in `get_meal_share`, not just at share time — see below).
+- `created_at timestamptz default now()`, `expires_at timestamptz default now() + 30 days` (household-invite convention; checked at read time, never swept by a cron), `revoked_at timestamptz` (null unless the sharer revokes).
+
+**RLS / grants:** `authenticated` keeps SELECT scoped to `created_by = auth.uid()` (a future "my shared links" management surface); INSERT/UPDATE/DELETE are revoked from every role — all writes go through the three SECURITY DEFINER RPCs below. `anon` has no table grant at all.
+
+**RPCs** (all SECURITY DEFINER, `set search_path = public, pg_temp`):
+- **`create_meal_share(p_title text, p_meal_slot text, p_items jsonb) → jsonb`** — sharer-only (`authenticated`). Validates title/slot/item shape, then takes a per-user `pg_advisory_xact_lock(hashtext('meal_share_create'), hashtext(uid))` to serialize concurrent creates before counting — the lock-then-count is what makes the 100-shares/24h rate limit actually hold under parallel calls (without it, N concurrent requests could all read `count < 100` before any of them inserts, per the ENG-1320 F4 convention `meal_shares` reuses since it has no parent row of its own to lock). After the count check, whitelist-rebuilds every item, generates the token (retries up to 8x on the freak collision), inserts the row. Returns `{status, share_id?, token?, expires_at?}` where `status` is `created | not_authenticated | invalid_title | invalid_slot | invalid_items | rate_limited`.
+- **`get_meal_share(p_token text) → jsonb`** — granted to **`anon` and `authenticated`**, the first anon-executable RPC in the schema (deliberate: the `/m/<token>` web landing must render for signed-out recipients). Normalises the token, checks expiry/revocation, and resolves the sharer's display name **live from `profiles`** at read time rather than from any snapshot column (ENG-154 dead-name rule — a renamed/deleted account's old name is never shown). Also re-checks every item's `recipe_id` against `recipes.published` at **read time** (not just at share time) and strips `recipe_id` from any item whose recipe has since gone unpublished or been deleted — this closes the window where a stale id could otherwise survive up to 30 days and fail the recipient's FK write on accept; the rest of the item (snapshotted title/macros) is unaffected. Returns `{status, title?, meal_slot?, items?, shared_by?, created_at?}`; `status` is `ok | invalid | expired | revoked`. Never returns `created_by` or any other raw column.
+- **`revoke_meal_share(p_share_id uuid) → jsonb`** — sharer-only, scoped to their own row (`created_by = auth.uid()`). Sets `revoked_at`; ships in v1 with no dedicated management UI — that's tracked as **ENG-1648**, not a silent gap.
+
+**Privacy posture (carries the ENG-25 pin forward):** a shared meal's items are meal contents only — calories/macros/micros/portion of what was eaten. It never carries the sharer's daily targets, remaining-today numbers, or any other diary content, and the recipient's accept flow writes brand-new rows they own; there is no cross-user read of `nutrition_entries` anywhere in this feature. See `docs/journeys/meal-sharing.md` for the full user-facing flow, snapshot semantics, and open product questions.

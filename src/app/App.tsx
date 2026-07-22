@@ -30,6 +30,7 @@ import { TodayLoadingSkeleton } from "./components/suppr/today-loading-skeleton.
 import { DesktopSidebar, resolvePrimaryFromView, type SidebarView } from "./components/suppr/desktop-sidebar.tsx";
 import { SubTabPill } from "./components/ui/sub-tab-pill.tsx";
 import { RecipesTabChrome } from "./components/suppr/recipes-tab-chrome.tsx";
+import { SharedMealAcceptHost } from "./components/suppr/shared-meal-accept-host.tsx";
 import { PlanTabChrome } from "./components/suppr/plan-tab-chrome.tsx";
 
 const NotificationsCenter = dynamic(
@@ -909,6 +910,14 @@ export default function App() {
 
       {/* First-run guided checklist */}
       <FirstRunChecklist onNavigate={(view) => navigateToView(view as View)} />
+
+      {/* ENG-1642 — meal-share accept host: consumes `?mealShare=<token>`
+          (from the /m/<token> landing) or the signed-out pending-share
+          handoff, then opens the accept dialog. Rendered at the root,
+          next to the other deep-link consumers (`?recipe=` above), so it
+          works on every product view — self-contained against
+          AppData/AuthSession, flag-gated internally. */}
+      <SharedMealAcceptHost />
 
       {/* Claude Design 2026-04-20 upgrade paywall dialog. Lifts the
           in-app "Upgrade" flow from a /pricing redirect into a modal

@@ -173,7 +173,14 @@ describe("mobile-web raised Log button — NutritionTracker openLog consumer", (
   it("clears the openLog param after opening the sheet (back-nav must not re-open)", () => {
     // Critical correctness pin: without the param clear, a back-nav
     // landing on Today would re-open the LogSheet on every focus.
-    expect(TRACKER).toMatch(/params\.delete\("openLog"\);[\s\S]+?trackerRouter\.replace/);
+    // ENG-1642 extracted the URLSearchParams delete/replace dance into
+    // the shared `stripHomeQueryParams` eraser (also used by the
+    // meal-share accept host); its delete+replace behaviour is pinned
+    // in tests/unit/stripHomeQueryParams.test.ts — this pin now holds
+    // the call site: both one-shot params erased via the shared helper.
+    expect(TRACKER).toMatch(
+      /stripHomeQueryParams\(trackerRouter, "\/home", trackerSearchParams, \["openLog", "openLogQuery"\]\)/,
+    );
   });
 
   it("no longer renders the side <LogFab> JSX", () => {

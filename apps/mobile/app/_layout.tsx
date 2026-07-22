@@ -415,7 +415,7 @@ function AutoSurfaceWhatsNew() {
 const STACK_HEADER_HIDDEN = new Set([
   "(tabs)",
   "login", "reset-password",
-  "import-shared",
+  "import-shared", "meal-shared", // ENG-1642 — meal-shared has its own PushScreenHeader too.
   "plan-import",
   "cookbook-import",
   "cook",

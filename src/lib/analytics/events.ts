@@ -437,11 +437,49 @@ export const AnalyticsEvents = {
   expo_push_token_register_attempted: "expo_push_token_register_attempted",
   /** F-154 (2026-05-10) — user invoked the per-meal share action.
    *  Payload: `{ surface: "today_meal_row_longpress" | "today_meal_row_kebab",
-   *             outcome: "shared" | "dismissed" | "error" }`
+   *             outcome: "shared" | "dismissed" | "error",
+   *             mode?: "link" | "text" }`
    *  Tracks adoption of per-dinner share so we can see whether the
    *  affordance gets used at all before investing in a richer share
-   *  card / image / OG-link variant. */
+   *  card / image / OG-link variant.
+   *
+   *  ENG-1642 — `mode` distinguishes the real shareable-link path
+   *  (`"link"`, flag `meal_share_links_v1` on) from the legacy
+   *  title+text-only `navigator.share`/clipboard path (`"text"`, flag
+   *  off or the link create call failed). Optional so historical rows
+   *  without it stay valid; every new call site sets it. */
   meal_share_invoked: "meal_share_invoked",
+  /** ENG-1642 — a real, openable meal-share link (`/m/<token>`) was
+   *  created via `create_meal_share`. Fires once per successful create,
+   *  before the share sheet / clipboard write. Distinct from
+   *  `meal_share_invoked` (fires on the invoke attempt regardless of
+   *  outcome) — this is the link-creation success signal specifically.
+   *  Payload: `{ surface: "today_meal_row_kebab" | "today_meal_row_longpress",
+   *  itemCount: number }` — `today_meal_row_kebab` is web's Today
+   *  meal-row kebab menu, `today_meal_row_longpress` is mobile's
+   *  long-press Alert + branded action sheet. */
+  meal_share_link_created: "meal_share_link_created",
+  /** ENG-1642 — a recipient opened a meal-share link: the anon `/m/<token>`
+   *  web landing (`MealShareLandingClient.tsx`), the post-auth `/home`
+   *  resume (`SharedMealAcceptHost`), or mobile's `/meal-shared` route.
+   *  Fires twice for a web accept that goes through the landing page
+   *  (once pre-auth on the landing, once again on the `/home` resume —
+   *  each ref-guarded against re-render duplication, distinguishable by
+   *  `authed`); mobile fires it once. Payload:
+   *  `{ status: "ok" | "invalid" | "expired" | "revoked",
+   *  authed: boolean }` — `authed` lets the funnel split the signed-in
+   *  vs signed-out open rate for the accept flow. */
+  meal_share_link_opened: "meal_share_link_opened",
+  /** ENG-1642 — a recipient confirmed the accept dialog/screen and the
+   *  shared meal's items were logged into their own journal for the
+   *  chosen day + slot. Payload: `{ surface: "web_accept_dialog" |
+   *  "mobile_accept_screen", itemCount: number,
+   *  slot: "Breakfast" | "Lunch" | "Dinner" | "Snacks" }`. */
+  shared_meal_logged: "shared_meal_logged",
+  /** ENG-1642 — a signed-out recipient started sign-up from the
+   *  meal-share accept surface (the pending-share resume handoff via
+   *  `MEAL_SHARE_STORAGE_KEY`). Payload: `{ surface: string }`. */
+  shared_meal_signup_started: "shared_meal_signup_started",
   /**
    * Analytics health sentinel (2026-05-11). Fires once per app boot
    * (mobile) + once per session (web) so PostHog ingestion can be
@@ -1258,7 +1296,8 @@ export type FoodLoggedSource =
   // meal-logged event is `food_logged`; `source` is its attribution prop)
   // so the suggestion→log conversion is sliceable per surface.
   | "north_star"       // "What to eat next" block secondary Log (Today)
-  | "coach_suggestion"; // Coach screen candidate-row secondary Log
+  | "coach_suggestion" // Coach screen candidate-row secondary Log
+  | "shared_meal";     // ENG-1642 — shared-meal-link accept flow
 
 /** Canonical `surface` of an `empty_state_cta_clicked` event (L6 G5). */
 export type EmptyStateSurface =
