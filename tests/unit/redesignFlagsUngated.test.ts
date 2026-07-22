@@ -3,14 +3,15 @@
  * Redesign 2026 flags are UN-GATED (web) — default ON in every build.
  *
  * Grace 2026-06-01: "turn everything on, never flag-gate again." Parity with
- * apps/mobile/lib/analytics.ts: `isFeatureEnabled` returns ON for the 7
+ * apps/mobile/lib/analytics.ts: `isFeatureEnabled` returns ON for the 6
  * redesign flags regardless of PostHog rollout, via REDESIGN_DEFAULT_ON in
  * src/lib/analytics/track.ts. An explicit dev/test force still wins so the
  * pre-redesign visual captures keep working.
  *
- * `design_system_elevation` collapsed out of REDESIGN_DEFAULT_ON (ENG-1651):
- * the flag was removed entirely and the code now ships its ON-branch styling
- * unconditionally, so it no longer appears in this suite's flag lists.
+ * `design_system_elevation` and `design_system_icons` collapsed out of
+ * REDESIGN_DEFAULT_ON (ENG-1651): both flags were removed entirely and the
+ * code now ships their ON-branch styling unconditionally, so neither appears
+ * in this suite's flag lists.
  *
  * `design_system_brandmark` likewise collapsed out of REDESIGN_DEFAULT_ON
  * (ENG-1651, lighter-touch slice): it already had zero live isFeatureEnabled
@@ -34,7 +35,6 @@ import { isFeatureEnabled } from "@/lib/analytics/track";
 
 const REDESIGN_FLAGS = [
   "design_system_colours",
-  "design_system_icons",
   "redesign_winmoment",
   "redesign_motion",
   "redesign_branded_sheets",

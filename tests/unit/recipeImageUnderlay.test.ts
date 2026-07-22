@@ -84,9 +84,11 @@ describe("web recipe-image containers — opaque wrapper underlay (ENG-1374 PR 2
     }
   });
 
-  it("CreatorRecipeList rows: all three branches tinted, bg-muted grounds gone from the image slots", () => {
+  it("CreatorRecipeList rows: both branches tinted, bg-muted grounds gone from the image slots", () => {
     const src = read("src/app/components/creator/CreatorRecipeList.tsx");
-    expect(src.match(/backgroundColor: recipeUnderlayColor\(\{ id: r\.id, title: r\.title \}, fallbackScheme\)/g)?.length).toBe(3);
+    // Two branches (image / RecipeHeroFallback) since ENG-1651 collapsed the
+    // `design_system_icons`-gated third (legacy 🍳 emoji) branch out entirely.
+    expect(src.match(/backgroundColor: recipeUnderlayColor\(\{ id: r\.id, title: r\.title \}, fallbackScheme\)/g)?.length).toBe(2);
     expect(src).not.toContain("object-cover bg-muted");
   });
 

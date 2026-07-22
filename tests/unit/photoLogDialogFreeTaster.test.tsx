@@ -18,8 +18,10 @@ void React;
 
 vi.mock("../../src/lib/analytics/track.ts", () => ({
   track: vi.fn(),
-  // ENG-816 — the dialog reads `design_system_icons` for the "Plate total"
-  // glyph swap; default OFF keeps the free-taster assertions unchanged.
+  // The dialog's "Plate total" glyph (lucide ArrowRight) is unconditional
+  // (ENG-816 #24, mobile parity); `isFeatureEnabled` here only gates
+  // `log_refine_describe_v1`. Default OFF keeps the free-taster assertions
+  // unchanged.
   isFeatureEnabled: vi.fn(() => false),
 }));
 

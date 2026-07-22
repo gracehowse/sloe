@@ -167,10 +167,11 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
     // `design_system_brandmark` collapsed out of REDESIGN_DEFAULT_ON (ENG-1651,
     // lighter-touch slice): the brand mark has rendered unconditionally since
     // 2026-06-04 with zero live isFeatureEnabled call sites, so it no longer
-    // needs a default-on entry on either platform.
+    // needs a default-on entry on either platform. `design_system_icons`
+    // likewise collapsed out (ENG-1651): both its web call sites now ship
+    // their Lucide ON-branch unconditionally.
     const core = [
       "design_system_colours",
-      "design_system_icons",
       "redesign_winmoment",
       "redesign_motion",
       "redesign_branded_sheets",
@@ -201,4 +202,10 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
   // ON-branch (MealNutritionDialog, per-meal + slot-aggregate) now mounts
   // unconditionally in NutritionTracker.tsx, so it no longer belongs in the
   // WEB_ONLY carve-out above.)
+
+  // (ENG-1651 — `design_system_icons` collapsed out of REDESIGN_DEFAULT_ON on
+  // both platforms: the flag was removed entirely and the Lucide icon swap
+  // (HydrationStimulantsCard, CreatorRecipeList) now ships unconditionally,
+  // so it's no longer parsed out of either source file and no longer belongs
+  // in the "core design-system flags" list above.)
 });
