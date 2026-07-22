@@ -46,7 +46,7 @@ export function ShoppingSmartSuggestionsView({
         <View style={styles.headerCopy}>
           <Text style={[Type.button, { color: colors.text }]}>Smart suggestions</Text>
           <Text style={[Type.caption, { color: colors.textSecondary, marginTop: Spacing.xs }]}>
-            Recipes that reuse what's already on your list.
+            Recipes that reuse ingredients already on your list.
           </Text>
         </View>
       </View>
