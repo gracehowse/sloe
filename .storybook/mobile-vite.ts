@@ -3,12 +3,18 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { mergeConfig, type UserConfig, type Plugin } from "vite";
 import { rnw } from "vite-plugin-rnw";
+import { projectId, publicAnonKey } from "../utils/supabase/info.tsx";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(dirname, "..");
 const mobileRoot = path.resolve(dirname, "../apps/mobile");
 const stubsRoot = path.resolve(dirname, "./mobile-stubs");
 const coverageStubs = path.resolve(dirname, "./stubs");
+
+const storybookSupabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || `https://${projectId}.supabase.co`;
+const storybookSupabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || publicAnonKey;
 
 const MOBILE_PATH_PREFIXES = ["/apps/mobile/", "\\apps\\mobile\\"];
 
@@ -143,6 +149,8 @@ export function mergeMobileStorybookVite(config: UserConfig): UserConfig {
     define: {
       __DEV__: JSON.stringify(true),
       global: "globalThis",
+      "process.env.NEXT_PUBLIC_SUPABASE_URL": JSON.stringify(storybookSupabaseUrl),
+      "process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY": JSON.stringify(storybookSupabaseAnonKey),
     },
     optimizeDeps: {
       include: ["react-native-web", "react-native-reanimated"],

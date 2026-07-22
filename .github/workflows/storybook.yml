@@ -29,6 +29,13 @@ concurrency:
 jobs:
   storybook:
     runs-on: ubuntu-latest
+    env:
+      # Same public Supabase env as Chromatic/visual workflows — Storybook
+      # stories that import the browser client need these inlined at build time.
+      # Without them Vite can emit an empty URL and Chromatic fails extraction
+      # with `supabaseUrl is required` after a successful upload.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
     steps:
       - uses: actions/checkout@v6
         with:
