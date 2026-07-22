@@ -3,7 +3,13 @@ import * as Sentry from "@sentry/nextjs";
 import { AnalyticsEvents } from "@/lib/analytics/events";
 import { serverTrack } from "@/lib/analytics/serverTrack";
 
-export type UpstashSubsystem = "rate_limit" | "vendor_cache" | "vendor_quota" | "ai_budget" | "fatsecret_token";
+export type UpstashSubsystem =
+  | "rate_limit"
+  | "vendor_cache"
+  | "vendor_quota"
+  | "ai_budget"
+  | "fal_budget"
+  | "fatsecret_token";
 export type UpstashFailureMode = "call_threw" | "env_missing" | "read_failed" | "write_failed" | "quota_consume_failed";
 
 export type UpstashFailureMetric = {
@@ -25,9 +31,10 @@ function serialiseError(err: unknown): string | undefined {
 
 /**
  * ENG-1114 — shared Upstash monitoring hook. Upstash backs rate limits,
- * AI-budget enforcement, vendor cache/quota, and FatSecret token caching
- * (ENG-1120), so failures must create an alertable signal instead of only
- * appearing as console output in one call path.
+ * AI-budget enforcement, the fal.ai image-spend guardrail (ENG-1411), vendor
+ * cache/quota, and FatSecret token caching (ENG-1120), so failures must
+ * create an alertable signal instead of only appearing as console output in
+ * one call path.
  */
 export function recordUpstashFailure(metric: UpstashFailureMetric, err?: unknown): void {
   const errorMessage = metric.message ?? serialiseError(err);

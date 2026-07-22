@@ -124,6 +124,17 @@ restarts the 5-minute clock — acceptable because each worker has its
 own traffic share and the global counter (when Upstash recovers) still
 catches any pent-up overspend at next-call time.
 
+**Mirrored onto `falBudget.ts` (2026-07-22, ENG-1411).** The fal.ai
+image-spend guardrail is a second, independent Upstash-backed budget
+module that originally had no fail-policy at all on its Redis calls — a
+throw would propagate as an unhandled rejection instead of degrading.
+It now runs the identical fail-open-then-closed policy (own
+`globalThis` state, own 5-minute window, same `recordUpstashFailure`
+alerting shape, tagged `subsystem: "fal_budget"`). See
+`docs/decisions/2026-06-08-recipe-ingredient-image-system.md`'s "Redis
+fail-policy on Upstash unreachable" section for the fal-specific
+detail.
+
 ### Enforcement flag (dark-launch path)
 
 Enforcement (the actual HTTP 503) is gated behind the env flag

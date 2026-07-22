@@ -295,6 +295,49 @@ and cheap to re-shoot later if the ingredient set needs a premium pass. Confiden
 pricing should still be re-checked when models/prices change, but the guardrail intentionally
 over-counts unknown models.
 
+## Redis fail-policy on Upstash unreachable (2026-07-22, ENG-1411)
+
+**Gap found:** the 2026-07-05 deep audit (PRA-010/IM-10) flagged that `falBudget.ts`'s Upstash calls
+(`incrby`/`expire`/`set`) had no fail-policy at all — an uncaught Redis exception would propagate up
+through `reserveFalImageBudget`/`releaseFalImageBudget` as an unhandled rejection instead of degrading
+predictably, unlike `aiBudget.ts`'s token-budget breaker, which already had a documented fail-open-
+then-closed policy (see `docs/decisions/2026-05-14-ai-cost-circuit-breaker.md`).
+
+**Decision shipped:** wrap `falBudget.ts`'s Redis calls in the exact same fail-policy `aiBudget.ts`
+already uses, rather than inventing a second policy for the second Upstash-backed budget module:
+
+- `incrBy`/`setIfAbsent` now try/catch the Redis call. A throw is logged (`console.error`), reported
+  via the shared `recordUpstashFailure` hook (`subsystem: "fal_budget"` — added to
+  `upstashMonitoring.ts`'s `UpstashSubsystem` union), and returns `null`/`false` instead of
+  propagating.
+- **First 5 minutes after the first failure → fail-OPEN.** `reserveFalImageBudget` grants a synthetic
+  reservation (`reservedPence: 0`) that is never registered in the settleable-grants map, so a later
+  `commitFalImageBudget`/`releaseFalImageBudget` call against it is a silent no-op — identical to
+  aiBudget's synthetic fail-open grant.
+- **After 5 minutes of sustained failure → fail-CLOSED.** Denies with a new reason,
+  `"upstash_unavailable"` (added to `FalBudgetDenied`), **unconditionally** — not gated by
+  `FAL_BUDGET_ENFORCEMENT_ENABLED`. This matches aiBudget: a broken counter can't be trusted to
+  enforce a cap either way, so a sustained outage denies regardless of the dark-launch flag.
+- Fail-open/closed state is its own module-scope `globalThis` slot (not shared with `aiBudget.ts` —
+  the two budgets are independent failure domains; an Upstash blip affecting one doesn't need to open
+  or close the other in lockstep, though in practice both hit the same Upstash project).
+
+**Why mirror aiBudget's policy rather than choose independently for fal:** a second, differently-tuned
+fail-policy for the same underlying dependency (Upstash) would be an unforced inconsistency — two AI
+cost breakers that degrade differently on the exact same class of outage is a harder system to reason
+about during an incident ("which one fails open, again?") for no offsetting benefit. Confidence: 9/10.
+
+**Tests:** `tests/unit/server/falBudget.test.ts` — mirrors `aiBudget.test.ts`'s state-helper pin
+(`_setFalBudgetFailOpenStateForTest`, same documented caveat that the in-memory counter path can't
+inject a real throw) AND goes further with a mocked `@upstash/redis` client that actually throws,
+covering the real fail-open → fail-closed → recovery transition plus the "denies even with
+enforcement off" and "synthetic grant never settles" cases.
+
+**Out of scope (ENG-1411's other two parts — product/ops decisions, not code):** confirming
+`AI_BUDGET_ENFORCEMENT_ENABLED=true` in the live Vercel production env, and pre-deciding launch-day
+`AI_BUDGET_GLOBAL_DAILY_GBP` / `FAL_BUDGET_DAILY_GBP` cap values for the viral-push window. Both
+remain open, owned by Grace.
+
 ## Display wiring (web + mobile parity)
 
 - **Web** `src/app/components/RecipeDetail.tsx`: load effect hydrates the image map; each ingredient
