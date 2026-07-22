@@ -2,20 +2,17 @@
  * FeatureErrorBoundary branded-fallback test (ENG-799, design-direction
  * 2026-05-31; ENG P5 web↔mobile parity, gap #8).
  *
- * Locks in the branded recovery card on web behind `redesign_branded_sheets`,
- * mirroring mobile `RootErrorBoundary.renderBranded()`:
+ * Locks in the branded recovery card on web, mirroring mobile
+ * `RootErrorBoundary.renderBranded()`: the canonical `SupprMark` brand mark,
+ * a brand background tone (`bg-background`), a primary CTA, and the calm
+ * "team has been notified" copy (`data-testid="feature-error-boundary-branded"`).
  *
- *  - flag ON  → brand-language fallback: the canonical `SupprMark` brand mark,
- *    a brand background tone (`bg-background`), a primary CTA, and the calm
- *    "team has been notified" copy. (`data-testid="feature-error-boundary-branded"`)
- *  - flag OFF → the legacy slate card stays alive verbatim (no SupprMark,
- *    `bg-white/...` chrome). (no branded test id)
- *
- * The flag is mocked at the analytics boundary so both branches are exercised
- * deterministically (PostHog is never loaded in jsdom). `SupprMark` itself has
- * no flag read (the brand mark unified unconditionally 2026-06-04) — whether
- * it renders at all here is controlled entirely by `redesign_branded_sheets`
- * deciding whether `FeatureErrorBoundary` mounts the branded fallback.
+ * ENG-1651 (2026-07-22): `redesign_branded_sheets` collapsed — the flag was
+ * permanently ON via REDESIGN_DEFAULT_ON, so the legacy slate card (no
+ * SupprMark, `bg-white/...` chrome) is gone. `FeatureErrorBoundary` no
+ * longer reads `isFeatureEnabled` at all; the branded fallback is the only
+ * path now. The mock below is kept only to prove that (see "gate removed"
+ * below) — it has zero effect on the component's behaviour.
  */
 import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -45,25 +42,7 @@ afterEach(() => {
 });
 
 describe("FeatureErrorBoundary branded fallback (ENG-799)", () => {
-  it("renders the legacy slate card when redesign_branded_sheets is OFF", () => {
-    isFeatureEnabledSpy.mockReturnValue(false);
-    // Suppress the expected React error-boundary console noise.
-    vi.spyOn(console, "error").mockImplementation(() => {});
-
-    render(
-      <FeatureErrorBoundary feature="Progress">
-        <Boom shouldThrow />
-      </FeatureErrorBoundary>,
-    );
-
-    expect(screen.getByText("Progress ran into a problem")).toBeInTheDocument();
-    // Legacy path: no branded surface, no brand mark.
-    expect(screen.queryByTestId("feature-error-boundary-branded")).toBeNull();
-    expect(screen.queryByRole("img", { name: "Sloe" })).toBeNull();
-  });
-
-  it("renders the branded fallback (brand mark + brand surface) when the flag is ON", () => {
-    isFeatureEnabledSpy.mockReturnValue(true);
+  it("renders the branded fallback (brand mark + brand surface)", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
 
     render(
@@ -83,35 +62,21 @@ describe("FeatureErrorBoundary branded fallback (ENG-799)", () => {
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
-  it("reads the redesign_branded_sheets flag key", () => {
+  it("gate removed: rendering is unaffected by what an isFeatureEnabled mock returns for the retired flag", () => {
+    isFeatureEnabledSpy.mockImplementation((flag: string) => flag === "redesign_branded_sheets");
     vi.spyOn(console, "error").mockImplementation(() => {});
+
     render(
       <FeatureErrorBoundary feature="Progress">
         <Boom shouldThrow />
       </FeatureErrorBoundary>,
     );
-    expect(isFeatureEnabledSpy).toHaveBeenCalledWith("redesign_branded_sheets");
+
+    expect(screen.getByTestId("feature-error-boundary-branded")).toBeInTheDocument();
+    expect(isFeatureEnabledSpy).not.toHaveBeenCalled();
   });
 
-  it("falls back to legacy if the flag client throws", () => {
-    isFeatureEnabledSpy.mockImplementation(() => {
-      throw new Error("cold flag client");
-    });
-    vi.spyOn(console, "error").mockImplementation(() => {});
-
-    render(
-      <FeatureErrorBoundary feature="Recipes">
-        <Boom shouldThrow />
-      </FeatureErrorBoundary>,
-    );
-
-    // Recovery UI still renders (legacy), never crashes.
-    expect(screen.getByText("Recipes ran into a problem")).toBeInTheDocument();
-    expect(screen.queryByTestId("feature-error-boundary-branded")).toBeNull();
-  });
-
-  it("retry recovers the subtree when the child stops throwing (branded path)", () => {
-    isFeatureEnabledSpy.mockReturnValue(true);
+  it("retry recovers the subtree when the child stops throwing", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
 
     let throwNext = true;
@@ -134,7 +99,6 @@ describe("FeatureErrorBoundary branded fallback (ENG-799)", () => {
   });
 
   it("passes children through untouched when no error occurs", () => {
-    isFeatureEnabledSpy.mockReturnValue(true);
     render(
       <FeatureErrorBoundary feature="Progress">
         <Boom shouldThrow={false} />

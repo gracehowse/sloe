@@ -2,7 +2,7 @@
 /**
  * Redesign 2026 flags are UN-GATED (mobile) — default ON in every build.
  *
- * Grace 2026-06-01: "turn everything on, never flag-gate again." The 6
+ * Grace 2026-06-01: "turn everything on, never flag-gate again." The 3
  * redesign flags resolve ON in `isFeatureEnabled` regardless of PostHog
  * rollout state or the (bundle-dead) env-force — see REDESIGN_DEFAULT_ON in
  * apps/mobile/lib/analytics.ts. This is the fix-by-elimination for ENG-840
@@ -33,6 +33,13 @@
  * flag lists (it's a Gate 1.5 flow-logic flag, not a redesign visual flag —
  * see redesignDefaultOnParity.test.ts's GATE_15_SHARED), so there's nothing
  * to remove there either.
+ *
+ * `design_system_colours` and `redesign_branded_sheets` likewise collapsed
+ * out of REDESIGN_DEFAULT_ON (ENG-1651): both flags were removed entirely and
+ * the code now ships their ON-branch styling unconditionally, so neither
+ * appears in this suite's flag lists. `redesign_search_results` stays
+ * flag-gated (its collapse was split out to PR #1039), so it remains in the
+ * flag list below.
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from "vitest";
@@ -71,10 +78,8 @@ beforeAll(async () => {
 });
 
 const REDESIGN_FLAGS = [
-  "design_system_colours",
   "redesign_winmoment",
   "redesign_motion",
-  "redesign_branded_sheets",
   "redesign_search_results",
 ];
 
@@ -114,7 +119,7 @@ describe("redesign flags are un-gated (mobile)", () => {
 
   it("returns true even when the flag is unloaded (undefined) or the SDK throws", () => {
     isEnabledMock.mockReturnValue(undefined);
-    expect(isFeatureEnabled("design_system_colours")).toBe(true);
+    expect(isFeatureEnabled("today_meals_figma_654")).toBe(true);
     isEnabledMock.mockImplementation(() => {
       throw new Error("posthog not ready");
     });
@@ -123,8 +128,8 @@ describe("redesign flags are un-gated (mobile)", () => {
 
   it("lets an explicit dev force OFF win (so pre-redesign captures still work)", () => {
     vi.stubGlobal("__DEV__", true);
-    vi.stubEnv("EXPO_PUBLIC_FLAG_FORCE_DESIGN_SYSTEM_COLOURS", "false");
-    expect(isFeatureEnabled("design_system_colours")).toBe(false);
+    vi.stubEnv("EXPO_PUBLIC_FLAG_FORCE_TODAY_MEALS_FIGMA_654", "false");
+    expect(isFeatureEnabled("today_meals_figma_654")).toBe(false);
   });
 
   it("does not affect non-redesign flags (they still follow PostHog)", () => {

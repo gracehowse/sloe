@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, cleanup } from "@testing-library/react";
 
-// Flag module mocked so we can flip `design_system_colours` for the blue
-// commit-CTA recolour (P5 parity gap #9). `design_system_elevation` collapsed
-// (ENG-1651) — the elevated empty-state card (ENG-825, web mirror of the
-// mobile macro/meal lane) now renders unconditionally, so it is no longer
-// toggled here.
+// Flag module mocked so the panel's other live flag reads don't blow up in
+// jsdom. `design_system_elevation` collapsed (ENG-1651) — the elevated
+// empty-state card (ENG-825, web mirror of the mobile macro/meal lane) now
+// renders unconditionally, so it is no longer toggled here. `design_system_
+// colours` likewise collapsed (ENG-1651) — the CTA's blue commit-colour
+// recolour (P5 parity gap #9) is unconditional now too; see the "gate
+// removed" test below.
 vi.mock("../../src/lib/analytics/track", () => ({
   track: vi.fn(),
   isFeatureEnabled: vi.fn(() => false),
@@ -224,8 +226,7 @@ describe("MacroDetailPanel — empty state (ENG-825, design_system_elevation col
     expect(mockPush).toHaveBeenCalledWith("/today");
   });
 
-  it("design_system_colours ON → CTA fills the blue commit colour (no macro-hue style)", () => {
-    flagFn.mockImplementation((f: string) => f === "design_system_colours");
+  it("CTA fills the blue commit colour (no macro-hue style)", () => {
     render(
       <MacroDetailPanel macro="carbs" meals={[]} open onClose={() => undefined} />,
     );
@@ -236,14 +237,13 @@ describe("MacroDetailPanel — empty state (ENG-825, design_system_elevation col
     expect(cta.getAttribute("style") ?? "").not.toContain("--macro-carbs");
   });
 
-  it("design_system_colours OFF → CTA keeps the legacy saturated macro hue", () => {
-    // Mirrors mobile's `ctaColorLegacy={config.color}` flag-OFF fill.
-    // (beforeEach's `flagFn.mockReturnValue(false)` already covers this.)
+  it("gate removed: CTA stays blue regardless of what an isFeatureEnabled mock returns for the retired flag", () => {
+    flagFn.mockImplementation((f: string) => f === "design_system_colours");
     render(
       <MacroDetailPanel macro="carbs" meals={[]} open onClose={() => undefined} />,
     );
     const cta = screen.getByRole("button", { name: "Log a meal on Today" });
-    expect(cta.className).not.toContain("bg-primary");
-    expect(cta.getAttribute("style") ?? "").toContain("var(--macro-carbs)");
+    expect(cta.className).toContain("bg-primary");
+    expect(cta.getAttribute("style") ?? "").not.toContain("--macro-carbs");
   });
 });

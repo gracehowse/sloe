@@ -826,15 +826,12 @@ export function FoodSearchPanel({
   favoritePendingKeys,
 }: FoodSearchPanelProps) {
   // 2026-05-31 design-direction (LANE: commit-colour CTAs): blue is the
-  // single commit-action colour. The "Use this" log commit CTA below used
-  // `bg-success` (green) as a button fill — green is now reserved strictly
-  // for the calorie-ring state + macro identity, never a commit button.
-  // Gate behind `design_system_colours`:
-  //   flag ON  → blue commit CTA (`bg-primary`)
-  //   flag OFF → existing green (old path stays alive in the ternary else).
-  const commitCtaClass = isFeatureEnabled("design_system_colours")
-    ? "bg-primary text-primary-foreground hover:bg-primary/90"
-    : "bg-success text-white hover:bg-success/90";
+  // single commit-action colour. The "Use this" log commit CTA below uses
+  // `bg-primary` — green is reserved strictly for the calorie-ring state +
+  // macro identity, never a commit button. `design_system_colours` collapsed
+  // (ENG-1651) — this was permanently ON via REDESIGN_DEFAULT_ON; the legacy
+  // `bg-success` fill is gone.
+  const commitCtaClass = "bg-primary text-primary-foreground hover:bg-primary/90";
   // ENG-815 (LANE: search-results UI). Gate the redesigned results body —
   // one segmented control, elevated grouped result cards, a legible
   // Verified / Estimated confidence chip, Best/More split — behind
@@ -1918,7 +1915,7 @@ export function FoodSearchPanel({
                   })}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                     preview.chosenPortion.label === p.label
-                      ? (isFeatureEnabled("design_system_colours") ? "border-primary bg-primary/15 text-primary-solid" : "border-success bg-success/15 text-success")
+                      ? "border-primary bg-primary/15 text-primary-solid"
                       : "border-border text-muted-foreground hover:border-border/80"
                   }`}
                 >

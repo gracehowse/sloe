@@ -128,7 +128,6 @@ export default function MacroDetailScreen() {
             ctaLabel="Back to Today"
             ctaIcon={Plus}
             ctaA11yLabel="Back to Today"
-            ctaColorLegacy={Accent.info}
             onPress={() => router.replace("/(tabs)")}
           />
         </ScrollView>
@@ -189,9 +188,9 @@ export default function MacroDetailScreen() {
           // fixed empty state was a line of text + a full-saturated-macro
           // CTA floating in a sea of whitespace. Now a shared elevated,
           // iconified card with a blue commit CTA + scale-press — same
-          // structure the meal-nutrition sibling now uses. Visual changes
-          // gated; the OLD flat / saturated-macro path lives in the
-          // shared component's flag-OFF branches.
+          // structure the meal-nutrition sibling now uses. `design_system_
+          // elevation` / `design_system_colours` collapsed (ENG-1651) — the
+          // old flat / saturated-macro path is gone from the shared component.
           <NutritionDetailEmptyState
             testID="macro-detail-empty"
             icon={Salad}
@@ -200,7 +199,6 @@ export default function MacroDetailScreen() {
             ctaLabel="Log a meal"
             ctaIcon={Plus}
             ctaA11yLabel="Log a meal on Today"
-            ctaColorLegacy={config.color}
             onPress={() => router.push("/(tabs)")}
           />
         ) : breakdownMode === "ingredient" && supportsIngredientBreakdown ? (

@@ -16,7 +16,6 @@ import { MEAL_SLOTS, isMealSlot, type MealSlot } from "../../../lib/nutrition/me
 import { addDays, todayKey } from "../../../lib/nutrition/copyMeals";
 import { formatMacroTrailer } from "../../../lib/nutrition/macroFormat";
 import { mealShareTotals, type MealSharePayload } from "../../../lib/share/mealShareLink";
-import { isFeatureEnabled } from "../../../lib/analytics/track";
 
 type Props = {
   open: boolean;
@@ -42,14 +41,14 @@ const dayChipClass = (active: boolean) =>
  * off to the caller's insert path via `onConfirm(dayKey, slot)`.
  *
  * Mirrors `CopyMealDialog`'s scaffolding — same `Dialog`/date-input/quick-
- * chip shape, same `redesign_branded_sheets` gate for the header chrome
- * (branded: SupprMark tile + title + macro-trailer subline; flag-off:
- * plain title/description). Renders `null` when there's no payload yet —
+ * chip shape, same branded header chrome (SupprMark tile + title +
+ * macro-trailer subline). `redesign_branded_sheets` collapsed (ENG-1651) —
+ * this chrome was permanently ON via REDESIGN_DEFAULT_ON; the legacy plain
+ * title/description is gone. Renders `null` when there's no payload yet —
  * the host (Today surface) is expected to only flip `open` true once a
  * lookup has resolved to `"ok"`.
  */
 export function SharedMealAcceptDialog({ open, onOpenChange, payload, onConfirm }: Props) {
-  const brandedSheets = isFeatureEnabled("redesign_branded_sheets");
   const [dayKey, setDayKey] = useState(() => todayKey());
   const [slot, setSlot] = useState<MealSlot>("Breakfast");
 
@@ -78,32 +77,21 @@ export function SharedMealAcceptDialog({ open, onOpenChange, payload, onConfirm 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-border max-w-md">
         <DialogHeader>
-          {brandedSheets ? (
-            <>
-              <div className="flex items-center gap-2">
-                <span className="grid h-10 w-10 place-items-center rounded-lg bg-primary-soft shrink-0">
-                  <SupprMark size={20} className="opacity-60" aria-hidden />
-                </span>
-                <span className="min-w-0 flex-1 text-left">
-                  <DialogTitle className="truncate text-foreground">{payload.title}</DialogTitle>
-                  <span className="mt-1 block truncate text-xs text-muted-foreground">
-                    {formatMacroTrailer(totals)}
-                  </span>
-                </span>
-              </div>
-              <DialogDescription className="text-muted-foreground">
-                {payload.sharedBy ? `From ${payload.sharedBy} — ` : ""}
-                Choose when to add it to your log.
-              </DialogDescription>
-            </>
-          ) : (
-            <>
-              <DialogTitle className="text-foreground">Add shared meal to your log</DialogTitle>
-              <DialogDescription className="text-muted-foreground">
-                {`"${payload.title}" — ${formatMacroTrailer(totals)}`}
-              </DialogDescription>
-            </>
-          )}
+          <div className="flex items-center gap-2">
+            <span className="grid h-10 w-10 place-items-center rounded-lg bg-primary-soft shrink-0">
+              <SupprMark size={20} className="opacity-60" aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1 text-left">
+              <DialogTitle className="truncate text-foreground">{payload.title}</DialogTitle>
+              <span className="mt-1 block truncate text-xs text-muted-foreground">
+                {formatMacroTrailer(totals)}
+              </span>
+            </span>
+          </div>
+          <DialogDescription className="text-muted-foreground">
+            {payload.sharedBy ? `From ${payload.sharedBy} — ` : ""}
+            Choose when to add it to your log.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-4 py-2">

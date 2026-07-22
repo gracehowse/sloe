@@ -35,9 +35,13 @@ void React;
 // honours — an explicit `false` wins over the default-on. The redesign on-state
 // is covered by Storybook + Chromatic. (Reconciliation 2026-06-01: keep the
 // flat path under test.)
-const FLAT_FLAGS = {
-  design_system_colours: false,
-} as const;
+//
+// `design_system_colours` and `design_system_icons` both collapsed out of
+// this set (ENG-1651): both flags were removed entirely and none of the
+// primitives pinned in this file ever read either one (grepped clean), so
+// the force-off entries were pure vestigial reference — no behaviour
+// changes from dropping them.
+const FLAT_FLAGS = {} as const;
 beforeEach(() => {
   (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__ = {
     ...FLAT_FLAGS,

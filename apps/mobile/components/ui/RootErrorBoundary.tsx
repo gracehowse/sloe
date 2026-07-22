@@ -2,7 +2,6 @@ import * as React from "react";
 import { Pressable, Text, View } from "react-native";
 import Svg, { Circle, Rect } from "react-native-svg";
 import { Accent, Colors, Radius, Spacing, Type } from "@/constants/theme";
-import { isFeatureEnabled } from "@/lib/analytics";
 import { captureException } from "@/lib/errorTracking";
 
 /**
@@ -20,11 +19,12 @@ import { captureException } from "@/lib/errorTracking";
  * `componentDidCatch` / `getDerivedStateFromError`.
  *
  * ENG-799 (Redesign — Design Direction 2026, 2026-05-31): the recovery
- * UI is rebuilt in the brand language (token colours via `Colors.dark.*`
+ * UI is built in the brand language (token colours via `Colors.dark.*`
  * + `Accent.*`, brand mark, blue CTA) so the most off-brand moment in
  * the app — a crash — no longer reads as a borrowed/raw OS error screen.
- * Gated behind `redesign_branded_sheets`; flag-off renders the prior
- * hardcoded-hex layout verbatim.
+ * `redesign_branded_sheets` collapsed (ENG-1651): the flag was permanently
+ * ON via REDESIGN_DEFAULT_ON, so this is the only recovery UI now — the
+ * prior hardcoded-hex legacy layout is gone.
  *
  * This component sits ABOVE the theme provider (it must survive a crash
  * in the provider tree), so it cannot use the `useThemeColors()` hook or
@@ -147,86 +147,9 @@ export class RootErrorBoundary extends React.Component<Props, State> {
     );
   }
 
-  renderLegacy() {
-    return (
-      <View
-        accessibilityRole="alert"
-        style={{
-          flex: 1,
-          backgroundColor: "#0a0a0f",
-          alignItems: "center",
-          justifyContent: "center",
-          paddingHorizontal: Spacing.xl,
-          paddingVertical: Spacing.xxl,
-          gap: Spacing.lg,
-        }}
-      >
-        <Text
-          style={{
-            fontSize: 22,
-            fontWeight: "700",
-            color: "#e4e4e8",
-            textAlign: "center",
-          }}
-        >
-          Something went wrong
-        </Text>
-        <Text
-          style={{
-            fontSize: 14,
-            lineHeight: 20,
-            color: "#94a3b8",
-            textAlign: "center",
-            maxWidth: 320,
-          }}
-        >
-          Sloe hit an unexpected error. The team has been notified. Tap
-          Try again to recover, or restart the app if it keeps happening.
-        </Text>
-        <Pressable
-          onPress={this.handleRetry}
-          accessibilityRole="button"
-          accessibilityLabel="Try again"
-          style={({ pressed }) => ({
-            backgroundColor: Accent.primary,
-            paddingHorizontal: Spacing.xl,
-            paddingVertical: Spacing.md,
-            borderRadius: 12,
-            opacity: pressed ? 0.85 : 1,
-          })}
-        >
-          <Text style={{ color: "#fff", fontSize: 15, fontWeight: "700" }}>
-            Try again
-          </Text>
-        </Pressable>
-        {this.state.resets >= 2 ? (
-          <Text
-            style={{
-              ...Type.captionSmall,
-              color: "#64748b",
-              textAlign: "center",
-              marginTop: Spacing.sm,
-            }}
-          >
-            Still not working? Force-quit Sloe from the app switcher and
-            reopen.
-          </Text>
-        ) : null}
-      </View>
-    );
-  }
-
   render() {
     if (this.state.error) {
-      // `isFeatureEnabled` is wrapped so a cold/throwing flag client can
-      // never make the recovery UI itself crash — fall back to legacy.
-      let branded = false;
-      try {
-        branded = isFeatureEnabled("redesign_branded_sheets");
-      } catch {
-        branded = false;
-      }
-      return branded ? this.renderBranded() : this.renderLegacy();
+      return this.renderBranded();
     }
     return this.props.children;
   }

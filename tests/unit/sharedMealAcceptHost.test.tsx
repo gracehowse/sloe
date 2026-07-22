@@ -134,7 +134,10 @@ describe("SharedMealAcceptHost — ?mealShare consumption", () => {
 
     render(<SharedMealAcceptHost />);
 
-    await screen.findByText("Add shared meal to your log");
+    // ENG-1651 — `redesign_branded_sheets` collapsed: the dialog always
+    // shows the branded header (the meal's own title), not the legacy
+    // generic "Add shared meal to your log" copy.
+    await screen.findByText("Lunch on the go");
 
     expect(mockGetMealShare).toHaveBeenCalledTimes(1);
     expect(mockGetMealShare).toHaveBeenCalledWith(
@@ -152,7 +155,10 @@ describe("SharedMealAcceptHost — ?mealShare consumption", () => {
     mockGetMealShare.mockResolvedValue({ status: "ok", payload: okPayload() });
 
     const { rerender } = render(<SharedMealAcceptHost />);
-    await screen.findByText("Add shared meal to your log");
+    // ENG-1651 — `redesign_branded_sheets` collapsed: the dialog always
+    // shows the branded header (the meal's own title), not the legacy
+    // generic "Add shared meal to your log" copy.
+    await screen.findByText("Lunch on the go");
     rerender(<SharedMealAcceptHost />);
 
     await waitFor(() => expect(mockGetMealShare).toHaveBeenCalledTimes(1));
@@ -178,7 +184,10 @@ describe("SharedMealAcceptHost — signed-out pending-storage resume rail", () =
 
     render(<SharedMealAcceptHost />);
 
-    await screen.findByText("Add shared meal to your log");
+    // ENG-1651 — `redesign_branded_sheets` collapsed: the dialog always
+    // shows the branded header (the meal's own title), not the legacy
+    // generic "Add shared meal to your log" copy.
+    await screen.findByText("Lunch on the go");
 
     // Storage read (and thus erased, per takePendingMealShare's own
     // read-then-clear contract) regardless of the URL param's presence.
@@ -199,7 +208,10 @@ describe("SharedMealAcceptHost — signed-out pending-storage resume rail", () =
 
     render(<SharedMealAcceptHost />);
 
-    await screen.findByText("Add shared meal to your log");
+    // ENG-1651 — `redesign_branded_sheets` collapsed: the dialog always
+    // shows the branded header (the meal's own title), not the legacy
+    // generic "Add shared meal to your log" copy.
+    await screen.findByText("Lunch on the go");
     expect(mockGetMealShare).toHaveBeenCalledWith(
       expect.anything(),
       "b2c3d4e5b2c3d4e5b2c3d4e5b2c3d4e5",
@@ -234,7 +246,10 @@ describe("SharedMealAcceptHost — expired/revoked/invalid toast copy (exact, no
     render(<SharedMealAcceptHost />);
 
     await waitFor(() => expect(mockToastError).toHaveBeenCalledWith(copy));
-    expect(screen.queryByText("Add shared meal to your log")).toBeNull();
+    // No payload was ever resolved for this status, so the dialog's early
+    // `if (!payload || !totals) return null` keeps it unmounted — checked
+    // via the CTA (title-text-independent, since no payload means no title).
+    expect(screen.queryByRole("button", { name: /add to my log/i })).toBeNull();
   });
 });
 
@@ -247,7 +262,10 @@ describe("SharedMealAcceptHost — meal_share_links_v1 flag OFF (redemption deli
     const user = userEvent.setup();
 
     render(<SharedMealAcceptHost />);
-    await screen.findByText("Add shared meal to your log");
+    // ENG-1651 — `redesign_branded_sheets` collapsed: the dialog always
+    // shows the branded header (the meal's own title), not the legacy
+    // generic "Add shared meal to your log" copy.
+    await screen.findByText("Lunch on the go");
 
     await user.click(screen.getByRole("button", { name: /add to my log/i }));
 
@@ -276,7 +294,10 @@ describe("SharedMealAcceptHost — confirm", () => {
     const user = userEvent.setup();
 
     render(<SharedMealAcceptHost />);
-    await screen.findByText("Add shared meal to your log");
+    // ENG-1651 — `redesign_branded_sheets` collapsed: the dialog always
+    // shows the branded header (the meal's own title), not the legacy
+    // generic "Add shared meal to your log" copy.
+    await screen.findByText("Lunch on the go");
 
     await user.click(screen.getByRole("button", { name: /add to my log/i }));
 

@@ -170,10 +170,8 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
     // likewise collapsed out (ENG-1651): both its web call sites now ship
     // their Lucide ON-branch unconditionally.
     const core = [
-      "design_system_colours",
       "redesign_winmoment",
       "redesign_motion",
-      "redesign_branded_sheets",
       "redesign_search_results",
     ];
     for (const flag of core) {
@@ -212,4 +210,12 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
   // and GATE_15_SHARED on both platforms: the flag was removed entirely and
   // the "Coming from another app?" app-choice step now ships unconditionally,
   // so it's no longer parsed out of either source file.)
+
+  // (ENG-1651 — `design_system_colours` and `redesign_branded_sheets`
+  // collapsed out of REDESIGN_DEFAULT_ON on both platforms: both flags were
+  // removed entirely and their ON-branch styling now ships unconditionally,
+  // so neither is parsed out of either source file and neither belongs in
+  // the "core design-system flags" list above. `redesign_search_results`
+  // stays flag-gated (its collapse was split out to PR #1039), so it remains
+  // in the core list above.)
 });
