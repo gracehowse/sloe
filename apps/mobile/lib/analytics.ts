@@ -816,6 +816,28 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   `src/lib/analytics/track.ts`. WEB-ONLY: mobile has no Tailwind
  *   `.product-shell` equivalent; registered here only for the web ↔ mobile
  *   KNOWN_DEFAULT_OFF_FLAGS discoverability parity.
+ * - `meal_share_links_v1` (ENG-1642) — the real shareable meal-link flow
+ *   (`create_meal_share` / `get_meal_share` RPCs, `/meal-shared?token=…`
+ *   accept screen) replacing the title+text-only native `Share.share`
+ *   path on Today's long-press "Share meal" action. **Gates CREATION
+ *   only** — OFF means `shareJournalMeal` (`@/lib/mealShare`) never calls
+ *   `create_meal_share`, so the action falls back to the legacy
+ *   text-only share untouched, and no *new* link can be minted.
+ *   Redemption (mobile's `/meal-shared` accept screen, and the web
+ *   `/m/<token>` landing + `/home` `?mealShare=…` resume) is
+ *   **deliberately un-gated on both platforms**, flag on or off —
+ *   partial-ramp safety (a link minted inside a ramp cohort must still
+ *   resolve for a recipient outside it) and web↔mobile parity (see
+ *   `meal-shared.tsx`'s doc comment and web's `SharedMealAcceptHost`,
+ *   `src/app/components/suppr/shared-meal-accept-host.tsx`). This is why
+ *   gating the flag OFF is not a security kill of redemption — a
+ *   previously-shared token still resolves via the anon-executable
+ *   `get_meal_share` RPC regardless of the flag; a true kill of
+ *   redemption requires a follow-up migration that revokes the anon
+ *   grant on `get_meal_share`. DEFAULT-OFF: net new server + client
+ *   surface, not yet sim-validated — the pre-ramp gate is ENG-1650
+ *   (migration apply → Playwright e2e + sim verification → ramp). Keep
+ *   in sync with `src/lib/analytics/track.ts`. Web + mobile.
  *
  * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
  * `expenditure_trend_card` (ENG-953); the "always flag on" batch (ENG-1279,
@@ -846,6 +868,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "ingredient_text_rows_v1", // ENG-1611 — foods/ingredients render as TEXT (no glyph/monogram/photo tiles) on log-sheet rows + recipe-detail ingredients; off = legacy tiles (kill switch). Web + mobile.
   "recipe_estimated_cost_v1", // ENG-1274 — per-serving grocery cost estimate (Pro) on recipe-detail hero meta; off = hidden (kill switch). Web + mobile.
   "web_gutter_convergence_v1", // ENG-1629 — converges web Targets.tsx/RecipeDetail.tsx page gutters onto .product-shell. WEB-ONLY: mobile has no Tailwind product-shell equivalent; registered here only for the web ↔ mobile KNOWN_DEFAULT_OFF_FLAGS discoverability parity.
+  "meal_share_links_v1", // ENG-1642 — durable meal share links (create_meal_share + /meal-shared accept screen); off = legacy text-only "Share meal" (kill switch). Web + mobile.
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

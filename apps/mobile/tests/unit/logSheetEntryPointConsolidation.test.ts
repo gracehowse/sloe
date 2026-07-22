@@ -194,7 +194,15 @@ describe("LogSheet web wiring (NutritionTracker + raised tab-bar button)", () =>
     expect(trackerSrc).toMatch(
       /if\s*\(openLogParam\s*!==\s*["']1["']\)\s*return;[\s\S]{0,400}setLogSheetOpen\(true\)/,
     );
-    expect(trackerSrc).toMatch(/params\.delete\(["']openLog["']\)/);
+    // ENG-1642 — the inline `params.delete("openLog"); params.delete(...)`
+    // pair was extracted into the shared `stripHomeQueryParams()` eraser
+    // (`src/lib/navigation/stripHomeQueryParams.ts`) so the `?mealShare=`
+    // accept host could reuse the exact same one-shot-param-erase behaviour
+    // instead of duplicating it. The literal `params.delete("openLog")`
+    // call no longer exists in this file — `openLog` is now a string
+    // element in the `keys` array `stripHomeQueryParams` is called with.
+    expect(trackerSrc).toMatch(/stripHomeQueryParams\(/);
+    expect(trackerSrc).toMatch(/stripHomeQueryParams\([^)]*\[[^\]]*["']openLog["']/);
   });
 
   it("the legacy <LogFab> JSX is no longer rendered", () => {

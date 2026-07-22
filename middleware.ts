@@ -73,6 +73,11 @@ function isPublic(pathname: string): boolean {
   if (pathname.startsWith("/api/")) return true;
   if (pathname.startsWith("/_next/")) return true;
   if (pathname.startsWith("/favicon")) return true;
+  // ENG-1642 — `/m/<token>` is the anon meal-share landing page
+  // (`get_meal_share` is an anon-callable RPC). It must be public: the
+  // recipient hasn't signed in yet, so gating it would 307 every share-link
+  // click to /login before they've even seen what was shared with them.
+  if (pathname.startsWith("/m/")) return true;
   if (isDevPreview(pathname)) return true;
   return false;
 }

@@ -182,6 +182,27 @@ describe("AnalyticsEvents registry", () => {
   });
 });
 
+describe("ENG-1642 — meal share link events", () => {
+  it("registers the four new meal-share-link events with canonical snake_case values", () => {
+    // The durable half of F-154's per-meal share: a real link (create →
+    // open → accept) plus the signed-out resume-rail signup start. A
+    // rename to any of these breaks the ENG-1642 funnel dashboards.
+    expect(AnalyticsEvents.meal_share_link_created).toBe("meal_share_link_created");
+    expect(AnalyticsEvents.meal_share_link_opened).toBe("meal_share_link_opened");
+    expect(AnalyticsEvents.shared_meal_logged).toBe("shared_meal_logged");
+    expect(AnalyticsEvents.shared_meal_signup_started).toBe(
+      "shared_meal_signup_started",
+    );
+  });
+
+  it("keeps meal_share_invoked registered alongside the new link events (mode prop extension)", () => {
+    // meal_share_invoked predates ENG-1642 (F-154) and gained an optional
+    // `mode: "link" | "text"` prop rather than being replaced — both must
+    // stay registered.
+    expect(AnalyticsEvents.meal_share_invoked).toBe("meal_share_invoked");
+  });
+});
+
 /**
  * Post-ship #1 (2026-04-18) — event-name rename cycle.
  *

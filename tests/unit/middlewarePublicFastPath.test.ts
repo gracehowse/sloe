@@ -20,3 +20,24 @@ describe("middleware public fast-path (ENG-1045)", () => {
     expect(SRC).toMatch(/\(\?!api\/\|/);
   });
 });
+
+describe("ENG-1642 — /m/<token> meal-share landing is public", () => {
+  it("checks pathname.startsWith(\"/m/\") inside isPublic, ahead of getUser", () => {
+    const mealShareCheck = SRC.indexOf('pathname.startsWith("/m/")');
+    const getUser = SRC.indexOf("supabase.auth.getUser()");
+    expect(mealShareCheck).toBeGreaterThan(-1);
+    expect(getUser).toBeGreaterThan(mealShareCheck);
+  });
+
+  it("returns true for the /m/ prefix (source-level, not just present)", () => {
+    expect(SRC).toContain('if (pathname.startsWith("/m/")) return true;');
+  });
+
+  it("does not require /m/<token> to be a fixed literal in PUBLIC_ROUTES (any token must match)", () => {
+    // A Set.has() lookup would only ever match one literal path — the
+    // anon landing must work for every token, so the implementation MUST
+    // use a startsWith prefix check rather than adding tokens to
+    // PUBLIC_ROUTES one at a time.
+    expect(SRC).not.toMatch(/PUBLIC_ROUTES = new Set\(\[[^\]]*"\/m\//);
+  });
+});

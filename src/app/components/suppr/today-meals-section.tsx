@@ -35,11 +35,11 @@ import { Button } from "../ui/button";
 import type { SavedMeal } from "../../../lib/nutrition/savedMeals";
 import { summariseSavedMeal } from "../../../lib/nutrition/savedMealsLogic";
 import { buildMealShareText } from "../../../lib/share/buildMealShareText";
-import { track, isFeatureEnabled } from "../../../lib/analytics/track";
+import { shareMealTextOrLink } from "../../../lib/share/shareMealAction";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { useCalmMode } from "../../../lib/preferences/useCalmMode";
 import { sheetTransition } from "../../../lib/motion";
 import { mealRowImageUrl } from "../../../lib/nutrition/foodHistory";
-import { toast } from "sonner";
 import { TodayScrollSectionHeader } from "./today-scroll-section-header";
 import { SwipeDeleteRow } from "../ui/swipe-delete-row";
 
@@ -136,6 +136,17 @@ export interface TodayMealsSectionProps {
    * `apps/mobile/components/today/TodayMealsSection.tsx`.
    */
   onLogAgain?: (slot: string) => void;
+  /**
+   * ENG-1642 — creates a real shareable meal-share link (`/m/<token>`)
+   * for the kebab "Share meal" action and returns its URL, or `null` on
+   * any failure (host resolves the flag, the meal, and the RPC call).
+   * When set (flag `meal_share_links_v1` on), "Share meal" tries this
+   * FIRST and, on success, shares/copies the link alongside the existing
+   * text summary. Undefined (flag off) or a `null` return falls back to
+   * the exact pre-ENG-1642 text-only share/copy path. Host:
+   * `NutritionTracker.tsx`'s `onShareMealLink`.
+   */
+  onShareMealLink?: (mealId: string) => Promise<string | null>;
   /** Ship M1 — whether the first-run hint is allowed to render in `slot`.
    * Computed in the host via `shouldShowUsualMealHint`. */
   hintVisibleForSlot: (slot: string) => boolean;
@@ -309,6 +320,7 @@ export function TodayMealsSection({
   savedMeals,
   onLogSavedMeal,
   onLogAgain,
+  onShareMealLink,
   hintVisibleForSlot,
   onDismissUsualMealHint,
   onAcceptUsualMealHint,
@@ -858,35 +870,14 @@ export function TodayMealsSection({
                                   fat: meal.fat,
                                   portionMultiplier: meal.portionMultiplier,
                                 });
-                                if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-                                  try {
-                                    await navigator.share({ title: meal.recipeTitle, text: message });
-                                    track("meal_share_invoked", {
-                                      surface: "today_meal_row_kebab",
-                                      outcome: "shared",
-                                    });
-                                  } catch (err) {
-                                    track("meal_share_invoked", {
-                                      surface: "today_meal_row_kebab",
-                                      outcome: (err as Error)?.name === "AbortError" ? "dismissed" : "error",
-                                    });
-                                  }
-                                  return;
-                                }
-                                try {
-                                  await navigator.clipboard.writeText(message);
-                                  toast.success("Meal copied to clipboard");
-                                  track("meal_share_invoked", {
-                                    surface: "today_meal_row_kebab",
-                                    outcome: "shared",
-                                  });
-                                } catch {
-                                  toast.error("Couldn't copy meal");
-                                  track("meal_share_invoked", {
-                                    surface: "today_meal_row_kebab",
-                                    outcome: "error",
-                                  });
-                                }
+                                const shareUrl = onShareMealLink ? await onShareMealLink(meal.id) : null;
+                                await shareMealTextOrLink({
+                                  title: meal.recipeTitle,
+                                  message,
+                                  shareUrl,
+                                  linkAttempted: Boolean(onShareMealLink),
+                                  surface: "today_meal_row_kebab",
+                                });
                               }}
                             >
                               Share meal

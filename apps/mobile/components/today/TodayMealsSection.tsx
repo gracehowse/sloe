@@ -4,7 +4,6 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   View,
@@ -13,8 +12,8 @@ import {
 import { SmartImage } from "@/components/ui/SmartImage";
 import ReAnimated, { FadeInDown } from "react-native-reanimated";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
-import { buildMealShareText } from "@suppr/shared/share/buildMealShareText";
-import { track, isFeatureEnabled } from "@/lib/analytics";
+import { shareJournalMeal } from "@/lib/mealShare";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { useCalmMode } from "@/lib/calmMode";
 import {
   Bookmark,
@@ -683,30 +682,14 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
   const brandedSheets = isFeatureEnabled("redesign_branded_sheets");
   const [actionSheetMeal, setActionSheetMeal] = useState<JournalMeal | null>(null);
 
-  // Shared "Share meal" handler used by BOTH the native Alert path and
-  // the branded sheet so the share-text + analytics stay identical.
-  const shareMeal = async (m: JournalMeal) => {
-    const message = buildMealShareText({
-      recipeTitle: m.recipeTitle,
-      calories: m.calories,
-      protein: m.protein,
-      carbs: m.carbs,
-      fat: m.fat,
-      portionMultiplier: m.portionMultiplier,
-    });
-    try {
-      const result = await Share.share({ message, title: m.recipeTitle });
-      track("meal_share_invoked", {
-        surface: "today_meal_row_longpress",
-        outcome: result.action === Share.dismissedAction ? "dismissed" : "shared",
-      });
-    } catch {
-      track("meal_share_invoked", {
-        surface: "today_meal_row_longpress",
-        outcome: "error",
-      });
-    }
-  };
+  // Shared "Share meal" handler used by BOTH the native Alert path and the
+  // branded sheet so the share-text + analytics stay identical. ENG-1642 —
+  // the link-vs-text branch (flag `meal_share_links_v1`) + its analytics
+  // live in `@/lib/mealShare` (`shareJournalMeal`), not here — this file is
+  // a pinned only-shrink screen-budget surface
+  // (`scripts/screen-line-budget.json`), so new share logic belongs in the
+  // lib, not inline.
+  const shareMeal = (m: JournalMeal) => shareJournalMeal(m, "today_meal_row_longpress");
 
   const handleMealLongPress = (m: JournalMeal) => {
     if (brandedSheets) {

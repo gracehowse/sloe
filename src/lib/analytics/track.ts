@@ -664,6 +664,30 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  * 2026-06-30): `progress_plateau_insight_v1` (ENG-954), `weigh_in_reminder_v1`
  * (ENG-955), `portion_fit_hint_v1` (ENG-854); and `import_magic_moment`
  * (ENG-728) + `paywall_trajectory_chart_v1` (ENG-969).
+ *
+ * - `meal_share_links_v1` (ENG-1642) — the real shareable meal-link flow
+ *   (`create_meal_share` / `get_meal_share` RPCs, `/m/<token>` accept
+ *   surface) replacing the title+text-only `navigator.share`/clipboard
+ *   path on the per-meal kebab "Share meal" action. **Gates CREATION
+ *   only** — OFF means the host passes no link-creating callback to
+ *   `TodayMealsSection`, so the row falls back to the legacy
+ *   text-only share/copy path untouched, and no *new* link can be
+ *   minted. Redemption (the `/m/<token>` web landing, the `/home`
+ *   `?mealShare=`/pending-share resume, and mobile's `/meal-shared`
+ *   accept screen) is **deliberately un-gated on both platforms**,
+ *   flag on or off — partial-ramp safety (a link minted inside a ramp
+ *   cohort must still resolve for a recipient outside it) and
+ *   web↔mobile parity (see the doc comment on `SharedMealAcceptHost`,
+ *   `src/app/components/suppr/shared-meal-accept-host.tsx`, and
+ *   mobile's `/meal-shared` route). This is why gating the flag OFF is
+ *   not a security kill of redemption — a previously-shared token
+ *   still resolves via the anon-executable `get_meal_share` RPC
+ *   regardless of the flag. A true kill of redemption requires a
+ *   follow-up migration that revokes the anon grant on
+ *   `get_meal_share`. DEFAULT-OFF: net new server + client surface,
+ *   not yet sim-validated — the pre-ramp gate is ENG-1650 (migration
+ *   apply → Playwright e2e + sim verification → ramp). Keep in sync
+ *   with `apps/mobile/lib/analytics.ts`.
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "logsheet_ai_method_tooltip",
@@ -688,6 +712,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "library_single_filter_row_v1", // ENG-1607 — Cookbook single provenance chip row (v3); off = legacy two-row stack (kill switch). Web + mobile.
   "recipe_estimated_cost_v1", // ENG-1274 — per-serving grocery cost estimate (Pro) on recipe-detail hero meta; off = hidden (kill switch). Web + mobile.
   "web_gutter_convergence_v1", // ENG-1629 — converge Targets.tsx (px-pm-5) + RecipeDetail.tsx (px-6/max-w-4xl) onto .product-shell's gutter; off = exact pre-ENG-1629 gutters (kill switch). WEB-ONLY.
+  "meal_share_links_v1", // ENG-1642 — real shareable meal-link create/accept flow; off = legacy text-only share/copy path, no link callback wired, no deep link consumed (kill switch).
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

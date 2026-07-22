@@ -43,6 +43,8 @@ import {
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
 import { AnalyticsEvents, type FoodLoggedSource } from "../../lib/analytics/events.ts";
 import { track, isFeatureEnabled } from "../../lib/analytics/track.ts";
+import { useMealShareLinkCallback } from "./suppr/shared-meal-accept-host.tsx";
+import { stripHomeQueryParams } from "../../lib/navigation/stripHomeQueryParams.ts";
 import {
   compareMealsByChronology,
   defaultEatenAtForNewLog,
@@ -408,12 +410,9 @@ export const NutritionTracker = memo(function NutritionTracker({
     setMealSlot(slotForHour(new Date().getHours()));
     setLogSheetInitialQuery(openLogQueryParam);
     setLogSheetOpen(true);
-    const params = new URLSearchParams(trackerSearchParams.toString());
-    params.delete("openLog");
-    params.delete("openLogQuery");
-    const q = params.toString();
-    trackerRouter.replace(q ? `/home?${q}` : "/home", { scroll: false });
+    stripHomeQueryParams(trackerRouter, "/home", trackerSearchParams, ["openLog", "openLogQuery"]);
   }, [openLogParam, openLogQueryParam, trackerRouter, trackerSearchParams]);
+  const onShareMealLink = useMealShareLinkCallback();
   // Phase 4 / B3.Y — desktop (≥1024px) renders the LogSheet as a
   // centred 480×640 modal per spec §Surface B; below that, the
   // primitive falls back to the mobile bottom-sheet layout.
@@ -2049,6 +2048,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         savedMeals={hostSavedMeals}
         onLogSavedMeal={logSavedMealFromSlotHeader}
         onLogAgain={isFeatureEnabled("today_log_again") ? logAgainSlot : undefined}
+        onShareMealLink={onShareMealLink}
         hintVisibleForSlot={hintVisibleForSlot}
         onDismissUsualMealHint={dismissUsualMealHint}
         onAcceptUsualMealHint={acceptUsualMealHint}

@@ -136,6 +136,15 @@ Plan, Progress, and Coach on next read.
 
 **Reading path:** [`settings-and-control.md`](./settings-and-control.md) (branches to [`household-sharing.md`](./household-sharing.md) for Connections → Household, and [`monetisation-and-paywall.md`](./monetisation-and-paywall.md) for Membership)
 
+### 16. Meal Sharing Loop (share a meal → recipient adds it to their own log)
+A branch off the Daily Logging Loop: a user shares one logged meal as a
+durable `/m/<token>` link; the recipient — signed in, signed out, or brand
+new — opens it, picks a day and slot, and the same items land in their own
+diary. Behind `meal_share_links_v1` (default off); migration staged, not yet
+applied.
+
+**Reading path:** [`food-tracking.md`](./food-tracking.md) → [`meal-sharing.md`](./meal-sharing.md) → [`food-tracking.md`](./food-tracking.md) (the recipient's log, closing the loop)
+
 ---
 
 ## A-Z index (quick lookup)
@@ -150,6 +159,7 @@ Plan, Progress, and Coach on next read.
 | Meal planning | [meal-planning.md](./meal-planning.md) | Maestro `03_meal_plan` |
 | Shopping list | [shopping-list.md](./shopping-list.md) | Maestro `16_shopping`, `00e4_shopping_populated`; Playwright `tabs-shopping-*` visual snapshots |
 | Household sharing (setup, presets/grid, privacy boundary, threads into Plan + Shopping) | [household-sharing.md](./household-sharing.md) | Vitest `householdPrivacyRls.test.ts`, `householdSharingGrid.test.ts`, `householdSharingGridStorage.test.ts`, `householdJoinDisclosureCopy.test.ts`, `householdClient.test.ts`, `shoppingHouseholdParity.test.ts` (mobile); no dedicated Maestro flow yet — see doc's Open questions |
+| Meal sharing (share a logged meal as a `/m/<token>` link; recipient adds it to their own log) | [meal-sharing.md](./meal-sharing.md) | Behind `meal_share_links_v1` (default off), migration staged not yet applied; web Vitest `mealShareLink.test.ts`, `mealShareClient.test.ts`, `mealShareLandingClient.test.tsx` (Open in app handoff + CTA split), `eng1642MealShareMigration.test.ts`; mobile Vitest `deepLinkRouting.test.ts` (`/meal-shared` ignored by the import deep-link pipeline), `mealShare.test.ts`; no Maestro/Playwright coverage yet |
 | Recipe import | [import-recipe.md](./import-recipe.md) | Maestro `25_import_shared` |
 | Recipe create (from scratch) | [create-recipe.md](./create-recipe.md) | Maestro `21_create_recipe` (single-screen form); wizard at `/recipe/create` covered by `apps/mobile/tests/unit/createRecipeWizard.test.ts` |
 | Cookbook import (PDF, batch) | [import-cookbook.md](./import-cookbook.md) | No dedicated Maestro/Playwright/Vitest coverage — a known gap |

@@ -330,6 +330,7 @@ describe("wiring pin — every nutrition_entries write builds via buildNutrition
         "app/(tabs)/barcode.tsx",
         "app/(tabs)/_today/TodayScreen.tsx",
         "app/(tabs)/planner.tsx",
+        "app/meal-shared.tsx",
         "app/recipe/[id].tsx",
         "hooks/useNutritionEntriesSync.ts",
         "hooks/useJournalWriteAhead.ts",
