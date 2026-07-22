@@ -8,6 +8,55 @@ flag live alongside the code that introduced them in
 `docs/decisions/`. Update this file when a flag is added, ramped, or
 retired.
 
+## Alerts
+
+### `vendor_search_degraded` (ENG-1412)
+
+**Event is instrumented and tested; the PostHog Alert object itself still
+needs to be created in the PostHog dashboard** — this repo has no PostHog
+Personal API key / MCP connector wired up, so a coding agent can emit the
+event but cannot create Insights/Alerts via PostHog's API from here. Grace
+(or whoever has PostHog admin) needs to do the one-time setup below.
+
+Source: PRA-011 (2026-07-05 deep audit) — food-vendor quota cliffs were
+degrading match quality with zero dashboard signal, only a `console.error`
+line. Fired server-side from `checkQuota`/`consumeQuota` in
+`src/lib/server/vendorSearchCache.ts` whenever ANY vendor's account-wide
+quota guard trips — USDA, Edamam, FatSecret, and the OFF proxy guard, not
+just Edamam. Payload: `{ vendor, reason: "quota_exhausted", used, cap,
+guard: "check" | "consume" }`. Distinct id: `system:vendor_quota` (same
+`system:*` convention as `upstash_dependency_failure`).
+
+Setup (PostHog project 389168, https://us.posthog.com/project/389168):
+
+1. **Insight** — New insight → Trends → event `vendor_search_degraded` →
+   count, broken down by `vendor` property. This is the dashboard visual;
+   add it to the "Analytics basics" dashboard
+   (https://us.posthog.com/project/389168/dashboard/1486716) alongside the
+   existing five insights.
+2. **Alert** — on that insight, "Subscribe" / "New alert" → condition
+   "total count" → "is greater than" → `0` → checked every hour (matches
+   the USDA/Edamam quota windows) → notify Grace's email. A single
+   occurrence in the window is worth paging on: this event only fires when
+   the guard has ALREADY decided to degrade a live user's search, so there
+   is no noise threshold to tune.
+3. Optional refinement once real traffic exists: split the alert per
+   vendor (`vendor = edamam` / `usda` / `fatsecret` / `off`) if one vendor
+   trips far more often than the others and a shared alert gets noisy.
+
+### Edamam quota-ceiling bump (post billing-tier upgrade)
+
+Buying Edamam's paid tier is a separate billing/vendor-account action
+(ENG-1412, Grace-only — not code-actionable). Once that upgrade is live,
+the **only line that needs to change** is `VENDOR_QUOTAS.edamam.cap` in
+`src/lib/server/vendorSearchCache.ts` (currently `1000`, the free-tier
+daily cap) — bump it to whatever the paid tier's effective ceiling should
+be (Edamam's Pro tier is metered per-request with no daily cap; pick a
+generous-but-bounded number, e.g. `100000`/day, as an abuse guard rather
+than a real vendor limit) and update the adjacent `label` string. No env
+var, no other call site, no migration — `VENDOR_QUOTAS` is the single
+source of truth the guard reads from.
+
 ## Active flags
 
 ### `cook_multi_timers_v1` (ENG-948)

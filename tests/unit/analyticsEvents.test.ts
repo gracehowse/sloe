@@ -60,6 +60,15 @@ describe("AnalyticsEvents registry", () => {
     expect(AnalyticsEvents.fit_this_in_previewed).toBe("fit_this_in_previewed");
   });
 
+  it("registers vendor_search_degraded with the canonical value (ENG-1412)", () => {
+    // Fired server-side from the vendorSearchCache.ts quota guard
+    // (checkQuota/consumeQuota) whenever ANY vendor's account-wide quota
+    // trips — this string is what the PostHog alert is configured against,
+    // so a silent rename would break the alert without any test failure
+    // elsewhere (the emit sites never assert on the string literal).
+    expect(AnalyticsEvents.vendor_search_degraded).toBe("vendor_search_degraded");
+  });
+
   it("registers the ENG-1288 Coach analytics cluster (client + server)", () => {
     // Wired 2026-07-01 (ENG-1288): `meal_coach_suggestion_shown` gained
     // its first real emit sites (both Coach screens, source-attributed
