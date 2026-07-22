@@ -207,6 +207,8 @@ Then run the script.
 
 **Default assumption: don't delete dedupe rows.** The handler's dispatch is idempotent for tier writes (it's `SET tier = X`, not `+= 1`), so re-running with dedupe rows present is a no-op. The script will receive a 200 from the handler in that case (short-circuit on dedupe) — that's the expected, safe path.
 
+**ENG-1490 interaction — if you DO delete dedupe rows and bulk-replay a window:** `customer.subscription.*` events also pass through a second, separate staleness guard (`isStaleSubscriptionEvent` in `webhookProcess.ts`, ENG-1490 finding #2) keyed on `event.created` per subscription, independent of the `stripe_webhook_events` dedupe table you just cleared. If the events in your window don't replay in strict chronological order (the bulk loop above reads from a plain file — nothing guarantees that), this guard will silently no-op any event older than one already applied for that subscription. It's not silent to *you* though: every skip fires a Sentry warning (`[stripe_webhook] skipped stale out-of-order event ...`, tag `type: stripe_webhook`) — check Sentry for that fingerprint after a forensic replay and manually re-verify any subscription it fired for actually landed on the correct tier.
+
 ---
 
 ## When to escalate

@@ -21,6 +21,13 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type Stripe from "stripe";
+
+vi.mock("@sentry/nextjs", () => ({
+  captureMessage: vi.fn(),
+  captureException: vi.fn(),
+}));
+
+import * as Sentry from "@sentry/nextjs";
 import { processStripeWebhookEvent, _clearProcessedEventsForTesting } from "@/lib/stripe/webhookProcess";
 
 const userId = "11111111-1111-4111-8111-111111111111";
@@ -674,6 +681,33 @@ describe("processStripeWebhookEvent — stale out-of-order event guard (ENG-1490
     expect(subVersionUpsertMock).not.toHaveBeenCalled();
   });
 
+  it("a stale-event skip is reported to Sentry, not just console.warn — ENG-1440's required mitigation for this guard", async () => {
+    // Same fixture as the previous test: a stale 'active' event that must be skipped.
+    subVersionSelectResult = { data: { last_event_created: new Date(2000 * 1000).toISOString() }, error: null };
+    const stripe = {} as Stripe;
+    const event = subEvent({ id: "evt_stale_active_alert", created: 1000, status: "active" });
+
+    await processStripeWebhookEvent(stripe, event);
+
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      expect.stringContaining("skipped stale out-of-order event"),
+      expect.objectContaining({
+        level: "warning",
+        tags: expect.objectContaining({ type: "stripe_webhook" }),
+        extra: expect.objectContaining({ subscriptionId: "sub_x", eventId: "evt_stale_active_alert" }),
+      }),
+    );
+  });
+
+  it("an in-order (non-stale) apply does NOT fire the stale-event Sentry alert", async () => {
+    const stripe = {} as Stripe;
+    const event = subEvent({ id: "evt_v1_no_alert", created: 1000, status: "active" });
+
+    await processStripeWebhookEvent(stripe, event);
+
+    expect(Sentry.captureMessage).not.toHaveBeenCalled();
+  });
+
   it("a stale out-of-order 'canceled' event does NOT downgrade tier after a newer grant already applied", async () => {
     // Newer 'active' event (created=2000) already applied and recorded.
     subVersionSelectResult = { data: { last_event_created: new Date(2000 * 1000).toISOString() }, error: null };
@@ -700,6 +734,14 @@ describe("processStripeWebhookEvent — stale out-of-order event guard (ENG-1490
     await processStripeWebhookEvent(stripe, event);
 
     expect(mockUpdate).not.toHaveBeenCalled();
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      expect.stringContaining("skipped stale out-of-order event"),
+      expect.objectContaining({
+        tags: expect.objectContaining({
+          event_type: "customer.subscription.deleted",
+        }),
+      }),
+    );
   });
 
   it("customer.subscription.deleted applies normally and records its version when not stale", async () => {

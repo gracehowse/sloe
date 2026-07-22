@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import * as Sentry from "@sentry/nextjs";
 import { tierFromStripePriceIds } from "@/lib/stripe/tierFromPrice";
 import { updateProfileTierServiceRole } from "@/lib/stripe/updateProfileTier";
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/serverAnonClient";
@@ -211,6 +212,44 @@ async function isStaleSubscriptionEvent(
   return eventCreated < lastAppliedSeconds;
 }
 
+/**
+ * ENG-1490 #2 / ENG-1440 — a staleness-skip is otherwise invisible: it
+ * only ever shows up as a `console.warn` line in a Vercel function log
+ * nobody is tailing. ENG-1440's own prior investigation (2026-07-18,
+ * still `needs/decision` — this guard is a narrower, Stripe-only
+ * implementation of that ticket's broader ask, not a replacement for
+ * it) named this exact gap as a precondition for shipping any version
+ * of this guard: the documented forensic-replay runbook
+ * (`docs/operations/stripe-webhook-replay-runbook.md`) deliberately
+ * deletes `stripe_webhook_events` rows and replays historical events
+ * with no ordering guarantee, so a wrongly-dropped legitimate event
+ * must be visible to an operator, not silently swallowed. Mirrors the
+ * `reportDrift`/`reportWriteFailed` pattern in
+ * `src/lib/server/entitlementReconcileJob.ts`. */
+function reportStaleSubscriptionEventSkipped(
+  eventType: "customer.subscription.updated_or_created" | "customer.subscription.deleted",
+  subscriptionId: string,
+  eventId: string,
+): void {
+  Sentry.captureMessage(
+    `[stripe_webhook] skipped stale out-of-order event for subscription ${subscriptionId}`,
+    {
+      level: "warning",
+      fingerprint: ["stripe_webhook", "stale_event_skipped", eventType],
+      tags: { type: "stripe_webhook", event_type: eventType, rail: "stripe" },
+      extra: {
+        subscriptionId,
+        eventId,
+        note:
+          "A newer event was already applied for this subscription when this one arrived. " +
+          "Usually correct (genuine out-of-order delivery). If this fires during a forensic " +
+          "replay (see docs/operations/stripe-webhook-replay-runbook.md), verify the skipped " +
+          "event's tier decision wasn't actually the one that should have won.",
+      },
+    },
+  );
+}
+
 /** Persist the high-water mark after a `customer.subscription.*` tier
  * decision is applied (or explicitly skipped as a no-grant status like
  * `incomplete` — see call sites). Best-effort/warn-only, matching every
@@ -250,6 +289,11 @@ async function applyTierForSubscription(
   if (await isStaleSubscriptionEvent(sub.id, eventCreated)) {
     console.warn(
       `[stripe_webhook] skipping stale out-of-order event ${eventId} for subscription ${sub.id}`,
+    );
+    reportStaleSubscriptionEventSkipped(
+      "customer.subscription.updated_or_created",
+      sub.id,
+      eventId,
     );
     return;
   }
@@ -344,6 +388,11 @@ export async function processStripeWebhookEvent(stripe: Stripe, event: Stripe.Ev
         if (await isStaleSubscriptionEvent(sub.id, event.created)) {
           console.warn(
             `[stripe_webhook] skipping stale out-of-order deleted event ${event.id} for subscription ${sub.id}`,
+          );
+          reportStaleSubscriptionEventSkipped(
+            "customer.subscription.deleted",
+            sub.id,
+            event.id,
           );
           break;
         }
