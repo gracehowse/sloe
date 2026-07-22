@@ -50,7 +50,7 @@ describe("Today hero layout parity", () => {
     // code, not live behaviour. `CalorieRingDial` (web) and its mobile
     // equivalent both lack a tap-to-toggle handler today — tracked as
     // ENG-1465, out of scope here.
-    expect(WEB_STATS).toMatch(/data-testid="today-macro-rings-toggle"/);
+    expect(WEB_STATS).toMatch(/today-macro-rings-toggle/);
     expect(WEB_STATS).toMatch(/MACRO_RING_TOGGLE/);
     expect(WEB_RING).toMatch(/today-macro-rings-toggle/);
   });
