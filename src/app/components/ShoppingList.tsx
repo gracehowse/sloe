@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Icons } from "./ui/icons";
 import { SupprCard } from "./ui/suppr-card";
 import { ShoppingUpdateFromPlanButton } from "./ShoppingUpdateFromPlanButton";
+import { ShoppingSmartSuggestions } from "./shopping/ShoppingSmartSuggestions";
 import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { supabase } from "../../lib/supabase/browserClient.ts";
@@ -35,22 +36,10 @@ interface ShoppingListProps {
 }
 
 /**
- * Web Shopping list — prototype baseline + F3 lifecycle interactions.
- * Layout mirrors the prototype `WebShopping`: serif h1, `N items · from …`
- * subtitle, 3-column `grid-cols-3` of category cards. F3 hybrid additions
- * (`docs/decisions/2026-04-28-shopping-list-web-parity-hybrid.md`): per-row X
- * remove, "Remove N checked" link, slim `role="progressbar"`.
- *
- * Honeydew parity (2026-04-30): in a household the list is shared with live
- * sync (wired in `useShoppingListState`) — this surfaces the "Shared with …"
- * banner + per-row attribution chip. ENG-1527: the "Update from plan" re-sync
- * button ships when the list is out of sync (mobile parity).
- *
- * Intentionally NOT shipped: Share button, Trash / clear-all, export UI,
- * breadcrumb / regenerate card, "Add custom item", recipe thumbnails.
- *
- * Data flow: toggle / remove / set all persist via `useAppData`, whose hook
- * subscribes to Supabase real-time and refreshes on every household-mate edit.
+ * Web Shopping list — prototype `WebShopping` layout + F3 hybrid lifecycle
+ * (`docs/decisions/2026-04-28-shopping-list-web-parity-hybrid.md`), household
+ * shared-list banner (2026-04-30), ENG-1527 update-from-plan, ENG-1634 smart
+ * suggestions. Persists via `useAppData` realtime.
  */
 export const ShoppingList = memo(function ShoppingList({
   userTier: _userTier,
@@ -229,12 +218,8 @@ export const ShoppingList = memo(function ShoppingList({
       </p>
       </div>
 
-      {/* ENG-1527 — in-place "Update from plan" re-sync (mobile parity). The
-          stale-plan subtitle above used to dead-end; this regenerates the list
-          non-destructively (keeps checked + manual rows). */}
-      {shoppingListOutOfSync &&
-      totalItemCount > 0 &&
-      isFeatureEnabled("shopping_update_from_plan_v1") ? (
+      {/* ENG-1527 — non-destructive "Update from plan" when the list is stale. */}
+      {shoppingListOutOfSync && totalItemCount > 0 && isFeatureEnabled("shopping_update_from_plan_v1") ? (
         <div className="mb-4" style={{ maxWidth: 900 }}>
           <ShoppingUpdateFromPlanButton resync={resyncShoppingListFromPlan} />
         </div>
@@ -279,6 +264,9 @@ export const ShoppingList = memo(function ShoppingList({
           ) : null}
         </div>
       ) : null}
+
+      {/* ENG-1634 — Smart suggestions (flag-gated; mobile parity). */}
+      <ShoppingSmartSuggestions />
 
       {totalItemCount === 0 ? (
         <SupprCard
