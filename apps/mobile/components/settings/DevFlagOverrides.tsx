@@ -47,7 +47,6 @@ const KNOWN_FLAGS: readonly string[] = [
   "today_log_again",
   "today_log_usual_row_v2",
   "log-sheet-slot-selector",
-  "reveal-macro-tile-paired-pct",
   "plan_empty_state_v2",
   "plan_source_selector",
   "plan_import_enabled",

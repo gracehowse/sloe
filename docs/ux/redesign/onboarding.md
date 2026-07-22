@@ -685,7 +685,7 @@ your meals and weigh-ins.
 - Macro tile grams: Fraunces 700 24sp. Cal AI validates per-tile editorial numerals.
 - Projected-outcome line (additive): Inter 400/600 14sp, only shown when goal ≠ maintain and weight is known. Computes as (targetWeightKg − currentWeightKg) / paceKgPerWeek weeks from today. Always prefixed "approximately". Validated by MFP, Cal AI, Lifesum, MacroFactor, BitePal.
 - "Show the maths" expander → **"How we got here"** with 3 numbered steps (MacroFactor pattern). Content unchanged: BMR (Mifflin formula inline) → TDEE (BMR × multiplier inline) → Target (TDEE + kcalAdj inline). The numbered structure makes the same content scannable without obscuring any of the data.
-- Macro tile % labels: keep (they exist currently behind `reveal-macro-tile-paired-pct` flag — this redesign makes the % always visible, rendered in Inter 400 12sp with a mini progress bar). Keep the flag stub for backwards compatibility during rollout.
+- Macro tile % labels: keep (rendered in Inter 400 12sp with a mini progress bar). No flag to preserve — the paired-inline layout shipped unconditionally 2026-07-22 (ENG-1651 collapsed the `reveal-macro-tile-paired-pct` flag after a genuine 100% rollout since 2026-05-16).
 - Per-tile edit affordance: not added here (Cal AI validates the concept, but the editing UX is data-bridges step functionality — redirect users to the manual-targets card on data-bridges rather than fragmenting the edit surface across two steps). This is a defended choice.
 
 *weightSkipped / missing-stats fallback (keep exactly):*

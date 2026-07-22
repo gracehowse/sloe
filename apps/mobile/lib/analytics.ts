@@ -347,14 +347,15 @@ export function reset(): void {
  * the flag is discoverable on both platforms; a flag absent from every
  * default-on set and not live in PostHog resolves to `false` (the safe
  * dark default). To preview on device, force it ON via the dev Settings
- * panel (`setForcedFlag("reveal-macro-tile-paired-pct", true)`).
+ * panel (`setForcedFlag("recipe_verdict_chip_v1", true)`).
  *
- * - `reveal-macro-tile-paired-pct` — onboarding reveal-step layout A/B that
- *   pairs the macro % inline with grams. DEFAULT-OFF *by design*: Grace
- *   ramps it in PostHog only after validating it in TestFlight, so it is
- *   deliberately excluded from the ENG-1225 flag-collapse sweep (not a
- *   built-but-dark v3 surface). Mirror of the web note in
- *   `src/lib/analytics/track.ts`.
+ * (ENG-1651 round 2, 2026-07-22 — `reveal-macro-tile-paired-pct` removed
+ *  from this list and collapsed to its permanently-on branch in
+ *  `apps/mobile/components/onboarding/steps/reveal.tsx`. PostHog confirmed
+ *  it had been at a genuine, untouched 100% rollout since 2026-05-16 —
+ *  this block's prior "DEFAULT-OFF by design" note for it was stale and
+ *  actively wrong.)
+ *
  * - `recipe_verdict_chip_v1` (ENG-1612) — recipe-detail "Fits your day"
  *   verdict as a prototype-scale inline soft pill instead of the ENG-1085
  *   confident SOLID full-width banner. DEFAULT-OFF: no device/sim

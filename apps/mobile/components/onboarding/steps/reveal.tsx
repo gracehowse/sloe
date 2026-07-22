@@ -544,14 +544,12 @@ function MacroTile({
   pct: number;
 }) {
   const colors = useThemeColors();
-  // 2026-05-13 (premium-bar audit Reveal #4 — pair macro % with g
-  // inline): feature-flag-gated layout variant that moves the
-  // percentage out of the eyebrow row and pairs it inline with the
-  // grams value. Pair flag default OFF; Grace flips the
-  // `reveal-macro-tile-paired-pct` flag in PostHog once she's
-  // validated the change in TF. Flag name + rollout doc in the
-  // commit message; cleanup follow-up in 2 weeks if ramp held 100%.
-  const pairedLayout = isFeatureEnabled("reveal-macro-tile-paired-pct");
+  // 2026-05-13 (premium-bar audit Reveal #4 — pair macro % with g inline):
+  // the percentage pairs inline with the grams value instead of sitting in
+  // the eyebrow row. Was gated behind `reveal-macro-tile-paired-pct`;
+  // collapsed to this permanently-on layout 2026-07-22 (ENG-1651) after
+  // PostHog confirmed the flag had been at a genuine, untouched 100%
+  // rollout since 2026-05-16.
   return (
     <View
       style={{
@@ -582,18 +580,6 @@ function MacroTile({
         >
           {name}
         </Text>
-        {!pairedLayout ? (
-          <Text
-            style={{
-              fontSize: 10,
-              fontWeight: "700",
-              fontVariant: ["tabular-nums"],
-              color,
-            }}
-          >
-            {pct}%
-          </Text>
-        ) : null}
       </View>
       {/* SLOE Phase 0: the macro-target hero numeral reads in Newsreader serif
           (matching the 56px calorie ring above + the web reveal StatTile).
@@ -613,20 +599,18 @@ function MacroTile({
           {" "}
           g
         </Text>
-        {pairedLayout ? (
-          <Text
-            style={{
-              fontFamily: Type.captionSmall.fontFamily,
-              fontSize: Type.captionSmall.fontSize,
-              lineHeight: Type.captionSmall.lineHeight,
-              fontWeight: "700",
-              fontVariant: ["tabular-nums"],
-              color,
-            }}
-          >
-            {` · ${pct}%`}
-          </Text>
-        ) : null}
+        <Text
+          style={{
+            fontFamily: Type.captionSmall.fontFamily,
+            fontSize: Type.captionSmall.fontSize,
+            lineHeight: Type.captionSmall.lineHeight,
+            fontWeight: "700",
+            fontVariant: ["tabular-nums"],
+            color,
+          }}
+        >
+          {` · ${pct}%`}
+        </Text>
       </Text>
       <View
         style={{

@@ -161,10 +161,13 @@ function flagForceOverride(flag: string): boolean | null {
  * absent from every default-on set". A flag not in `REDESIGN_DEFAULT_ON`
  * and not live in PostHog resolves to `false` — the safe dark default.
  *
- * - `reveal-macro-tile-paired-pct` — onboarding reveal-step layout A/B.
- *   DEFAULT-OFF *by design*: Grace ramps it in PostHog only after validating
- *   in TestFlight, so it is deliberately excluded from the ENG-1225 flag-
- *   collapse sweep. Mirror of the mobile note in `apps/mobile/lib/analytics.ts`.
+ * (ENG-1651 round 2, 2026-07-22 — `reveal-macro-tile-paired-pct` removed
+ *  from this list and collapsed to its permanently-on branch in
+ *  `src/app/components/onboarding/steps/reveal.tsx`. PostHog confirmed it
+ *  had been at a genuine, untouched 100% rollout since 2026-05-16 — this
+ *  block's prior "DEFAULT-OFF by design" note for it was stale and
+ *  actively wrong.)
+ *
  * - `recipe_verdict_chip_v1` (ENG-1612) — recipe-detail "Fits your day"
  *   verdict as a prototype-scale inline soft pill instead of the ENG-1085
  *   confident SOLID full-width banner. DEFAULT-OFF: no device/sim
