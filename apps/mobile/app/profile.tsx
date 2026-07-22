@@ -640,7 +640,6 @@ export default function ProfileScreen() {
     setWater(snap.water);
     setDietary([...snap.dietary]);
   }, []);
-
   if (loading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -674,11 +673,7 @@ export default function ProfileScreen() {
             recipeCount={recipeCount}
             onOpenRecipe={(id) => router.push(`/recipe/${id}`)}
             onSeeAllRecipes={() => router.push("/(tabs)/library")}
-            onUpgrade={
-              userTier === "pro"
-                ? undefined
-                : () => router.push("/paywall?from=profile")
-            }
+            onUpgrade={userTier === "pro" ? undefined : () => router.push("/paywall?from=profile")}
           />
         ) : profileShowcaseV1 ? (
           <ProfileShowcaseReadView

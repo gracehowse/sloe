@@ -219,7 +219,7 @@ export function FoodSearchResultRow({
               {/* ENG-1660 — parity with mobile `FoodSearchFeedItem` per-serving
                   badge. Use secondary foreground + type-ramp uppercase (not
                   deleted `text-success`). */}
-              <span className="mt-0.5 block text-[10px] font-semibold uppercase tracking-wider text-foreground-secondary">
+              <span className="mt-1 block text-[10px] font-semibold uppercase tracking-wider text-foreground-secondary">
                 {FOOD_SEARCH_PER_SERVING_BADGE}
               </span>
               <span className="block mt-0.5 text-[11px] text-muted-foreground/80">

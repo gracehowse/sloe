@@ -435,31 +435,20 @@ export function LogSheet({
   initialQuery,
 }: LogSheetProps) {
   const [browseTab, setBrowseTab] = React.useState<BrowseTab>("recent");
-  // ENG-1652 — hide session tray while FoodSearchPanel portion preview is open.
-  const [portionPreviewActive, setPortionPreviewActive] = React.useState(false);
+  const [portionPreviewActive, setPortionPreviewActive] = React.useState(false); // ENG-1652
   React.useEffect(() => {
-    if (!open) setBrowseTab("recent");
-    else if (goTos && goTos.entries.length > 0) setBrowseTab("gotos");
+    if (!open) {
+      setBrowseTab("recent");
+      setPortionPreviewActive(false);
+    } else if (goTos && goTos.entries.length > 0) setBrowseTab("gotos");
   }, [open, goTos]);
-  React.useEffect(() => {
-    if (!open) setPortionPreviewActive(false);
-  }, [open]);
 
   const inManualEntryMode = !!barcode?.manualEntry;
   const inConfirmationMode = !!confirmation;
   const premiumMotion = isPremiumMotionV1Enabled();
 
-  // ENG-821 parity gap #19 — the sheet shadow was a hardcoded light-only
-  // literal (`0 -8px 32px rgba(0,0,0,0.12)`) that under-renders the sheet in
-  // dark mode (mobile's `Elevation.sheet` reads the `--elev-sheet` token whose
-  // dark variant is alpha 0.5, not 0.12). Reads the canonical token instead —
-  // a no-op in light (byte-identical value) and the correct deeper shadow in
-  // dark. Sheets keep their float per the 2026-07-10 card-grammar ruling
-  // (ENG-1497). `design_system_elevation` collapsed (ENG-1651) — this was
-  // permanently ON via REDESIGN_DEFAULT_ON.
-  // ENG-1303 — v3 sheet header copy. OFF → the legacy "Log a meal" (kill switch).
-  // ENG-1643 — the session-tray count stays visible in EVERY sheet state
-  // (the ENG-1449 "visible in every state" lesson, applied to the receipt).
+  // ENG-821 — sheet shadow via `--elev-sheet` (dark alpha 0.5). ENG-1497 float;
+  // ENG-1651 collapsed design_system_elevation. ENG-1303 v3 title; ENG-1643 tray count.
   const trayCount = sessionTray?.items.length ?? 0;
   const baseTitle = isFeatureEnabled("sloe_v3_log") ? "Add to today" : "Log a meal";
   const sheetTitle = trayCount >= 1 ? `${baseTitle} · ${trayCount} added` : baseTitle;
@@ -633,10 +622,7 @@ export function LogSheet({
             />
           )}
 
-          {/* ENG-1643 — session-tray receipt, pinned as the sheet's bottom-most
-              persistent bar. Renders nothing until ≥ 1 item is committed this
-              session. Mirror of mobile `LogSheet`.
-              ENG-1652 — hide while portion preview is open (one filled CTA). */}
+          {/* ENG-1643 session tray; ENG-1652 hide while portion preview (one filled CTA). */}
           {sessionTray && !portionPreviewActive ? <LogSessionTray {...sessionTray} /> : null}
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
@@ -693,8 +679,7 @@ function DefaultComposition({
   initialQuery?: string;
   /** Active meal slot — feeds the food-thumb slot tier (ENG-1448). */
   slotName?: string | null;
-  /** ENG-1652 — portion-preview open → hide session tray. */
-  onPreviewActiveChange?: (active: boolean) => void;
+  onPreviewActiveChange?: (active: boolean) => void; // ENG-1652
 }) {
   const [describeReviewActive, setDescribeReviewActive] = React.useState(false);
   const [describeSeedText, setDescribeSeedText] = React.useState<string | null>(null);

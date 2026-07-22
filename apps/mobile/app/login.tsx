@@ -88,20 +88,12 @@ export default function LoginScreen() {
   // a session-less fresh install; `?intent=signin` (onboarding welcome) or a
   // prior session on this device flips the default to sign-in.
   const emailEntrySignUp = useEmailEntrySignUpDefault();
-  // Sloe auth chooser (Figma `296:2`, 2026-06-08): opens on a calm chooser;
-  // the email/password form is PROGRESSIVELY DISCLOSED — `view` toggles
-  // chooser ↔ email locally (no new route; auth stop-zone respected).
-  // ENG-1563: `?email=1` from onboarding signup opens the form directly.
-  const params = useLocalSearchParams<{ email?: string | string[] }>();
-  const openEmail =
-    (Array.isArray(params.email) ? params.email[0] : params.email) === "1";
-  const [view, setView] = useState<"chooser" | "email">(
-    openEmail ? "email" : "chooser",
-  );
+  // Chooser first (Figma 296:2); ENG-1563 `?email=1` opens the form.
+  const emailParam = useLocalSearchParams<{ email?: string | string[] }>().email;
+  const openEmail = (Array.isArray(emailParam) ? emailParam[0] : emailParam) === "1";
+  const [view, setView] = useState<"chooser" | "email">(openEmail ? "email" : "chooser");
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
-  // Positive assent to Terms + Privacy required at account creation
-  // (browsewrap is unenforceable — Nguyen v. Barnes & Noble). Defaults
-  // to unchecked; never pre-check.
+  // Terms assent required at account creation (Nguyen v. Barnes & Noble).
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   useEffect(() => {

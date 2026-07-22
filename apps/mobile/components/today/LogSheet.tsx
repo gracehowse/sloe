@@ -467,21 +467,17 @@ function LogSheetImpl({
   // returning user doesn't land on Saved if they last left the sheet
   // there — the primary read is "what did I eat recently".
   const [browseTab, setBrowseTab] = React.useState<BrowseTab>("recent");
-  // ENG-1652 — hide session tray while FoodSearchPanel portion preview is open.
-  const [portionPreviewActive, setPortionPreviewActive] = React.useState(false);
+  const [portionPreviewActive, setPortionPreviewActive] = React.useState(false); // ENG-1652
   React.useEffect(() => {
-    if (!visible) setBrowseTab("recent");
-    else if (goTos && goTos.entries.length > 0) setBrowseTab("gotos");
+    if (!visible) {
+      setBrowseTab("recent");
+      setPortionPreviewActive(false);
+    } else if (goTos && goTos.entries.length > 0) setBrowseTab("gotos");
   }, [visible, goTos]);
-  React.useEffect(() => {
-    if (!visible) setPortionPreviewActive(false);
-  }, [visible]);
 
   const inManualEntryMode = !!barcode?.manualEntry;
   const inConfirmationMode = !!confirmation;
-  // ENG-1303 — v3 sheet header copy. OFF → the legacy "Log a meal" (kill switch).
-  // ENG-1643 — the session-tray count stays visible in every sheet state
-  // except portion preview (ENG-1652 — one filled CTA).
+  // ENG-1303 — v3 sheet header. ENG-1643 tray count; ENG-1652 hide count in preview.
   const trayCount = sessionTray?.items.length ?? 0;
   const baseTitle = isFeatureEnabled("sloe_v3_log") ? "Add to today" : "Log a meal";
   const sheetTitle = trayCount >= 1 ? `${baseTitle} · ${trayCount} added` : baseTitle;
@@ -635,10 +631,7 @@ function LogSheetImpl({
               />
             )}
 
-            {/* ENG-1643 — session-tray receipt, pinned as the sheet's
-                bottom-most persistent bar (above the home-indicator inset).
-                Renders nothing until ≥ 1 item is committed this session.
-                ENG-1652 — hide while portion preview is open (one filled CTA). */}
+            {/* ENG-1643 session tray; ENG-1652 hide while portion preview. */}
             {sessionTray && !portionPreviewActive ? <LogSessionTray {...sessionTray} /> : null}
           </View>
         </KeyboardAvoidingView>
@@ -699,8 +692,7 @@ function DefaultComposition({
   initialQuery?: LogSheetProps["initialQuery"];
   /** Active meal slot — feeds the food-thumb slot tier (ENG-1448). */
   slotName?: string | null;
-  /** ENG-1652 — portion-preview open → hide session tray. */
-  onPreviewActiveChange?: (active: boolean) => void;
+  onPreviewActiveChange?: (active: boolean) => void; // ENG-1652
 }) {
   const colors = useThemeColors();
   const accent = useAccent();
