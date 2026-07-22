@@ -40,11 +40,6 @@ export const STORYBOOK_UI_COVERAGE = [
 ] as const;
 
 export default defineConfig({
-  resolve: {
-    alias: {
-      "@": path.resolve(dirname, "./src"),
-    },
-  },
   server: {
     watch: {
       // Coverage HTML is written under coverage/ — ignore it so Storybook dev HMR stays stable.
