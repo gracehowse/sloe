@@ -6,9 +6,10 @@
  * `onQuickLogResult`, since it had no other caller: mobile's redesigned
  * `FoodSearchFeedItem.tsx` was never wired with the equivalent affordance in
  * the first place (a pre-existing gap, not a regression this collapse
- * caused). Web's redesigned `FoodSearchResultRow.tsx` DOES still call
- * `onQuickLogResult` via its `onQuickLog` prop, so web keeps the feature.
- * Tracked to close the mobile gap: ENG-1659.
+ * caused). ENG-1659 closed that gap: `onQuickLogResult` was re-added to
+ * mobile's `FoodSearchPanel.tsx` and wired into `FoodSearchFeedItem.tsx` via
+ * a new `onQuickLog` prop (both `component_grammar_dedup` row grammars), at
+ * parity with web's `FoodSearchResultRow.tsx`.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -51,8 +52,25 @@ describe("ENG-931 — FoodSearchPanel quick-log from search row", () => {
     expect(fnBody).toMatch(/await onPickResult\(item\)/);
   });
 
-  it("mobile does not yet have the affordance — known gap, tracked as ENG-1659", () => {
-    expect(read(MOBILE_PANEL)).not.toMatch(/onQuickLogResult/);
-    expect(read(MOBILE_FEED_ITEM)).not.toMatch(/onQuickLog/);
+  it("mobile defines onQuickLogResult (panel) and wires a row + affordance (extracted feed item, ENG-1659)", () => {
+    const panelSrc = read(MOBILE_PANEL);
+    expect(panelSrc).toMatch(/onQuickLogResult\s*=\s*useCallback/);
+    expect(panelSrc).toMatch(/ENG-931|ENG-1659/);
+    expect(panelSrc).toMatch(/GenericBeverage|GenericFood/);
+    expect(panelSrc).toMatch(/_source === "OFF"/);
+    expect(panelSrc).toMatch(/_source === "USDA"/);
+
+    const feedItemSrc = read(MOBILE_FEED_ITEM);
+    expect(feedItemSrc).toMatch(/food-search-quick-log-/);
+    expect(feedItemSrc).toMatch(/onQuickLog/);
+  });
+
+  it("quick-log bypasses preview for generic/OFF/USDA with default serving (mobile)", () => {
+    const src = read(MOBILE_PANEL);
+    const fnStart = src.indexOf("onQuickLogResult = useCallback");
+    expect(fnStart).toBeGreaterThanOrEqual(0);
+    const fnBody = src.slice(fnStart, fnStart + 4500);
+    expect(fnBody).toMatch(/onSelect\(/);
+    expect(fnBody).toMatch(/await onPickResult\(item\)/);
   });
 });
