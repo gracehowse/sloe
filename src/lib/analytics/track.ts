@@ -230,7 +230,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // per the growth-builds-default-ON convention.
 
   "design_system_colours",
-  "design_system_icons",
   "redesign_winmoment",
   "redesign_motion",
   "redesign_branded_sheets",

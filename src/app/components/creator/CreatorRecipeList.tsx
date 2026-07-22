@@ -11,16 +11,15 @@ import {
   nextPageRange,
   pageHasMore,
 } from "../../../lib/recipes/creatorRecipePagination";
-// ENG-816 / icon-strategy 2026-05-31 — the no-image branch used a bare 🍳
-// emoji instead of the canonical cross-platform fallback. Behind
-// `design_system_icons` it renders the product-wide `RecipeHeroFallback`
-// (Lucide gradient + glyph — the same treatment Library/RecipeDetail/Discover
-// use, mirrored on mobile via `@suppr/shared/recipe/recipeHeroFallback`),
-// with the emoji kept alive in the `else` per the CLAUDE.md feature-flag rule.
+// ENG-816 / icon-strategy 2026-05-31 — the no-image branch renders the
+// product-wide `RecipeHeroFallback` (Lucide gradient + glyph — the same
+// treatment Library/RecipeDetail/Discover use, mirrored on mobile via
+// `@suppr/shared/recipe/recipeHeroFallback`). Unconditional since
+// `design_system_icons` collapsed (ENG-1651) — it was permanently ON; the
+// legacy 🍳 emoji placeholder no longer exists.
 import { RecipeHeroFallback } from "../suppr/RecipeHeroFallback";
 import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
 import { useFallbackScheme } from "../../../lib/theme/useFallbackScheme";
-import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { SupprCard } from "../ui/suppr-card";
 
 /**
@@ -75,9 +74,6 @@ export function CreatorRecipeList({
   const [recipes, setRecipes] = useState<CreatorRecipeRow[]>(initialRecipes);
   const fallbackScheme = useFallbackScheme(); // ENG-1528 — dark ramp underlay on dark cards
   const [hasMore, setHasMore] = useState<boolean>(initialHasMore);
-  // ENG-816 — canonical RecipeHeroFallback replaces the 🍳 emoji
-  // placeholder when `design_system_icons` is on; emoji stays in the `else`.
-  const useLucideIcons = isFeatureEnabled("design_system_icons");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<boolean>(false);
   // Guard against double-fires (rapid taps) and keep the offset stable
@@ -154,7 +150,7 @@ export function CreatorRecipeList({
                     className="w-14 h-14 rounded-lg object-cover"
                     style={{ backgroundColor: recipeUnderlayColor({ id: r.id, title: r.title }, fallbackScheme) }}
                   />
-                ) : useLucideIcons ? (
+                ) : (
                   // RecipeHeroFallback is a fill overlay (position:absolute;
                   // inset:0), so it must live inside a relatively-positioned
                   // 56px box — same wrapper shape as Library.tsx call sites.
@@ -163,13 +159,6 @@ export function CreatorRecipeList({
                     style={{ backgroundColor: recipeUnderlayColor({ id: r.id, title: r.title }, fallbackScheme) }}
                   >
                     <RecipeHeroFallback id={r.id} title={r.title} iconSize={20} />
-                  </div>
-                ) : (
-                  <div
-                    className="w-14 h-14 rounded-lg flex items-center justify-center text-muted-foreground text-xs"
-                    style={{ backgroundColor: recipeUnderlayColor({ id: r.id, title: r.title }, fallbackScheme) }}
-                  >
-                    🍳
                   </div>
                 )}
                 <div className="flex-1 min-w-0">

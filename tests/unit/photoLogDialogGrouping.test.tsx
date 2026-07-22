@@ -24,9 +24,10 @@ void React;
 
 vi.mock("../../src/lib/analytics/track.ts", () => ({
   track: vi.fn(),
-  // ENG-816 — the dialog now reads `design_system_icons` to gate the
-  // "Plate total" glyph (👉 → lucide ArrowRight). Default OFF keeps the
-  // emoji path these grouping assertions were written against.
+  // The dialog's "Plate total" glyph (lucide ArrowRight) is unconditional
+  // (ENG-816 #24, mobile parity); `isFeatureEnabled` here only gates
+  // `log_refine_describe_v1`. Default OFF keeps these grouping assertions
+  // unchanged.
   isFeatureEnabled: vi.fn(() => false),
 }));
 

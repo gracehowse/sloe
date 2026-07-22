@@ -5,7 +5,6 @@ export const VISUAL_GOLDEN_NOW_ISO =
 
 export const REDESIGN_VISUAL_FLAGS = [
   "design_system_colours",
-  "design_system_icons",
   "redesign_branded_sheets",
   "redesign_motion",
   "redesign_search_results",
