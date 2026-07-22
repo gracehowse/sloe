@@ -4,7 +4,7 @@ import { chromaticVisualContract } from "../../../../.storybook/chromaticVisualC
 
 const meta = {
   component: SupprCard,
-  tags: ["ai-generated", ...chromaticVisualContract.tags],
+  tags: ["ai-generated", "chromatic"],
   parameters: {
     ...chromaticVisualContract.parameters,
     layout: "padded",

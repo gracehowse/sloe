@@ -32,6 +32,7 @@ export function createMobileRoleMeta<const TRole extends keyof typeof ROLE_DOCS>
         },
       },
     },
-    tags: ["mobile-role", ...chromaticVisualContract.tags],
+    // CSF requires string-literal tags (cannot spread imported constants).
+    tags: ["mobile-role", "chromatic"],
   };
 }

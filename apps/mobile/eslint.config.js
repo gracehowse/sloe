@@ -97,7 +97,16 @@ const SUPPR_RESTRICTED_STYLE_LITERALS = [
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ['dist/*'],
+    // Storybook files are Vite-resolved (`.storybook/stubs` via
+    // `@suppr/storybook-stubs/*`) and are not part of the Expo app graph.
+    // Lint them in Storybook CI / coverage, not mobile ESLint.
+    ignores: [
+      'dist/*',
+      '**/*.stories.tsx',
+      'stories/**',
+      '**/_mobileStoryDecorators.tsx',
+      '**/_storyShell.tsx',
+    ],
   },
   // Mobile-wide: forbid Ionicons imports (Lucide is canonical, decided
   // 2026-04-28 — see Top-5 #4 in the teardown doc).

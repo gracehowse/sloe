@@ -13,7 +13,7 @@ const noop = () => undefined;
 const meta = {
   title: "Mobile/UI/SheetShell",
   component: SheetShell,
-  tags: ["autodocs", ...chromaticVisualContract.tags],
+  tags: ["autodocs", "chromatic"],
   decorators: [
     (Story) => (
       <MobileStoryThemeProvider>

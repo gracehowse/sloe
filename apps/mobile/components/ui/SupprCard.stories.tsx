@@ -7,7 +7,7 @@ import { chromaticVisualContract } from "../../../../.storybook/chromaticVisualC
 const meta = {
   title: "Mobile/UI/SupprCard",
   component: SupprCard,
-  tags: ["autodocs", ...chromaticVisualContract.tags],
+  tags: ["autodocs", "chromatic"],
   decorators: [
     (Story) => (
       <MobileStoryThemeProvider>

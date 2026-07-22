@@ -5,7 +5,7 @@ import { chromaticVisualContract } from "../../../../.storybook/chromaticVisualC
 
 const meta = {
   component: SupprNotice,
-  tags: ["autodocs", ...chromaticVisualContract.tags],
+  tags: ["autodocs", "chromatic"],
   parameters: {
     ...chromaticVisualContract.parameters,
     layout: "padded",

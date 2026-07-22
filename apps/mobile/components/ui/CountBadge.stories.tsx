@@ -6,7 +6,7 @@ import { chromaticVisualContract } from "../../../../.storybook/chromaticVisualC
 const meta = {
   title: "Mobile/UI/CountBadge",
   component: CountBadge,
-  tags: ["autodocs", ...chromaticVisualContract.tags],
+  tags: ["autodocs", "chromatic"],
   decorators: [
     (Story) => (
       <MobileStoryThemeProvider>

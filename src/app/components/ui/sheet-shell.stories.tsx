@@ -7,7 +7,7 @@ const noop = () => undefined;
 
 const meta = {
   component: SheetShell,
-  tags: ["autodocs", ...chromaticVisualContract.tags],
+  tags: ["autodocs", "chromatic"],
   parameters: {
     ...chromaticVisualContract.parameters,
     layout: "fullscreen",

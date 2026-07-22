@@ -4,7 +4,7 @@ import { chromaticVisualContract } from "../../../../.storybook/chromaticVisualC
 
 const meta = {
   component: CountBadge,
-  tags: ["autodocs", ...chromaticVisualContract.tags],
+  tags: ["autodocs", "chromatic"],
   parameters: {
     ...chromaticVisualContract.parameters,
     layout: "padded",
