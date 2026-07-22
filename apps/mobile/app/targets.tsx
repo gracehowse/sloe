@@ -150,8 +150,7 @@ export default function TargetsScreen() {
   const energyNumbersOn = isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG); // ENG-1506 review round — tracked separately from `resolvedMaint` (null is ambiguous: off vs on-but-rejected); ON-null renders "—", never the rejected raw read
   const [goalEditorOpen, setGoalEditorOpen] = useState(false);
   // ENG-824 — quiet win-moment (success haptic + win-colour wash on the calorie
-  // card) when targets are saved (goal/pace edit) or recalculated. Gated behind
-  // `redesign_winmoment`; inert when off.
+  // card) when targets are saved (goal/pace edit) or recalculated.
   const winMoment = useSettingsWinMoment();
 
   const loadTargets = useCallback(async (signal?: { cancelled: boolean }) => {

@@ -58,7 +58,7 @@
 - Activity bonus card (TDEE sparkline, burn breakdown)
 - Hydration & stimulants card
 - Complete Day button
-- Win-moment overlay (flag `redesign_winmoment`)
+- Win-moment overlay (unconditional — `redesign_winmoment` collapsed permanently-on, ENG-1651)
 
 **Plan (tab 2 — `(tabs)/planner.tsx`)**
 - Week overview header (headline + weekday dot row + 7-day stacked macro bar strip + coaching subtitle)
@@ -74,7 +74,7 @@
 - Row action sheet (6 actions)
 - Plan templates sheet
 - Shopping list (recipe-grouped, per-ingredient illustration, household scope, progress bar)
-- Post-generate confidence reveal (flag `redesign_winmoment`)
+- Post-generate confidence reveal (unconditional — `redesign_winmoment` collapsed permanently-on, ENG-1651)
 
 **Recipes (tab 3 — `(tabs)/library.tsx`)**
 - Library header + search + filter pills + sort label

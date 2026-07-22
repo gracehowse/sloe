@@ -289,9 +289,11 @@ describe("mobile recipe-detail — 'Fits your day' verdict (ENG-1612, flag-gated
 
 /**
  * ENG-818/819 — soft elevation on the resting detail cards (via
- * `useCardElevation`) + the quiet confirm haptic on the commit CTAs (Cook Mode
- * / Log / servings stepper). Flag-gated; flag-off keeps the flat/hairline card
- * + silent commit.
+ * `useCardElevation`) + the confirm haptic on the commit CTAs (Cook Mode /
+ * Log / servings stepper). Elevation is unconditional (the `soft` variant
+ * always applies). The commit haptic's `redesign_winmoment` gate collapsed
+ * permanently-on (ENG-1651) — the CTAs fire the confirm haptic unconditionally,
+ * no flag check left in source.
  */
 describe("mobile recipe-detail — ENG-818/819 elevation + commit haptics", () => {
   it("resting detail card is a WHITE slab on cream with the soft `useCardElevation` lift (Figma 332:2)", () => {
@@ -311,19 +313,20 @@ describe("mobile recipe-detail — ENG-818/819 elevation + commit haptics", () =
     expect(SRC).toMatch(/\}\),\s*\[colors,\s*cardElevation,\s*accent\]\)/);
   });
 
-  it("commit CTAs are PressableScale with a flag-gated confirm haptic", () => {
+  it("commit CTAs are PressableScale with the confirm haptic (unconditional)", () => {
     // The commit CTAs (Start Cooking / Log / Cook Mode / servings) are
-    // `PressableScale` in the extracted action-pill + footer components, fed a
-    // flag-gated haptic from the screen.
+    // `PressableScale` in the extracted action-pill + footer components.
     // ENG-1079: the action-pill commit CTAs (Log/Add) migrated to SupprButton,
-    // which wraps PressableScale internally and takes the flag-gated haptic via
-    // its `haptic` prop. The servings footer stepper is unmigrated PressableScale.
+    // which wraps PressableScale internally and takes the haptic via its
+    // `haptic` prop. The servings footer stepper is unmigrated PressableScale.
     expect(ACTION_PILLS).toMatch(/import \{ SupprButton \} from "@\/components\/ui\/SupprButton"/);
     expect(ACTION_PILLS).toMatch(/haptic=\{haptic\}/);
     expect(SERVINGS_FOOTER).toMatch(/import \{ PressableScale \} from "@\/components\/ui\/PressableScale"/);
-    // The screen still derives the flag-gated haptic and threads it into the CTAs.
-    expect(SRC).toMatch(/const winMomentFeedback = isFeatureEnabled\("redesign_winmoment"\)/);
-    const hapticUses = SRC.match(/winMomentFeedback \? "confirm" : "none"/g) ?? [];
+    // `redesign_winmoment` collapsed permanently-on (ENG-1651): the screen no
+    // longer derives a `winMomentFeedback` flag read — the CTAs are threaded a
+    // literal "confirm" haptic unconditionally.
+    expect(SRC).not.toMatch(/isFeatureEnabled\("redesign_winmoment"\)/);
+    const hapticUses = SRC.match(/haptic="confirm"/g) ?? [];
     expect(hapticUses.length).toBeGreaterThanOrEqual(1);
     // The dominant Log pill is a SupprButton (ENG-1079; PressableScale now
     // lives INSIDE the primitive). Cook entry deduped to the footer (gap 1).

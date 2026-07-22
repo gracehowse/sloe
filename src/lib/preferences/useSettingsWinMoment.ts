@@ -15,19 +15,16 @@
  * with an `--accent-win` border. Colour is the dedicated WIN token (amber),
  * NOT success-green — green stays reserved for the calorie-ring state.
  *
- * Flag gate: the whole hook is gated behind `redesign_winmoment`. Flag OFF →
- * `celebrate()` is inert and `flashClass` is `""`, so today's behaviour is
- * preserved exactly until ramp. Reduced-motion users still get the colour wash
- * (it's a static fill, not an animation) — no transform/opacity motion.
+ * `redesign_winmoment` collapsed permanently-on (ENG-1651) — the hook is
+ * unconditional now. Reduced-motion users still get the colour wash (it's a
+ * static fill, not an animation) — no transform/opacity motion.
  *
- * Parity: same flag, same trigger point (target save success) as the mobile
- * hook. Health-connect is mobile-only (web has no Apple Health surface — the
+ * Parity: same trigger point (target save success) as the mobile hook.
+ * Health-connect is mobile-only (web has no Apple Health surface — the
  * documented `Apple Health / Apple Sign-In` carve-out), so only the target-save
  * trigger has a web analog.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-
-import { isFeatureEnabled } from "../analytics/track";
 
 /** How long the win-colour wash lingers before fading back to the resting card. */
 export const SETTINGS_WIN_FLASH_MS = 1400;
@@ -46,13 +43,12 @@ export interface UseSettingsWinMoment {
   /** Class to add to the just-saved card while flashing — `""` when idle, so
    *  concatenating it is a safe no-op. */
   flashClass: string;
-  /** Fire the win-moment: start the colour wash. No-op when `redesign_winmoment`
-   *  is off. Safe to call from a confirmed-success branch. */
+  /** Fire the win-moment: start the colour wash. Safe to call from a
+   *  confirmed-success branch. */
   celebrate: () => void;
 }
 
 export function useSettingsWinMoment(): UseSettingsWinMoment {
-  const enabled = isFeatureEnabled("redesign_winmoment");
   const [active, setActive] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -64,11 +60,10 @@ export function useSettingsWinMoment(): UseSettingsWinMoment {
   );
 
   const celebrate = useCallback(() => {
-    if (!enabled) return;
     setActive(true);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setActive(false), SETTINGS_WIN_FLASH_MS);
-  }, [enabled]);
+  }, []);
 
   const flashClass = active ? SETTINGS_WIN_FLASH_CLASS : "";
 

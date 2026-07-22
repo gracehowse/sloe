@@ -275,6 +275,16 @@ describe("computeWeightMilestone (ENG-952)", () => {
 // the beat over the QUIET milestone — they never double-fire), the per-tier
 // flag gating, and the silent `none` tier. These tests pin every combination
 // so the two surfaces celebrate on identical conditions.
+//
+// `winMomentEnabled` no longer corresponds to a live PostHog flag —
+// `redesign_winmoment` collapsed permanently-on (ENG-1651) and both real
+// callers now hardcode `winMomentEnabled: true` (pinned in
+// `progressDetailRedesign.test.ts`). It stays an explicit parameter of this
+// pure function rather than being inlined away, so the tests below that pass
+// `false` are pinning the RESOLVER's own contract (a future regression that
+// silently hardcodes `true` inside it shouldn't go unnoticed) — not a
+// reachable production combination. `milestoneEnabled` remains a real,
+// currently-default-off flag (`progress_milestone_celebration_v1`).
 // ─────────────────────────────────────────────────────────────────────────
 describe("resolveWeightSaveCelebration (ENG-824 / ENG-952)", () => {
   // Start 80 → goal 70 (10 kg loss, 1 kg milestones). Prior latest 76.4 sits in
@@ -354,11 +364,13 @@ describe("resolveWeightSaveCelebration (ENG-824 / ENG-952)", () => {
     expect(r.milestoneOrdinal).toBeNull();
   });
 
-  it("suppresses the loud tier when winMomentEnabled is off — a new low then surfaces as a milestone if it crosses", () => {
-    // 75.4 IS a new low, but `redesign_winmoment` is off so the loud tier is
-    // gated. With the milestone flag on and the save crossing band 3 → 4, the
-    // QUIET tier carries the celebration instead. Pins the flag-independence of
-    // the two tiers.
+  it("suppresses the loud tier when winMomentEnabled is false — a new low then surfaces as a milestone if it crosses", () => {
+    // 75.4 IS a new low, but with `winMomentEnabled: false` the loud tier is
+    // suppressed. With the milestone flag on and the save crossing band 3 → 4,
+    // the QUIET tier carries the celebration instead. This is no longer a
+    // reachable production combination (`redesign_winmoment` collapsed
+    // permanently-on, ENG-1651 — both callers hardcode `true`); it pins the
+    // resolver's own flag-independence contract at the unit level.
     const r = resolveWeightSaveCelebration({
       savedKg: 75.4,
       priorByDay: PRIOR,
@@ -390,7 +402,12 @@ describe("resolveWeightSaveCelebration (ENG-824 / ENG-952)", () => {
     expect(r.milestoneOrdinal).toBeNull();
   });
 
-  it("returns 'none' when both flags are off (silent save, the default-OFF state)", () => {
+  it("returns 'none' when both params are false (pins the resolver's own both-off contract)", () => {
+    // `winMomentEnabled: false` is no longer production-reachable
+    // (`redesign_winmoment` collapsed permanently-on, ENG-1651 — both
+    // callers hardcode `true`); `milestoneEnabled: false` still is
+    // (`progress_milestone_celebration_v1` defaults off). This pins the pure
+    // function's own contract for the combination, not a live runtime state.
     const r = resolveWeightSaveCelebration({
       savedKg: 75.4,
       priorByDay: PRIOR,

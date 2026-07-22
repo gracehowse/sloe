@@ -19,7 +19,6 @@ import { act, renderHook } from "@testing-library/react-native";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const trackMock = vi.fn();
-const isFeatureEnabledMock = vi.fn((_flag: string) => false);
 const eqMock = vi.fn(async (_col: string, _val: string) => ({ error: null }));
 const updateMock = vi.fn((_payload: Record<string, unknown>) => ({ eq: eqMock }));
 const fromMock = vi.fn((_table: string) => ({ update: updateMock }));
@@ -30,7 +29,6 @@ vi.mock("@/lib/supabase", () => ({
 
 vi.mock("@/lib/analytics", () => ({
   track: (...args: [string, Record<string, unknown>]) => trackMock(...args),
-  isFeatureEnabled: (flag: string) => isFeatureEnabledMock(flag),
 }));
 
 import { useTodayWeeklyCheckin } from "../../hooks/useTodayWeeklyCheckin";
@@ -84,18 +82,14 @@ function baseParams(overrides: Partial<Parameters<typeof useTodayWeeklyCheckin>[
 describe("useTodayWeeklyCheckin", () => {
   beforeEach(() => {
     trackMock.mockClear();
-    isFeatureEnabledMock.mockClear();
-    isFeatureEnabledMock.mockReturnValue(false);
     eqMock.mockClear();
     updateMock.mockClear();
     fromMock.mockClear();
   });
 
-  it("checkinAsCard reflects the redesign_winmoment flag", () => {
-    isFeatureEnabledMock.mockReturnValue(true);
+  it("checkinAsCard is always true — redesign_winmoment collapsed permanently-on (ENG-1651)", () => {
     const { result } = renderHook(() => useTodayWeeklyCheckin(baseParams()));
     expect(result.current.checkinAsCard).toBe(true);
-    expect(isFeatureEnabledMock).toHaveBeenCalledWith("redesign_winmoment");
   });
 
   it("never fires the gate when isToday is false", () => {

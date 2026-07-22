@@ -73,7 +73,7 @@ Web: /plan → MealPlanner.tsx (7-column kanban grid; intentionally reduced)
 - No per-day visual differentiation in the header — the user must scroll the full list to discover which days are short.
 - The worst-short subtitle names one day and one fix ("Add a snack or swap the dinner") but gives no relative sense of how far short that day is versus others.
 - No stacked-macro bar strip to communicate "this plan is engineered to your macros" — the algorithmic confidence is entirely invisible at first glance. MacroFactor shows this as a confidence artefact on post-generate; Suppr shows nothing.
-- The win-moment headline colour (behind `redesign_winmoment`) is the only visual emphasis at 7/7 — there is no structural celebration, just a colour change and a haptic.
+- The win-moment headline colour (now unconditional — `redesign_winmoment` collapsed permanently-on, ENG-1651) is the only visual emphasis at 7/7 — there is no structural celebration, just a colour change and a haptic.
 
 ### 2.2 Per-day macro delta pills
 
@@ -112,7 +112,7 @@ Web: /plan → MealPlanner.tsx (7-column kanban grid; intentionally reduced)
 
 **Weaknesses:**
 - The post-generate state has no confidence reveal. MacroFactor shows a 7-day stacked-macro bar after generation as a "your program is ready" moment — it turns the algorithm output into a legible confidence signal. Suppr has the data; it just does not surface it.
-- The win-moment at 7/7 is correctly gated on `redesign_winmoment` but is currently triggered by a headline colour change and haptic only. There is no structural moment — no visual pause, no full-bleed celebration card at the week-overview level.
+- The win-moment at 7/7 fires unconditionally (`redesign_winmoment` collapsed permanently-on, ENG-1651 — no longer a flag) but is currently triggered by a headline colour change and haptic only. There is no structural moment — no visual pause, no full-bleed celebration card at the week-overview level.
 
 ### 2.6 Shopping list
 
@@ -171,9 +171,9 @@ Hits your targets   5 of 7 days
 
 - Type: Fraunces (serif display), 28pt, weight 600, colour `#1B1814`
 - "5 of 7" rendered as a display numeral in terracotta `#C2683E` — warm, not alarming
-- At 7/7: full headline in terracotta, small upward-pulse animation (100ms, scale 1.0→1.04→1.0), success haptic via `Haptics.notificationAsync(SUCCESS)` — the existing `redesign_winmoment` gate
+- At 7/7: full headline in terracotta, small upward-pulse animation (100ms, scale 1.0→1.04→1.0), success haptic via `Haptics.notificationAsync(SUCCESS)` — unconditional now (`redesign_winmoment` collapsed permanently-on, ENG-1651)
 - At 0/7: muted ink `#1B1814` with sage tint, no haptic; copy changes to "No days on target yet — try a regenerate" in the subtitle layer
-- Behind the `redesign_winmoment` flag: the colour/pulse/haptic behaviour. Flag OFF: static ink numeral, no haptic.
+- The colour/pulse/haptic behaviour is unconditional — `redesign_winmoment` collapsed permanently-on (ENG-1651, flag ON in every build since 2026-06-01). There is no flag-off static-numeral path anymore.
 
 **Layer 2 — Weekday dot row (new)**
 
@@ -392,7 +392,7 @@ The move sheet is a bottom sheet (existing `MoveMealSheet.tsx`). Visual changes 
 - Destination slot rows: each row shows slot icon (lucide: `sunrise` for Breakfast, `sun` for Lunch, `moon` for Dinner, `apple` for Snacks), slot name (Inter 14pt), day label (Inter 12pt, muted), and — if occupied — the occupant recipe name in Inter 12pt italic with a `↔ Will swap` badge (terracotta, 10pt).
 - The two-way swap logic is preserved exactly. The "Will swap" badge makes it legible that moving to an occupied slot is a swap, not a push.
 - Leftover-aware confirm preserved: if clearing N leftovers is required, the existing Alert fires before the move.
-- Settle haptic preserved (`Haptics.impactAsync(LIGHT)` on successful move), behind `redesign_winmoment`.
+- Settle haptic preserved (`Haptics.impactAsync(LIGHT)` on successful move) — unconditional (`redesign_winmoment` collapsed permanently-on, ENG-1651).
 
 **User benefit:** The "Will swap" badge surfaces the two-way-swap semantics that currently require the user to know the behaviour — it turns a hidden capability into a legible feature.
 
@@ -450,7 +450,7 @@ Replace the generic "Building your plan…" with a two-phase loading experience:
 
 The "Building your plan…" 7-dot ribbon is retired. The skeleton structure is more communicative because it previews the plan's layout.
 
-**Post-generate confidence reveal (new, behind `redesign_winmoment`):**
+**Post-generate confidence reveal (shipped, unconditional — `redesign_winmoment` collapsed permanently-on, ENG-1651):**
 
 After generation completes and the skeleton resolves:
 - The 7-day stacked macro bar strip in the week-overview header populates in a staggered left-to-right animation (each bar fades + scales up with a 40ms stagger, total 280ms).
@@ -458,7 +458,7 @@ After generation completes and the skeleton resolves:
 - If 7/7: success haptic fires, headline pulses to terracotta (existing behaviour preserved).
 - The diff toast ("N meals changed") remains for regenerate.
 
-Flag OFF (`redesign_winmoment` false): all animations suppressed; bars appear without animation; no haptic; headline is static.
+No flag-off path remains — `redesign_winmoment` collapsed permanently-on (ENG-1651); the reveal animations, dot pulse, and haptic always fire.
 
 **Regenerate (shimmer overlay):**
 The existing shimmer overlay is preserved. Transition: on complete, the shimmer fades out (200ms), the bars re-animate (same stagger).
@@ -487,7 +487,7 @@ Existing Alert ("Couldn't generate plan") preserved. No visual change to the err
 
 ---
 
-### 3.8 Weekly summary win-moment (redesign_winmoment = true, 7/7)
+### 3.8 Weekly summary win-moment (unconditional, 7/7 — `redesign_winmoment` collapsed permanently-on, ENG-1651)
 
 **Current purpose:** Celebrate when the generated plan hits all 7 targets.
 
@@ -495,7 +495,7 @@ Existing Alert ("Couldn't generate plan") preserved. No visual change to the err
 - Cal AI "You're making progress—now's the time to keep pushing!" inline encouragement: https://mobbin.com/screens/dcb0d642-775c-4b72-b651-c1f3954da6db
 - Noom "You're done logging — Good work!" coaching card: https://mobbin.com/screens/e004b971-d306-498b-849a-c8c4e5ccb996
 
-**Proposed redesign (gated on `redesign_winmoment`):**
+**Redesign (shipped, unconditional — `redesign_winmoment` collapsed permanently-on, ENG-1651):**
 
 When `summaryScore` first reaches 7/7 (rising edge, same trigger as today):
 1. The headline animates to terracotta (existing colour change).
@@ -504,7 +504,7 @@ When `summaryScore` first reaches 7/7 (rising edge, same trigger as today):
 4. Success haptic fires (existing `Haptics.notificationAsync(SUCCESS)`).
 5. No full-bleed overlay, no confetti. The win-moment is in the data — the bars, the dots, the colour. The product's own visualisation *is* the celebration.
 
-Flag OFF: none of the above. Static text, no haptic, no pulse.
+No flag-off path remains — `redesign_winmoment` collapsed permanently-on (ENG-1651); the pulse, colour change, and haptic always fire at 7/7.
 
 **User benefit:** Celebrates the user's planning achievement in a calm, confidence-building way — consistent with the "calm warm coach" voice. Does not infantilise with confetti; the week-overview bar chart is the evidence of success.
 
@@ -733,7 +733,7 @@ The web `/plan` is a 7-column kanban grid (mobile is a continuous list). These s
 | Regenerate diff | Shimmer fade-out (200ms), bars re-animate | None |
 | Tab switch (Plan ↔ Shopping) | Horizontal slide (native iOS tab) | None |
 
-All motion and haptics gated on `redesign_winmoment`. Flag OFF = no animation, no haptic.
+All motion and haptics in the table above are unconditional — `redesign_winmoment` collapsed permanently-on (ENG-1651; flag was ON in every build since 2026-06-01). No flag-off no-animation path remains.
 
 Web: no Haptics API. Motion: CSS transitions only (200ms ease-out). Respect `prefers-reduced-motion` — all animations disabled.
 
@@ -805,7 +805,7 @@ Every feature, data point, algorithm constant, and interaction from the function
 - [x] `fetchPlanTargetsFromProfile` — **PRESERVED**
 - [x] `summaryScore` "Hits your targets N of M days" (±10% calorie band) — **PRESERVED AND VISUALISED** (headline + dot row)
 - [x] `worstShort` / worst-short subtitle — **PRESERVED**
-- [x] `planWeekHeadlineTone` (win/progress/calm) + colour + pulse + haptic behind `redesign_winmoment` — **PRESERVED**
+- [x] `planWeekHeadlineTone` (win/progress/calm) + colour + pulse + haptic — **PRESERVED**, now unconditional (`redesign_winmoment` collapsed permanently-on, ENG-1651)
 - [x] `dayTotalVsGoal` day-header kcal display — **PRESERVED**
 - [x] Amber for over-budget day total (never red per locked rules) — **PRESERVED**
 - [x] Per-day P/C/F/Fi delta — **IMPROVED** (text pills → range-band tracks; signed gram values preserved as text layer)
@@ -835,7 +835,7 @@ Every feature, data point, algorithm constant, and interaction from the function
 - [x] Recipe-removed badge (ENG-766 fix, library-loaded gate) — **PRESERVED**
 
 ### Behavioural mechanisms
-- [x] `redesign_winmoment` flag gate (colour/pulse/haptic at 7/7; generate/move settle haptics) — **PRESERVED AND EXTENDED** (dot pulse + bar reveal added behind same flag)
+- [x] Colour/pulse/haptic at 7/7 + generate/move settle haptics — **PRESERVED AND EXTENDED** (dot pulse + bar reveal added); all now unconditional — `redesign_winmoment` collapsed permanently-on (ENG-1651), no flag remains
 - [x] Leftovers: `distributeLeftovers`, "Leftover of X" rows, shopping-list skip, `plan_leftovers_generated` event — **PRESERVED AND VISUALLY DIFFERENTIATED** (subordinated by 12pt indent + 60% photo opacity)
 - [x] Named plan slots: create/rename/delete/switch, switcher hidden at 1 slot — **PRESERVED AND IMPROVED** (UIContextMenu for rename/delete)
 - [x] Templates: save/apply/delete, events `plan_template_created/applied` — **PRESERVED**

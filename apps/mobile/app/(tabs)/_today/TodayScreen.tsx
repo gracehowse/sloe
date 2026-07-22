@@ -243,12 +243,6 @@ import { TodayFirstMealEmptyState } from "@/components/today/TodayFirstMealEmpty
 import { TodayActivityBonusCard } from "@/components/today/TodayActivityBonusCard";
 import { TodayScrollSectionHeader } from "@/components/today/TodayScrollSectionHeader";
 import { TodayCompleteDayModal } from "@/components/today/TodayCompleteDayModal";
-// Weekly check-in ritual (PR claude/weekly-checkin-ritual-v2, 2026-05-02 —
-// rebuild of #26). MacroFactor-style soft prompt that surfaces the
-// adaptive-vs-formula TDEE delta + a suggested new daily target. State +
-// gating + accept/dismiss handlers moved to `useTodayWeeklyCheckin`
-// (ENG-1594) — this screen only renders the modal now.
-import { WeeklyCheckinModal } from "@/components/today/WeeklyCheckinModal";
 // Phase 3 (B2.1, 2026-04-27) — TodayFabSheet replaced by LogSheet.
 // The component file remains for any deep test references (sweep
 // docs/journeys/log-sheet.md for migration notes).
@@ -2227,14 +2221,7 @@ export default function TrackerScreen() {
   // before their first downstream consumer) since the hook needs all
   // three as inputs. See the hook's own doc comment for the full "why"
   // + the dependency-identity note on `weekData` / `resolvedMaintenance`.
-  const {
-    weeklyCheckinOpen,
-    weeklyCheckinContent,
-    checkinAsCard,
-    handleWeeklyCheckinAccept,
-    handleWeeklyCheckinDismiss,
-    setWeeklyCheckinShownAt,
-  } = useTodayWeeklyCheckin({
+  const { setWeeklyCheckinShownAt } = useTodayWeeklyCheckin({
     userId,
     isToday,
     editingMeal,
@@ -2448,10 +2435,10 @@ export default function TrackerScreen() {
   } = useTodayStreakAndFreezes({ byDay, freezeLedger, freezeBudgetMax });
 
   // ENG-798 (Redesign — Design Direction 2026) — reserved win-moment. The
-  // shared landmark math + once-per-day / flag gate live in `useWinMoment`;
-  // Today feeds it a live snapshot and renders the returned `<WinMomentPlayer>`
-  // overlay (below). Detection is inert when `redesign_winmoment` is off, so
-  // pre-redesign static behaviour is preserved. `confirmLog` is the quiet
+  // shared landmark math + once-per-day gate live in `useWinMoment`
+  // (`redesign_winmoment` collapsed permanently-on, ENG-1651 — detection is
+  // unconditional now); Today feeds it a live snapshot and renders the
+  // returned `<WinMomentPlayer>` overlay (below). `confirmLog` is the quiet
   // <100ms confirm haptic for ordinary logs (gated behind `redesign_motion`).
   const winSnapshot = useMemo(
     () => ({
@@ -4370,36 +4357,6 @@ export default function TrackerScreen() {
           onComplete={onWinComplete}
           fullBleed
           testID="today-win-moment"
-        />
-      ) : null}
-
-      {/* Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
-          2026-05-02 — rebuild of #26). MacroFactor-style soft prompt
-          that surfaces the adaptive-vs-formula TDEE delta + a suggested
-          new daily target. Soft prompt — every dismiss path persists
-          the decision.
-
-          ENG-805 (Redesign — Design Direction 2026): when
-          `redesign_winmoment` is ON the check-in is demoted from this
-          cold-open blocking MODAL to a dismissible inline CARD rendered
-          in the Today feed (below the hero, above meals — see
-          `<WeeklyCheckinCard>` in the scroll content). The modal stays
-          alive here as the flag-OFF path so the old behaviour is fully
-          preserved. The card and the modal share the exact same
-          `weeklyCheckinOpen` state + accept/dismiss handlers, so the
-          weekly cadence and persistence are unchanged — only the
-          presentation differs. */}
-      {!checkinAsCard ? (
-        <WeeklyCheckinModal
-          visible={weeklyCheckinOpen}
-          content={weeklyCheckinContent}
-          currentTargetKcal={targets.calories}
-          onAccept={handleWeeklyCheckinAccept}
-          onDismiss={handleWeeklyCheckinDismiss}
-          cardColor={colors.card}
-          textColor={colors.text}
-          textSecondaryColor={colors.textSecondary}
-          borderColor={colors.border}
         />
       ) : null}
 

@@ -813,7 +813,7 @@ When the digest card is expanded and visible, the header hero metric should **sh
 ### Card treatment
 - Background: `--surface` (#FFFFFF) for the page. Cards: `--card` (#F6F5F2) background, `--border` (#ECEAE4) hairline (0.5pt on iOS `@3x`), 12pt radius.
 - No drop shadows. No elevation. Elevation only exists on bottom sheets (standard iOS modal shadow).
-- `SupprCard` component (behind `design_system_elevation` flag) is the correct host for all cards on this surface.
+- `SupprCard` component is the correct host for all cards on this surface (`design_system_elevation` — **REMOVED (ENG-1651)**: collapsed permanently-on, no flag remains).
 
 ### Chart styling
 - **Weight chart:** terracotta `--terracotta` line + dots. Goal line: sage `--sage` dashed. EMA band: sage at 12% opacity. Grid lines: `--border` horizontal only, hairline. Y-axis: right-aligned, Inter 11pt sage. X-axis: day/date labels, Inter 11pt sage.
@@ -922,7 +922,7 @@ All copy on this surface is: past tense for past data; present for live; observa
 | Interaction | Mobile | Web |
 |---|---|---|
 | Range picker change | `impactOccurred('light')` (existing, keep) | None |
-| New all-time-low weigh-in (`redesign_winmoment`) | Lottie celebration (existing, keep) | Green pulse (existing, keep) |
+| New all-time-low weigh-in (unconditional — `redesign_winmoment` collapsed permanently-on, ENG-1651) | Lottie celebration (existing, keep) | Green pulse (existing, keep) |
 | 30-day milestone modal entry | Terracotta arc draws 0→100%, 600ms easeOut | CSS stroke-dashoffset transition, 600ms |
 | Progress bar fill (initial render) | No animation (data credibility > delight on this surface) | Same |
 | Digest card expand/collapse | None — instant | None |
@@ -938,8 +938,8 @@ No entrance animations. No stagger. No parallax. This is an analytical surface �
 |---|---|---|---|
 | `progress_redesign_v2` | web + mobile | off | The entire visual redesign described in this spec (ship behind this flag; old layout is the `else` path) |
 | `progress_trajectory_box` | web + mobile | off | Trajectory card (existing flag, already exists) |
-| `redesign_winmoment` | web + mobile | off | Win-moment overlay (existing flag, already exists) |
-| `design_system_elevation` | mobile | off | Mobile v2 layout (existing flag, already exists) |
+| `redesign_winmoment` — **REMOVED (ENG-1651)** | web + mobile | n/a — collapsed permanently-on | Win-moment overlay now fires unconditionally (has done since 2026-06-01); no flag remains to ramp or gate it |
+| `design_system_elevation` — **REMOVED (ENG-1651)** | mobile | n/a — collapsed permanently-on | Mobile v2 layout ships unconditionally; no flag remains to ramp or gate it |
 | `progress_digest_blend` | web + mobile | off | Blended digest (existing flag, already exists) |
 | `progress_tdee_windows` | web + mobile | off | Multi-window TDEE change table (new, additive) |
 | `progress_share_card` | web + mobile | off | Share card image renderer (new, additive) |
@@ -960,7 +960,7 @@ Every feature, data point, chart, insight, and gating mechanism from the functio
 - [x] All Weight Data sheet ("See all measurements" Withings-list, long-press edit/delete) — PRESERVED, styled as hairline row at chart bottom
 - [x] 30-Day Milestone modal (one-time, `milestone_30_shown_at`, fires on Progress focus) — PRESERVED, tone redesigned
 - [x] Weekly Digest / Recap card (Sat 18:00 → Tue/Wed window, dismiss per week, Share + Adjust Pace + Save Combo CTAs) — PRESERVED, hierarchy improved
-- [x] Win-moment overlay (`redesign_winmoment`, new all-time-low weigh-in, Lottie/green pulse) — PRESERVED
+- [x] Win-moment overlay (new all-time-low weigh-in, Lottie/green pulse) — PRESERVED, now unconditional (`redesign_winmoment` collapsed permanently-on, ENG-1651)
 - [x] ProgressMetricDetail web deep-drill (`?metric=calories|protein|streak`) — PRESERVED (gap noted in §6 — roadmap)
 - [x] Weight-tracker legacy route (backwards compat) — PRESERVED, not touched
 
@@ -1006,7 +1006,7 @@ Every feature, data point, chart, insight, and gating mechanism from the functio
 - [x] Error (try/finally always flips loading=false, warns to console) — PRESERVED
 - [x] Steps sync tri-state (pending=skeleton, success=honest 0, failed=error CTA) — PRESERVED
 - [x] Over-budget amber (macro bars, calorie bars) — PRESERVED. Calorie ring destructive-red carve-out NOT on this surface (Progress bars use amber per rules) — CORRECT
-- [x] Win-moment (`redesign_winmoment`): new all-time-low — PRESERVED
+- [x] Win-moment: new all-time-low — PRESERVED, now unconditional (`redesign_winmoment` collapsed permanently-on, ENG-1651)
 - [x] Weight surface modes: `show` / `trends_only` / `hide` — PRESERVED
 - [x] Range picker haptic (mobile, existing) — PRESERVED
 - [x] Digest: dismiss (`weekly_recap_last_seen_week_key`), Share, Adjust Pace (→ Targets), Save Combo / Start Usual Meal (→ Today with pending-save seed) — PRESERVED
@@ -1015,10 +1015,10 @@ Every feature, data point, chart, insight, and gating mechanism from the functio
 - [x] HouseholdBar (hidden for solo user) — PRESERVED
 
 ### Feature flags
-- [x] `design_system_elevation` (mobile v2 layout / SupprCard) — PRESERVED
+- [x] `design_system_elevation` (mobile v2 layout / SupprCard) — behaviour PRESERVED, but the flag itself is **REMOVED (ENG-1651)**: collapsed permanently-on, so this is no longer a flag to preserve — the mobile v2 layout ships unconditionally in every build
 - [x] `progress_digest_blend` (blended digest) — PRESERVED
 - [x] `progress_trajectory_box` (trajectory card) — PRESERVED
-- [x] `redesign_winmoment` (weight win-moment) — PRESERVED
+- [x] `redesign_winmoment` (weight win-moment) — behaviour PRESERVED, but the flag itself is **REMOVED (ENG-1651)**: collapsed permanently-on, so this is no longer a flag to preserve — the win-moment fires unconditionally in every build
 - [x] `progress_plateau_insight_v1` (ENG-954 calm plateau line on the weight chart) — SHIPPED, default-ON (2026-06-30, ENG-1279)
 - [x] `progress_milestone_celebration_v1` (ENG-952 quiet two-tier milestone celebration on weigh-in) — SHIPPED, default-OFF
 

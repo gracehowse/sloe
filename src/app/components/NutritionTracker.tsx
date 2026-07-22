@@ -1271,14 +1271,14 @@ export const NutritionTracker = memo(function NutritionTracker({
 
   // ENG-798 (Redesign — Design Direction 2026) — reserved Today win-moment.
   // Mirror of mobile `apps/mobile/app/(tabs)/index.tsx` (snapshot 2965-2997,
-  // overlay 5382-5389). The shared `detectWinMoment` landmark math, the
-  // once-per-calendar-day reservation, and the `redesign_winmoment` flag gate
-  // all live inside `useWebWinMoment` — Today just feeds it a live snapshot,
-  // renders the returned `<WinMomentPlayer>` overlay, and threads the `pulse`
-  // boolean into the calorie ring stroke (the web colour/motion analog of
-  // mobile's success haptic). Everything is inert when the flag is off, so the
-  // pre-redesign static behaviour is preserved with no extra branch. Note the
-  // web var is `effectiveCalorieTarget` (mobile's is `effectiveCalorieGoal`).
+  // overlay 5382-5389). The shared `detectWinMoment` landmark math and the
+  // once-per-calendar-day reservation live inside `useWebWinMoment`
+  // (`redesign_winmoment` collapsed permanently-on, ENG-1651 — no longer a
+  // flag gate there) — Today just feeds it a live snapshot, renders the
+  // returned `<WinMomentPlayer>` overlay, and threads the `pulse` boolean into
+  // the calorie ring stroke (the web colour/motion analog of mobile's success
+  // haptic). Note the web var is `effectiveCalorieTarget` (mobile's is
+  // `effectiveCalorieGoal`).
   const winSnapshot = useMemo(
     () => ({
       consumed: totals.calories,

@@ -122,8 +122,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
   const energyNumbersOn = isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG); // ENG-1506 review round — tracked separately from `resolvedMaint` (null is ambiguous: off vs on-but-rejected); ON-null renders the honest empty state, never the rejected raw read
   const [goalEditorOpen, setGoalEditorOpen] = useState(false);
   // ENG-824 — quiet win-moment (win-colour wash on the calorie card) when
-  // targets are saved via the goal/pace editor. Gated behind
-  // `redesign_winmoment`; inert when off. Web parity with the mobile hook.
+  // targets are saved via the goal/pace editor. Web parity with the mobile hook.
   const winMoment = useSettingsWinMoment();
   // Goal / pace edit affordance (Goal card, "Set a goal", "Why this
   // number" → Adjust). Opens the in-place editor when the flag is on,

@@ -10,12 +10,13 @@ import { WinMomentPlayer } from "./win-moment-player";
  * real gold-ring celebration. It now plays a code-driven SVG/CSS celebration
  * (ring sweep + gold bloom + odometer + confetti) in the `--accent-win` token.
  *
- * The host gates the real mount behind `isFeatureEnabled('redesign_winmoment')`
- * + once-per-day landmark logic, so the flag-ON appearance can't be
- * screenshotted from the live app without enabling the flag. These stories
- * render the presentational primitive directly so the celebration is reviewable
- * for pixels. The animation runs once on mount (~700ms) then settles to a full
- * gold ring + "100%" + label; capture early for the sweep/bloom/confetti frame.
+ * The host gates the real mount behind once-per-day landmark logic
+ * (`redesign_winmoment` collapsed permanently-on, ENG-1651 — no longer a flag
+ * check there), so the celebration only appears on an actual landmark hit in
+ * the live app. These stories render the presentational primitive directly so
+ * the celebration is reviewable for pixels. The animation runs once on mount
+ * (~700ms) then settles to a full gold ring + "100%" + label; capture early
+ * for the sweep/bloom/confetti frame.
  *
  * Mobile parity: `apps/mobile/components/ui/WinMomentPlayer.tsx` (same contract,
  * Reanimated + react-native-svg).

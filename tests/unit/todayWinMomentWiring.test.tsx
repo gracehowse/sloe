@@ -7,9 +7,10 @@
  * Today surface (`NutritionTracker`) now:
  *
  *   #1 — mounts `<WinMomentPlayer testID="today-win-moment">` over the Today
- *        screen when `redesign_winmoment` is ON and a landmark fires (the
- *        calorie ring just closed the day at/under target), and renders the
- *        OLD path (no overlay) when the flag is OFF.
+ *        screen when a landmark fires (the calorie ring just closed the day
+ *        at/under target). Unconditional: `redesign_winmoment` collapsed
+ *        permanently-on (ENG-1651) — the old flag-OFF no-overlay path no
+ *        longer exists in source, so there's nothing left to assert there.
  *   #2 — threads the hook's `pulse` boolean down to the calorie ring so the
  *        progress stroke pulses (`data-pulse="true"`) on the target-hit —
  *        the web colour/motion analog of mobile's success haptic.
@@ -118,8 +119,10 @@ vi.mock("../../src/app/components/ui/use-mobile", () => ({
   useIsDesktop: () => true,
 }));
 
-// Flag map driven per-test. `redesign_winmoment` is the only flag this
-// suite cares about; everything else stays OFF (matching the cold path).
+// Generic isFeatureEnabled stub — every flag defaults OFF (matching the
+// cold path). `redesign_winmoment` collapsed permanently-on (ENG-1651): it's
+// no longer checked in source at all, so this suite no longer forces any
+// flag on for the win-moment overlay to mount.
 const flagState: { current: Record<string, boolean> } = { current: {} };
 vi.mock("../../src/lib/analytics/track.ts", () => ({
   track: vi.fn(),
@@ -224,9 +227,7 @@ describe("Today win-moment wiring (gaps #1 + #2)", { timeout: 15_000 }, () => {
     vi.useRealTimers();
   });
 
-  it("flag ON + landmark crossed → mounts WinMomentPlayer", () => {
-    flagState.current = { redesign_winmoment: true };
-
+  it("landmark crossed → mounts WinMomentPlayer", () => {
     // 1) Empty baseline render — the hook captures consumed=0 as `prev` and
     //    must NOT fire (no landmark yet).
     const { rerender, queryByTestId, getByTestId } = render(freshTracker());
@@ -246,20 +247,7 @@ describe("Today win-moment wiring (gaps #1 + #2)", { timeout: 15_000 }, () => {
     // file header note and ENG-1465; not asserted here.
   });
 
-  it("flag OFF → old path: no overlay even when at target", () => {
-    flagState.current = {}; // redesign_winmoment OFF
-
-    const { rerender, queryByTestId } = render(freshTracker());
-    setMeals([goalBandMeal]);
-    rerender(freshTracker());
-
-    // The whole win-moment path is inert when the flag is off.
-    expect(queryByTestId("today-win-moment")).toBeNull();
-  });
-
-  it("flag ON but no landmark crossed → no overlay (not every log fires)", () => {
-    flagState.current = { redesign_winmoment: true };
-
+  it("no landmark crossed → no overlay (not every log fires)", () => {
     // A small snack keeps consumed well below the 0.85 * target band, so
     // no landmark is crossed — the reserved moment must stay silent.
     const snack = { ...goalBandMeal, calories: 300, protein: 5, carbs: 40, fat: 10 };

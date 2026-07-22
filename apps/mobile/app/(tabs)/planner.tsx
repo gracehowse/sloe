@@ -1330,11 +1330,9 @@ export default function PlannerScreen() {
       setRowMenu({ dayIdx, mealIndexInDay }),
   });
 
-  // ENG-820 (Plan win-moment): one flag gates the whole Plan win layer — the
-  // state-aware headline tone + pulse, the 7/7 success haptic, and generate/move
-  // settle haptics. OFF preserves the flat headline + silent commits. Declared
-  // here (before the move handler) so callers below read it without a TDZ hazard.
-  const winMomentsEnabled = isFeatureEnabled("redesign_winmoment");
+  // ENG-820 (Plan win-moment): the Plan win layer — the state-aware headline
+  // tone + pulse, the 7/7 success haptic, and generate/move settle haptics —
+  // is unconditional (`redesign_winmoment` collapsed permanently-on, ENG-1651).
 
   // One-treatment soft lift (2026-06-09, docs/decisions/2026-06-09-one-card-
   // treatment-soft-elevation.md): every card directly on the Plan page ground
@@ -1365,11 +1363,8 @@ export default function PlannerScreen() {
           toSlot,
           crossDay: from.day !== to.day,
         });
-        // ENG-820 — settle haptic so a moved meal landing in its new slot is
-        // felt. Behind `redesign_winmoment`; flag-off keeps the silent move.
-        if (winMomentsEnabled) {
-          haptics.confirm();
-        }
+        // ENG-820 — settle haptic so a moved meal landing in its new slot is felt.
+        haptics.confirm();
         // ENG-1150 — re-resolve per-row fibre on both affected days before
         // persist so the day-total fibre cell follows the moved meal: mobile
         // derives displayed fibre from the rows via planMealFiberG, so rows must
@@ -1380,7 +1375,7 @@ export default function PlannerScreen() {
         return enriched;
       });
     },
-    [persistPlan, winMomentsEnabled, recipeFiberPool],
+    [persistPlan, recipeFiberPool],
   );
 
   const toggleSlot = useCallback((slot: string) => {
@@ -1487,31 +1482,27 @@ export default function PlannerScreen() {
     [planTargets],
   );
 
-  // ENG-820 — make the "Hits your targets N of 7" headline state-aware. Behind
-  // `redesign_winmoment` (resolved above as `winMomentsEnabled`) the headline is
-  // coloured by its tone (win = the reserved win token, progress = amber, calm =
-  // muted) and the win landmark fires a quiet success haptic + a one-shot scale
-  // pulse. Flag OFF keeps today's flat `colors.text` headline.
+  // ENG-820 — the "Hits your targets N of 7" headline is state-aware: coloured
+  // by its tone (win = the reserved win token, progress = amber, calm = muted)
+  // and the win landmark fires a quiet success haptic + a one-shot scale pulse.
   const summaryTone = useMemo(
     () => planWeekHeadlineTone(summaryScore),
     [summaryScore],
   );
   const summaryTitleColor = useMemo(() => {
-    if (!winMomentsEnabled) return colors.text;
     if (summaryTone === "win") return Accent.win;
     if (summaryTone === "progress") return Accent.warning;
     return colors.textSecondary; // calm — informative, not alarming
-  }, [winMomentsEnabled, summaryTone, colors.text, colors.textSecondary]);
+  }, [summaryTone, colors.textSecondary]);
 
   // One-shot pulse + success haptic when the week first crosses to 7/7 (win).
   // Keyed on the tone identity so it fires on the rising edge into `win`, never
-  // on every re-render. Inert when the win flag is off.
+  // on every re-render.
   const summaryPulse = useSharedValue(1);
   const prevSummaryToneRef = useRef<PlanWeekHeadlineTone | null>(null);
   useEffect(() => {
     const prev = prevSummaryToneRef.current;
     prevSummaryToneRef.current = summaryTone;
-    if (!winMomentsEnabled) return;
     // Only celebrate the rising edge INTO win (prev was a real non-win tone),
     // so re-mounting an already-7/7 plan doesn't replay the pulse/haptic.
     if (summaryTone === "win" && prev !== null && prev !== "win") {
@@ -1521,7 +1512,7 @@ export default function PlannerScreen() {
       );
       haptics.success();
     }
-  }, [winMomentsEnabled, summaryTone, summaryPulse]);
+  }, [summaryTone, summaryPulse]);
   const summaryTitleAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: summaryPulse.value }],
   }));
@@ -1603,8 +1594,7 @@ export default function PlannerScreen() {
           ...Type.headline,
           fontSize: 20,
           // colour is applied at the call-site via `summaryTitleColor`
-          // (ENG-820 state-aware tone behind `redesign_winmoment`; flag-off
-          // resolves back to `colors.text`).
+          // (ENG-820 state-aware tone).
           marginBottom: Spacing.xs,
         },
         summarySubtitle: {
@@ -2477,11 +2467,8 @@ export default function PlannerScreen() {
       // ENG-820 — plan-generate is one of the most consequential Plan commits;
       // give it a settle haptic so the week landing is felt, not silent. The
       // reserved loud success haptic stays with the 7/7 headline win-moment, so
-      // this is a Medium *impact* settle. Behind `redesign_winmoment`; flag-off
-      // keeps the silent generate.
-      if (winMomentsEnabled) {
-        haptics.confirm();
-      }
+      // this is a Medium *impact* settle.
+      haptics.confirm();
 
       // Group E Card 4 (premium-bar audit 2026-05-14): count how
       // many meal slots changed (different recipe vs. the snapshot
@@ -2551,7 +2538,7 @@ export default function PlannerScreen() {
     } finally {
       setGenerating(false);
     }
-  }, [savedRecipes, discoverRecipes, days, isFree, userId, enabledSlots, recipeFiberPool, planSourceSelector, planSource, winMomentsEnabled, plan, mealLockEnabled, allowBatchLeftovers, planCalorieFloor, startOffset, activePlanSlotId, adoptPlanStartDate, toast.showToast]);
+  }, [savedRecipes, discoverRecipes, days, isFree, userId, enabledSlots, recipeFiberPool, planSourceSelector, planSource, plan, mealLockEnabled, allowBatchLeftovers, planCalorieFloor, startOffset, activePlanSlotId, adoptPlanStartDate, toast.showToast]);
 
   const resetPlan = useResetPlanGate(planHasRealMeals, generatePlan);
   const requestLibraryGenerate = resetPlan.requestLibraryGenerate;
@@ -2863,8 +2850,7 @@ export default function PlannerScreen() {
               })()}
             </Text>
             {/* ENG-820 — state-aware headline. `summaryTitleColor` resolves to
-                the win/progress/calm tone behind `redesign_winmoment`, else
-                today's flat `colors.text`. The pulse fires once on the rising
+                the win/progress/calm tone. The pulse fires once on the rising
                 edge into 7/7. testID lets the parity test pin the colour. */}
             <ReAnimated.Text
               testID="plan-summary-headline"

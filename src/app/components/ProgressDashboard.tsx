@@ -602,16 +602,15 @@ function ProgressDashboardContent() {
     const tk = todayKey();
     // ENG-824 / ENG-952 — resolve the celebration tier against the PRE-save map
     // (excluding today's key so re-saving today doesn't compare to itself). The
-    // loud new-all-time-low owns precedence over the quieter milestone tier;
-    // the shared resolver keeps that decision identical to mobile. Each tier is
-    // flag-gated (`redesign_winmoment` / `progress_milestone_celebration_v1`);
-    // flag-off keeps the silent save.
+    // loud new-all-time-low (now unconditional, `redesign_winmoment` collapsed
+    // permanently-on ENG-1651) owns precedence over the quieter milestone tier,
+    // which stays flag-gated behind `progress_milestone_celebration_v1`.
     const celebration = resolveWeightSaveCelebration({
       savedKg: kg,
       priorByDay: weightKgByDay,
       targetDateKey: tk,
       goalKg: goalWeightKg,
-      winMomentEnabled: isFeatureEnabled("redesign_winmoment"),
+      winMomentEnabled: true,
       milestoneEnabled: isFeatureEnabled("progress_milestone_celebration_v1"),
     });
     const nextMap = pruneWeightKgByDay({ ...weightKgByDay, [tk]: kg });

@@ -5,8 +5,8 @@
  * Design Direction 2026).
  *
  * Same landmark contract as mobile (shared `winMomentLandmark` math), same
- * once-per-calendar-day reservation, same `redesign_winmoment` flag gate. The
- * web analog has NO haptics — it surfaces a `pulse` boolean the caller maps to
+ * once-per-calendar-day reservation. The web analog has NO haptics — it
+ * surfaces a `pulse` boolean the caller maps to
  * a green ring-stroke colour pulse, plus the active celebration the caller
  * mounts `<WinMomentPlayer />` for. Persistence uses `localStorage`
  * (`win_moment_last_date`) instead of AsyncStorage.
@@ -17,7 +17,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { track, isFeatureEnabled } from "../analytics/track";
+import { track } from "../analytics/track";
 import { AnalyticsEvents } from "../analytics/events";
 import {
   detectWinMoment,
@@ -82,8 +82,6 @@ export function useWebWinMoment({
   isToday,
   ready,
 }: UseWebWinMomentArgs): UseWebWinMoment {
-  const winEnabled = isFeatureEnabled("redesign_winmoment");
-
   const [activeCelebration, setActiveCelebration] =
     useState<WinMomentCelebration | null>(null);
   const [activeMilestone, setActiveMilestone] = useState<number | null>(null);
@@ -100,7 +98,7 @@ export function useWebWinMoment({
   }, []);
 
   useEffect(() => {
-    if (!winEnabled || !isToday || !ready || !hydratedRef.current) {
+    if (!isToday || !ready || !hydratedRef.current) {
       prevRef.current = snapshot;
       return;
     }
@@ -132,7 +130,7 @@ export function useWebWinMoment({
     } catch {
       /* analytics fire-and-forget */
     }
-  }, [winEnabled, isToday, ready, dayKey, snapshot]);
+  }, [isToday, ready, dayKey, snapshot]);
 
   const onCelebrationComplete = useCallback(() => {
     setActiveCelebration(null);

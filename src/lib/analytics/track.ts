@@ -229,7 +229,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // match) + Fable lens review on ENG-1454's under-eating string — flipped
   // per the growth-builds-default-ON convention.
 
-  "redesign_winmoment",
   "redesign_motion",
   "redesign_search_results",
   "today-weekly-insight-mobile",

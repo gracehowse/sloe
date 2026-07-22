@@ -28,12 +28,13 @@ import { DailyRing } from "../../src/app/components/suppr/daily-ring";
 // which routes the centre value through `useOdometer` — it animates from 0 and
 // jsdom never advances requestAnimationFrame, so the static read is the `0`
 // start (not a real bug; a browser settles to the true value). These tests pin
-// the centre VALUE, so force the motion flags OFF → the legacy static render.
+// the centre VALUE, so force the motion flag OFF → the legacy static render.
 // The odometer's settle behaviour is covered separately (motion/odometer tests).
+// (`redesign_winmoment` collapsed permanently-on, ENG-1651 — no longer a flag
+// to force here.)
 beforeEach(() => {
   (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__ = {
     redesign_motion: false,
-    redesign_winmoment: false,
   };
 });
 afterEach(() => {

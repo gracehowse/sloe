@@ -268,7 +268,10 @@ describe("web recipe-detail — 'Fits your day' verdict (ENG-1612, flag-gated ch
 
 /**
  * ENG-818/819 — soft elevation on the resting detail cards + the commit-CTA
- * press payoff (web analog of the mobile confirm haptic). Both flag-gated.
+ * press payoff (web analog of the mobile confirm haptic). The press payoff
+ * was gated behind `redesign_winmoment`; ENG-1651 collapsed that flag
+ * permanently-on (resolved true in every build since 2026-06-01), so the
+ * payoff class is now unconditional.
  */
 describe("web recipe-detail — ENG-818/819 elevation + commit-CTA payoff", () => {
   it("resting detail cards are FLAT white slabs on the warm page (flat-card surfaces 2026-06-12)", () => {
@@ -289,9 +292,13 @@ describe("web recipe-detail — ENG-818/819 elevation + commit-CTA payoff", () =
     ).toBe(true);
   });
 
-  it("commit CTAs carry the `redesign_winmoment`-gated press payoff class", () => {
-    expect(SRC).toMatch(/isFeatureEnabled\("redesign_winmoment"\)/);
-    expect(SRC).toMatch(/const commitCtaPayoffClass = winFeedback/);
+  it("commit CTAs carry the press payoff class (unconditional — `redesign_winmoment` collapsed permanently-on, ENG-1651)", () => {
+    // The `redesign_winmoment`-gated ternary is gone; the class assigns
+    // unconditionally now.
+    expect(SRC).not.toMatch(/isFeatureEnabled\("redesign_winmoment"\)/);
+    expect(SRC).toMatch(
+      /const commitCtaPayoffClass = "transition-all duration-200 active:scale-\[0\.97\] active:brightness-110";/,
+    );
     // Active-state scale + brightness lift — the haptic substitute on web.
     expect(SRC).toMatch(/active:scale-\[0\.97\] active:brightness-110/);
     // Wired onto the commit CTAs — the top-bar Cook, Start Cooking, and

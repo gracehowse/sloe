@@ -24,8 +24,9 @@
  *     sheet opens, plus the sheet panel's own translate/spring, for the
  *     element→sheet morph.
  *
- * Consumers gate usage behind `redesign_motion` / `redesign_winmoment`; these
- * helpers are unflagged primitives.
+ * Consumers gate usage behind `redesign_motion`; these helpers are unflagged
+ * primitives. (`redesign_winmoment` collapsed permanently-on, ENG-1651 — no
+ * longer a gate.)
  */
 import { useEffect, useRef, useState } from "react";
 import {

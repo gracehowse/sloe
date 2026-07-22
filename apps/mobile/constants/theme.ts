@@ -254,8 +254,8 @@ export const Accent = {
    * D-3), superseding the blue→purple→magenta brand spectrum and the interim
    * amber `#F2A93B` / gold that briefly shipped. A landmark-only role,
    * intentionally OUTSIDE the 6-hue action palette above. Gated behind
-   * `design_system_colours` / `redesign_winmoment` — never in the flag-off
-   * path.
+   * `design_system_colours` — never in the flag-off path. (`redesign_winmoment`
+   * collapsed permanently-on, ENG-1651 — no longer a gate.)
    *
    * `Accent.win` below is a single calm DAMSON for PERSISTENT achievement bits
    * (streak chip, milestone badge); `AccentWinGradient` is the celebration
