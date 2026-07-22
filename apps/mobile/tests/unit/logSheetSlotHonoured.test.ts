@@ -31,6 +31,15 @@ const SRC = readFileSync(
   resolve(REPO, "apps/mobile/app/(tabs)/_today/TodayScreen.tsx"),
   "utf8",
 );
+// ENG-1643 — `logHistoryItemFromSheet`'s definition (the useCallback whose
+// FIRST `name:` field must be `activeMealSlot`, not a time-of-day fallback)
+// moved out of TodayScreen.tsx into the co-located commit hook as part of
+// the screen-budget extraction. The CALL site (`logHistoryItemFromSheet(found)`)
+// stays in TodayScreen.tsx — only the definition pin below reads this file.
+const COMMITS_SRC = readFileSync(
+  resolve(REPO, "apps/mobile/app/(tabs)/_today/useLogSheetCommits.ts"),
+  "utf8",
+);
 
 describe("build-47 — LogSheet pick-handlers honour activeMealSlot", () => {
   it("recents.onPick logs via logHistoryItemFromSheet, which honours activeMealSlot", () => {
@@ -44,16 +53,19 @@ describe("build-47 — LogSheet pick-handlers honour activeMealSlot", () => {
     // Tempered-greedy: anchor on the FIRST `name:` inside the callback and
     // require it to be activeMealSlot. A plain `[\s\S]*?` slides past a reverted
     // `name: currentSlotFromTime` to a later `name: activeMealSlot` elsewhere in
-    // this 3,400-line file, so the build-47 revert would false-pass;
-    // `(?:(?!name:)[\s\S])*?` cannot cross a `name:`, so the assertion fails if
-    // the callback's first `name:` isn't activeMealSlot.
-    expect(SRC).toMatch(
+    // the file, so the build-47 revert would false-pass; `(?:(?!name:)[\s\S])*?`
+    // cannot cross a `name:`, so the assertion fails if the callback's first
+    // `name:` isn't activeMealSlot. ENG-1643 moved the definition into the
+    // co-located commit hook — read from there.
+    expect(COMMITS_SRC).toMatch(
       /const logHistoryItemFromSheet = useCallback\((?:(?!name:)[\s\S])*?name:\s*activeMealSlot/,
     );
     // Negative belt-and-braces: the build-47 time-of-day helpers must not
-    // appear as a slot source anywhere in the file.
+    // appear as a slot source anywhere in either file.
     expect(SRC).not.toMatch(/name:\s*currentSlotFromTime/);
     expect(SRC).not.toMatch(/name:\s*slotForHour\(/);
+    expect(COMMITS_SRC).not.toMatch(/name:\s*currentSlotFromTime/);
+    expect(COMMITS_SRC).not.toMatch(/name:\s*slotForHour\(/);
   });
 
   it("saved.onPick passes activeMealSlot to logSavedMealFromPanel", () => {
