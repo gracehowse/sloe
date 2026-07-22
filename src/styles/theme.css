@@ -82,6 +82,16 @@
    * (also a SupprCard-local constant, not the shared Radius token). */
   --radius-card-lg: 1.5rem;    /* 24px ↔ mobile CARD_RADIUS / TILE_RADIUS */
 
+  /** ENG-1662 — anatomy owner control sizes (web ↔ mobile parity). */
+  --icon-button-sm: 1.75rem;   /* 28px ↔ mobile IconButtonSize.sm */
+  --icon-button-md: 2.25rem;   /* 36px ↔ mobile IconButtonSize.md */
+  --icon-button-lg: 2.5rem;    /* 40px ↔ mobile IconButtonSize.lg */
+  --sheet-grabber-width: 2.25rem;  /* 36px ↔ mobile SheetGrabber.width */
+  --sheet-grabber-height: 0.25rem; /* 4px ↔ mobile SheetGrabber.height */
+  --stepper-circle-sm: 2rem;   /* 32px ↔ mobile StepperCircleSize.sm */
+  --stepper-circle-md: 2.5rem; /* 40px ↔ mobile StepperCircleSize.md */
+  --stepper-circle-lg: 2.75rem;/* 44px ↔ mobile StepperCircleSize.lg */
+
   /** ── SLOE LIGHT PALETTE — Phase 0 token foundation (2026-06-03) ──
    *  Values-only re-skin: every token NAME is unchanged so no component
    *  breaks; only the hexes move from the blue "8-slot lock" to the warm

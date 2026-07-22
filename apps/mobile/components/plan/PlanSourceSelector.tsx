@@ -1,6 +1,7 @@
 import * as React from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { SupprRadio } from "@/components/ui/SupprRadio";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -71,14 +72,7 @@ export function PlanSourceSelector({
                 selected && { borderColor: colors.tint, backgroundColor: accent.primarySoft },
               ]}
             >
-              <View
-                style={[
-                  styles.radio,
-                  { borderColor: selected ? colors.tint : colors.textTertiary },
-                ]}
-              >
-                {selected ? <View style={[styles.radioDot, { backgroundColor: colors.tint }]} /> : null}
-              </View>
+              <SupprRadio checked={selected} accentColor={colors.tint} />
               <View style={styles.textWrap}>
                 <View style={styles.titleRow}>
                   <Text style={[styles.title, { color: colors.text }]}>
@@ -126,15 +120,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.xl,
     borderWidth: 1,
   },
-  radio: {
-    width: 18,
-    height: 18,
-    borderRadius: Radius.full,
-    borderWidth: 1.8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  radioDot: { width: 8, height: 8, borderRadius: 4 },
   textWrap: { flex: 1, minWidth: 0 },
   titleRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
   title: { fontSize: 13, fontWeight: "700" },

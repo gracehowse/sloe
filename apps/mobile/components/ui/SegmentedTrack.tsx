@@ -4,6 +4,7 @@ import { Radius, ShadowColor, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { CountBadge } from "@/components/ui/CountBadge";
 
 /**
  * SegmentedTrack — THE §8 segmented control (ENG-1375 S2/S3, component-grammar
@@ -135,21 +136,7 @@ export function SegmentedTrack<T extends string = string>({
               {opt.label}
             </Text>
             {opt.badge !== undefined && opt.badge > 0 ? (
-              <View
-                style={[
-                  styles.badge,
-                  { backgroundColor: active ? colors.text : colors.border },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.badgeText,
-                    { color: active ? colors.primaryForeground : colors.textSecondary },
-                  ]}
-                >
-                  {opt.badge > 999 ? "999+" : opt.badge}
-                </Text>
-              </View>
+              <CountBadge count={opt.badge} active={active} />
             ) : null}
           </PressableScale>
         );
@@ -203,19 +190,5 @@ const styles = StyleSheet.create({
   },
   labelActive: {
     fontWeight: "600",
-  },
-  // Count badge — treatment copied verbatim from SubTabPill's badge pill
-  // (ENG-1532 amendment) so the flag swap keeps the Shopping count familiar.
-  badge: {
-    minWidth: 20,
-    height: 18,
-    paddingHorizontal: Spacing.xs,
-    borderRadius: Radius.full,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: "700",
   },
 });

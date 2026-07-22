@@ -5,6 +5,10 @@ import { Check, Info } from "lucide-react-native";
 import { Accent, Radius } from "@/constants/theme";
 import { isFeatureEnabled } from "@/lib/analytics";
 import { formatNutritionTrustTierLabel } from "@suppr/nutrition-core/sourceLabel";
+import {
+  chipBaseStyle,
+  chipSearchLabelStyle,
+} from "@/components/ui/chipGeometry";
 
 /**
  * `<SearchResultConfidenceChip>` — the legible Verified / Estimated
@@ -29,9 +33,10 @@ import { formatNutritionTrustTierLabel } from "@suppr/nutrition-core/sourceLabel
  * language cannot drift between the three logging entry points. Mirrors
  * the search-results prototype `.conf.verified` / `.conf.estimated`.
  *
- * NOTE: distinct from `components/ui/ConfidenceChip.tsx` (the neutral grey
- * low/medium/high TDEE pill, D-2026-04-27-12) — different role, different
- * tokens. Do not collapse the two.
+ * NOTE: distinct ROLES from `ConfidenceChip` (TDEE low/medium/high) and
+ * `TrustChip` (source provenance) — callers pass tier/variant explicitly.
+ * Geometry is shared via `chipGeometry.ts` (ENG-1662); do not merge the
+ * three into one prop union without preserving those product roles.
  */
 
 export type SearchResultConfidenceTier = "verified" | "estimated";
@@ -89,10 +94,10 @@ export function SearchResultConfidenceChip({
       testID={testID ?? "confidence-chip"}
       accessibilityRole="text"
       accessibilityLabel={`${displayLabel} nutrition data`}
-      style={[styles.chip, { backgroundColor: bg }, style]}
+      style={[chipBaseStyle, styles.chip, { backgroundColor: bg }, style]}
     >
       <Glyph size={11} color={fg} strokeWidth={tier === "verified" ? 3 : 2.4} />
-      <Text style={[styles.label, { color: fg }]} numberOfLines={1}>
+      <Text style={[chipSearchLabelStyle, styles.label, { color: fg }]} numberOfLines={1}>
         {displayLabel}
       </Text>
     </View>
@@ -100,21 +105,8 @@ export function SearchResultConfidenceChip({
 }
 
 const styles = StyleSheet.create({
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 4,
-    height: 20,
-    paddingHorizontal: 8,
-    borderRadius: Radius.full, // tags census 2026-06-10 — tag family is round
-  },
-  label: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 0.2,
-    lineHeight: 14,
-  },
+  chip: {},
+  label: {},
 });
 
 export default SearchResultConfidenceChip;

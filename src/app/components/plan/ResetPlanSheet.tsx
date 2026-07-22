@@ -4,6 +4,9 @@ import * as React from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
 import { SupprButton } from "../suppr/suppr-button";
+import { SheetShell } from "../ui/sheet-shell";
+import { SupprRadio } from "../ui/suppr-radio";
+import { SupprNotice } from "../ui/suppr-notice";
 import {
   RESET_PLAN_SHEET_COPY,
   type ResetPlanMode,
@@ -42,15 +45,7 @@ function RadioRow({
         <span className="block text-sm font-semibold text-foreground">{title}</span>
         <span className="mt-0.5 block text-xs text-muted-foreground">{subtitle}</span>
       </span>
-      <span
-        className={[
-          "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-[1.8px]",
-          checked ? "border-primary" : "border-muted-foreground/60",
-        ].join(" ")}
-        aria-hidden
-      >
-        {checked ? <span className="h-2 w-2 rounded-full bg-primary" /> : null}
-      </span>
+      <SupprRadio checked={checked} aria-hidden />
     </button>
   );
 }
@@ -68,78 +63,70 @@ export function ResetPlanSheet({
     if (open) setMode("keep");
   }, [open]);
 
-  if (!open) return null;
-
   const copy = RESET_PLAN_SHEET_COPY;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 sm:items-center"
-      role="presentation"
-      onClick={() => !loading && onOpenChange(false)}
+    <SheetShell
+      open={open}
+      onClose={() => !loading && onOpenChange(false)}
+      data-testid="reset-plan-sheet"
+      role="dialog"
+      aria-labelledby="reset-plan-title"
+      className="w-full max-w-md sm:mx-auto"
     >
-      <div
-        role="dialog"
-        aria-labelledby="reset-plan-title"
-        className="w-full max-w-md rounded-t-2xl bg-card shadow-lg sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-        data-testid="reset-plan-sheet"
-      >
-        <div className="px-5 pt-4">
-          <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-border" />
-          <h2 id="reset-plan-title" className="text-lg font-bold text-foreground">
-            {copy.title}
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{copy.insight}</p>
-        </div>
+      <h2 id="reset-plan-title" className="text-lg font-bold text-foreground">
+        {copy.title}
+      </h2>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{copy.insight}</p>
 
-        <div className="mt-4 px-5" role="radiogroup" aria-label="Reset plan mode">
-          <div className="overflow-hidden rounded-xl border border-border">
-            <RadioRow
-              checked={mode === "keep"}
-              title={copy.keep.title}
-              subtitle={copy.keep.subtitle}
-              onSelect={() => setMode("keep")}
-            />
-            <RadioRow
-              checked={mode === "clear"}
-              title={copy.clear.title}
-              subtitle={copy.clear.subtitle}
-              onSelect={() => setMode("clear")}
-            />
-          </div>
-          {mode === "clear" ? (
-            <div
-              className="mt-3 flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
-              data-testid="reset-plan-clear-warning"
-            >
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-              <span>{copy.clearWarning}</span>
-            </div>
-          ) : null}
+      <div className="mt-4" role="radiogroup" aria-label="Reset plan mode">
+        <div className="overflow-hidden rounded-xl border border-border">
+          <RadioRow
+            checked={mode === "keep"}
+            title={copy.keep.title}
+            subtitle={copy.keep.subtitle}
+            onSelect={() => setMode("keep")}
+          />
+          <RadioRow
+            checked={mode === "clear"}
+            title={copy.clear.title}
+            subtitle={copy.clear.subtitle}
+            onSelect={() => setMode("clear")}
+          />
         </div>
-
-        <div className="flex gap-3 border-t border-border p-5">
-          <SupprButton
-            variant="ghost"
-            className="flex-1"
-            disabled={loading}
-            onClick={() => onOpenChange(false)}
+        {mode === "clear" ? (
+          <SupprNotice
+            tone="destructive"
+            variant="inline"
+            className="mt-3 text-sm text-destructive"
+            data-testid="reset-plan-clear-warning"
+            leading={<AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />}
           >
-            {copy.cancel}
-          </SupprButton>
-          <SupprButton
-            variant="primary"
-            className="flex-1"
-            loading={loading}
-            onClick={() => onConfirm(mode)}
-            data-testid="reset-plan-confirm"
-          >
-            <RefreshCw className="mr-2 h-4 w-4" aria-hidden />
-            {copy.confirm}
-          </SupprButton>
-        </div>
+            {copy.clearWarning}
+          </SupprNotice>
+        ) : null}
       </div>
-    </div>
+
+      <div className="mt-5 flex gap-3 border-t border-border pt-5">
+        <SupprButton
+          variant="ghost"
+          className="flex-1"
+          disabled={loading}
+          onClick={() => onOpenChange(false)}
+        >
+          {copy.cancel}
+        </SupprButton>
+        <SupprButton
+          variant="primary"
+          className="flex-1"
+          loading={loading}
+          onClick={() => onConfirm(mode)}
+          data-testid="reset-plan-confirm"
+        >
+          <RefreshCw className="mr-2 h-4 w-4" aria-hidden />
+          {copy.confirm}
+        </SupprButton>
+      </div>
+    </SheetShell>
   );
 }

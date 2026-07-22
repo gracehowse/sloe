@@ -1,5 +1,6 @@
 "use client";
 
+import { SupprRadio } from "./ui/suppr-radio";
 import {
   type PlanSourceMode,
   PLAN_SOURCE_MODES,
@@ -67,21 +68,7 @@ export function PlanSourceSelector({
                   : "border-border bg-card hover:bg-muted/60",
               ].join(" ")}
             >
-              <span
-                className={[
-                  "flex items-center justify-center rounded-full border-[1.8px]",
-                  selected ? "border-primary" : "border-muted-foreground/60",
-                ].join(" ")}
-                style={{ width: 18, height: 18, flex: "none" }}
-                aria-hidden
-              >
-                {selected ? (
-                  <span
-                    className="rounded-full bg-primary"
-                    style={{ width: 8, height: 8 }}
-                  />
-                ) : null}
-              </span>
+              <SupprRadio checked={selected} aria-hidden />
               <span className="flex-1 min-w-0">
                 <span className="flex items-center gap-2">
                   <span className="text-[13px] font-bold text-foreground">

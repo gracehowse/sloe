@@ -41,12 +41,12 @@ export function SkeletonRow({
       aria-busy="true"
       aria-live="polite"
       className={cn(
-        "flex items-center gap-3 rounded-lg border border-border bg-card p-3",
+        "flex items-center gap-3 rounded-[var(--radius-card-lg)] border border-border bg-card p-3",
         className,
       )}
       {...props}
     >
-      {thumb ? <Shimmer className="size-10 shrink-0 rounded-md" /> : null}
+      {thumb ? <Shimmer className="size-10 shrink-0 rounded-xl" /> : null}
       <div className="flex flex-1 flex-col gap-1.5">
         <Shimmer className="h-3.5 w-3/5 rounded-sm" />
         {lines >= 2 ? <Shimmer className="h-3 w-2/5 rounded-sm" /> : null}
@@ -77,7 +77,7 @@ export function SkeletonCard({
       aria-busy="true"
       aria-live="polite"
       className={cn(
-        "flex flex-col gap-3 overflow-hidden rounded-[var(--radius-card)] border border-border bg-card",
+        "flex flex-col gap-3 overflow-hidden rounded-[var(--radius-card-lg)] border border-border bg-card",
         className,
       )}
       {...props}

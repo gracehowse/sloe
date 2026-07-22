@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { cn } from "./utils";
+import { CountBadge } from "./count-badge";
 
 /**
  * SegmentedTrack — THE §8 segmented control (ENG-1375 S2/S3, component-grammar
@@ -132,19 +133,7 @@ export function SegmentedTrack<T extends string = string>({
           >
             <span>{opt.label}</span>
             {opt.badge !== undefined && opt.badge > 0 ? (
-              // Count badge — pill treatment copied from SubTabPill's badge
-              // (ENG-1532 amendment); count caps at 999+ per the ratified
-              // cross-platform badge behaviour (mobile SegmentedTrack matches).
-              <span
-                className={cn(
-                  "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold",
-                  active
-                    ? "bg-foreground text-background"
-                    : "bg-border text-muted-foreground",
-                )}
-              >
-                {opt.badge > 999 ? "999+" : opt.badge}
-              </span>
+              <CountBadge count={opt.badge} active={active} />
             ) : null}
           </button>
         );

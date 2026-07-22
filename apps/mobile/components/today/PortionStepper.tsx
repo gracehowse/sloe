@@ -2,6 +2,7 @@ import React, { memo, useEffect, useState } from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import { Minus, Plus } from "lucide-react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { StepperCircleButton } from "@/components/ui/StepperCircleButton";
 import { IconSize, Radius, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import type { ThemeColors } from "@/hooks/use-theme-colors";
@@ -69,16 +70,15 @@ function PortionStepperImpl({
   return (
     <>
       <View style={s.stepperRow}>
-        <PressableScale
+        <StepperCircleButton
           onPress={() => commit(value - step)}
-          haptic="selection"
-          accessibilityRole="button"
           accessibilityLabel="Decrease portion"
           testID={`${testIDPrefix}-minus`}
-          style={[s.stepBtn, { borderColor: colors.border, backgroundColor: colors.inputBg }]}
+          size="lg"
+          bordered
         >
           <Minus size={IconSize.base} color={colors.text} strokeWidth={2.25} />
-        </PressableScale>
+        </StepperCircleButton>
         <TextInput
           style={[s.stepValue, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
           keyboardType="decimal-pad"
@@ -89,16 +89,15 @@ function PortionStepperImpl({
           accessibilityLabel="Portion multiplier"
           testID={`${testIDPrefix}-input`}
         />
-        <PressableScale
+        <StepperCircleButton
           onPress={() => commit(value + step)}
-          haptic="selection"
-          accessibilityRole="button"
           accessibilityLabel="Increase portion"
           testID={`${testIDPrefix}-plus`}
-          style={[s.stepBtn, { borderColor: colors.border, backgroundColor: colors.inputBg }]}
+          size="lg"
+          bordered
         >
           <Plus size={IconSize.base} color={colors.text} strokeWidth={2.25} />
-        </PressableScale>
+        </StepperCircleButton>
       </View>
       <View style={s.chipRow}>
         {chips.map((chip) => {
@@ -133,7 +132,6 @@ function PortionStepperImpl({
 
 const s = StyleSheet.create({
   stepperRow: { flexDirection: "row", alignItems: "center", gap: Spacing.sm },
-  stepBtn: { width: 44, height: 44, borderRadius: Radius.full, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   stepValue: { flex: 1, height: 44, borderWidth: 1, borderRadius: Radius.md, fontSize: 16, fontWeight: "700" },
   chipRow: { flexDirection: "row", flexWrap: "wrap", gap: Spacing.xs, marginTop: Spacing.sm },
   // Chips census (2026-06-10): §7 family — fully round, hairline.

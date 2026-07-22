@@ -1,7 +1,6 @@
 import * as React from "react";
 import {
   Keyboard,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -11,7 +10,8 @@ import {
 } from "react-native";
 import { Minus, Plus } from "lucide-react-native";
 
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { StepperCircleButton } from "@/components/ui/StepperCircleButton";
+import { IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -114,22 +114,16 @@ export function ServingStepper({
       ]}
       testID={testIdPrefix ? `${testIdPrefix}-stepper` : undefined}
     >
-      <Pressable
+      <StepperCircleButton
         onPress={handleDecrement}
-        accessibilityRole="button"
         accessibilityLabel="Decrease amount"
-        hitSlop={8}
-        style={({ pressed }) => [
-          styles.btn,
-          btnTint,
-          { opacity: pressed ? 0.6 : 1 },
-          (parsed ?? min) <= min && { opacity: 0.35 },
-        ]}
         disabled={(parsed ?? min) <= min}
+        size="sm"
         testID={testIdPrefix ? `${testIdPrefix}-decrement` : undefined}
+        style={btnTint}
       >
         <Minus size={18} color={colors.text} strokeWidth={2.25} />
-      </Pressable>
+      </StepperCircleButton>
       <TextInput
         value={value}
         onChangeText={onChange}
@@ -142,22 +136,16 @@ export function ServingStepper({
         testID={testIdPrefix ? `${testIdPrefix}-input` : undefined}
       />
       <Text style={[styles.unit, { color: colors.textSecondary }]}>{displayUnit}</Text>
-      <Pressable
+      <StepperCircleButton
         onPress={handleIncrement}
-        accessibilityRole="button"
         accessibilityLabel="Increase amount"
-        hitSlop={8}
-        style={({ pressed }) => [
-          styles.btn,
-          btnTint,
-          { opacity: pressed ? 0.6 : 1 },
-          (parsed ?? min) >= max && { opacity: 0.35 },
-        ]}
         disabled={(parsed ?? min) >= max}
+        size="sm"
         testID={testIdPrefix ? `${testIdPrefix}-increment` : undefined}
+        style={btnTint}
       >
         <Plus size={18} color={colors.text} strokeWidth={2.25} />
-      </Pressable>
+      </StepperCircleButton>
     </View>
   );
 }
@@ -171,15 +159,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xs,
     paddingVertical: 4,
     gap: Spacing.xs,
-  },
-  btn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    // backgroundColor lifted to an inline `btnTint` (flag-aware accent) — see
-    // the component body. Module-level styles can't read `useAccent()`.
-    alignItems: "center",
-    justifyContent: "center",
   },
   input: {
     minWidth: 48,

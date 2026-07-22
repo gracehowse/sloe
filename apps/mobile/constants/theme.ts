@@ -1189,6 +1189,36 @@ export const IconSize = {
 } as const;
 
 /**
+ * ENG-1662 — IconButton hit-target diameters (bell / calendar / kebab / close).
+ * One circle size per role; screens must not restate 28/36/40 literals.
+ * ↔ web `--icon-button-sm/md/lg` in `src/styles/theme.css`.
+ */
+export const IconButtonSize = {
+  sm: 28,
+  md: 36,
+  lg: 40,
+} as const;
+
+/**
+ * ENG-1662 — bottom-sheet grabber (one chassis across SheetShell consumers).
+ * 36×4, full-radius cap. ↔ web `--sheet-grabber-*`.
+ */
+export const SheetGrabber = {
+  width: 36,
+  height: 4,
+} as const;
+
+/**
+ * ENG-1662 — stepper ± circle diameters (ServingStepper / NumberStepper /
+ * PortionStepper). Three sizes only — no per-screen literals.
+ */
+export const StepperCircleSize = {
+  sm: 32,
+  md: 40,
+  lg: 44,
+} as const;
+
+/**
  * Production design spec §1.1 — Reanimated spring configs.
  *
  * Pass these directly to `withSpring(toValue, Spring.softSheet)` /

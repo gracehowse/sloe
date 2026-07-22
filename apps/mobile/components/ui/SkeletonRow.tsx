@@ -7,7 +7,8 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
-import { Radius, Spacing } from "@/constants/theme";
+import { Spacing } from "@/constants/theme";
+import { CARD_RADIUS, INSET_RADIUS } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -47,13 +48,17 @@ export function SkeletonRow({
       accessibilityLabel="Loading"
       style={[
         styles.row,
-        { backgroundColor: colors.card, borderColor: colors.cardBorder },
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.cardBorder,
+          borderRadius: CARD_RADIUS,
+        },
         style,
       ]}
     >
       {thumb ? (
         <Shimmer
-          style={{ width: 40, height: 40, borderRadius: Radius.sm }}
+          style={{ width: 40, height: 40, borderRadius: INSET_RADIUS }}
         />
       ) : null}
       <View style={styles.body}>
@@ -91,7 +96,11 @@ export function SkeletonCard({
       accessibilityLabel="Loading"
       style={[
         styles.card,
-        { backgroundColor: colors.card, borderColor: colors.cardBorder },
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.cardBorder,
+          borderRadius: CARD_RADIUS,
+        },
         style,
       ]}
     >
@@ -189,7 +198,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: Spacing.md,
     padding: Spacing.md,
-    borderRadius: Radius.md,
     borderWidth: StyleSheet.hairlineWidth,
   },
   body: {
@@ -197,7 +205,6 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   card: {
-    borderRadius: Radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: "hidden",
   },

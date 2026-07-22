@@ -4,6 +4,7 @@ import { Check, Sparkles } from "lucide-react-native";
 import { Accent, Colors, Radius, Spacing, Type } from "@/constants/theme";
 import { isFeatureEnabled } from "@/lib/analytics";
 import type { TrustChipVariant } from "@suppr/shared/types/trust";
+import { chipBaseStyle, chipLabelStyle } from "@/components/ui/chipGeometry";
 
 /**
  * Mobile `<TrustChip>` — production design spec §1.6.
@@ -98,6 +99,7 @@ export function TrustChip({ variant, label, style, testID }: TrustChipProps) {
       accessibilityRole="text"
       accessibilityLabel={displayLabel}
       style={[
+        chipBaseStyle,
         styles.chip,
         { backgroundColor: cfg.bg },
         style,
@@ -109,7 +111,7 @@ export function TrustChip({ variant, label, style, testID }: TrustChipProps) {
       {cfg.glyph === "sparkles" ? (
         <Sparkles size={10} color={cfg.fg} strokeWidth={2} />
       ) : null}
-      <Text style={[styles.label, { color: cfg.fg }]} numberOfLines={1}>
+      <Text style={[chipLabelStyle, styles.label, { color: cfg.fg }]} numberOfLines={1}>
         {displayLabel}
       </Text>
     </View>
@@ -117,19 +119,8 @@ export function TrustChip({ variant, label, style, testID }: TrustChipProps) {
 }
 
 const styles = StyleSheet.create({
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    gap: 4,
-    height: 22,
-    paddingHorizontal: 8,
-    paddingVertical: Spacing.xs,
-    borderRadius: Radius.full,
-  },
-  label: {
-    ...Type.caption,
-  },
+  chip: {},
+  label: {},
 });
 
 export default TrustChip;
