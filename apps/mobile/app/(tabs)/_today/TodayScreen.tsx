@@ -2832,7 +2832,7 @@ export default function TrackerScreen() {
           paddingVertical: 14,
           alignItems: "center",
         },
-        submitBtnText: { color: accent.primarySolid, ...Type.headline },
+        submitBtnText: { color: accent.primarySolid, ...Type.button },
 
         // Audit 2026-05-04 #34: previously a full-card offline banner
         // crowded the Today top and looked like a content row. Slim pill

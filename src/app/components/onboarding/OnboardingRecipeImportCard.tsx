@@ -284,7 +284,7 @@ function ImportSuccess({
 function MiniStat({ n, u }: { n: string; u: string }) {
   return (
     <div>
-      <div className="text-[15px] font-bold text-foreground tabular-nums tracking-tight">
+      <div className="text-base font-bold text-foreground tabular-nums tracking-tight">
         {n}
       </div>
       <div className="text-[10px] font-semibold uppercase tracking-[0.08em] mt-0.5 text-muted-foreground">

@@ -1,6 +1,7 @@
 "use client";
 
 import { TrendingUp } from "lucide-react";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { WEEKLY_ROLLING_DENOMINATOR_HINT } from "../../../lib/copy/today";
 import { weekSummaryHeading, type WeekSummaryMode } from "../../../lib/nutrition/weekSummaryWindow";
 
@@ -35,6 +36,11 @@ export function TodayWeeklyRollingCard({
     : isWeekDeficit
       ? "text-[var(--success)]"
       : "text-[var(--accent-warning-solid)]";
+  // type_scale_v1 (visible-resize): text-base → text-lg, the T4 in-card
+  // row-numeral register, matching steps-card rows; off = legacy text-base
+  // (kill switch).
+  const typeScaleV1 = isFeatureEnabled("type_scale_v1");
+  const rowValueSizeClass = typeScaleV1 ? "text-lg" : "text-base";
   const rows: { label: string; value: string }[] = [
     {
       label: `Avg daily ${isWeekDeficit ? "deficit" : "surplus"}`,
@@ -65,7 +71,7 @@ export function TodayWeeklyRollingCard({
           <div key={row.label} className="flex items-center justify-between">
             <span className="text-muted-foreground">{row.label}</span>
             <span
-              className={`font-[family-name:var(--font-headline)] text-base font-medium tabular-nums ${valueClasses}`}
+              className={`font-[family-name:var(--font-headline)] ${rowValueSizeClass} font-medium tabular-nums ${valueClasses}`}
             >
               {row.value}
             </span>

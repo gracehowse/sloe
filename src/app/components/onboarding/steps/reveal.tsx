@@ -149,7 +149,7 @@ export function RevealStep({ compact = false }: RevealProps) {
         <ProgressiveText
           as="h1"
           animate={progressiveText}
-          className={`md:hidden font-[family-name:var(--font-headline)] font-medium tracking-tight m-0 mb-5 text-foreground-brand leading-tight ${compact ? "text-[24px]" : "text-[24px]"}`}
+          className={`md:hidden font-[family-name:var(--font-headline)] font-medium tracking-tight m-0 mb-5 text-foreground-brand leading-tight ${isFeatureEnabled("type_scale_v1") ? (compact ? "text-2xl" : "text-3xl") : (compact ? "text-[24px]" : "text-[24px]")}`}
           style={{ letterSpacing: "-0.01em", textWrap: "balance" } as React.CSSProperties}
         >
           Your plan is ready.
@@ -258,7 +258,7 @@ export function RevealStep({ compact = false }: RevealProps) {
         <div className="bg-card border border-border rounded-xl p-3.5 grid grid-cols-2 gap-3">
           <div>
             <div className="section-label">{bmrLabel}</div>
-            <div className="text-lg font-bold tabular-nums text-foreground tracking-tight mt-0.5">
+            <div className={`${isFeatureEnabled("type_scale_v1") ? "font-[family-name:var(--font-headline)] text-xl font-normal" : "text-lg font-bold"} tabular-nums text-foreground tracking-tight mt-0.5`}>
               {targets.bmr.toLocaleString()}
               <span className="text-[11px] text-muted-foreground font-medium ml-1">
                 kcal
@@ -267,7 +267,7 @@ export function RevealStep({ compact = false }: RevealProps) {
           </div>
           <div>
             <div className="section-label">{tdeeLabel}</div>
-            <div className="text-lg font-bold tabular-nums text-foreground tracking-tight mt-0.5">
+            <div className={`${isFeatureEnabled("type_scale_v1") ? "font-[family-name:var(--font-headline)] text-xl font-normal" : "text-lg font-bold"} tabular-nums text-foreground tracking-tight mt-0.5`}>
               {targets.tdee.toLocaleString()}
               <span className="text-[11px] text-muted-foreground font-medium ml-1">
                 kcal

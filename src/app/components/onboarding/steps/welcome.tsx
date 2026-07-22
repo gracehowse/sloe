@@ -56,7 +56,7 @@ export function WelcomeStep() {
         <ProgressiveText
           as="p"
           animate={progressiveText}
-          className="m-0 mt-5 max-w-[18ch] font-[family-name:var(--font-headline)] text-[18px] italic leading-snug md:text-[24px]"
+          className="m-0 mt-5 max-w-[18ch] font-[family-name:var(--font-headline)] text-lg italic leading-snug md:text-2xl"
           style={{ color: "var(--accent-frost)" }}
         >
           Cook what you love. Still reach your goals.
@@ -106,7 +106,7 @@ export function WelcomeStep() {
 
 function TrustItem({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <span className="flex items-center gap-1.5 text-[13px] font-medium">
+    <span className="flex items-center gap-1.5 text-sm font-medium">
       {icon}
       {label}
     </span>

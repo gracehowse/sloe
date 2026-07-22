@@ -100,6 +100,7 @@ export default function VoiceLogSheet({
   // ENG-974 — 1-indexed "refine by describing" round for the current result.
   const [refineRound, setRefineRound] = useState(1);
   const refineEnabled = isFeatureEnabled("log_refine_describe_v1");
+  const typeScaleV1 = isFeatureEnabled("type_scale_v1"); // ENG-1002 — whole-app font-scale gate
 
   useEffect(() => {
     if (visible) {
@@ -417,9 +418,7 @@ export default function VoiceLogSheet({
                   borderRadius: Radius.md,
                 }}
               >
-                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>
-                  {stage === "review" ? "Back" : "Cancel"}
-                </Text>
+                <Text style={typeScaleV1 ? { ...Type.button, color: colors.text } : { fontSize: 14, fontWeight: "600", color: colors.text }}>{stage === "review" ? "Back" : "Cancel"}</Text>
               </Pressable>
               {stage === "input" && (
                 <Pressable
@@ -435,7 +434,7 @@ export default function VoiceLogSheet({
                     backgroundColor: transcript.trim() ? accent.primary : colors.cardBorder,
                   }}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Estimate</Text>
+                  <Text style={typeScaleV1 ? { ...Type.button, color: colors.primaryForeground } : { fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Estimate</Text>
                 </Pressable>
               )}
               {stage === "error" && (

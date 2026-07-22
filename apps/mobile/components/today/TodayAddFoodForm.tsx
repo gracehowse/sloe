@@ -162,7 +162,7 @@ function TodayAddFoodFormImpl(props: TodayAddFoodFormProps) {
           style={{ flex: 1 }}
         >
           <Search size={16} color={accent.primarySolid} style={{ marginRight: Spacing.xs }} />
-          <Text style={{ ...Type.headline, color: accent.primarySolid }}>Search</Text>
+          <Text style={{ ...Type.button, color: accent.primarySolid }}>Search</Text>
         </SupprButton>
       </View>
     </View>

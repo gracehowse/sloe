@@ -280,7 +280,7 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <div className="text-right">
-                    <p className="text-[15px] font-extrabold text-[var(--macro-protein)] tabular-nums">{Math.round(d.protein)}g</p>
+                    <p className="text-base font-extrabold text-[var(--macro-protein)] tabular-nums">{Math.round(d.protein)}g</p>
                     <p className="text-[11px] text-muted-foreground">{hit ? "On target" : `${pct}% of goal`}</p>
                   </div>
                   <Icons.forward className="w-4 h-4 text-muted-foreground" />

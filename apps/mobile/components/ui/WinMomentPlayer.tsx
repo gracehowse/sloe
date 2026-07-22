@@ -58,6 +58,7 @@ import Animated, {
 
 import { Accent, Type } from "@/constants/theme";
 import { useWinGradient } from "@/context/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { useReduceMotion } from "@/hooks/use-reduce-motion";
 import {
   STREAK_WIN_SUBHEAD,
@@ -167,6 +168,8 @@ export function WinMomentPlayer({
 }: WinMomentPlayerProps) {
   const reduceMotion = useReduceMotion();
   const streakMilestone = showStreakMilestoneDisplay(celebration, milestone);
+  // ENG-1002/type_scale_v1 — whole-app font-family + size consistency gate.
+  const typeScaleV1 = isFeatureEnabled("type_scale_v1");
   // Win-moment gradient — the clay-mid Sloe brand gradient (plum → clay →
   // honey). The Frost secondary-colour exploration was retired 2026-06-08
   // (ENG-997), so `useWinGradient()` now always returns this clay gradient.
@@ -366,10 +369,14 @@ export function WinMomentPlayer({
           <Text
             testID={streakMilestone ? "win-moment-milestone" : "win-moment-pct"}
             style={{
-              ...Type.ringValue,
-              fontSize: streakMilestone ? 56 : 36,
-              lineHeight: streakMilestone ? 56 : 36,
-              color: Accent.win,
+              ...(typeScaleV1
+                ? { ...(streakMilestone ? Type.ringValueLg : Type.cardHeroValue), color: Accent.win }
+                : {
+                    ...Type.ringValue,
+                    fontSize: streakMilestone ? 56 : 36,
+                    lineHeight: streakMilestone ? 56 : 36,
+                    color: Accent.win,
+                  }),
               fontVariant: ["tabular-nums"],
             }}
           >

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Flame, Footprints } from "lucide-react";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { todayHealthConnectActiveCaloriesHint } from "../../../lib/copy/today";
 
 /**
@@ -78,7 +79,13 @@ export function TodayStepsCard({
             <Flame className="h-[18px] w-[18px] text-[var(--activity)]" aria-hidden />
             Active energy
           </span>
-          <span className="font-[family-name:var(--font-headline)] text-lg font-semibold tabular-nums text-foreground">
+          <span
+            className={
+              isFeatureEnabled("type_scale_v1")
+                ? "font-[family-name:var(--font-headline)] text-lg font-medium tabular-nums text-foreground"
+                : "font-[family-name:var(--font-headline)] text-lg font-semibold tabular-nums text-foreground"
+            }
+          >
             {activityBurnKcal != null ? (
               <>
                 {activityBurnKcal.toLocaleString()}

@@ -99,7 +99,7 @@ function TodayFirstMealEmptyStateImpl({
         style={{ marginTop: Spacing.xs, alignSelf: "center" }}
       >
         <Plus size={16} color={Accent.primaryForeground} />
-        <Text style={{ ...Type.headline, color: Accent.primaryForeground, marginLeft: Spacing.sm }}>Log a meal</Text>
+        <Text style={{ ...Type.button, color: Accent.primaryForeground, marginLeft: Spacing.sm }}>Log a meal</Text>
       </SupprButton>
       {showTip && (
         <View

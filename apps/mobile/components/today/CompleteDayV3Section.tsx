@@ -2,6 +2,7 @@ import React, { memo } from "react";
 import { Text, View } from "react-native";
 import Svg, { Circle, Polyline } from "react-native-svg";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 import {
   COMPLETE_DAY_V3_COPY,
   buildCompleteDayCoachQuote,
@@ -46,6 +47,9 @@ function CompleteDayV3SectionImpl({
     proteinTargetG,
   });
   const { baseline, projected, endY } = completeDayTrendlinePoints();
+  // type_scale_v1 — whole-app font-family + size consistency gate; off →
+  // the exact legacy stat-tile numeral (Type.headline + fontSize 22 override).
+  const typeScaleV1 = isFeatureEnabled("type_scale_v1");
 
   const stats = [
     {
@@ -86,7 +90,13 @@ function CompleteDayV3SectionImpl({
               alignItems: "center",
             }}
           >
-            <Text style={{ ...Type.headline, fontSize: 22, color: stat.color, fontVariant: ["tabular-nums"] }}>
+            <Text
+              style={{
+                ...(typeScaleV1 ? Type.statValue : { ...Type.headline, fontSize: 22 }),
+                color: stat.color,
+                fontVariant: ["tabular-nums"],
+              }}
+            >
               {stat.value}
             </Text>
             <Text

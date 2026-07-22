@@ -1117,10 +1117,10 @@ export default function LibraryScreen() {
                       photo + barcode inline) — the same destination the count-
                       row + sheet reaches, one tap shorter. */}
                   <Pressable style={styles.ctaBtnSecondary} onPress={() => router.push("/create-recipe")}>
-                    <Text style={styles.ctaBtnSecondaryText}>Create your own</Text>
+                    <Text style={[styles.ctaBtnSecondaryText, isFeatureEnabled("type_scale_v1") ? { ...Type.button, color: colors.text } : null]}>Create your own</Text>
                   </Pressable>
                   <Pressable style={styles.ctaBtnSecondary} onPress={() => router.push("/(tabs)/discover")}>
-                    <Text style={styles.ctaBtnSecondaryText}>Explore Discover</Text>
+                    <Text style={[styles.ctaBtnSecondaryText, isFeatureEnabled("type_scale_v1") ? { ...Type.button, color: colors.text } : null]}>Explore Discover</Text>
                   </Pressable>
                 </View>
               </View>

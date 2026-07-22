@@ -586,12 +586,9 @@ function MacroTile({
           Family carries the weight; the `g` unit + pct stay sans. */}
       <Text
         style={{
-          fontFamily: FontFamily.serifRegular,
-          fontSize: 22,
+          ...Type.statValue,
           color: colors.text,
-          letterSpacing: -0.5,
           fontVariant: ["tabular-nums"],
-          lineHeight: 24,
         }}
       >
         {value}
@@ -647,14 +644,12 @@ function overlineStyle(
 function summaryNumStyle(
   colors: ReturnType<typeof useThemeColors>,
 ): TextStyle {
-  return {
-    fontSize: 18,
-    fontWeight: "700",
-    fontVariant: ["tabular-nums"],
-    color: colors.text,
-    letterSpacing: -0.4,
-    marginTop: 2,
-  };
+  // Shared numeral props (incl. the optical marginTop nudge) hoisted once so
+  // the flag ON/OFF branches stay byte-identical without duplicating literals.
+  const shared: TextStyle = { fontVariant: ["tabular-nums"], color: colors.text, marginTop: 2 };
+  return isFeatureEnabled("type_scale_v1")
+    ? { ...Type.statValue, ...shared }
+    : { fontSize: 18, fontWeight: "700", letterSpacing: -0.4, ...shared };
 }
 function summaryUnitStyle(
   colors: ReturnType<typeof useThemeColors>,

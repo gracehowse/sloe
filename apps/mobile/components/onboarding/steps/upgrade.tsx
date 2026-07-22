@@ -27,7 +27,7 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
-import { track } from "@/lib/analytics";
+import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
@@ -46,6 +46,7 @@ export function UpgradeStep() {
   const [savingPlan, setSavingPlan] = React.useState(false);
   // ENG-1510 — no price const here: the exact figure is deferred to the App
   // Store (localised/VAT-inclusive), so this step never prints a GBP amount.
+  const typeScaleV1Enabled = isFeatureEnabled("type_scale_v1");
 
   React.useEffect(() => {
     track(AnalyticsEvents.onboarding_upgrade_step_viewed, { platform: "mobile" });
@@ -151,7 +152,13 @@ export function UpgradeStep() {
         {savingPlan ? (
           <ActivityIndicator size="small" color={accent.primaryForeground} />
         ) : (
-          <Text style={[Type.body, { color: accent.primaryForeground, fontWeight: "700" }]}>
+          <Text
+            style={
+              typeScaleV1Enabled
+                ? [Type.button, { color: accent.primaryForeground }]
+                : [Type.body, { color: accent.primaryForeground, fontWeight: "700" }]
+            }
+          >
             Start free trial
           </Text>
         )}

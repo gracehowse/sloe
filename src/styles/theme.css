@@ -1108,6 +1108,22 @@
     letter-spacing: -0.01em;
   }
 
+  /** Card-payoff hero numeral — mirror of mobile `Type.cardHeroValue`. The
+   *  T2 card-hero tier, one step below the Today ring's `--ring-value`-class
+   *  numeral (48px), fixing the inverted 52>48 hierarchy where a card's own
+   *  payoff number rendered larger than the app's actual apex numeral.
+   *  Reuses `--text-display` (36px) — no new scale step. Kept in lockstep
+   *  with `apps/mobile/constants/theme.ts :: Type.cardHeroValue`
+   *  (36/40/400/-0.5). Sole source of truth for a card's own hero payoff
+   *  number — do not hand-roll `text-[36px]` at a call site. */
+  .card-hero-value {
+    font-family: var(--font-headline);
+    font-size: var(--text-display); /* 36px */
+    line-height: 2.5rem;
+    font-weight: 400;
+    letter-spacing: -0.014em; /* -0.5px @ 36 */
+  }
+
   /** Standard page-chrome title — ENG-1574/1577. Today is an explicit
    * exception and keeps its wordmark + ring-first composition. */
   .page-title {

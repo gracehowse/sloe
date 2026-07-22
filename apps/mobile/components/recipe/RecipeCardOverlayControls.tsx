@@ -11,7 +11,8 @@ import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Bookmark, FolderPlus } from "lucide-react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
-import { Radius, Spacing, ShadowColor } from "@/constants/theme";
+import { Radius, Spacing, ShadowColor, Type } from "@/constants/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { useThemeColors, type ThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
 import type { RecipeCollection } from "@suppr/shared/recipes/recipeCollections";
@@ -40,6 +41,11 @@ export function RecipeCardOverlayControls({
   const accent = useAccent();
   const [sheetVisible, setSheetVisible] = useState(false);
   const styles = stylesFor(colors);
+  // type_scale_v1 — Draft badge label moves onto Type.label; flag-OFF keeps
+  // the legacy hand-rolled 11/700 assembly. Applied at the JSX style prop
+  // (not inside `stylesFor`'s StyleSheet.create) since that helper is a
+  // static context.
+  const typeScaleV1 = isFeatureEnabled("type_scale_v1");
 
   return (
     <>
@@ -60,7 +66,14 @@ export function RecipeCardOverlayControls({
       </PressableScale>
       {showDraft ? (
         <View style={styles.draftBadge} pointerEvents="none">
-          <Text style={styles.draftBadgeText}>Draft</Text>
+          <Text
+            style={[
+              styles.draftBadgeText,
+              typeScaleV1 ? { ...Type.label, color: colors.background } : null,
+            ]}
+          >
+            Draft
+          </Text>
         </View>
       ) : collectionsEnabled && collections.length > 0 ? (
         <PressableScale

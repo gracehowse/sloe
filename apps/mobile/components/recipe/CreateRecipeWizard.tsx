@@ -67,7 +67,7 @@ import { useAuth } from "@/context/auth";
 import { supabase } from "@/lib/supabase";
 import { authedFetch } from "@/lib/authedFetch";
 import { getSupprApiBase } from "@/lib/supprWeb";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { AddRowButton } from "@/components/ui/AddRowButton";
@@ -1366,7 +1366,7 @@ export default function CreateRecipeWizard() {
               style={{ gap: Spacing.sm }}
             >
               <Check size={20} color="#fff" />
-              <Text style={styles.primaryBtnText}>Save private</Text>
+              <Text style={[styles.primaryBtnText, isFeatureEnabled("type_scale_v1") ? { ...Type.button, color: "#fff" } : null]}>Save private</Text>
             </SupprButton>
             <SupprButton
               variant="ghost"

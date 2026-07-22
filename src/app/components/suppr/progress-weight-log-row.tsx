@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Icons } from "../ui/icons";
 import { SupprButton } from "./suppr-button.tsx";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 
 /**
  * ProgressWeightLogRow — the weight card's inline log affordance: the quick
@@ -55,7 +56,11 @@ export function ProgressWeightLogRow({
       </div>
       <p
         data-testid="weight-input-supportive-copy"
-        className="mt-1.5 text-center text-[13px] italic text-muted-foreground font-[family-name:var(--font-headline)]"
+        className={`mt-1.5 text-center text-muted-foreground ${
+          isFeatureEnabled("type_scale_v1")
+            ? "text-sm"
+            : "text-[13px] italic font-[family-name:var(--font-headline)]"
+        }`}
       >
         Every check-in gives us better data for you.
       </p>

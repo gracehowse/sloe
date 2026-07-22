@@ -1183,6 +1183,7 @@ function LogSheetDailyProgress({
   macroConsumed: MacroConsumed;
 }) {
   const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
+  const typeScaleV1 = isFeatureEnabled("type_scale_v1"); // whole-app font-scale gate; off → legacy Type.title + fontSize:20
   const kcalTarget = Math.round(macroTargets.calories);
   const kcalConsumed = Math.round(macroConsumed.calories);
   // ENG-1453: the kcal figure carries state colour like its P/C/F
@@ -1198,12 +1199,7 @@ function LogSheetDailyProgress({
         <Text style={[Type.label, { color: colors.textTertiary, fontSize: 10 }]}>
           Daily progress
         </Text>
-        <Text
-          style={[
-            Type.title,
-            { color: kcalOver ? colors.overBudgetFg : colors.text, fontSize: 20, marginTop: 2 },
-          ]}
-        >
+        <Text style={[typeScaleV1 ? Type.heroValue : Type.title, { color: kcalOver ? colors.overBudgetFg : colors.text, marginTop: 2, ...(typeScaleV1 ? null : { fontSize: 20 }) }]}>
           {kcalConsumed}{" "}
           <Text style={{ fontSize: 14, color: colors.textSecondary, fontFamily: Type.body.fontFamily }}>
             / {kcalTarget} kcal

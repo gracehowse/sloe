@@ -1000,6 +1000,24 @@ export const Type = {
     fontWeight: '500' as const,
     letterSpacing: -0.35,
   },
+  /** Card-payoff hero numeral — the T2 card-hero tier, one step below
+   *  `ringValue` (48). Fixes the inverted 52>48 hierarchy where a card's own
+   *  payoff numeral (e.g. a stat-card headline) was rendering LARGER than
+   *  the Today ring's centre value, the actual apex numeral of the app.
+   *  Newsreader (serif) to match every other big-numeral token on this
+   *  ramp. 36 sits in the mobile type-scale DISPLAY band
+   *  (`check-type-scale-mobile.mjs`), so this token is ramp-legal the
+   *  moment it's added — no ratchet re-pin needed. Web mirror:
+   *  `.card-hero-value` in `src/styles/theme.css` (reuses `--text-display`,
+   *  no new web scale step). Sole source of truth for a card's own hero
+   *  payoff number — do not hand-roll `fontSize: 36` at a call site. */
+  cardHeroValue: {
+    fontFamily: FontFamily.serifRegular,
+    fontSize: 36,
+    lineHeight: 40,
+    fontWeight: '400' as const,
+    letterSpacing: -0.5,
+  },
   /** Serif stat row under the ring. ENG-1099 M4 set 18/22; bumped to 22/26
    *  (2026-06-16, design-director) so the second-most-important data on Today
    *  (Goal/Eaten/Bonus) reads as a real stat row, not a footnote under the 48px

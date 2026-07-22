@@ -36,7 +36,7 @@ function TodayFreshDayLogPillImpl({ hour, onPress }: TodayFreshDayLogPillProps) 
       style={{ marginTop: Spacing.sm, alignSelf: "center" }}
     >
       <Plus size={16} color={Accent.primaryForeground} />
-      <Text style={{ ...Type.headline, color: Accent.primaryForeground, marginLeft: Spacing.sm }}>
+      <Text style={{ ...Type.button, color: Accent.primaryForeground, marginLeft: Spacing.sm }}>
         {label}
       </Text>
     </SupprButton>

@@ -7,6 +7,7 @@ import { SupprButton } from "@/components/ui/SupprButton";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 import type { WeekdayIndex } from "@suppr/shared/push/weighInReminder";
 
 /**
@@ -104,6 +105,7 @@ export function WeighInReminderPicker({
   const colors = useThemeColors();
   const accent = useAccent();
   const insets = useSafeAreaInsets();
+  const typeScaleV1Enabled = isFeatureEnabled("type_scale_v1");
 
   return (
     <Modal
@@ -176,7 +178,12 @@ export function WeighInReminderPicker({
             }}
           >
             <View style={{ flex: 1, paddingRight: Spacing.md }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text }}>
+              <Text
+                style={{
+                  ...(typeScaleV1Enabled ? Type.captionStrong : { fontSize: 15, fontWeight: "600" }),
+                  color: colors.text,
+                }}
+              >
                 Send weigh-in reminder
               </Text>
               <Text

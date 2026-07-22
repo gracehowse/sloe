@@ -1,7 +1,7 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
 import { Check, Sparkles } from "lucide-react-native";
-import { Accent, Colors, Radius, Spacing } from "@/constants/theme";
+import { Accent, Colors, Radius, Spacing, Type } from "@/constants/theme";
 import { isFeatureEnabled } from "@/lib/analytics";
 import type { TrustChipVariant } from "@suppr/shared/types/trust";
 
@@ -128,9 +128,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
   },
   label: {
-    fontSize: 11,
-    fontWeight: "500",
-    lineHeight: 14,
+    ...Type.caption,
   },
 });
 

@@ -542,6 +542,15 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // is the kill switch if mobile misbehaves. Off → S13 card closes the sheet
   // (kill switch). Web + mobile — keep in sync with apps/mobile/lib/analytics.ts.
   "log_session_tray_v1",
+  // Whole-app font-family + size consistency gate: adopts `.card-hero-value`
+  // (36px serif, one card-payoff numeral tier below the ring's own centre
+  // value) and the rest of the type ladder on card-hero / stat-tile numerals +
+  // CTA labels that currently render off-ramp or larger than the ring's own
+  // centre value. DEFAULT-ON per the beta-window "always flag on" policy; off →
+  // every gated surface keeps its exact pre-existing font size/family (kill
+  // switch). No Linear ticket yet — file one before flag cleanup. Keep in sync
+  // with apps/mobile/lib/analytics.ts.
+  "type_scale_v1",
 ]);
 
 /**
@@ -700,6 +709,14 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   ships ON as a kill switch rather than a dark 0% gate. Bullet kept
  *   here as the moved-flag record. Keep in sync with
  *   `apps/mobile/lib/analytics.ts`.
+ *
+ * - `type_scale_v1` — the whole-app font-family + size consistency gate
+ *   (`.card-hero-value` + the rest of the type ladder on card-hero /
+ *   stat-tile numerals + CTA labels that render off-ramp or larger than the
+ *   ring's centre value). MOVED to `REDESIGN_DEFAULT_ON` 2026-07-22
+ *   (ship-on-for-sim practice); off keeps every gated surface's exact
+ *   pre-existing size/family (kill switch). No Linear ticket yet — file one
+ *   before flag cleanup. Keep in sync with `apps/mobile/lib/analytics.ts`.
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "logsheet_ai_method_tooltip",

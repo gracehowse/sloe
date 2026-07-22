@@ -5,6 +5,7 @@ import { useAccent } from "@/context/theme";
 import { useMacroColors } from "@/lib/macroColors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { formatMacroAdherenceBar } from "@suppr/nutrition-core/progressWeekReport";
 import { formatAdherenceHeadline } from "@suppr/nutrition-core/adherenceDisplay";
@@ -76,6 +77,10 @@ export function ProgressAverageAdherence({
   if (adherencePct == null) return null;
   const sub = colors.textSecondary;
   const text = colors.text;
+  // `type_scale_v1` (whole-app font consistency gate) — resolved once, used
+  // by both the overshoot and normal headline styles below. Legacy
+  // Type.display/40/44 stays intact in the else path.
+  const bigStat = isFeatureEnabled("type_scale_v1");
   // `adherence_over_display` (audit P1-3): above the 110% band the headline
   // flips to an overshoot reading ("11% over", amber) so a >100% number can
   // never read as a *better* score. The flag gates ONLY the over branch; the
@@ -152,7 +157,7 @@ export function ProgressAverageAdherence({
         // the destructive-red ring carve-out. Mirror: web.
         <Text
           testID="progress-adherence-pct"
-          style={{ ...Type.display, fontSize: 40, lineHeight: 44, color: Accent.warningSolid, marginTop: Spacing.sm, fontVariant: ["tabular-nums"] }}
+          style={{ ...(bigStat ? Type.cardHeroValue : { ...Type.display, fontSize: 40, lineHeight: 44 }), color: Accent.warningSolid, marginTop: Spacing.sm, fontVariant: ["tabular-nums"] }}
         >
           {overDisplay.value}
           <Text style={{ fontSize: 22, color: Accent.warningSolid }}>{overDisplay.suffix}</Text>
@@ -160,7 +165,7 @@ export function ProgressAverageAdherence({
       ) : (
         <Text
           testID="progress-adherence-pct"
-          style={{ ...Type.display, fontSize: 40, lineHeight: 44, color: text, marginTop: Spacing.sm, fontVariant: ["tabular-nums"] }}
+          style={{ ...(bigStat ? Type.cardHeroValue : { ...Type.display, fontSize: 40, lineHeight: 44 }), color: text, marginTop: Spacing.sm, fontVariant: ["tabular-nums"] }}
         >
           {adherencePct}
           <Text style={{ fontSize: 22, color: sub }}>%</Text>

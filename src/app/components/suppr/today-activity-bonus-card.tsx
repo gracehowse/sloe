@@ -181,6 +181,11 @@ export function TodayActivityBonusCard({
   // an affirming giant "0 kcal maintenance".
   const emptyHeadline =
     energyV1 && netEnergyHeadlineState(totalBurnKcal, consumedCalories) === "empty";
+  // type_scale_v1 — whole-app font-scale gate; off → exact legacy classes.
+  const typeScaleV1 = isFeatureEnabled("type_scale_v1");
+  const netEmptyHeadlineClass = typeScaleV1 ? "card-hero-value text-muted-foreground" : "font-[family-name:var(--font-headline)] text-[28px] font-medium leading-none text-muted-foreground";
+  const netHeadlineClass = typeScaleV1 ? "card-hero-value tabular-nums" : "font-[family-name:var(--font-headline)] text-[52px] font-medium leading-none tabular-nums";
+  const statValueClass = typeScaleV1 ? "font-[family-name:var(--font-headline)] text-xl font-normal tabular-nums text-foreground" : "font-[family-name:var(--font-headline)] text-lg font-medium tabular-nums text-foreground";
 
   let weekBurn = 0;
   let weekConsumed = 0;
@@ -285,10 +290,7 @@ export function TodayActivityBonusCard({
           {emptyHeadline ? (
             <>
               {/* ENG-1506 — empty state: em-dash on the type ladder, no 52px zero. */}
-              <p
-                data-testid="today-activity-bonus-net-headline"
-                className="font-[family-name:var(--font-headline)] text-[28px] font-medium leading-none text-muted-foreground"
-              >
+              <p data-testid="today-activity-bonus-net-headline" className={netEmptyHeadlineClass}>
                 {NET_ENERGY_EMPTY_HEADLINE}
               </p>
               <p className="mt-2 mb-4 text-[13px] text-muted-foreground">
@@ -300,7 +302,7 @@ export function TodayActivityBonusCard({
           <div className="flex items-baseline gap-2">
             <span
               data-testid="today-activity-bonus-net-headline"
-              className="font-[family-name:var(--font-headline)] text-[52px] font-medium leading-none tabular-nums"
+              className={netHeadlineClass}
               style={{ color: chipColor }}
             >
               {Math.abs(net).toLocaleString()}
@@ -357,9 +359,7 @@ export function TodayActivityBonusCard({
               <Flame className="h-4 w-4 text-[var(--activity)]" aria-hidden />
               <span className={LABEL_CLASS}>Burned</span>
             </div>
-            <p className="font-[family-name:var(--font-headline)] text-lg font-medium tabular-nums text-foreground">
-              {totalBurnKcal.toLocaleString()}
-            </p>
+            <p className={statValueClass}>{totalBurnKcal.toLocaleString()}</p>
           </div>
           <div className="w-px bg-border" />
           <div className="flex-1">
@@ -367,9 +367,7 @@ export function TodayActivityBonusCard({
               <Utensils className="h-4 w-4 text-muted-foreground" aria-hidden />
               <span className={LABEL_CLASS}>Eaten</span>
             </div>
-            <p className="font-[family-name:var(--font-headline)] text-lg font-medium tabular-nums text-foreground">
-              {consumedCalories.toLocaleString()}
-            </p>
+            <p className={statValueClass}>{consumedCalories.toLocaleString()}</p>
           </div>
           {hasMaintenanceTile ? (
             <>
@@ -379,9 +377,7 @@ export function TodayActivityBonusCard({
                   <Target className="h-4 w-4 text-primary" aria-hidden />
                   <span className={LABEL_CLASS}>Maintenance</span>
                 </div>
-                <p className="font-[family-name:var(--font-headline)] text-lg font-medium tabular-nums text-foreground">
-                  {maintenanceTdeeKcal!.toLocaleString()}
-                </p>
+                <p className={statValueClass}>{maintenanceTdeeKcal!.toLocaleString()}</p>
                 {/* ENG-1506 — explicit source qualifier under the kcal. */}
                 {energyV1 && maintenanceSource ? (
                   <p

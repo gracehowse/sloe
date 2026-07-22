@@ -10,7 +10,7 @@
  *
  * Layout:
  *   - Eyebrow `Type.label` primary "THIS WEEK".
- *   - Headline `Type.headline` 17pt 700 — engine-generated commentary.
+ *   - Headline `Type.headline` 17pt 500 — engine-generated commentary.
  *   - Body body-tier 12pt text-secondary — engine commentary explainer
  *     with bolded `tabular-nums` numerals inline.
  *   - <ConfidenceChip> inline at the end of the body.
@@ -30,6 +30,7 @@ import {
 } from "../../../lib/nutrition/progressCommentary";
 import { SupprCard } from "../ui/suppr-card";
 import { Icons } from "../ui/icons";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 
 export interface ProgressHeadlineProps {
   commentary: ProgressCommentaryResult;
@@ -60,7 +61,11 @@ export function ProgressHeadline({
         THIS WEEK
       </p>
       <h2
-        className="mt-1.5 text-[18px] font-bold leading-snug tracking-[-0.01em] text-foreground"
+        className={`mt-1.5 leading-snug tracking-[-0.01em] text-foreground ${
+          isFeatureEnabled("type_scale_v1")
+            ? "text-lg font-medium"
+            : "text-[18px] font-bold"
+        }`}
         style={{ fontVariantNumeric: "tabular-nums" }}
       >
         {commentary.headline}

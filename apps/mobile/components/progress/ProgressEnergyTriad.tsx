@@ -111,9 +111,12 @@ export function ProgressEnergyTriad({
     // twin (now `font-headline` / 22) + the v3 `ProgressEnergyEquation` + every
     // other Sloe numeral (ring / macro / daily-calories). Was the lone sans/700
     // numeral. 22 is on the ENG-119 type scale; serif 500 is a loaded weight.
-    fontFamily: FontFamily.serifMedium,
-    fontSize: 22,
-    fontWeight: "500",
+    // `type_scale_v1` (whole-app font consistency gate) swaps this to the
+    // shared `Type.statValue` token; legacy serifMedium/22/500 stays in the
+    // else path until the flag ramps.
+    ...(isFeatureEnabled("type_scale_v1")
+      ? Type.statValue
+      : { fontFamily: FontFamily.serifMedium, fontSize: 22, fontWeight: "500" as const }),
     fontVariant: ["tabular-nums"],
     marginTop: Spacing.xs,
   };

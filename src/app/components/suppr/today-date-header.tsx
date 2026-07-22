@@ -129,7 +129,7 @@ export function TodayDateHeader({
               {/* S6 chrome title ruling (2026-07-10, ENG-1375): sans-bold →
                   the S6 serif-24 tab-title voice (`ScreenChrome` grammar,
                   mobile `Type.title`). */}
-              <h1 className="font-[family-name:var(--font-headline)] text-[24px] font-medium leading-[1.1] tracking-tight text-foreground-brand truncate">
+              <h1 className="font-[family-name:var(--font-headline)] text-2xl font-medium leading-[1.1] tracking-tight text-foreground-brand truncate">
                 {titleText}
               </h1>
               {dayGreeting && isToday ? (
@@ -212,7 +212,7 @@ export function TodayDateHeader({
             ) : null}
             {/* S6 chrome title ruling (2026-07-10, ENG-1375): sans-bold →
                 the S6 serif-24 tab-title voice; mobile's compact date header is still Type.headline sans — convergence call tracked in ENG-1505. */}
-            <h1 className="font-[family-name:var(--font-headline)] text-[24px] font-medium leading-[1.1] tracking-tight text-foreground-brand truncate">
+            <h1 className="font-[family-name:var(--font-headline)] text-2xl font-medium leading-[1.1] tracking-tight text-foreground-brand truncate">
               {titleText}
             </h1>
             {dayGreeting && viewMode === "day" && isToday ? (

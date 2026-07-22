@@ -14,6 +14,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react-native";
 
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { clampJournalDate, journalRangeBounds } from "@/lib/journalNavigation";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
@@ -89,6 +90,8 @@ export default function CopyMealSheet({
   // Secondary accent (Frost flag → damson, else clay) for the selected calendar
   // day, active quick-range chips, and the Copy CTA.
   const accent = useAccent();
+  // ENG-1002/type_scale_v1 — whole-app font-family + size consistency gate.
+  const typeScaleV1 = isFeatureEnabled("type_scale_v1");
   const defaultTarget = useMemo(() => addDays(sourceDayKey, 1), [sourceDayKey]);
   const [targetKey, setTargetKey] = useState(defaultTarget);
   const [quickRange, setQuickRange] = useState<QuickRange>("none");
@@ -307,7 +310,7 @@ export default function CopyMealSheet({
               accessibilityRole="button"
               accessibilityLabel="Cancel"
             >
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Cancel</Text>
+              <Text style={typeScaleV1 ? { ...Type.button, color: colors.text } : { fontSize: 14, fontWeight: "600", color: colors.text }}>Cancel</Text>
             </PressableScale>
             <PressableScale
               onPress={() => {
@@ -332,7 +335,7 @@ export default function CopyMealSheet({
               accessibilityLabel="Copy"
               accessibilityState={{ disabled: !canConfirm }}
             >
-              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Copy</Text>
+              <Text style={typeScaleV1 ? { ...Type.button, color: colors.primaryForeground } : { fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Copy</Text>
             </PressableScale>
           </View>
         </Pressable>

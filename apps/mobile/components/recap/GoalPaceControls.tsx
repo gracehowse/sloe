@@ -12,6 +12,7 @@ import { Radius, Spacing, Type } from "@/constants/theme";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 import type { EditorDbGoal } from "@suppr/nutrition-core/goalEditorPace";
 import type { DayTargetScheduleId } from "@suppr/nutrition-core/dayTargetSchedule";
 
@@ -131,16 +132,31 @@ export function CalorieScheduleOptionList({
             }}
           >
             <View style={{ flex: 1 }}>
+              {/* `type_scale_v1` (whole-app font consistency gate) — byte-matches
+                  `GoalOptionList`'s label treatment above when on; legacy raw
+                  fontSize: 14 stays in the else path. */}
               <Text
                 style={{
-                  fontSize: 14,
+                  ...(isFeatureEnabled("type_scale_v1")
+                    ? {
+                        fontFamily: Type.bodyLarge.fontFamily,
+                        fontSize: Type.bodyLarge.fontSize,
+                        lineHeight: Type.bodyLarge.lineHeight,
+                      }
+                    : { fontSize: 14 }),
                   fontWeight: selected ? "700" : "500",
                   color: selected ? colors.text : colors.textSecondary,
                 }}
               >
                 {opt.label}
               </Text>
-              <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: Spacing.xs }}>
+              <Text
+                style={{
+                  ...(isFeatureEnabled("type_scale_v1") ? Type.captionSmall : { fontSize: 13 }),
+                  color: colors.textTertiary,
+                  marginTop: Spacing.xs,
+                }}
+              >
                 {opt.desc}
               </Text>
             </View>

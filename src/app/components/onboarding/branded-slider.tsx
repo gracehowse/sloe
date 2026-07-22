@@ -180,7 +180,7 @@ export function BrandedSlider({
           }}
         >
           <div
-            className="px-2 py-1 rounded-md text-[11px] font-bold tabular-nums shadow-md"
+            className="px-2 py-1 rounded-md text-xs font-bold tabular-nums shadow-md"
             style={{
               background: accent,
               color: "var(--primary-foreground)",

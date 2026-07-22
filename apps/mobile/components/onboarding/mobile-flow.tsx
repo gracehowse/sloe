@@ -4,7 +4,7 @@ import { ActivityIndicator, Alert, Platform, Pressable, StatusBar, Text, View } 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useRouter } from "expo-router";
 import { ChevronLeft } from "lucide-react-native";
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAuth } from "@/context/auth";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -79,6 +79,7 @@ export function MobileFlow() {
   // `upgrade` (the "See Pro" ask) terminal when ON (funnel runs
   // first-log → upgrade, so skip → Today is a clean completion).
   const conversionFunnelEnabled = isFeatureEnabled(CONVERSION_FUNNEL_FLAG);
+  const typeScaleV1Enabled = isFeatureEnabled("type_scale_v1");
   const isUpgrade = currentStepId === "upgrade";
   const isFirstLog = currentStepId === "first-log";
   const isTerminal = conversionFunnelEnabled
@@ -435,8 +436,7 @@ export function MobileFlow() {
           ) : (
             <Text
               style={{
-                fontSize: 16,
-                fontWeight: "700",
+                ...(typeScaleV1Enabled ? Type.button : { fontSize: 16, fontWeight: "700" }),
                 color: !canAdvance ? colors.textTertiary : accent.primaryForeground,
               }}
             >

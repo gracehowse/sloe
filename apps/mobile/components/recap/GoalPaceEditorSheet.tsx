@@ -237,8 +237,7 @@ export function GoalPaceEditorSheet(props: GoalPaceEditorSheetProps) {
                       `kcal` unit stays sans. Family carries the weight. */}
                   <Text
                     style={{
-                      fontFamily: FontFamily.serifRegular,
-                      fontSize: 22,
+                      ...Type.statValue,
                       color: colors.text,
                       fontVariant: ["tabular-nums"],
                       marginBottom: 4,

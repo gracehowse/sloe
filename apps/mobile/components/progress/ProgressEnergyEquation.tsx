@@ -6,6 +6,7 @@ import { SupprCard } from "@/components/ui/SupprCard";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { Accent, FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 
 /**
  * ProgressEnergyEquation — Sloe v3 Progress energy balance as an EQUATION
@@ -47,6 +48,11 @@ export function ProgressEnergyEquation({
   const colors = useThemeColors();
   const isDark = useColorScheme() === "dark";
   const [showHow, setShowHow] = useState(false);
+  // `type_scale_v1` (whole-app font consistency gate) — `styles.termValue`
+  // below is a static StyleSheet.create entry, so the swap to Type.statValue
+  // is resolved once here and applied at the EqTerm JSX style prop, not
+  // inside the static sheet. Legacy termValue stays intact when off.
+  const bigStat = isFeatureEnabled("type_scale_v1");
 
   const sage = isDark ? Accent.successLight : Accent.successSolid;
   const plum = colors.navPrimary;
@@ -84,6 +90,7 @@ export function ProgressEnergyEquation({
           value={avgIntakeKcal != null ? avgIntakeKcal.toLocaleString() : "—"}
           color={colors.text}
           dim={dim}
+          bigStat={bigStat}
         />
         <EqOp color={dim}>−</EqOp>
         <EqTerm
@@ -92,6 +99,7 @@ export function ProgressEnergyEquation({
           color={semanticStatRoles ? colors.text : sage}
           dim={dim}
           stateColor={semanticStatRoles && hasMaintenance ? sage : undefined}
+          bigStat={bigStat}
         />
         <EqOp color={dim}>=</EqOp>
         <EqTerm
@@ -102,6 +110,7 @@ export function ProgressEnergyEquation({
           stateColor={semanticStatRoles && deficitKcal != null && deficitKcal !== 0
             ? isSurplus ? Accent.warning : plum
             : undefined}
+          bigStat={bigStat}
         />
       </View>
       {/* ENG-1506 — explicit source qualifier under the equation. */}
@@ -159,16 +168,21 @@ function EqTerm({
   color,
   dim,
   stateColor,
+  bigStat,
 }: {
   label: string;
   value: string;
   color: string;
   dim: string;
   stateColor?: string;
+  /** `type_scale_v1` — swaps the static `styles.termValue` to `Type.statValue`
+   *  at the style-prop layer (the StyleSheet.create entry itself can't be
+   *  conditional). See the gate resolved once in `ProgressEnergyEquation`. */
+  bigStat?: boolean;
 }) {
   return (
     <View style={styles.term}>
-      <Text style={[styles.termValue, { color }]}>{value}</Text>
+      <Text style={[styles.termValue, bigStat ? Type.statValue : null, { color }]}>{value}</Text>
       <View style={styles.termLabelRow}>
         {stateColor ? <View style={[styles.stateDot, { backgroundColor: stateColor }]} /> : null}
         <Text style={[styles.termLabel, { color: dim }]}>{label}</Text>

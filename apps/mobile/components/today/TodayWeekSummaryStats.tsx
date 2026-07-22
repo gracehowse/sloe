@@ -1,5 +1,5 @@
 import { Text, View } from "react-native";
-import { Accent, FontFamily } from "@/constants/theme";
+import { Accent, Type } from "@/constants/theme";
 import { isFeatureEnabled } from "@/lib/analytics";
 
 /**
@@ -76,7 +76,7 @@ export function TodayWeekSummaryStats({
             serif). Family carries the weight, so the sans `fontWeight: 800`
             is dropped; the labels below stay sans. */}
         <View style={{ alignItems: "center" }}>
-          <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 24, color: textColor, fontVariant: ["tabular-nums"] }}>
+          <Text style={{ ...Type.title, color: textColor, fontVariant: ["tabular-nums"] }}>
             {Math.round(totalCalories)}
           </Text>
           <Text style={{ fontSize: 11, color: textSecondaryColor }}>Total kcal</Text>
@@ -86,7 +86,7 @@ export function TodayWeekSummaryStats({
             <>
               <Text
                 testID="today-week-days-logged-stat"
-                style={{ fontFamily: FontFamily.serifRegular, fontSize: 24, color: accentPrimarySolid, fontVariant: ["tabular-nums"] }}
+                style={{ ...Type.title, color: accentPrimarySolid, fontVariant: ["tabular-nums"] }}
               >
                 {daysWithFood}/7
               </Text>
@@ -94,7 +94,7 @@ export function TodayWeekSummaryStats({
             </>
           ) : (
             <>
-              <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 24, color: accentPrimarySolid, fontVariant: ["tabular-nums"] }}>
+              <Text style={{ ...Type.title, color: accentPrimarySolid, fontVariant: ["tabular-nums"] }}>
                 {Math.round(avgCalories)}
               </Text>
               <Text style={{ fontSize: 11, color: textSecondaryColor }}>Daily avg</Text>
@@ -108,8 +108,7 @@ export function TodayWeekSummaryStats({
                 style={{
                   // SLOE Phase 0: big stat numeral in Newsreader serif (family
                   // carries the weight; sans 800 dropped).
-                  fontFamily: FontFamily.serifRegular,
-                  fontSize: 24,
+                  ...Type.title,
                   // Amber on over-burn (true surplus), success on deficit.
                   // Never red per project memory
                   // (`feedback_no_quick_temp_fixes.md` + spec §1.4).
@@ -138,7 +137,7 @@ export function TodayWeekSummaryStats({
                   inventing a deficit/surplus from a zero denominator. */}
               <Text
                 testID="today-week-net-burn-unavailable"
-                style={{ fontFamily: FontFamily.serifRegular, fontSize: 24, color: textSecondaryColor, fontVariant: ["tabular-nums"] }}
+                style={{ ...Type.title, color: textSecondaryColor, fontVariant: ["tabular-nums"] }}
               >
                 {"—"}
               </Text>
