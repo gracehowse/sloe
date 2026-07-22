@@ -11,6 +11,7 @@
  * Mock the clock with fake timers so TTL + window-rollover are deterministic.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AnalyticsEvents } from "../../src/lib/analytics/events";
 import {
   VENDOR_QUOTAS,
   QUOTA_SAFETY_FRACTION,
@@ -26,11 +27,18 @@ import {
   _resetVendorSearchCacheForTest,
 } from "../../src/lib/server/vendorSearchCache";
 
+const mockServerTrack = vi.fn(async () => ({ ok: true }));
+
+vi.mock("@/lib/analytics/serverTrack", () => ({
+  serverTrack: (...args: unknown[]) => mockServerTrack(...args),
+}));
+
 beforeEach(() => {
   // Ensure no Upstash env so we exercise the in-memory path deterministically.
   vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
   vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "");
   _resetVendorSearchCacheForTest();
+  mockServerTrack.mockClear();
 });
 
 afterEach(() => {
@@ -228,5 +236,86 @@ describe("account-level quota guard", () => {
     // Advance past the window — counter resets, allowed again.
     vi.setSystemTime(new Date("2026-06-11T00:00:00Z").getTime() + (windowSec + 1) * 1000);
     expect((await checkQuota("usda")).allowed).toBe(true);
+  });
+});
+
+describe("vendor_search_degraded PostHog event (ENG-1412)", () => {
+  it("does NOT fire while a vendor is still within budget", async () => {
+    await checkQuota("edamam");
+    await consumeQuota("edamam");
+    expect(mockServerTrack).not.toHaveBeenCalled();
+  });
+
+  it("fires with guard:'consume' the moment consumeQuota trips the guard", async () => {
+    const { cap } = VENDOR_QUOTAS.fatsecret;
+    const trip = Math.floor(cap * QUOTA_SAFETY_FRACTION);
+    for (let i = 0; i < trip; i++) await consumeQuota("fatsecret");
+    expect(mockServerTrack).not.toHaveBeenCalled();
+
+    const over = await consumeQuota("fatsecret");
+    expect(over.allowed).toBe(false);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(mockServerTrack).toHaveBeenCalledTimes(1);
+    expect(mockServerTrack).toHaveBeenCalledWith(
+      AnalyticsEvents.vendor_search_degraded,
+      "system:vendor_quota",
+      expect.objectContaining({
+        vendor: "fatsecret",
+        reason: "quota_exhausted",
+        guard: "consume",
+        used: trip + 1,
+        cap,
+      }),
+    );
+  });
+
+  it("fires with guard:'check' when checkQuota rejects an exhausted vendor", async () => {
+    const { cap } = VENDOR_QUOTAS.usda;
+    const trip = Math.floor(cap * QUOTA_SAFETY_FRACTION);
+    for (let i = 0; i < trip; i++) await consumeQuota("usda");
+    mockServerTrack.mockClear();
+
+    const rejected = await checkQuota("usda");
+    expect(rejected.allowed).toBe(false);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(mockServerTrack).toHaveBeenCalledTimes(1);
+    expect(mockServerTrack).toHaveBeenCalledWith(
+      AnalyticsEvents.vendor_search_degraded,
+      "system:vendor_quota",
+      expect.objectContaining({ vendor: "usda", reason: "quota_exhausted", guard: "check" }),
+    );
+  });
+
+  it("de-dupes to one event per vendor per quota window", async () => {
+    const { cap } = VENDOR_QUOTAS.edamam;
+    const trip = Math.floor(cap * QUOTA_SAFETY_FRACTION);
+    for (let i = 0; i < trip; i++) await consumeQuota("edamam");
+
+    await consumeQuota("edamam"); // trips → first (and only) emit for this window
+    await checkQuota("edamam");
+    await checkQuota("edamam");
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(mockServerTrack).toHaveBeenCalledTimes(1);
+  });
+
+  it("tags every vendor correctly", async () => {
+    for (const vendor of ["usda", "edamam", "fatsecret", "off"] as const) {
+      mockServerTrack.mockClear();
+      _resetVendorSearchCacheForTest();
+      const { cap } = VENDOR_QUOTAS[vendor];
+      const trip = Math.floor(cap * QUOTA_SAFETY_FRACTION);
+      for (let i = 0; i < trip; i++) await consumeQuota(vendor);
+      await consumeQuota(vendor);
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(mockServerTrack).toHaveBeenCalledWith(
+        AnalyticsEvents.vendor_search_degraded,
+        "system:vendor_quota",
+        expect.objectContaining({ vendor }),
+      );
+    }
   });
 });

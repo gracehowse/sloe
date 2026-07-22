@@ -1230,6 +1230,13 @@ export const AnalyticsEvents = {
    * Fired with distinct_id `system:upstash` from server-only monitoring hooks
    * so PostHog can count failures alongside the Sentry alert. */
   upstash_dependency_failure: "upstash_dependency_failure",
+  /** ENG-1412 / PRA-011 — a keyed food-vendor's account-wide quota guard tripped
+   * and the route skipped the live vendor call (degraded envelope). Payload:
+   * `{ vendor, guard: "check" | "consume", reason: "quota_exhausted", used, cap,
+   * trip, window_sec, label }`.
+   * Fired with distinct_id `system:vendor_quota` from `vendorSearchCache` once
+   * per vendor per quota window so PostHog can alert on vendor exhaustion. */
+  vendor_search_degraded: "vendor_search_degraded",
   /** ENG-8 — server-side voice-log route completed. Payload:
    * `{ totalElapsedMs, aiParseMs, verifyMs, itemCount, confidenceTier }`.
    * Fires on success only (errors already captured by Sentry). Used to

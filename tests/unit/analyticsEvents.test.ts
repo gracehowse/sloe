@@ -24,6 +24,10 @@ describe("AnalyticsEvents registry", () => {
     expect(AnalyticsEvents.recipe_verify_needs_review).toBe("recipe_verify_needs_review");
   });
 
+  it("registers vendor_search_degraded with the canonical value (ENG-1412)", () => {
+    expect(AnalyticsEvents.vendor_search_degraded).toBe("vendor_search_degraded");
+  });
+
   it("registers week_start_day_changed with the canonical value", () => {
     expect(AnalyticsEvents.week_start_day_changed).toBe("week_start_day_changed");
   });

@@ -288,6 +288,63 @@ So:
 Refine these numbers once we have actual traffic. They're back-of-
 envelope estimates assuming 30 days/month.
 
+## Monitoring events (not feature flags)
+
+### `vendor_search_degraded` (ENG-1412 / PRA-011)
+
+| Property | Value |
+| --- | --- |
+| Event name | `vendor_search_degraded` |
+| Type | Server-side PostHog capture (not a feature flag) |
+| Platforms | Server (`vendorSearchCache` quota guard) |
+| Owner | Grace |
+| Decision doc | [2026-07-22-vendor-search-degraded-alerts](../decisions/2026-07-22-vendor-search-degraded-alerts.md) |
+
+Fires once per vendor per quota window when the account-wide quota guard
+trips (`checkQuota` / `consumeQuota` → `quota_exhausted`) and a keyed
+vendor is skipped from the food-search chain. Payload:
+
+```json
+{
+  "vendor": "usda" | "edamam" | "fatsecret" | "off",
+  "reason": "quota_exhausted",
+  "used": 900,
+  "cap": 1000,
+  "trip": 900,
+  "window_sec": 3600,
+  "label": "USDA FDC (1,000/hr/IP)"
+}
+```
+
+`distinct_id` is `system:vendor_quota`. A matching Sentry warning is
+emitted with fingerprint `vendor_search_degraded/{vendor}/quota_exhausted`.
+
+#### Vendor quota reference (ENG-1412 re-verification)
+
+| Vendor | Cap in `VENDOR_QUOTAS` | Window | Source |
+| --- | --- | --- | --- |
+| USDA FDC | 1,000 req | 1 hour / IP | [FDC API guide](https://fdc.nal.usda.gov/api-guide) — registered api.data.gov key; DEMO_KEY is 30/hr |
+| Edamam | 1,000 req | 24 hours | `src/lib/edamam/client.ts` — free tier; Pro is usage-priced |
+| FatSecret | 10,000 req | 24 hours | Premier Free tier |
+| OFF proxy | 50,000 req | 24 hours | Internal abuse guard (OFF has no keyed cap) |
+
+The guard trips at 90% (`QUOTA_SAFETY_FRACTION`) so degradation starts
+before the vendor hard-429s.
+
+#### PostHog alert setup
+
+1. Open PostHog → **Product analytics** → **Insights** → **New insight**.
+2. Event: `vendor_search_degraded`. Break down by `vendor` if desired.
+3. Chart: **Total count** (or unique by `vendor` per day).
+4. Save insight → **Subscribe** → email alert when count **> 0** in the
+   last hour (or daily digest for lower noise).
+5. Optional: duplicate for Sentry — filter `Vendor search degraded` warnings
+   in the operational project and subscribe to Slack/email.
+
+Grace slice (ENG-1412 product call, not agent): decide whether to **drop
+Edamam** or buy the paid tier based on match-quality telemetry once this
+event is live.
+
 ## Retired flags
 
 ### `dial_flat_material_v1` (ENG-1571) — resolved without creation, 2026-07-17

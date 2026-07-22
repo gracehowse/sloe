@@ -1,3 +1,13 @@
+/**
+ * USDA FoodData Central (FDC) API client.
+ *
+ * Rate limits (re-verified ENG-1412, 2026-07-22 — https://fdc.nal.usda.gov/api-guide):
+ *   - Registered api.data.gov key: 1,000 requests / hour / IP (HTTP 429 + 1h block
+ *     when exceeded; `X-RateLimit-Limit` / `X-RateLimit-Remaining` on responses).
+ *   - DEMO_KEY (dev only): 30 requests / hour / IP.
+ *
+ * Env: `USDA_FDC_API_KEY`
+ */
 type FdcConfig = {
   apiKey: string;
 };

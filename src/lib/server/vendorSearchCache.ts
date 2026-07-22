@@ -11,7 +11,8 @@
  * users share:
  *
  *   - Edamam free tier: 1,000 requests / DAY, account-wide.
- *   - USDA FDC standard key: ~1,000 requests / HOUR.
+ *   - USDA FDC registered api.data.gov key: 1,000 requests / HOUR / IP
+ *     (re-verified ENG-1412, 2026-07-22).
  *   - FatSecret Premier Free: 10,000 requests / day (generous, but still
  *     a shared ceiling — and the OAuth token endpoint is itself metered).
  *
@@ -54,6 +55,7 @@
 import { __setUpstashRedisForTests, getRedis } from "./upstashClient";
 
 import { recordUpstashFailure } from "./upstashMonitoring";
+import { recordVendorSearchDegraded, _resetVendorSearchMonitoringForTest } from "./vendorSearchMonitoring";
 
 export type VendorId = "usda" | "edamam" | "fatsecret" | "off";
 
@@ -69,10 +71,13 @@ export type CacheLocale = string;
  * trips at `cap * SAFETY_FRACTION` so we degrade gracefully BEFORE the vendor
  * starts hard-rejecting (which would surface as errors, not a clean skip).
  *
- * Confidence on the exact numbers: Edamam 1,000/day is documented in
- * `src/lib/edamam/client.ts:6`. USDA ~1,000/hr is the standard-key default
- * (DEMO_KEY is far lower). FatSecret Premier Free is 10,000/day. If we move
- * to a paid tier, bump the cap here — the guard logic is unchanged.
+ * Confidence on the exact numbers:
+ *   - Edamam 1,000/day account-wide free tier — `src/lib/edamam/client.ts:6`.
+ *   - USDA FDC 1,000 requests/hour/IP for a registered api.data.gov key
+ *     (re-verified 2026-07-22, ENG-1412 — see `src/lib/usda/fdcClient.ts` and
+ *     https://fdc.nal.usda.gov/api-guide; DEMO_KEY is 30/hr). FatSecret
+ *     Premier Free is 10,000/day. If we move to a paid tier, bump the cap
+ *     here — the guard logic is unchanged.
  */
 export const VENDOR_QUOTAS: Record<
   VendorId,
@@ -80,8 +85,8 @@ export const VENDOR_QUOTAS: Record<
 > = {
   // 1,000/day account-wide free tier.
   edamam: { cap: 1000, windowSec: 24 * 60 * 60, label: "Edamam (1,000/day)" },
-  // ~1,000/hour standard key.
-  usda: { cap: 1000, windowSec: 60 * 60, label: "USDA FDC (~1,000/hr)" },
+  // 1,000/hour/IP registered api.data.gov key (ENG-1412 re-verified 2026-07-22).
+  usda: { cap: 1000, windowSec: 60 * 60, label: "USDA FDC (1,000/hr/IP)" },
   // 10,000/day Premier Free.
   fatsecret: { cap: 10000, windowSec: 24 * 60 * 60, label: "FatSecret (10,000/day)" },
   // ENG-1059 — OFF has no keyed account cap, but our proxy must not hammer the
@@ -374,10 +379,20 @@ export type QuotaDecision =
  * protection is the vendor's own 429, plus `consumeQuota` below.
  */
 export async function checkQuota(vendor: VendorId): Promise<QuotaDecision> {
-  const { cap } = VENDOR_QUOTAS[vendor];
+  const quota = VENDOR_QUOTAS[vendor];
+  const { cap } = quota;
   const trip = Math.floor(cap * QUOTA_SAFETY_FRACTION);
   const used = await readQuotaCount(vendor);
   if (used >= trip) {
+    void recordVendorSearchDegraded({
+      vendor,
+      guard: "check",
+      used,
+      cap,
+      trip,
+      windowSec: quota.windowSec,
+      label: quota.label,
+    });
     return { allowed: false, used, cap, reason: "quota_exhausted" };
   }
   return { allowed: true, used, cap };
@@ -403,10 +418,22 @@ export async function checkQuota(vendor: VendorId): Promise<QuotaDecision> {
  * vendor call.
  */
 export async function consumeQuota(vendor: VendorId): Promise<QuotaDecision> {
-  const { cap, windowSec } = VENDOR_QUOTAS[vendor];
+  const quota = VENDOR_QUOTAS[vendor];
+  const { cap, windowSec } = quota;
   const trip = Math.floor(cap * QUOTA_SAFETY_FRACTION);
   const key = quotaKey(vendor);
   const redis = getRedis();
+  const emitDegraded = (used: number, guard: "check" | "consume") => {
+    void recordVendorSearchDegraded({
+      vendor,
+      guard,
+      used,
+      cap,
+      trip,
+      windowSec: quota.windowSec,
+      label: quota.label,
+    });
+  };
   try {
     if (redis) {
       const used = await redis.incr(key);
@@ -416,6 +443,7 @@ export async function consumeQuota(vendor: VendorId): Promise<QuotaDecision> {
         await redis.expire(key, windowSec);
       }
       if (used > trip) {
+        emitDegraded(used, "consume");
         return { allowed: false, used, cap, reason: "quota_exhausted" };
       }
       return { allowed: true, used, cap };
@@ -431,6 +459,7 @@ export async function consumeQuota(vendor: VendorId): Promise<QuotaDecision> {
     existing.count += 1;
     store.set(key, existing);
     if (existing.count > trip) {
+      emitDegraded(existing.count, "consume");
       return { allowed: false, used: existing.count, cap, reason: "quota_exhausted" };
     }
     return { allowed: true, used: existing.count, cap };
@@ -481,4 +510,5 @@ export function _resetVendorSearchCacheForTest(): void {
   gVsc.__pm_vscMemCache = new Map();
   gVsc.__pm_vscMemQuota = new Map();
   __setUpstashRedisForTests(undefined);
+  _resetVendorSearchMonitoringForTest();
 }
