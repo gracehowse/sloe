@@ -232,7 +232,7 @@ _"How is this calculated?" affordance_
 Move this to a clearly visible button near the top of the screen, below the calorie ring — not below the fold. Use a lucide `HelpCircle` 16pt muted + "How is this calculated?" Inter 13sp `#7C8466` right-aligned with the ring. Tap → `WhyThisNumberSheet` (existing — no logic changes). This surfaces the adaptive TDEE, confidence narrative, weigh-in count, and goal/pace rationale exactly as the inventory specifies.
 
 _Recalculate button_
-Terracotta outlined button, full width, below the goal card. "Recalculate" label. Loading state: "Recalculating…" with spinner. Success state: "Updated ✓" for 1.5s, then reverts. `resolveTargets` is called — no logic changes. Win-moment haptic on success when `redesign_winmoment` flag is on.
+Terracotta outlined button, full width, below the goal card. "Recalculate" label. Loading state: "Recalculating…" with spinner. Success state: "Updated ✓" for 1.5s, then reverts. `resolveTargets` is called — no logic changes. Win-moment haptic on success — unconditional (`redesign_winmoment` collapsed permanently-on, ENG-1651; no flag left to gate it).
 
 _Edit button_
 Top-right "Edit" → `GoalPaceEditorSheet` if `goal_editor` flag on, else `/profile`. No logic changes.
@@ -329,7 +329,7 @@ _Body stats entry point_
 A row below dietary prefs: leading `User` glyph (sage), "Body stats & goal" Inter 14sp, subtitle "Height, weight, age, activity level" Inter 12sp muted, `ChevronRight`. Tap → `GoalPaceEditorSheet` if `goal_editor` flag on, else a note "Update your body stats during an annual target review." (Interim messaging until GoalPaceEditorSheet ships at 100%). This ensures the path is not invisible.
 
 _Save behaviour_
-Upserts targets, writes `target_calories_set_at` / `target_calories_source="user"` (provenance stamp), calls `recordGoalHistory(..., "settings_save")`, sets `PROFILE_TARGETS_DIRTY_KEY`, emits `profile_targets_saved`. All existing. Cancel reverts to snapshot. Win-moment haptic if `redesign_winmoment` flag on.
+Upserts targets, writes `target_calories_set_at` / `target_calories_source="user"` (provenance stamp), calls `recordGoalHistory(..., "settings_save")`, sets `PROFILE_TARGETS_DIRTY_KEY`, emits `profile_targets_saved`. All existing. Cancel reverts to snapshot. Win-moment haptic fires unconditionally (`redesign_winmoment` collapsed permanently-on, ENG-1651).
 
 **States:** loading (shimmer tiles); snapshot-ready (form enabled); saving (inputs disabled, "Save" → spinner); error (Alert, revert); save-success (dismiss + haptic).
 
@@ -671,7 +671,7 @@ Any visual or structural change from this spec ships behind a PostHog feature fl
 | `settings_redesign_v2` | All visual changes in this spec (icon rows, eyebrows, value chips, profile card serif, stats strip, sign out relocation) | Master gate for the whole redesign |
 | `settings_notification_prefs_sheet` | New `NotificationPrefsSheet.tsx` + reminder-time editor + per-kind toggles on mobile | Parity-gap close — ship as subfeature |
 | `settings_units_row` | Units / measurement system row on mobile | Parity-gap close — ship as subfeature |
-| `redesign_winmoment` | Win-moment haptic on targets save and recalculate | Already in inventory; ref here for completeness |
+| `redesign_winmoment` — **REMOVED (ENG-1651)** | Win-moment haptic on targets save and recalculate | Collapsed permanently-on — the haptic fires unconditionally in every build (has done since 2026-06-01); no gate remains |
 | `goal_editor` | `GoalPaceEditorSheet` path on `/targets` and `/profile` | Already in inventory |
 | `streak_milestones` | Milestone asterisk + `WhatsNewSheet` on streak tile | Additive; gated separately |
 
@@ -768,7 +768,7 @@ Every item from the functional inventory (INPUT A) is confirmed preserved or imp
 - [x] "How is this calculated?" → `WhyThisNumberSheet` (adaptive TDEE, confidence low/med/high, weigh-in count, goal/pace) — PRESERVED and made more prominent (above the fold)
 - [x] Edit → `GoalPaceEditorSheet` (if `goal_editor` flag) / `/profile` — PRESERVED
 - [x] Footnotes ("14-day moving average…", "~7,700 kcal ≈ 1 kg…", NIH/NHS floors, not medical advice) — PRESERVED
-- [x] Win-moment haptic (`redesign_winmoment` flag) — PRESERVED
+- [x] Win-moment haptic (`redesign_winmoment` collapsed permanently-on, ENG-1651 — unconditional, no flag) — PRESERVED
 - [x] Sub-1,200 amber safety warning — PRESERVED
 
 ### Weight-trend chart

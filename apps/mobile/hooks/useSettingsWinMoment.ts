@@ -19,21 +19,19 @@
  *     WIN token (amber `#F2A93B`), NOT the static success-green — green stays
  *     reserved for the calorie-ring state per the spine rules.
  *
- * Flag gate: the whole hook is gated behind `redesign_winmoment`. Flag OFF →
- * `celebrate()` is inert (no haptic, `active` never flips, `flashStyle` is
- * `undefined`), so today's behaviour is preserved exactly until ramp.
+ * `redesign_winmoment` collapsed permanently-on (ENG-1651) — the hook is
+ * unconditional now.
  *
  * Parity: the web analog is `useSettingsWinMoment` semantics expressed as the
  * `settings-win-flash` CSS animation on the saved card + no haptic (haptics are
- * not a web concept). Same flag, same trigger points (Health connect success +
- * target save success).
+ * not a web concept). Same trigger points (Health connect success + target
+ * save success).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type ViewStyle } from "react-native";
 
 import { Accent } from "@/constants/theme";
 import { useHaptics } from "@/hooks/useHaptics";
-import { isFeatureEnabled } from "@/lib/analytics";
 
 /** How long the win-colour wash lingers before fading back to the resting card. */
 const FLASH_MS = 1400;
@@ -44,14 +42,13 @@ export interface SettingsWinMoment {
   /** Style to spread onto the just-saved card — `undefined` when not flashing,
    *  so spreading it is a safe no-op. */
   flashStyle: ViewStyle | undefined;
-  /** Fire the win-moment: success haptic + start the colour wash. No-op when
-   *  `redesign_winmoment` is off. Safe to call from a confirmed-success branch. */
+  /** Fire the win-moment: success haptic + start the colour wash. Safe to
+   *  call from a confirmed-success branch. */
   celebrate: () => void;
 }
 
 export function useSettingsWinMoment(): SettingsWinMoment {
   const haptics = useHaptics();
-  const enabled = isFeatureEnabled("redesign_winmoment");
   const [active, setActive] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -65,12 +62,11 @@ export function useSettingsWinMoment(): SettingsWinMoment {
   );
 
   const celebrate = useCallback(() => {
-    if (!enabled) return;
     haptics.success();
     setActive(true);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setActive(false), FLASH_MS);
-  }, [enabled, haptics]);
+  }, [haptics]);
 
   const flashStyle: ViewStyle | undefined = active
     ? { backgroundColor: Accent.winSoft, borderColor: Accent.win }

@@ -8,10 +8,10 @@
  * src/lib/analytics/track.ts. An explicit dev/test force still wins so the
  * pre-redesign visual captures keep working.
  *
- * `design_system_elevation` and `design_system_icons` collapsed out of
- * REDESIGN_DEFAULT_ON (ENG-1651): both flags were removed entirely and the
- * code now ships their ON-branch styling unconditionally, so neither appears
- * in this suite's flag lists.
+ * `design_system_elevation`, `design_system_icons`, and `redesign_winmoment`
+ * collapsed out of REDESIGN_DEFAULT_ON (ENG-1651): all were removed entirely
+ * and the code now ships their ON-branch styling/behaviour unconditionally,
+ * so none appear in this suite's flag lists.
  *
  * `design_system_brandmark` likewise collapsed out of REDESIGN_DEFAULT_ON
  * (ENG-1651, lighter-touch slice): it already had zero live isFeatureEnabled
@@ -48,7 +48,6 @@ vi.mock("posthog-js", () => ({
 import { isFeatureEnabled } from "@/lib/analytics/track";
 
 const REDESIGN_FLAGS = [
-  "redesign_winmoment",
   "redesign_motion",
   "redesign_search_results",
 ];

@@ -11,9 +11,6 @@
  *     AsyncStorage (`win_moment_last_date`). A landmark crossed twice in one
  *     day (e.g. macro hit then calorie close) celebrates once; reopening Today
  *     never re-fires.
- *   - **Flag gate.** The whole reserved-celebration path is gated behind
- *     `redesign_winmoment`. Flag OFF → the hook is inert (returns no active
- *     celebration, fires no haptic), preserving today's static behaviour.
  *   - **Ordinary-log feedback.** A separate `confirmLog()` helper fires a
  *     Medium-weight confirm haptic on EVERY ordinary log — distinct from the
  *     reserved win-moment. Gated behind `redesign_motion` so the confirm beat
@@ -76,7 +73,6 @@ export function useWinMoment({
   ready,
 }: UseWinMomentArgs): UseWinMoment {
   const haptics = useHaptics();
-  const winEnabled = isFeatureEnabled("redesign_winmoment");
   const motionEnabled = isFeatureEnabled("redesign_motion");
 
   const [activeCelebration, setActiveCelebration] =
@@ -104,9 +100,9 @@ export function useWinMoment({
   }, []);
 
   useEffect(() => {
-    // Inert unless the reserved-celebration flag is on AND we're on the live
-    // today surface AND Today has hydrated AND the gate has been read.
-    if (!winEnabled || !isToday || !ready || !hydratedRef.current) {
+    // Runs whenever we're on the live today surface AND Today has hydrated
+    // AND the once-per-day gate has been read.
+    if (!isToday || !ready || !hydratedRef.current) {
       // Keep the baseline fresh so flipping back to today doesn't fire on a
       // stale diff, but don't detect while inert.
       prevRef.current = snapshot;
@@ -149,7 +145,7 @@ export function useWinMoment({
     } catch {
       /* analytics fire-and-forget */
     }
-  }, [winEnabled, isToday, ready, dayKey, snapshot, haptics]);
+  }, [isToday, ready, dayKey, snapshot, haptics]);
 
   const onCelebrationComplete = useCallback(() => {
     setActiveCelebration(null);

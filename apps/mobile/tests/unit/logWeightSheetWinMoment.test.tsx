@@ -3,15 +3,20 @@
  * review) — the reserved weight win-moment on the LogWeightSheet.
  *
  * A new all-time low is the single weight landmark worth a loud celebration:
- *   - flag ON  + new low      → loud SUCCESS notification haptic, `isNewLow: true`
- *   - flag ON  + not a low    → quiet LIGHT impact haptic,         `isNewLow: false`
- *   - flag OFF (any save)     → NO haptic,                         `isNewLow: false`
+ *   - new low       → loud SUCCESS notification haptic, `isNewLow: true`
+ *   - not a low     → quiet LIGHT impact haptic,         `isNewLow: false`
+ *
+ * `redesign_winmoment` collapsed permanently-on (ENG-1651) — the loud tier is
+ * unconditional now (`winMomentEnabled: true` is hardcoded in
+ * `LogWeightSheet.tsx`). The remaining `isFeatureEnabled` mock in this file
+ * only gates the separate, still-live `progress_milestone_celebration_v1`
+ * quiet-milestone tier — it can no longer suppress the loud new-low haptic.
  *
  * These drive the sheet through render + a save tap and assert on the haptic
  * call + the `onSaved` payload. The pure new-low math is unit-tested in
- * `tests/unit/weightWinMoment.test.ts`; this pins the WIRING (flag gate +
- * haptic split) so a refactor can't silently drop the celebration or fire a
- * loud haptic on every save.
+ * `tests/unit/weightWinMoment.test.ts`; this pins the WIRING (haptic split)
+ * so a refactor can't silently drop the celebration or fire a loud haptic on
+ * every save.
  */
 import React from "react";
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
@@ -45,7 +50,8 @@ vi.mock("@/lib/refreshAdaptiveTdee", () => ({
   refreshAdaptiveTdeeForUser: vi.fn(() => Promise.resolve()),
 }));
 
-// Flag gate — flipped per-test via `isFeatureEnabled.mockReturnValue`.
+// `progress_milestone_celebration_v1` gate — flipped per-test via
+// `isFeatureEnabled.mockReturnValue` (the only remaining flag this component reads).
 const isFeatureEnabled = vi.fn((_flag: string) => false);
 vi.mock("@/lib/analytics", () => ({
   isFeatureEnabled: (...args: [string]) => isFeatureEnabled(...args),
@@ -131,7 +137,7 @@ describe("<LogWeightSheet> weight win-moment (ENG-824)", () => {
     );
   });
 
-  it("flag OFF: no haptic of any kind, isNewLow false (silent save preserved)", async () => {
+  it("progress_milestone_celebration_v1 OFF still fires the loud haptic on a new low (redesign_winmoment collapsed permanently-on, ENG-1651 — no flag left that can suppress it)", async () => {
     isFeatureEnabled.mockReturnValue(false);
     const onSaved = vi.fn();
     const { getByTestId } = renderSheet(onSaved);
@@ -139,10 +145,10 @@ describe("<LogWeightSheet> weight win-moment (ENG-824)", () => {
     fireEvent.press(getByTestId("log-weight-save"));
     await waitFor(() => expect(onSaved).toHaveBeenCalled());
 
-    expect(notificationAsync).not.toHaveBeenCalled();
+    expect(notificationAsync).toHaveBeenCalledWith("success");
     expect(impactAsync).not.toHaveBeenCalled();
     expect(onSaved).toHaveBeenCalledWith(
-      expect.objectContaining({ isNewLow: false }),
+      expect.objectContaining({ isNewLow: true }),
     );
   });
 });

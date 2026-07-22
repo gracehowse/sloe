@@ -880,7 +880,8 @@ export const AnalyticsEvents = {
    * minimum), the single weight landmark worth a loud celebration (ENG-824,
    * Redesign — Design Direction 2026). Fires on the rising edge only (a
    * re-save that doesn't beat the low, and the first-ever weigh-in, do NOT
-   * fire) and is gated behind `redesign_winmoment`. Payload:
+   * fire). Unconditional (`redesign_winmoment` collapsed permanently-on,
+   * ENG-1651 — no longer a flag gate). Payload:
    * `{ platform: "ios" | "web" }`. Same event name web ↔ mobile so the
    * weight-celebration rate is one cross-platform funnel. Distinct from
    * `day_target_hit_win_moment_shown` (that is the calorie/macro/streak

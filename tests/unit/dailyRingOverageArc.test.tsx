@@ -13,9 +13,10 @@ import { render } from "@testing-library/react";
 import { DailyRing } from "../../src/app/components/suppr/daily-ring";
 
 beforeEach(() => {
+  // redesign_winmoment collapsed permanently-on (ENG-1651) — no longer a
+  // recognized flag name, so it's dropped from this force-flags map.
   (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__ = {
     redesign_motion: false,
-    redesign_winmoment: false,
   };
 });
 afterEach(() => {

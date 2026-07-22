@@ -28,10 +28,11 @@
  * ## Gating contract (unchanged)
  *
  *   - **Caller owns the gate.** This primitive has zero visual footprint until
- *     mounted; it does NOT read `redesign_winmoment` itself. Callers gate the
- *     mount behind `isFeatureEnabled('redesign_winmoment')` + the once-per-day
- *     / once-per-milestone logic (see `use-win-moment`). The success HAPTIC is
- *     fired by that hook on the same beat as this mount, not here.
+ *     mounted; it does NOT read any flag itself. Callers gate the mount behind
+ *     the once-per-day / once-per-milestone logic (see `use-win-moment`;
+ *     `redesign_winmoment` collapsed permanently-on, ENG-1651 — no longer a
+ *     flag check there). The success HAPTIC is fired by that hook on the same
+ *     beat as this mount, not here.
  *   - **Plays once.** On mount it runs the celebration a single time (no loop)
  *     and calls `onComplete` when it finishes.
  *   - **Reduce-motion.** When the system reduce-motion flag is on, the player

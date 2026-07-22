@@ -170,7 +170,6 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
     // likewise collapsed out (ENG-1651): both its web call sites now ship
     // their Lucide ON-branch unconditionally.
     const core = [
-      "redesign_winmoment",
       "redesign_motion",
       "redesign_search_results",
     ];
@@ -218,4 +217,10 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
   // the "core design-system flags" list above. `redesign_search_results`
   // stays flag-gated (its collapse was split out to PR #1039), so it remains
   // in the core list above.)
+
+  // (ENG-1651 — `redesign_winmoment` collapsed permanently-on: removed from
+  // REDESIGN_DEFAULT_ON on both platforms and from every call site (win-tone
+  // headline/pulse logic, weight-save haptics, weekly-checkin card mode all
+  // now unconditional), so it's no longer parsed out of either source file
+  // and no longer belongs in the "core design-system flags" list above.)
 });

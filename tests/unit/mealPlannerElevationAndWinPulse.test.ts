@@ -10,14 +10,16 @@
  *    (`apps/mobile/app/(tabs)/planner.tsx`).
  *  - Gap #33 (`redesign_winmoment`): the headline must scale-pulse on the
  *    rising edge into a 7/7 win — the web analog of the mobile one-shot spring
- *    + success haptic (`summaryPulse` + `prevSummaryToneRef`). The static
- *    colour path stays alive in the flag-off else per the feature-flag rule.
+ *    + success haptic (`summaryPulse` + `prevSummaryToneRef`). `redesign_winmoment`
+ *    collapsed permanently-on (ENG-1651): the flag was removed entirely and
+ *    the pulse now fires unconditionally on the rising edge — there is no
+ *    flag-off path left to test.
  *
  * Source-text assertions — the established convention for this heavily
  * context-dependent screen (see `mealPlannerLayoutConsolidation.test.ts` and
- * the mobile `planWinMomentParity.test.ts`). They break if either gate is
- * dropped, the flag-off fallback is lost, or the rising-edge guard regresses.
- * The pure tone classifier itself is unit-tested in `planWeekSummary.test.ts`.
+ * the mobile `planWinMomentParity.test.ts`). They break if the elevation
+ * primitive is dropped or the rising-edge guard regresses. The pure tone
+ * classifier itself is unit-tested in `planWeekSummary.test.ts`.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -64,20 +66,14 @@ describe("MealPlanner redesign_winmoment rising-edge pulse (gap #33)", () => {
     expect(SRC).toContain("setWinPulse(true)");
   });
 
-  it("is gated behind redesign_winmoment with the flag-off path inert", () => {
-    expect(SRC).toContain('isFeatureEnabled("redesign_winmoment")');
-    // Early-return when the win flag is off — no pulse for the steady state.
-    expect(SRC).toContain("if (!winMomentsEnabled) return;");
-  });
-
   it("clears the pulse after the one-shot keyframe duration so a later win can replay", () => {
     expect(SRC).toContain("setTimeout(() => setWinPulse(false), 320)");
     expect(SRC).toContain("clearTimeout(t)");
   });
 
-  it("applies the pulse class to the headline only when the flag is on AND a pulse is live", () => {
-    expect(SRC).toContain("winMomentsEnabled && winPulse ? \" planner-win-pulse\" : \"\"");
-    expect(SRC).toContain('data-pulse={winMomentsEnabled && winPulse ? "win" : undefined}');
+  it("applies the pulse class to the headline only when a pulse is live", () => {
+    expect(SRC).toContain('winPulse ? " planner-win-pulse" : ""');
+    expect(SRC).toContain('data-pulse={winPulse ? "win" : undefined}');
   });
 
   it("ships the scale keyframe inline with a prefers-reduced-motion guard (no theme.css edit)", () => {
@@ -86,11 +82,11 @@ describe("MealPlanner redesign_winmoment rising-edge pulse (gap #33)", () => {
     expect(SRC).toContain("@media (prefers-reduced-motion: reduce)");
   });
 
-  it("leaves the steady-state colour shift (transition-colors) intact for the flag-off else", () => {
+  it("leaves the steady-state colour shift (transition-colors) intact alongside the pulse", () => {
     // The colour-only payoff must survive — the pulse is additive, not a swap.
     // Sloe redesign restyled the headline to the serif plum ink
     // (`text-foreground-brand`); the `transition-colors` steady-state shift
-    // that the flag-off else rides is preserved.
+    // is preserved now that the pulse fires unconditionally (ENG-1651).
     expect(SRC).toContain("tracking-tight text-foreground-brand transition-colors");
   });
 });

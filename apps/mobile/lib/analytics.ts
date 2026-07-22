@@ -470,7 +470,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // ENG-898 — CreateRecipeActionSheet 2×2 Julienne-style source grid (import.md
   // §3.1). Default-on; off → legacy stacked ActionRow list.
   "create_recipe_action_sheet_grid_v1",
-  "redesign_winmoment",
   "redesign_motion",
   "redesign_search_results",
   "today-weekly-insight-mobile",

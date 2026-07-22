@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 
 import { supabase } from "@/lib/supabase";
-import { track, isFeatureEnabled } from "@/lib/analytics";
+import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import type { MaintenanceConfidence } from "@suppr/nutrition-core/resolveMaintenance";
 import { buildWeightRangeStats } from "@suppr/nutrition-core/progressRangeStats";
@@ -70,11 +70,11 @@ type UseTodayWeeklyCheckinParams = {
 export type UseTodayWeeklyCheckinResult = {
   weeklyCheckinOpen: boolean;
   weeklyCheckinContent: WeeklyCheckinContent | null;
-  /** ENG-805 (Redesign — Design Direction 2026): when `redesign_winmoment`
-   *  is ON the check-in is NOT auto-opened as a cold-open blocking modal —
-   *  the in-feed `WeeklyCheckinBanner` (→ /weekly-recap) is the
-   *  non-blocking entry point. Flag-OFF preserves the auto-opening modal;
-   *  TodayScreen gates the `<WeeklyCheckinModal>` render on `!checkinAsCard`. */
+  /** ENG-805 (Redesign — Design Direction 2026): the check-in is NOT
+   *  auto-opened as a cold-open blocking modal — the in-feed
+   *  `WeeklyCheckinBanner` (→ /weekly-recap) is the non-blocking entry point.
+   *  `redesign_winmoment` collapsed permanently-on (ENG-1651) — always `true`
+   *  now; kept as an explicit field since TodayScreen still reads it. */
   checkinAsCard: boolean;
   handleWeeklyCheckinAccept: () => void;
   handleWeeklyCheckinDismiss: () => void;
@@ -152,7 +152,7 @@ export function useTodayWeeklyCheckin({
   const [weeklyCheckinOpen, setWeeklyCheckinOpen] = useState(false);
   const [weeklyCheckinContent, setWeeklyCheckinContent] =
     useState<WeeklyCheckinContent | null>(null);
-  const checkinAsCard = isFeatureEnabled("redesign_winmoment");
+  const checkinAsCard = true;
   const weeklyCheckinHandledRef = useRef(false);
 
   // Weekly check-in ritual gate (PR claude/weekly-checkin-ritual-v2,
@@ -230,7 +230,7 @@ export function useTodayWeeklyCheckin({
     });
     setWeeklyCheckinContent(content);
     // ENG-805 — never cold-open the blocking modal; the in-feed banner is
-    // the only entry point (matches web + redesign_winmoment default-on).
+    // the only entry point (matches web).
 
     // Optimistically stamp the shown-at on the row so we don't re-fire
     // on a hot reload, even if the analytics emit fails. Server is

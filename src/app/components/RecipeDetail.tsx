@@ -416,13 +416,6 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
   const [activeTab, setActiveTab] = useState<"ingredients" | "steps" | "nutrition">("ingredients");
   const [cookModeOpen, setCookModeOpen] = useState(Boolean(autoOpenCookMode));
 
-  // ENG-818/819 (Redesign — Design Direction 2026) — `winFeedback` is the web
-  // analog of the mobile confirm haptic: a brief press payoff (scale + ring)
-  // on the commit CTAs (web has no Haptics API). (The former `redesignColours`
-  // read — the "Fits your day" payoff chip — is dead here: ENG-1612 extracted
-  // that chip into `RecipeFitsYourDayVerdict.tsx`, which reads its own flag.
-  // Removed 2026-07-21 rather than left as an unused stale read, ENG-1629.)
-  const winFeedback = isFeatureEnabled("redesign_winmoment");
   /** ENG-943 — "Add to shopping list" action (default-ON). */
   const recipeShoppingListEnabled = isFeatureEnabled("recipe_shopping_list_v1");
   // ENG-1247 — v3 recipe-detail prototype conformance (default-OFF). ON → hero
@@ -439,11 +432,8 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
   const gutterPadClass = gutterConvergence ? "px-pm-6" : "px-6";
   const [loggingRecipe, setLoggingRecipe] = useState(false);
   // Commit-CTA press payoff (web analog of the mobile confirm haptic). A subtle
-  // active-state scale + a brief brightness lift on press, gated on
-  // `redesign_winmoment`. Flag-off keeps the existing hover-only transition.
-  const commitCtaPayoffClass = winFeedback
-    ? "transition-all duration-200 active:scale-[0.97] active:brightness-110"
-    : "";
+  // active-state scale + a brief brightness lift on press.
+  const commitCtaPayoffClass = "transition-all duration-200 active:scale-[0.97] active:brightness-110";
 
   // Flat-card surfaces (2026-06-12, Withings grammar — decision:
   // docs/decisions/2026-06-12-flat-card-surfaces.md): resting detail cards are
@@ -3242,9 +3232,9 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
         {/* Action Buttons — Start Cooking + I Made This (matches mobile) */}
         {/* ENG-819 — web analog of the mobile confirm haptic on the recipe-detail
             commit CTAs: a brief press payoff (scale + brightness lift) via
-            `commitCtaPayoffClass`, gated on `redesign_winmoment`. Web has no
-            Haptics API, so the press motion is the tactile substitute. Start
-            Cooking stays the blue `bg-primary` commit colour. */}
+            `commitCtaPayoffClass`. Web has no Haptics API, so the press motion
+            is the tactile substitute. Start Cooking stays the blue
+            `bg-primary` commit colour. */}
         {/* Figma 332:2 reskin — action pills are radius-full (mirrors the
             mobile Start Cooking pill + the web public-share CTA). */}
         <div className="flex gap-3">

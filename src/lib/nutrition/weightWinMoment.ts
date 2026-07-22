@@ -14,7 +14,9 @@
  * returns whether the save crossed a landmark, so web and mobile celebrate on
  * EXACTLY the same condition. The platform side-effects (success haptic on
  * mobile, colour pulse on web, the reserved `WinMomentPlayer`) live in the
- * callers, gated behind `redesign_winmoment`.
+ * callers. `redesign_winmoment` collapsed permanently-on (ENG-1651); kept as
+ * an explicit boolean parameter below rather than removed, so this pure
+ * function's contract doesn't silently assume the flag forever.
  *
  * Why "strictly lower than the prior minimum":
  *   - Re-saving today's weight (an edit that doesn't beat the prior low) is not
@@ -308,7 +310,9 @@ export interface WeightSaveCelebrationArgs {
   targetDateKey: string;
   /** The user's goal weight (kg), or null when none is set. */
   goalKg: number | null;
-  /** `redesign_winmoment` flag state — gates the loud new-low tier. */
+  /** Always `true` post-ENG-1651 (`redesign_winmoment` collapsed permanently
+   *  on by both callers). Kept as an explicit parameter, not inlined, so a
+   *  hypothetical future caller can't reintroduce a flag-off path unnoticed. */
   winMomentEnabled: boolean;
   /** `progress_milestone_celebration_v1` flag state — gates the quiet tier. */
   milestoneEnabled: boolean;

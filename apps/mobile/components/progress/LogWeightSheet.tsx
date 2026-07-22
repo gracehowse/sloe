@@ -71,8 +71,7 @@ export interface LogWeightSheetProps {
     /**
      * ENG-824 (Redesign — Design Direction 2026) — the just-saved weigh-in was
      * a new all-time low (strictly below the prior minimum). The parent uses
-     * this to mount the reserved win-moment celebration. Always `false` when
-     * `redesign_winmoment` is off, so the flag-off path stays inert.
+     * this to mount the reserved win-moment celebration.
      */
     isNewLow: boolean;
     /**
@@ -139,17 +138,16 @@ export function LogWeightSheet({
     // judging the saved kg against the prior map (excluding the date being
     // written so an edit isn't compared to itself). The loud new-all-time-low
     // owns precedence over the quieter milestone tier; the shared resolver keeps
-    // that decision identical to web. Each tier is flag-gated
-    // (`redesign_winmoment` / `progress_milestone_celebration_v1`); flag-off
-    // keeps the silent save.
-    const winMomentEnabled = isFeatureEnabled("redesign_winmoment");
+    // that decision identical to web. The loud tier is now unconditional
+    // (`redesign_winmoment` collapsed permanently-on, ENG-1651); the quiet
+    // tier stays flag-gated behind `progress_milestone_celebration_v1`.
     const milestoneEnabled = isFeatureEnabled("progress_milestone_celebration_v1");
     const celebration = resolveWeightSaveCelebration({
       savedKg: kg,
       priorByDay: weightKgByDay,
       targetDateKey: targetKey,
       goalKg: goalKg ?? null,
-      winMomentEnabled,
+      winMomentEnabled: true,
       milestoneEnabled,
     });
     const newLow = celebration.isNewLow;
@@ -172,19 +170,16 @@ export function LogWeightSheet({
     setSaving(false);
     // ENG-824 — quiet <100ms confirm on every save; a loud success
     // notification is RESERVED for the new-low landmark (the parent plays the
-    // WinMomentPlayer on the same beat). Both behind `redesign_winmoment`;
-    // flag-off fires neither, preserving today's silent weigh-in.
-    if (winMomentEnabled || milestoneEnabled) {
-      if (newLow) {
-        // Loud landmark — the reserved success notification.
-        haptics.success();
-      } else if (milestoneCrossed != null) {
-        // ENG-952 — quieter milestone tier: a soft select tap, not the loud
-        // Success notification reserved for a new all-time low.
-        haptics.select();
-      } else {
-        haptics.confirm();
-      }
+    // WinMomentPlayer on the same beat).
+    if (newLow) {
+      // Loud landmark — the reserved success notification.
+      haptics.success();
+    } else if (milestoneCrossed != null) {
+      // ENG-952 — quieter milestone tier: a soft select tap, not the loud
+      // Success notification reserved for a new all-time low.
+      haptics.select();
+    } else {
+      haptics.confirm();
     }
     onSaved({
       weightKgByDay: saved.weightKgByDay,

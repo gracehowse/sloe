@@ -3,7 +3,7 @@
 **Surface:** Habits & behaviour-change layer — streaks, freezes, milestones, win-moments, weekly check-in, recap/digest, missed-yesterday, onboarding nudge queue, goal-pace re-tune. Touches Today tab, Progress tab, `/weekly-recap` (mobile), and the web `weekly-checkin-dialog`.
 **Date:** 2026-06-02
 **Status:** Design spec — not yet implemented
-**Flag gate required:** `habits_redesign_v2` for any visual/structural change. Individual sub-components already have their own flags (`redesign_winmoment`, `redesign_motion`); keep those granular gates alive.
+**Flag gate required:** `habits_redesign_v2` for any visual/structural change. Individual sub-components already have their own flags (`redesign_motion`); keep that granular gate alive. (`redesign_winmoment` was also one of these — it collapsed permanently-on and was removed from source, ENG-1651; there is nothing left to keep alive there.)
 **Author:** docs-system
 **Inputs:** functional inventory (Input A — product spec) + Mobbin benchmark (Input B)
 
@@ -459,7 +459,7 @@ _Accessibility:_ `accessibilityViewIsModal={true}` on mobile. `role="dialog"`, `
 
 ### 3.10 Win-moment overlay
 
-**Current purpose:** Lottie celebration overlay, once-per-calendar-day gate. Three landmark kinds: streak (3/7/30/100), goal-hit (≥85% ring ≤ goal), macro-hit (100–150% of target). Loud success haptic on Lottie beat. `redesign_winmoment` flag.
+**Current purpose:** Lottie celebration overlay, once-per-calendar-day gate. Three landmark kinds: streak (3/7/30/100), goal-hit (≥85% ring ≤ goal), macro-hit (100–150% of target). Loud success haptic on Lottie beat. Unconditional — `redesign_winmoment` collapsed permanently-on (ENG-1651).
 
 **Current weaknesses:** Goal-hit and macro-hit share the same Lottie (ENG-798, already ticketed). No "what caused this" context during the overlay. Rationing is already best-in-class.
 
@@ -476,7 +476,7 @@ The context line uses `kind` and `milestone?` from `detectWinMoment`'s return. I
 
 _Haptics:_ Two-tier haptic design is correct and more sophisticated than any Mobbin comparable — preserve exactly:
 - `confirmLog()` → quiet Light-impact (<100ms) on every ordinary log (flag: `redesign_motion`)
-- Win-moment beat → loud `impactAsync(Heavy)` on the Lottie keyframe (flag: `redesign_winmoment`)
+- Win-moment beat → loud `impactAsync(Heavy)` on the Lottie keyframe — unconditional (`redesign_winmoment` collapsed permanently-on, ENG-1651)
 
 _ENG-798 gap:_ The macro win-moment sharing the goal-hit Lottie is acknowledged. A dedicated macro Lottie (different animation — a ring-fill burst rather than a ring-close) is the only legitimate additive opportunity here. Carry this into the ENG-798 spec when that work starts. Do not add confetti.
 
@@ -608,7 +608,7 @@ _Do NOT add:_ confetti, mascots, scoreboard rank numbers, streak count overlay t
 | Missed-yesterday banner sage left-border | `habits_redesign_v2` | Visual — must be flagged |
 | Check-in hero card with photograph | `habits_redesign_v2` | Visual/structural — must be flagged |
 | 30-day milestone modal terracotta gradient hero | `habits_redesign_v2` | Visual — must be flagged |
-| Win-moment context line | `redesign_winmoment` | Already gated — extend this flag |
+| Win-moment context line | none — unconditional | `redesign_winmoment` collapsed permanently-on (ENG-1651); no flag remains to extend |
 | Haptics two-tier | `redesign_motion` | Already gated — no change needed |
 | Digest card Fraunces headline hierarchy | `habits_redesign_v2` | Visual — must be flagged |
 
@@ -727,7 +727,7 @@ Before any implementation begins:
 4. Capture TodayStreakInsightCard with freezes available vs 0.
 5. Diff against this spec. Flag any divergence before coding.
 6. Ship all visual changes behind `habits_redesign_v2` feature flag.
-7. Keep `redesign_winmoment` and `redesign_motion` as separate granular flags.
+7. Keep `redesign_motion` as a separate granular flag. (`redesign_winmoment` no longer exists — collapsed permanently-on, ENG-1651.)
 8. Introduce `--streak-milestone` design token in the token file before any tint change.
 9. Run `tests/unit/streakPipMilestone.test.ts` and `tests/unit/streakInsightCopy.test.ts` after any pip or insight-card changes — these must pass unchanged (the logic is not changing; only the visual chrome).
 10. Validate amber is absent from all habits-surface components after implementation (grep for `--warning` / `Accent.warning` in the affected files).
