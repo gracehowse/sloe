@@ -20,12 +20,6 @@ import {
 } from "@/lib/onboarding/targets";
 import { isFeatureEnabled } from "@/lib/analytics/track";
 
-/** ENG-990 — feature flag gating the "Coming from another app?"
- *  (`app-choice`) step. When OFF the step is auto-skipped in `go()` and
- *  dropped from `displayTotal`, so the live flow is unchanged until the
- *  flag ramps in PostHog. Same flag name on web + mobile. */
-export const APP_CHOICE_FLAG = "onboarding-app-choice";
-
 /** ENG-963 — feature flag gating the "What's bringing you here?" step. */
 export const WHY_NOW_FLAG = "onboarding-why-now";
 
@@ -169,15 +163,6 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
     writePersistedState(state);
   }, [state, hasInitial]);
 
-  // ENG-990 — resolve the app-choice flag once per render. `isFeatureEnabled`
-  // returns `false` when PostHog is cold / missing, which is exactly the
-  // safe default here (skip the new step), so the live flow is untouched
-  // until the flag ramps. Read in a ref so `go()` (a stable callback)
-  // always sees the latest value without being re-created on every flag
-  // re-resolution.
-  const appChoiceEnabled = isFeatureEnabled(APP_CHOICE_FLAG);
-  const appChoiceEnabledRef = React.useRef(appChoiceEnabled);
-  appChoiceEnabledRef.current = appChoiceEnabled;
   const whyNowEnabled = isFeatureEnabled(WHY_NOW_FLAG);
   const whyNowEnabledRef = React.useRef(whyNowEnabled);
   whyNowEnabledRef.current = whyNowEnabled;
@@ -196,7 +181,6 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
     setState((prev) => ({
       ...prev,
       step: resolveNextStep(prev.step, delta, prev, {
-        appChoiceEnabled: appChoiceEnabledRef.current,
         whyNowEnabled: whyNowEnabledRef.current,
         conversionFunnelEnabled: conversionFunnelEnabledRef.current,
       }),
@@ -242,13 +226,14 @@ export function OnboardingProvider({ children, initial }: ProviderProps) {
 
   // 1-indexed for human display, counting only steps that are visible
   // for this flow. Welcome is "Step 1 of N" (its overline + top bar are
-  // hidden). ENG-990 — when the app-choice step is gated OFF it never
-  // renders, so it's dropped from both the index and the total via the
-  // shared `displayPosition` helper; otherwise a flag flip would desync
-  // the bar from the flow.
+  // hidden). `app-choice` is always counted since its `onboarding-app-choice`
+  // flag collapsed out (2026-07-22, ENG-1651) — only `why-now` still gets
+  // dropped from the index/total when its own flag is OFF, via the shared
+  // `displayPosition` helper (otherwise a flag flip would desync the bar
+  // from the flow).
   const { index: displayIndex, total: displayTotal } = displayPosition(
     state.step,
-    { appChoiceEnabled, whyNowEnabled, conversionFunnelEnabled },
+    { whyNowEnabled, conversionFunnelEnabled },
   );
 
   const value = React.useMemo<OnboardingContext>(

@@ -38,7 +38,6 @@ import {
  *  test-only probe flags are intentionally omitted. */
 const KNOWN_FLAGS: readonly string[] = [
   "import-progress-v2",
-  "onboarding-app-choice",
   "supadata-acquisition",
   "today-status-pills",
   "today-edit-entry-v2",

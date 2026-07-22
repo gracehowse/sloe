@@ -2,7 +2,7 @@
 
 **Version:** 2026-06-02
 **Status:** Design specification — awaiting HTML prototype + flag-gated implementation
-**Surfaces covered:** All 14 onboarding steps (Welcome → App-choice → Signup → Goal → Sex → Age → Height → Weight → Activity → Pace → Diet → Strategy → Reveal → Data-bridges). `App-choice` ("Coming from another app?", ENG-990 / 2026-06-08) is flag-gated behind `onboarding-app-choice` and auto-skipped when OFF — see `docs/decisions/2026-06-08-onboarding-app-choice-capture.md`.
+**Surfaces covered:** All 14 onboarding steps (Welcome → App-choice → Signup → Goal → Sex → Age → Height → Weight → Activity → Pace → Diet → Strategy → Reveal → Data-bridges). `App-choice` ("Coming from another app?", ENG-990 / 2026-06-08) is always shown — its `onboarding-app-choice` flag collapsed permanently ON 2026-07-22 (ENG-1651) — see `docs/decisions/2026-06-08-onboarding-app-choice-capture.md`.
 **Platforms:** iOS (primary), Web (parity — narrative column divergence documented)
 **Functionality gate:** Every audited feature, data point, rule, calculation, safety check, and persistence mechanism must survive this redesign. See §12 for the exhaustive FUNCTIONALITY PRESERVED checklist.
 **Source inventory:** `src/lib/onboarding/`, `apps/mobile/components/onboarding/`, `src/lib/nutrition/tdee.ts`, `src/lib/onboarding/targets.ts`, `src/lib/onboarding/persist.ts`

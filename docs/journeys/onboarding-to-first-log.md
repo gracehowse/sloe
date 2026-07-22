@@ -31,14 +31,16 @@ directly into `docs/journeys/food-tracking.md` and `docs/journeys/log-sheet.md`.
 ## Journey map
 
 ```
-Welcome ─▶ [app-choice] ─▶ Questionnaire ─▶ Reveal ─▶ Signup ─▶ Data bridges ─▶ [First log ─▶ Upgrade] ─▶ Completion ─▶ Today
-             (optional,        (goal…strategy,          (targets                (optional        (conversion funnel,
-              flag-gated)       incl. pace safety-       before                   import/          default-ON, terminal)
-                                 floor soft-warn)         account)                 target bridges)
+Welcome ─▶ app-choice ─▶ Questionnaire ─▶ Reveal ─▶ Signup ─▶ Data bridges ─▶ [First log ─▶ Upgrade] ─▶ Completion ─▶ Today
+             (optional         (goal…strategy,          (targets                (optional        (conversion funnel,
+              pick, always      incl. pace safety-       before                   import/          default-ON, terminal)
+              shown)            floor soft-warn)         account)                 target bridges)
 ```
 
-Steps in `[ ]` are flag-gated and auto-skip when their flag is off. The
-canonical step order lives in `STEP_IDS`
+Steps in `[ ]` are flag-gated and auto-skip when their flag is off (`app-choice`
+had this until its `onboarding-app-choice` flag collapsed permanently ON
+2026-07-22, ENG-1651 — it's unbracketed above because it's always shown now).
+The canonical step order lives in `STEP_IDS`
 (`src/lib/onboarding/state.ts`), shared verbatim by web and mobile.
 
 | Step id | Web component | Mobile component |
@@ -94,14 +96,14 @@ they change what the user has already seen:
 anything — full-bleed, no top bar or progress indicator. Tagline and trust
 footer ("Private by default · About a minute") are locked copy.
 
-**What the user does:** taps "Get started" (→ questionnaire, or `app-choice`
-if that flag is on) or "I already have an account" (→ `/login`).
+**What the user does:** taps "Get started" (→ `app-choice`) or "I already
+have an account" (→ `/login`).
 
 **Parity:** identical on both platforms (copy, layout, tokens); pinned by
 `tests/unit/onboardingWelcomeParity.test.tsx`. The former web/mobile welcome-copy
 divergence was retired 2026-05-25.
 
-### 2. App-choice — "Coming from another app?" (optional, flag-gated)
+### 2. App-choice — "Coming from another app?" (optional; always shown)
 
 **Why this step exists:** it's the earliest credible moment to identify an
 MFP/Lose It/Cronometer/MacroFactor switcher and route them toward the CSV
@@ -111,11 +113,13 @@ importer later in the flow.
 with a live CSV import adapter are offered as named options.
 
 **What happens next:** the choice pre-highlights the matching importer on
-`data-bridges` and is emitted as `onboarding_app_choice`. Auto-skipped and
-dropped from the progress total when the `onboarding-app-choice` flag is off.
+`data-bridges` and is emitted as `onboarding_app_choice`. The step's
+`onboarding-app-choice` flag collapsed permanently ON 2026-07-22
+(ENG-1651) — it's now unconditionally shown and counted in the progress
+total on both platforms.
 
-**Parity:** identical — shared flag name and skip logic keep step counts in
-lockstep across platforms.
+**Parity:** identical — the same shared skip logic (now unconditional for
+this step) keeps step counts in lockstep across platforms.
 
 ### 3. Questionnaire — goal, why-now, sex, age, height, weight, activity, pace, diet, strategy
 

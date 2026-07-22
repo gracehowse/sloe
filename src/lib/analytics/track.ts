@@ -281,8 +281,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "log_sheet_nl_text_v1",
   // ENG-980 — save-first import lands in Library before review (mobile import).
   "import-save-first-v1",
-  // ENG-965 / ENG-990 — surface MFP/MacroFactor refugee app-choice step by default.
-  "onboarding-app-choice",
   // ENG-848 — web Today macro tiles/bars open MacroDetailPanel. Web-only:
   // mobile already has the native `macro-detail` route wired from Today.
   "web_macro_detail_panel",
@@ -560,7 +558,8 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   `ProgressiveText` (web + mobile). Web + mobile.
  * - `onboarding-why-now` (ENG-963) — the optional "What's bringing you here?"
  *   onboarding step (placed after `goal`). DEFAULT-OFF: when OFF both flow
- *   shells auto-skip the step (same mechanism as `onboarding-app-choice`)
+ *   shells auto-skip the step (the same resolveNextStep/auto-skip mechanism
+ *   `onboarding-app-choice` used before it collapsed, ENG-1651)
  *   and drop it from the step counter, so the live flow is unchanged and the
  *   change is mergeable headless. Grace ramps it in PostHog after a sim + web
  *   glance at the new step's pixels. Web + mobile.

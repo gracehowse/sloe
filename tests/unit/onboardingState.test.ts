@@ -19,7 +19,6 @@ import {
  * validation rules. Locks in the decision-doc invariants:
  *
  *  - 17 steps in fixed order; `pace` auto-skips when goal = maintain,
- *    `app-choice` auto-skips when the `onboarding-app-choice` flag is OFF,
  *    `why-now` auto-skips when the `onboarding-why-now` flag is OFF,
  *    `upgrade` + `first-log` auto-skip when `onboarding_conversion_funnel_v1` is OFF.
  *    (Was 15 pre customer-lens shrink 2026-04-30 — `permissions`,
@@ -29,7 +28,9 @@ import {
  *    terminal step bundling manual-targets / Apple Health /
  *    notifications / recipe URL cards.
  *    ENG-990 (2026-06-08) — added `app-choice` ("Coming from another
- *    app?") after Welcome, flag-gated + auto-skipped when OFF.
+ *    app?") after Welcome. Its `onboarding-app-choice` flag collapsed
+ *    out 2026-07-22 (ENG-1651) — the step is now always shown, no
+ *    auto-skip.
  *    ENG-963 (2026-06-30) — added `why-now` ("What's bringing you
  *    here?") after `goal`, flag-gated + auto-skipped when OFF. See
  *    state.ts STEP_IDS.)
@@ -140,35 +141,22 @@ describe("onboarding v2 — resolveNextStep auto-skip", () => {
   });
 });
 
-describe("onboarding v2 — resolveNextStep app-choice flag gate (ENG-990)", () => {
+describe("onboarding v2 — app-choice is always visible (ENG-1651 collapse)", () => {
+  // The `onboarding-app-choice` flag that used to gate this step collapsed
+  // out 2026-07-22 (ENG-1651): it was permanently ON in production, so
+  // `resolveNextStep` no longer has an `appChoiceEnabled` option — the step
+  // is unconditionally reachable, with no options arg needed.
   const WELCOME = STEP_IDS.indexOf("welcome");
 
-  it("skips app-choice when the flag is OFF (default) — welcome jumps to goal", () => {
-    // No options arg → appChoiceEnabled defaults to false → skip.
+  it("lands on app-choice from welcome — no option needed", () => {
     const next = resolveNextStep(WELCOME, +1, baseState());
-    expect(STEP_IDS[next]).toBe("goal");
-  });
-
-  it("skips app-choice when the flag is explicitly OFF", () => {
-    const next = resolveNextStep(WELCOME, +1, baseState(), {
-      appChoiceEnabled: false,
-    });
-    expect(STEP_IDS[next]).toBe("goal");
-  });
-
-  it("lands on app-choice when the flag is ON", () => {
-    const next = resolveNextStep(WELCOME, +1, baseState(), {
-      appChoiceEnabled: true,
-    });
     expect(STEP_IDS[next]).toBe("app-choice");
   });
 
-  it("skips app-choice on backward navigation too (goal → welcome with flag OFF)", () => {
+  it("lands on app-choice on backward navigation too (goal → app-choice)", () => {
     const goal = STEP_IDS.indexOf("goal");
-    const prev = resolveNextStep(goal, -1, baseState(), {
-      appChoiceEnabled: false,
-    });
-    expect(STEP_IDS[prev]).toBe("welcome");
+    const prev = resolveNextStep(goal, -1, baseState());
+    expect(STEP_IDS[prev]).toBe("app-choice");
   });
 });
 
@@ -210,7 +198,6 @@ describe("onboarding v2 — resolveNextStep conversion-funnel gate (ENG-1233 / E
 
 describe("onboarding v2 — displayPosition conversion-funnel (ENG-1233 / ENG-1241)", () => {
   const funnelOn = {
-    appChoiceEnabled: true,
     whyNowEnabled: true,
     conversionFunnelEnabled: true,
   };
@@ -228,13 +215,12 @@ describe("onboarding v2 — displayPosition conversion-funnel (ENG-1233 / ENG-12
     expect(total).toBe(TOTAL_STEPS);
   });
 
-  it("hides funnel, app-choice, and why-now when all three flags are OFF", () => {
+  it("hides funnel and why-now when both flags are OFF (app-choice always shown, ENG-1651)", () => {
     const { total } = displayPosition(0, {
-      appChoiceEnabled: false,
       whyNowEnabled: false,
       conversionFunnelEnabled: false,
     });
-    expect(total).toBe(TOTAL_STEPS - 4);
+    expect(total).toBe(TOTAL_STEPS - 3);
   });
 });
 
@@ -262,63 +248,42 @@ describe("onboarding v2 — signup after reveal (ENG-962)", () => {
   });
 });
 
-describe("onboarding v2 — displayPosition counts only visible steps (ENG-990)", () => {
-  // ENG-963 — these assertions isolate the app-choice flag's effect by
-  // holding `whyNowEnabled: true` (so why-now is NOT also discounted).
-  // The why-now flag's own count effect is covered in its dedicated wiring
+describe("onboarding v2 — displayPosition counts app-choice unconditionally (ENG-990, ENG-1651 collapse)", () => {
+  // The `onboarding-app-choice` flag that used to gate this step's count
+  // collapsed out 2026-07-22 (ENG-1651) — `displayPosition` no longer has
+  // an `appChoiceEnabled` option, so app-choice is always counted. The
+  // why-now flag's own count effect is covered in its dedicated wiring
   // test (`onboardingWhyNowWiring.test.ts`).
-  it("excludes app-choice from the total when the flag is OFF", () => {
+  it("always includes app-choice in the total", () => {
     const { total } = displayPosition(0, {
-      appChoiceEnabled: false,
-      whyNowEnabled: true,
-      conversionFunnelEnabled: true,
-    });
-    expect(total).toBe(TOTAL_STEPS - 1);
-  });
-
-  it("includes app-choice in the total when the flag is ON", () => {
-    const { total } = displayPosition(0, {
-      appChoiceEnabled: true,
       whyNowEnabled: true,
       conversionFunnelEnabled: true,
     });
     expect(total).toBe(TOTAL_STEPS);
   });
 
-  it("does not inflate the display index for steps after the hidden app-choice (flag OFF)", () => {
-    // goal is raw index 2, but with app-choice hidden it's the 2nd
-    // visible step → display index 2 (welcome is 1). why-now sits AFTER
-    // goal, so its flag state can't change goal's index.
+  it("goal's display index always counts app-choice ahead of it", () => {
+    // welcome(1), app-choice(2), goal(3) — no option can hide app-choice
+    // anymore.
     const goal = STEP_IDS.indexOf("goal");
-    const off = displayPosition(goal, {
-      appChoiceEnabled: false,
+    const pos = displayPosition(goal, {
       whyNowEnabled: true,
       conversionFunnelEnabled: true,
     });
-    expect(off.index).toBe(2);
-    // With the flag ON, goal is the 3rd visible step → index 3.
-    const on = displayPosition(goal, {
-      appChoiceEnabled: true,
-      whyNowEnabled: true,
-      conversionFunnelEnabled: true,
-    });
-    expect(on.index).toBe(3);
+    expect(pos.index).toBe(3);
   });
 
   it("signup display index reflects post-reveal position (ENG-962)", () => {
     const signup = STEP_IDS.indexOf("signup");
-    // Both flag-gated steps hidden (the live default) — welcome + 11
-    // body/reveal steps before signup → index 12.
-    const off = displayPosition(signup, {
-      appChoiceEnabled: false,
-      whyNowEnabled: false,
-    });
-    expect(off.index).toBe(12);
+    // welcome + app-choice + 11 body/reveal steps before signup, why-now
+    // hidden → index 13.
+    const off = displayPosition(signup, { whyNowEnabled: false });
+    expect(off.index).toBe(13);
   });
 
-  it("welcome is always 'Step 1' in both flag states", () => {
-    expect(displayPosition(0, { appChoiceEnabled: false }).index).toBe(1);
-    expect(displayPosition(0, { appChoiceEnabled: true }).index).toBe(1);
+  it("welcome is always 'Step 1', regardless of the why-now flag", () => {
+    expect(displayPosition(0, { whyNowEnabled: false }).index).toBe(1);
+    expect(displayPosition(0, { whyNowEnabled: true }).index).toBe(1);
   });
 });
 

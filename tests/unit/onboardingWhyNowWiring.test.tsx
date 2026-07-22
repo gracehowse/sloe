@@ -84,11 +84,12 @@ describe("why-now — auto-skip when the flag is OFF (resolveNextStep)", () => {
 });
 
 describe("why-now — displayed step count (displayPosition)", () => {
-  // Isolate the why-now flag by holding app-choice ON (so app-choice is NOT
-  // also discounted) — leaving why-now as the only conditionally-hidden step.
+  // app-choice is always counted now — its `onboarding-app-choice` flag
+  // collapsed out 2026-07-22 (ENG-1651), so `displayPosition` no longer has
+  // an `appChoiceEnabled` option to hold "ON" — leaving why-now as the only
+  // conditionally-hidden step these assertions need to isolate.
   it("keeps the live step count UNCHANGED when the flag is OFF", () => {
     const { total } = displayPosition(0, {
-      appChoiceEnabled: true,
       whyNowEnabled: false,
       conversionFunnelEnabled: false,
     });
@@ -98,7 +99,6 @@ describe("why-now — displayed step count (displayPosition)", () => {
 
   it("counts why-now in the total when the flag is ON", () => {
     const { total } = displayPosition(0, {
-      appChoiceEnabled: true,
       whyNowEnabled: true,
       conversionFunnelEnabled: false,
     });
@@ -108,40 +108,19 @@ describe("why-now — displayed step count (displayPosition)", () => {
 
   it("does not shift goal's display index when why-now is hidden (it sits after goal)", () => {
     const goal = STEP_IDS.indexOf("goal");
-    // app-choice ON so goal is the 3rd visible step regardless of why-now.
-    const off = displayPosition(goal, {
-      appChoiceEnabled: true,
-      whyNowEnabled: false,
-    });
-    const on = displayPosition(goal, {
-      appChoiceEnabled: true,
-      whyNowEnabled: true,
-    });
+    // app-choice always counted, so goal is the 3rd visible step regardless of why-now.
+    const off = displayPosition(goal, { whyNowEnabled: false });
+    const on = displayPosition(goal, { whyNowEnabled: true });
     expect(off.index).toBe(3);
     expect(on.index).toBe(3);
   });
 
   it("shifts sex's display index by one when why-now is shown vs hidden", () => {
     const sex = STEP_IDS.indexOf("sex");
-    const hidden = displayPosition(sex, {
-      appChoiceEnabled: true,
-      whyNowEnabled: false,
-    });
-    const shown = displayPosition(sex, {
-      appChoiceEnabled: true,
-      whyNowEnabled: true,
-    });
+    const hidden = displayPosition(sex, { whyNowEnabled: false });
+    const shown = displayPosition(sex, { whyNowEnabled: true });
     // why-now sits between goal and sex, so showing it bumps sex up by one.
     expect(shown.index).toBe(hidden.index + 1);
-  });
-
-  it("when BOTH flag-gated steps are OFF (the live default) the total is TOTAL_STEPS - 4", () => {
-    const { total } = displayPosition(0, {
-      appChoiceEnabled: false,
-      whyNowEnabled: false,
-      conversionFunnelEnabled: false,
-    });
-    expect(total).toBe(TOTAL_STEPS - 4);
   });
 });
 

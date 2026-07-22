@@ -69,12 +69,11 @@ export type Goal = "lose" | "maintain" | "gain" | "recomp";
  *  when the user picks an app that has a live CSV adapter
  *  (`src/lib/imports/csv/adapters/`), the terminal data-bridges step
  *  pre-highlights the importer so the switch lands in our existing CSV
- *  pipeline instead of bouncing. The step is flag-gated behind
- *  `onboarding-app-choice`: when the flag is OFF, both flow shells
- *  auto-skip it (same mechanism as the maintain/weight pace auto-skip)
- *  and drop it from `displayTotal`, so the live flow is unchanged until
- *  the flag ramps. Only apps with a registered adapter are surfaced —
- *  no dead options.
+ *  pipeline instead of bouncing. The `onboarding-app-choice` flag that
+ *  gated this step collapsed out (2026-07-22, ENG-1651): it was
+ *  permanently ON in production, so the step is now unconditionally
+ *  visible on both flow shells and always counted in `displayTotal`.
+ *  Only apps with a registered adapter are surfaced — no dead options.
  *
  *  Add `why-now` (2026-06-30, ENG-963): a single calm "What's bringing
  *  you here?" intent capture placed immediately after `goal` — the
@@ -109,7 +108,7 @@ export type Goal = "lose" | "maintain" | "gain" | "recomp";
  *  corrected 2026-07-21 per ENG-1605). */
 export const STEP_IDS = [
   "welcome", // 01
-  "app-choice", // 02 — "Coming from another app?" (ENG-990) — auto-skipped when the `onboarding-app-choice` flag is OFF
+  "app-choice", // 02 — "Coming from another app?" (ENG-990) — always shown (flag collapsed 2026-07-22, ENG-1651)
   "goal", // 03
   "why-now", // 04 — "What's bringing you here?" (ENG-963) — auto-skipped when the `onboarding-why-now` flag is OFF (same mechanism as app-choice)
   "sex", // 05
@@ -461,26 +460,25 @@ export const DEFAULT_ONBOARDING_STATE: OnboardingState = {
  *  object so call sites read clearly and future skip-toggles don't grow
  *  the positional arg list.
  *
- *  ENG-990 — `appChoiceEnabled` is the resolved `onboarding-app-choice`
- *  feature-flag value, threaded in by each flow shell's platform
- *  `isFeatureEnabled`. When `false` (the live default until the flag
- *  ramps) the `app-choice` step is auto-skipped on both forward and
- *  back navigation, exactly like the pace auto-skip — so the step is
- *  invisible until the flag turns on. Defaults to `false` (skip) so any
- *  caller that doesn't thread the flag keeps the pre-ENG-990 flow.
+ *  ENG-990 / ENG-1651 — `appChoiceEnabled` (and the `app-choice` auto-skip
+ *  it drove) collapsed out 2026-07-22: the `onboarding-app-choice` flag
+ *  was permanently ON in production, so the `app-choice` step is now
+ *  unconditionally visible on both forward and back navigation — no
+ *  option needed.
  *
  *  ENG-963 — `whyNowEnabled` is the resolved `onboarding-why-now` flag
- *  value, threaded the same way. When `false` (the live default) the
- *  `why-now` step is auto-skipped on forward + back navigation — IDENTICAL
- *  mechanism to `appChoiceEnabled` — so the live flow + step counter are
- *  unchanged until the flag ramps. Defaults to `false` (skip).
+ *  value, threaded in by each flow shell's platform `isFeatureEnabled`.
+ *  When `false` (the live default) the `why-now` step is auto-skipped on
+ *  forward + back navigation, exactly like the pace auto-skip (the same
+ *  mechanism `appChoiceEnabled` used before it collapsed) — so the live
+ *  flow + step counter are unchanged until the flag ramps. Defaults to
+ *  `false` (skip).
  *
  *  ENG-1233/1241 — `conversionFunnelEnabled` gates the post-data-bridges
  *  `first-log` + `upgrade` steps behind `onboarding_conversion_funnel_v1`.
  *  When OFF, `data-bridges` remains the terminal step (legacy path). When
  *  ON, `upgrade` is terminal (first-log → upgrade → Today/paywall). */
 export interface ResolveStepOptions {
-  appChoiceEnabled?: boolean;
   whyNowEnabled?: boolean;
   conversionFunnelEnabled?: boolean;
 }
@@ -489,15 +487,13 @@ export interface ResolveStepOptions {
  *  the auto-skips:
  *   - `pace` when `goal === "maintain"` (no kcal delta to set) or
  *     `weightSkipped` (no body data for a safe floor — Stage F).
- *   - `app-choice` when the `onboarding-app-choice` flag is OFF
- *     (ENG-990 — keeps the step out of the live flow until it ramps).
  *   - `why-now` when the `onboarding-why-now` flag is OFF
- *     (ENG-963 — same mechanism; keeps the step out until it ramps).
+ *     (ENG-963 — keeps the step out until it ramps).
  *   - `upgrade` + `first-log` when `onboarding_conversion_funnel_v1` is OFF.
- *  Skips compose: stepping from `welcome` forward with both flags OFF
- *  lands on `goal`, never the hidden `app-choice`; stepping from `goal`
- *  forward with the why-now flag OFF lands on `sex`, never the hidden
- *  `why-now`. Returns a clamped index inside [0, TOTAL_STEPS - 1]. */
+ *  Skips compose: stepping from `goal` forward with the why-now flag OFF
+ *  lands on `sex`, never the hidden `why-now`. (`app-choice`'s auto-skip
+ *  collapsed out 2026-07-22, ENG-1651 — the step is always visible now.)
+ *  Returns a clamped index inside [0, TOTAL_STEPS - 1]. */
 export function resolveNextStep(
   current: number,
   delta: number,
@@ -512,14 +508,12 @@ export function resolveNextStep(
     const id = STEP_IDS[index];
     const skipPace =
       (state.goal === "maintain" || state.weightSkipped) && id === "pace";
-    const skipAppChoice =
-      options?.appChoiceEnabled !== true && id === "app-choice";
     const skipWhyNow =
       options?.whyNowEnabled !== true && id === "why-now";
     const skipConversionFunnel =
       options?.conversionFunnelEnabled !== true &&
       (id === "upgrade" || id === "first-log");
-    return skipPace || skipAppChoice || skipWhyNow || skipConversionFunnel;
+    return skipPace || skipWhyNow || skipConversionFunnel;
   };
 
   for (let guard = 0; guard < TOTAL_STEPS; guard++) {
@@ -540,34 +534,34 @@ export function resolveNextStep(
 }
 
 /**
- * ENG-990 — the 1-based display position of `stepIndex` among the steps
- * that are actually *visible* for this flow, and the total visible count.
+ * ENG-990 / ENG-963 — the 1-based display position of `stepIndex` among
+ * the steps that are actually *visible* for this flow, and the total
+ * visible count.
  *
  * The progress bar and "Step N of M" overline must count only the steps
- * the user can reach. The conditionally-hidden steps are `app-choice`
- * (gated by `onboarding-app-choice`, ENG-990) and `why-now` (gated by
- * `onboarding-why-now`, ENG-963). When a flag is OFF its step is dropped
- * from both the index and the total so every later step's display
- * position shifts down by one — centralised here so web + mobile compute
- * identical numbers and a flag flip can never desync the bar from the
- * flow.
+ * the user can reach. The one remaining conditionally-hidden step is
+ * `why-now` (gated by `onboarding-why-now`, ENG-963). When the flag is
+ * OFF the step is dropped from both the index and the total so every
+ * later step's display position shifts down by one — centralised here so
+ * web + mobile compute identical numbers and a flag flip can never
+ * desync the bar from the flow. (`app-choice` had the identical
+ * mechanism under `onboarding-app-choice` until that flag collapsed out
+ * 2026-07-22, ENG-1651 — the step is now always counted.)
  *
  * Note: the pace auto-skip (maintain / weightSkipped) is intentionally
  * NOT discounted here — it has always been counted in the displayed
  * total (the bar simply jumps past it), matching the pre-ENG-990
- * behaviour. Only the flag-hidden steps are removed from the count.
+ * behaviour. Only the flag-hidden step is removed from the count.
  */
 export function displayPosition(
   stepIndex: number,
   options?: ResolveStepOptions,
 ): { index: number; total: number } {
-  const hideAppChoice = options?.appChoiceEnabled !== true;
   const hideWhyNow = options?.whyNowEnabled !== true;
   const hideConversionFunnel = options?.conversionFunnelEnabled !== true;
   let total = 0;
   let index = 1;
   for (let i = 0; i < TOTAL_STEPS; i++) {
-    if (hideAppChoice && STEP_IDS[i] === "app-choice") continue;
     if (hideWhyNow && STEP_IDS[i] === "why-now") continue;
     if (
       hideConversionFunnel &&

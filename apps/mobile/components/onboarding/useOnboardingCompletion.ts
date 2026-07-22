@@ -231,7 +231,7 @@ export function useOnboardingCompletion({
           data_bridge_chosen: state.dataBridgeChosen,
           manual_targets_set: manualTargetsSet,
           // ENG-990 — the app the user said they're switching from
-          // (`null` when the app-choice step was skipped / flag OFF).
+          // (`null` when the user advanced without picking a tile).
           app_choice: state.appChoice,
         });
       } catch {

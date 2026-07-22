@@ -34,9 +34,11 @@ void React;
 
 const trackMock = vi.fn();
 // `@/lib/analytics` — track + the cold-safe flag readers the context
-// uses. `isFeatureEnabled` false keeps the app-choice step OFF in the
-// shell (irrelevant when we render the step directly, but the provider
-// reads it on render).
+// uses (why-now, conversion funnel). `isFeatureEnabled` false keeps those
+// steps off in the shell — irrelevant here since we render
+// `MobileAppChoiceStep` directly. (The provider no longer reads a flag
+// for app-choice itself: `onboarding-app-choice` collapsed out 2026-07-22,
+// ENG-1651 — the step is unconditionally reachable now.)
 vi.mock("@/lib/analytics", () => ({
   track: (...args: unknown[]) => trackMock(...args),
   isFeatureEnabled: () => false,

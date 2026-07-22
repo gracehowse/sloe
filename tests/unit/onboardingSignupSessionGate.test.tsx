@@ -36,10 +36,13 @@ beforeAll(() => {
 
 const signUpMock = vi.fn();
 
-// ENG-990 — the onboarding context now reads the `onboarding-app-choice`
-// flag via `isFeatureEnabled` on render, so the track mock must expose it.
-// Returning `false` keeps the app-choice step OFF (auto-skipped), so this
-// signup-gate test sees the same flow it always did.
+// The onboarding context reads several flags via `isFeatureEnabled` on
+// render (why-now, conversion funnel), so the track mock must expose it.
+// Returning `false` keeps those steps off, so this signup-gate test — which
+// seeds straight onto the signup step — sees the same flow it always did.
+// (`onboarding-app-choice` was one of these flags until it collapsed out
+// 2026-07-22, ENG-1651 — the app-choice step is unconditionally reachable
+// now, but this test never touches it.)
 vi.mock("../../src/lib/analytics/track.ts", () => ({
   track: vi.fn(),
   isFeatureEnabled: () => false,
