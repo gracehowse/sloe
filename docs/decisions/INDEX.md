@@ -9,10 +9,11 @@
   Generator: scripts/generate-decisions-index.mjs (ENG-1370)
 -->
 
-353 decision docs, newest first. Generated 2026-07-22.
+354 decision docs, newest first. Generated 2026-07-22.
 
 | Date | Decision | Summary |
 |------|----------|---------|
+| 2026-07-22 | [Cap untrusted-source ingredient rows at "partial" tier (ENG-1425)](./2026-07-22-eng1425-untrusted-source-tier-cap.md) | `deriveIngredientVerificationTier` (`src/lib/recipe-ingredients/ingredientVerificationStatus.ts`) had a confidence-only fallback bucket that granted the top "verified" tier (green dot, no Verify CTA) to any row with `con… |
 | 2026-07-21 | [Web core-screen page gutter — converge onto `.product-shell` (ENG-1629)](./2026-07-21-eng1629-web-gutter-convergence.md) | `Targets.tsx` and `RecipeDetail.tsx` converge their page gutter onto `.product-shell`'s composition (`src/styles/theme.css`) behind a new flag, `web_gutter_convergence_v1`: |
 | 2026-07-21 | [Log-sheet session tray — immediate-commit multi-add (ENG-1643)](./2026-07-21-log-session-tray-immediate-commit.md) | Today a multi-item meal (e.g. a 4-item dinner) costs **four full sheet-open → search → pick → confirm → close cycles**: the S13 confirmation's only forward exit closes the whole sheet (`TodayScreen.tsx` `presentLogSheetC… |
 | 2026-07-20 | [User-avatar monogram — Rule 7 serif + frost-ring, one shared primitive (ENG-1593)](./2026-07-20-avatar-monogram-rule7-frost-ring.md) | The 2026-07-17 design sweep (`docs/audits/2026-07-17-design-sweep/report.md`) flagged the persistent user/household avatar monogram as a **Rule 7** violation on every screen it appears on, with the specifics differing ac… |

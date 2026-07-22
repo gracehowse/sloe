@@ -17,11 +17,22 @@
  *     FatSecret / OFF / Edamam / manual) → "verified". Belt-and-braces
  *     for legacy rows where `is_verified` was not flipped despite the
  *     row coming from a verified source.
- *   - Else fall back to confidence buckets:
- *       confidence >= 0.75 → "verified"
- *       confidence >= 0.55 → "partial"  (amber dot + Verify CTA)
+ *   - Else (row is NOT manually verified AND source is untrusted/
+ *     unspecified) fall back to confidence buckets, capped at "partial"
+ *     — this fallback can never reach "verified":
+ *       confidence >= 0.55 → "partial"    (amber dot + Verify CTA)
  *       confidence > 0      → "estimated" (amber dot + Verify CTA)
  *       confidence null     → "unverified"
+ *
+ * ENG-1425 (2026-07-22, conf-2 audit finding): the fallback used to grant
+ * "verified" (green, no Verify CTA) to an untrusted-source row on a bare
+ * confidence >= 0.75 — e.g. an AI-parse row with no allow-listed source
+ * would render identically to a human-verified USDA row, suppressing the
+ * Verify CTA on a signal that was never validated as a "no further
+ * verification needed" bar. Product call (not a guessed threshold): the
+ * no-CTA "verified" tier is now reserved for `is_verified === true` or an
+ * allow-listed trusted source — the confidence-only path tops out at
+ * "partial". Trusted-source and is_verified classification are unchanged.
  *
  * ENG-1431 (2026-07-06 trust-vocabulary pass): the partial floor moved
  * 0.50 → 0.55 to align with `MIN_ACCEPT_CONFIDENCE`
@@ -82,7 +93,10 @@ export function deriveIngredientVerificationTier(input: {
       ? input.confidence
       : null;
   if (c == null) return "unverified";
-  if (c >= 0.75) return "verified";
+  // ENG-1425: capped at "partial" — this branch only runs for rows that
+  // are neither manually verified nor from a trusted source, so a bare
+  // confidence score (however high) must never grant the no-CTA
+  // "verified" tier here.
   if (c >= 0.55) return "partial";
   if (c > 0) return "estimated";
   return "unverified";

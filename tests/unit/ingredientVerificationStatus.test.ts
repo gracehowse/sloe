@@ -75,17 +75,74 @@ describe("deriveIngredientVerificationTier", () => {
     ).toBe("verified");
   });
 
-  it("returns 'verified' when confidence >= 0.75 and no other signal", () => {
-    expect(
-      deriveIngredientVerificationTier({
-        isVerified: null,
-        confidence: 0.92,
-        source: null,
-      }),
-    ).toBe("verified");
+  it("ENG-1425 — caps the untrusted-source fallback at 'partial' even at a high confidence score, so the Verify CTA stays visible", () => {
+    // Was "verified" (green, no CTA) pre-fix — the conf-2 audit finding:
+    // a bare confidence score from an unspecified/untrusted source must
+    // not be granted the strongest trust treatment.
+    const tier = deriveIngredientVerificationTier({
+      isVerified: null,
+      confidence: 0.92,
+      source: null,
+    });
+    expect(tier).toBe("partial");
+    expect(ingredientShouldShowVerifyCta(tier)).toBe(true);
   });
 
-  it("returns 'partial' for unverified rows with confidence in [0.55, 0.75)", () => {
+  it("ENG-1425 — untrusted-source row at exactly 0.75 confidence shows 'partial' + Verify CTA, not silently 'verified'", () => {
+    const tier = deriveIngredientVerificationTier({
+      isVerified: false,
+      confidence: 0.75,
+      source: "ai",
+    });
+    expect(tier).toBe("partial");
+    expect(ingredientShouldShowVerifyCta(tier)).toBe(true);
+  });
+
+  it("ENG-1425 — untrusted-source row at very high confidence (0.99) still caps at 'partial', not 'verified'", () => {
+    const tier = deriveIngredientVerificationTier({
+      isVerified: false,
+      confidence: 0.99,
+      source: "OpenAI import",
+    });
+    expect(tier).toBe("partial");
+    expect(ingredientShouldShowVerifyCta(tier)).toBe(true);
+  });
+
+  it("ENG-1425 — trusted-source rows are unaffected by the cap: still 'verified' with no CTA regardless of confidence", () => {
+    // Same fixtures as the pre-existing trusted-source test, re-asserted
+    // here to pin that ENG-1425 did not touch this branch.
+    for (const source of ["USDA", "FatSecret", "OFF", "Edamam", "manual"]) {
+      const tier = deriveIngredientVerificationTier({
+        isVerified: null,
+        confidence: 0.6,
+        source,
+      });
+      expect(tier).toBe("verified");
+      expect(ingredientShouldShowVerifyCta(tier)).toBe(false);
+    }
+
+    // A trusted source at a high confidence should also still be
+    // "verified" — the cap only applies to the untrusted fallback.
+    const highConfidenceTrusted = deriveIngredientVerificationTier({
+      isVerified: null,
+      confidence: 0.95,
+      source: "USDA",
+    });
+    expect(highConfidenceTrusted).toBe("verified");
+    expect(ingredientShouldShowVerifyCta(highConfidenceTrusted)).toBe(false);
+  });
+
+  it("ENG-1425 — is_verified=true rows are unaffected by the cap: still 'verified' with no CTA regardless of confidence or source", () => {
+    const tier = deriveIngredientVerificationTier({
+      isVerified: true,
+      confidence: 0.99,
+      source: "AI",
+    });
+    expect(tier).toBe("verified");
+    expect(ingredientShouldShowVerifyCta(tier)).toBe(false);
+  });
+
+  it("returns 'partial' for unverified rows with confidence >= 0.55 (e.g. 0.69)", () => {
     expect(
       deriveIngredientVerificationTier({
         isVerified: false,
@@ -140,14 +197,14 @@ describe("deriveIngredientVerificationTier", () => {
     ).toBe("unverified");
   });
 
-  it("treats numeric confidence boundaries inclusively at 0.55 and 0.75", () => {
+  it("treats the 0.55 partial-floor boundary inclusively; 0.75 is no longer a distinct boundary post-ENG-1425 (both bucket to 'partial' in the untrusted fallback)", () => {
     expect(
       deriveIngredientVerificationTier({
         isVerified: false,
         confidence: 0.75,
         source: null,
       }),
-    ).toBe("verified");
+    ).toBe("partial");
 
     expect(
       deriveIngredientVerificationTier({
