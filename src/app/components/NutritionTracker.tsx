@@ -71,6 +71,7 @@ import { normalizeJournalSlotName } from "../../lib/nutrition/journalSlot.ts";
 import { QuickAddPanel } from "./suppr/quick-add-panel";
 import { SupprButton } from "./suppr/suppr-button";
 import { CopyMealDialog } from "./suppr/copy-meal-dialog";
+import { CopySlotDialog } from "./suppr/copy-slot-dialog";
 import { DuplicateDayDialog } from "./suppr/duplicate-day-dialog";
 import { HydrationStimulantsCard } from "./suppr/hydration-stimulants-card";
 import { useWeeklyRecap } from "./suppr/use-weekly-recap";
@@ -218,6 +219,8 @@ export const NutritionTracker = memo(function NutritionTracker({
     updateLoggedMeal,
     copyMealToDate,
     copyMealToDateRange,
+    copySlotToDateRange,
+    undoCopyToSlot,
     duplicateDay,
     duplicateDayToDateRange,
     mealPlan,
@@ -316,6 +319,9 @@ export const NutritionTracker = memo(function NutritionTracker({
   const [addOpen, setAddOpen] = useState(false);
   /** Batch 1.4 — meal row context menu: target meal id for the Copy dialog. */
   const [copyMealTargetId, setCopyMealTargetId] = useState<string | null>(null);
+  /** ENG-786 rebuild — the whole-slot "Copy to another day" flow's target
+   *  slot (distinct from `copyMealTargetId`'s single-meal shape above). */
+  const [copySlotTarget, setCopySlotTarget] = useState<{ slot: string } | null>(null);
   // P5 parity gap #15 — per-meal nutrition-detail dialog target. Holds the id
   // of the meal whose breakdown is open; the dialog resolves the full LoggedMeal
   // (with micros) from `mealsForSelectedDate`, mirroring the copy-meal pattern.
@@ -965,33 +971,6 @@ export const NutritionTracker = memo(function NutritionTracker({
       meals: [...map.get(name)!].sort(compareMealsByChronology),
     }));
   }, [mealsForSelectedDate, mealSectionOrder]);
-
-  // ENG-786 — "Log this/these again". Re-inserts the viewed day's
-  // current entries for `slot` as fresh entries on the same day,
-  // preserving each entry's baked macros (kcal/P/C/F + fibre + micros
-  // + portionMultiplier) and data provenance (`source`). Uses the same
-  // per-entry `addLoggedMealForDate` insert path as `logSavedMeal`, so
-  // each re-logged row persists identically (and never re-scales) and
-  // emits one `food_logged { source: "log_again" }`. Placed after the
-  // `mealsGrouped` memo it reads (TDZ). Flag-gated at the section
-  // invocation via `today_log_again`. Mirror of mobile `logAgainSlot`
-  // in `apps/mobile/app/(tabs)/index.tsx`.
-  const logAgainSlot = useCallback(
-    (slot: string) => {
-      const source = mealsGrouped.find((g) => g.name === slot)?.meals ?? [];
-      if (source.length === 0) return;
-      const timeLabel = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-      for (const m of source) {
-        const { id: _id, ...rest } = m;
-        void _id;
-        addLoggedMealForDate(selectedDateKey, { ...rest, time: timeLabel }, "log_again");
-      }
-      toast.success(
-        source.length > 1 ? `Re-logged ${source.length} items to ${slot}.` : `Re-logged to ${slot}.`,
-      );
-    },
-    [mealsGrouped, addLoggedMealForDate, selectedDateKey],
-  );
 
   const targets = normalizeMacroTargets(nutritionTargets);
   // ENG-960 — apply the opt-in day-target schedule for the DISPLAYED weekday
@@ -2025,7 +2004,11 @@ export const NutritionTracker = memo(function NutritionTracker({
         }}
         savedMeals={hostSavedMeals}
         onLogSavedMeal={logSavedMealFromSlotHeader}
-        onLogAgain={isFeatureEnabled("today_log_again") ? logAgainSlot : undefined}
+        onCopySlot={
+          isFeatureEnabled("today_log_again")
+            ? (slot) => setCopySlotTarget({ slot })
+            : undefined
+        }
         onShareMealLink={onShareMealLink}
         hintVisibleForSlot={hintVisibleForSlot}
         onDismissUsualMealHint={dismissUsualMealHint}
@@ -2494,27 +2477,43 @@ export const NutritionTracker = memo(function NutritionTracker({
       {copyMealTargetId && (() => {
         const meal = mealsForSelectedDate.find((m) => m.id === copyMealTargetId);
         if (!meal) return null;
+        const mealSlot = meal.name || "Other";
         return (
           <CopyMealDialog
             open={true}
             onOpenChange={(open) => { if (!open) setCopyMealTargetId(null); }}
             sourceDayKey={selectedDateKey}
+            sourceSlot={mealSlot}
+            slots={enabledMealSlots}
             mealLabel={meal.recipeTitle}
-            onConfirm={(targetDayKeys, summary) => {
+            initialTargetDayKey={selectedDateKey < todayKey() ? todayKey() : undefined}
+            onConfirm={(targetDayKeys, targetSlot, summary) => {
               if (targetDayKeys.length === 0) {
                 toast(summary);
                 return;
               }
               if (targetDayKeys.length === 1) {
-                void copyMealToDate(selectedDateKey, meal.id, targetDayKeys[0]!);
+                void copyMealToDate(selectedDateKey, meal.id, targetDayKeys[0]!, targetSlot);
               } else {
-                void copyMealToDateRange(selectedDateKey, meal.id, targetDayKeys);
+                void copyMealToDateRange(selectedDateKey, meal.id, targetDayKeys, targetSlot);
               }
               toast.success(summary);
             }}
           />
         );
       })()}
+
+      {/* ENG-786 rebuild — whole-slot "Copy to another day" (copies EVERY entry
+          in the slot). Logic lives in CopySlotDialog (keeps this screen in budget). */}
+      <CopySlotDialog
+        target={copySlotTarget}
+        onClose={() => setCopySlotTarget(null)}
+        sourceDayKey={selectedDateKey}
+        slots={enabledMealSlots}
+        mealsGrouped={mealsGrouped}
+        copySlotToDateRange={copySlotToDateRange}
+        undoCopyToSlot={undoCopyToSlot}
+      />
 
       {/* P5 parity gap #15 — per-meal nutrition-detail dialog (web mirror of
           apps/mobile/app/meal-nutrition.tsx). `web_meal_nutrition_detail`

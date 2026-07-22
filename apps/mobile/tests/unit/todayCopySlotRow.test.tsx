@@ -1,16 +1,22 @@
 // @vitest-environment jsdom
 /**
- * `TodayMealsSection` (mobile) — ENG-786 "Log this/these again" row.
+ * `TodayMealsSection` (mobile) — ENG-786 rebuild "Copy to another day" row.
  *
- * The host passes `onLogAgain` ONLY when the `today_log_again` flag is on
- * (see `app/(tabs)/_today/TodayScreen.tsx` → `onLogAgain={isFeatureEnabled(...) ?
- * logAgainSlot : undefined}`). The component itself doesn't read the flag —
- * it renders the row iff `hasMeals && isOpen && onLogAgain`. So these tests
- * simulate the host by passing / omitting `onLogAgain`.
+ * Replaces `todayLogAgainRow.test.tsx` (deleted) — the old instant
+ * same-slot-same-day "Log again" is gone. The host passes `onCopySlot`
+ * ONLY when the `today_log_again` flag is on (flag key deliberately
+ * unchanged per an explicit product ruling, even though the behavior it
+ * gates is the rebuilt copy-to-another-day flow, not the old instant
+ * relog — see `app/(tabs)/_today/TodayScreen.tsx` →
+ * `onCopySlot={isFeatureEnabled("today_log_again") ? ... : undefined}`).
+ * The component itself doesn't read the flag — it renders the row iff
+ * `hasMeals && isOpen && onCopySlot`. So these tests simulate the host by
+ * passing / omitting `onCopySlot`.
  *
- * Pairs with tests/unit/todayMealsSectionLogAgain.test.tsx (web). Same
- * matrix on both sides so the testID + label + flag-on/off contract can't
- * drift between platforms.
+ * Unlike the old row, the label no longer depends on `meals.length`
+ * (always "Copy to another day" — it opens a destination sheet rather
+ * than instantly cloning in place, so there's no singular/plural "this
+ * item"/"these items" distinction to make).
  */
 import * as React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
@@ -66,7 +72,7 @@ const PEANUT_BUTTER_SMOOTHIE: SavedMeal = {
 
 function renderSection(overrides: {
   collapsedSlots?: Set<string>;
-  onLogAgain?: (slot: string) => void;
+  onCopySlot?: (slot: string) => void;
   snackMeals?: JournalMeal[];
 }) {
   const snackMeals = overrides.snackMeals ?? [GREEK_YOGURT];
@@ -100,7 +106,7 @@ function renderSection(overrides: {
       cardBorderColor="#2a2a3a"
       savedMeals={[PEANUT_BUTTER_SMOOTHIE]}
       onLogSavedMeal={() => undefined}
-      onLogAgain={overrides.onLogAgain}
+      onCopySlot={overrides.onCopySlot}
       hintVisibleForSlot={() => false}
       onDismissUsualMealHint={() => undefined}
       onAcceptUsualMealHint={() => undefined}
@@ -109,52 +115,52 @@ function renderSection(overrides: {
   return utils;
 }
 
-describe("TodayMealsSection (mobile) — ENG-786 Log again row", () => {
+describe("TodayMealsSection (mobile) — ENG-786 rebuild Copy to another day row", () => {
   beforeEach(() => {
     flagFn.mockImplementation(() => false);
   });
 
-  it("prop omitted (flag off): the Log again row is absent", () => {
+  it("prop omitted (flag off): the Copy row is absent", () => {
     const { queryByTestId } = renderSection({});
-    expect(queryByTestId("today-log-again-Snacks")).toBeNull();
+    expect(queryByTestId("today-copy-slot-Snacks")).toBeNull();
   });
 
-  it("prop wired, single item: row renders with 'Log this again'", () => {
-    const { getByTestId, getByText } = renderSection({ onLogAgain: vi.fn() });
-    expect(getByTestId("today-log-again-Snacks")).toBeTruthy();
-    expect(getByText("Log this again")).toBeTruthy();
+  it("prop wired, single item: row renders with 'Copy to another day'", () => {
+    const { getByTestId, getByText } = renderSection({ onCopySlot: vi.fn() });
+    expect(getByTestId("today-copy-slot-Snacks")).toBeTruthy();
+    expect(getByText("Copy to another day")).toBeTruthy();
   });
 
-  it("prop wired, multiple items: row renders with 'Log these again'", () => {
+  it("prop wired, multiple items: label stays 'Copy to another day' (no plural split)", () => {
     const { getByTestId, getByText } = renderSection({
-      onLogAgain: vi.fn(),
+      onCopySlot: vi.fn(),
       snackMeals: [GREEK_YOGURT, ALMOND_BUTTER],
     });
-    expect(getByTestId("today-log-again-Snacks")).toBeTruthy();
-    expect(getByText("Log these again")).toBeTruthy();
+    expect(getByTestId("today-copy-slot-Snacks")).toBeTruthy();
+    expect(getByText("Copy to another day")).toBeTruthy();
   });
 
-  it("prop wired: tapping the row calls onLogAgain(slot)", () => {
-    const onLogAgain = vi.fn();
-    const { getByTestId } = renderSection({ onLogAgain });
-    fireEvent.press(getByTestId("today-log-again-Snacks"));
-    expect(onLogAgain).toHaveBeenCalledTimes(1);
-    expect(onLogAgain).toHaveBeenCalledWith("Snacks");
+  it("prop wired: tapping the row calls onCopySlot(slot)", () => {
+    const onCopySlot = vi.fn();
+    const { getByTestId } = renderSection({ onCopySlot });
+    fireEvent.press(getByTestId("today-copy-slot-Snacks"));
+    expect(onCopySlot).toHaveBeenCalledTimes(1);
+    expect(onCopySlot).toHaveBeenCalledWith("Snacks");
   });
 
   it("prop wired but slot collapsed: the row is absent (mirrors web)", () => {
     const { queryByTestId } = renderSection({
-      onLogAgain: vi.fn(),
+      onCopySlot: vi.fn(),
       collapsedSlots: new Set(["Snacks"]),
     });
-    expect(queryByTestId("today-log-again-Snacks")).toBeNull();
+    expect(queryByTestId("today-copy-slot-Snacks")).toBeNull();
   });
 
   it("prop wired but slot empty: no row for an empty slot", () => {
     const { queryByTestId } = renderSection({
-      onLogAgain: vi.fn(),
+      onCopySlot: vi.fn(),
       snackMeals: [],
     });
-    expect(queryByTestId("today-log-again-Snacks")).toBeNull();
+    expect(queryByTestId("today-copy-slot-Snacks")).toBeNull();
   });
 });

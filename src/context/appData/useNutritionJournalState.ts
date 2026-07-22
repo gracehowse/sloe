@@ -8,7 +8,8 @@ import { looksLikeMissingTableError, syncDisabledBecauseSchemaMessage, syncFaile
 import { newId } from "./persistence.ts";
 import { useRetryEnableDbTable } from "./useRetryEnableDbTable.ts";
 import { refreshAdaptiveTdeeForUser } from "../../lib/nutrition/refreshAdaptiveTdee.ts";
-import { cloneMealWithoutId, sanitizeCopyTargets } from "../../lib/nutrition/copyMeals.ts";
+import { cloneMealWithoutId, sanitizeCopyTargets, sanitizeCopySlotTargets } from "../../lib/nutrition/copyMeals.ts";
+import { normalizeJournalSlotName } from "../../lib/nutrition/journalSlot.ts";
 import { canonicalNutritionEntrySource } from "../../lib/nutrition/canonicalNutritionEntrySource.ts";
 import { snapshotDailyTargetIfMissing } from "../../lib/nutrition/dailyTargetSnapshot.ts";
 import { ENERGY_NUMBERS_V1_FLAG } from "../../lib/nutrition/energyNumbers.ts";
@@ -643,23 +644,32 @@ export function useNutritionJournalState(opts: {
     return nutritionByDay[selectedDateKey] ?? [];
   }, [nutritionByDay, selectedDateKey]);
 
+  /** Clones `meal`, renaming it onto `targetSlot` when the caller passed one
+   *  and it actually differs from the meal's own slot (`name`) — mirrors
+   *  mobile's `cloneForSlot` in `apps/mobile/hooks/useCopyDuplicateMeal.ts`. */
+  function cloneForSlot(meal: LoggedMeal, targetDayKey: string, targetSlot?: string): Omit<LoggedMeal, "id"> {
+    const cloned = reanchorMealEatenAt(
+      cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">,
+      targetDayKey,
+      { timeZone: profileTimeZone },
+    ) as Omit<LoggedMeal, "id">;
+    if (targetSlot && targetSlot !== meal.name) return { ...cloned, name: targetSlot };
+    return cloned;
+  }
+
   /**
    * Copy a single logged meal from `sourceDayKey` to `targetDayKey`.
    * Uses the same `addLoggedMealForDate` insert path as manual logging,
    * so the row persists to `nutrition_entries` with a fresh id.
    */
   const copyMealToDate = useCallback(
-    async (sourceDayKey: string, mealId: string, targetDayKey: string): Promise<void> => {
+    async (sourceDayKey: string, mealId: string, targetDayKey: string, targetSlot?: string): Promise<void> => {
       if (!sourceDayKey || !mealId || !targetDayKey) return;
       if (sourceDayKey === targetDayKey) return;
       const sourceDay = nutritionByDay[sourceDayKey] ?? [];
       const meal = sourceDay.find((m) => m.id === mealId);
       if (!meal) return;
-      const cloned = reanchorMealEatenAt(
-        cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">,
-        targetDayKey,
-        { timeZone: profileTimeZone },
-      ) as Omit<LoggedMeal, "id">;
+      const cloned = cloneForSlot(meal, targetDayKey, targetSlot);
       addLoggedMealForDate(targetDayKey, cloned, "copy_meal");
       track(AnalyticsEvents.meal_copied, {
         source: "copy_meal",
@@ -672,7 +682,8 @@ export function useNutritionJournalState(opts: {
 
   /**
    * Copy a single logged meal to many target days. The source day is
-   * excluded and duplicates are dropped, both via `sanitizeCopyTargets`.
+   * excluded and duplicates are dropped, both via `sanitizeCopySlotTargets`
+   * (a same-day target is only a true no-op when the slot is unchanged too).
    * Fires exactly one `meal_copied` analytics event covering the batch
    * and one `food_logged { count, batched: true }` event for the whole
    * batch (audit M3, 2026-04-18 — not N events).
@@ -681,20 +692,16 @@ export function useNutritionJournalState(opts: {
    * Supabase insert rather than N sequential single-row inserts.
    */
   const copyMealToDateRange = useCallback(
-    async (sourceDayKey: string, mealId: string, targetDayKeys: string[]): Promise<void> => {
+    async (sourceDayKey: string, mealId: string, targetDayKeys: string[], targetSlot?: string): Promise<void> => {
       if (!sourceDayKey || !mealId) return;
-      const cleanTargets = sanitizeCopyTargets(sourceDayKey, targetDayKeys);
-      if (cleanTargets.length === 0) return;
       const sourceDay = nutritionByDay[sourceDayKey] ?? [];
       const meal = sourceDay.find((m) => m.id === mealId);
       if (!meal) return;
+      const cleanTargets = sanitizeCopySlotTargets(sourceDayKey, meal.name, targetSlot ?? meal.name, targetDayKeys);
+      if (cleanTargets.length === 0) return;
       let totalInserted = 0;
       for (const target of cleanTargets) {
-        const cloned = reanchorMealEatenAt(
-          cloneMealWithoutId(meal) as Omit<LoggedMeal, "id">,
-          target,
-          { timeZone: profileTimeZone },
-        ) as Omit<LoggedMeal, "id">;
+        const cloned = cloneForSlot(meal, target, targetSlot);
         const inserted = await addLoggedMealsForDate(target, [cloned]);
         totalInserted += inserted.length;
       }
@@ -712,6 +719,101 @@ export function useNutritionJournalState(opts: {
       }
     },
     [nutritionByDay, addLoggedMealsForDate, profileTimeZone],
+  );
+
+  /**
+   * ENG-786 rebuild (2026-07-21) — "Copy to another day" replaces the old
+   * instant same-slot-same-day "Log again" (`logAgainSlot`, deleted: silently
+   * doubled a whole slot's calories with no confirmation, no undo, and
+   * stamped clones with the CURRENT wall-clock time even when the viewed day
+   * was in the past). Copies every entry currently in `sourceSlot` on
+   * `sourceDayKey` to each of `targetDayKeys`, optionally renaming the slot
+   * on the way (`targetSlot`). Mirror of mobile's `copySlotToDateRange` in
+   * `apps/mobile/hooks/useCopyDuplicateMeal.ts`. Returns `createdIdsByDay`
+   * (ids keyed by target day) so `undoCopyToSlot` can remove exactly these
+   * rows even from a day the user isn't currently viewing.
+   *
+   * Review fix (2026-07-21) — filter by `normalizeJournalSlotName`, not
+   * the raw `m.name`. `NutritionTracker`'s `mealsGrouped` (the source of
+   * both the dialog's shown item count and the "count"-driven UI) groups by
+   * the NORMALIZED slot name (`"Snack"` → `"Snacks"`), so a legacy `"Snack"`
+   * row was visibly counted under "Snacks" but silently excluded here (raw
+   * `"Snack" !== "Snacks"`) — the toast under-reported, or read "Nothing to
+   * copy" for a visibly non-empty slot, and the row never got re-slotted.
+   * Comparing both sides through the same normalizer makes the shown count
+   * and the copied count agree by construction.
+   */
+  const copySlotToDateRange = useCallback(
+    async (
+      sourceDayKey: string,
+      sourceSlot: string,
+      targetSlot: string,
+      targetDayKeys: string[],
+    ): Promise<{ itemCount: number; createdIdsByDay: Record<string, string[]> }> => {
+      const empty = { itemCount: 0, createdIdsByDay: {} };
+      if (!sourceDayKey || !sourceSlot) return empty;
+      const normalizedSourceSlot = normalizeJournalSlotName(sourceSlot);
+      const sourceMeals = (nutritionByDay[sourceDayKey] ?? []).filter(
+        (m) => normalizeJournalSlotName(m.name?.trim() || "Other") === normalizedSourceSlot,
+      );
+      if (sourceMeals.length === 0) return empty;
+      const cleanTargets = sanitizeCopySlotTargets(sourceDayKey, sourceSlot, targetSlot, targetDayKeys);
+      if (cleanTargets.length === 0) return empty;
+      let totalInserted = 0;
+      const createdIdsByDay: Record<string, string[]> = {};
+      for (const target of cleanTargets) {
+        const clones = sourceMeals.map((m) => cloneForSlot(m, target, targetSlot));
+        const inserted = await addLoggedMealsForDate(target, clones);
+        totalInserted += inserted.length;
+        if (inserted.length > 0) createdIdsByDay[target] = inserted.map((m) => m.id);
+      }
+      track(AnalyticsEvents.meal_copied, {
+        source: "copy_slot",
+        batchSize: sourceMeals.length,
+        targetDayCount: cleanTargets.length,
+      });
+      if (totalInserted > 0) {
+        track(AnalyticsEvents.food_logged, {
+          count: totalInserted,
+          batched: true,
+          source: "copy_slot",
+        });
+      }
+      return { itemCount: sourceMeals.length, createdIdsByDay };
+    },
+    [nutritionByDay, addLoggedMealsForDate, profileTimeZone],
+  );
+
+  /**
+   * Undo for `copySlotToDateRange` — removes exactly the rows it created,
+   * per target day, both from local `nutritionByDay` state and Supabase.
+   * Deliberately simpler than `removeLoggedMeal`: skips its restore-on-
+   * failure + HealthKit-adjacent handling, since these are same-session,
+   * just-created copy clones being undone within the ~5s toast window.
+   * Mirror of mobile's `undoCopyToSlot`.
+   */
+  const undoCopyToSlot = useCallback(
+    (createdIdsByDay: Record<string, string[]>) => {
+      const allIds = Object.values(createdIdsByDay).flat();
+      if (allIds.length === 0) return;
+      setNutritionByDay((prev) => {
+        const next = { ...prev };
+        for (const [day, ids] of Object.entries(createdIdsByDay)) {
+          const idSet = new Set(ids);
+          next[day] = (next[day] ?? []).filter((m) => !idSet.has(m.id));
+        }
+        return next;
+      });
+      if (!authedUserId || !dbNutritionEnabled) return;
+      void supabase
+        .from("nutrition_entries")
+        .delete()
+        .in("id", allIds)
+        .then(({ error }) => {
+          if (error) toast.error(syncFailedRetryMessage("nutrition log", error.message ?? ""));
+        });
+    },
+    [authedUserId, dbNutritionEnabled],
   );
 
   /**
@@ -808,6 +910,8 @@ export function useNutritionJournalState(opts: {
     mealsForSelectedDate,
     copyMealToDate,
     copyMealToDateRange,
+    copySlotToDateRange,
+    undoCopyToSlot,
     duplicateDay,
     duplicateDayToDateRange,
   };

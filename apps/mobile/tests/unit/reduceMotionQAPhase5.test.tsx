@@ -27,7 +27,7 @@ import { NorthStarBlock } from "../../components/today/NorthStarBlock";
 // PostHog/AsyncStorage read that rejects *after* the test completes — Vitest
 // reports it as an "unhandled rejection" and exits non-zero even though every
 // assertion passes. Canonical mobile-test pattern (matches mealActionSheetBranded,
-// todayLogAgainRow, digestBlended, …). Root-cause robustness of isFeatureEnabled
+// todayCopySlotRow, digestBlended, …). Root-cause robustness of isFeatureEnabled
 // (floating promise) tracked in ENG-841.
 vi.mock("@/lib/analytics", () => ({
   track: vi.fn(),

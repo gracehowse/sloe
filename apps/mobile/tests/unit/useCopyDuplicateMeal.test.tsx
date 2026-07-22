@@ -7,6 +7,10 @@
  * started. Also pins that a range call (copy/duplicate to multiple days)
  * suppresses `writeAhead`'s own per-day failure Alert — one consolidated
  * message covers the whole batch instead of N stacked popups.
+ *
+ * ENG-786 rebuild (2026-07-21) — coverage added for `copySlotToDateRange`
+ * (whole-slot copy — the new "Copy to another day" primitive replacing the
+ * deleted instant "Log again") and its paired `undoCopyToSlot`.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React, { useRef, useState } from "react";
@@ -16,7 +20,18 @@ vi.mock("@/lib/analytics", () => ({
   track: vi.fn(),
   isFeatureEnabled: vi.fn(() => false),
 }));
-vi.mock("@/lib/supabase", () => ({ supabase: {} }));
+// ENG-786 rebuild — `undoCopyToSlot` hits `supabase.from(...).delete().in(...)`
+// directly (unlike the writeAhead-mediated copy/duplicate paths above), so
+// the mock needs a chainable stub resolving `{ error: null }` rather than the
+// bare `{}` the pre-existing tests got away with. `vi.hoisted` because
+// `vi.mock` factories are hoisted above top-level `const`s in this file.
+const { supabaseFrom, supabaseDeleteIn } = vi.hoisted(() => {
+  const supabaseDeleteIn = vi.fn(() => Promise.resolve({ error: null }));
+  const supabaseDelete = vi.fn(() => ({ in: supabaseDeleteIn }));
+  const supabaseFrom = vi.fn(() => ({ delete: supabaseDelete }));
+  return { supabaseFrom, supabaseDeleteIn };
+});
+vi.mock("@/lib/supabase", () => ({ supabase: { from: supabaseFrom } }));
 vi.mock("@/lib/refreshAdaptiveTdee", () => ({ refreshAdaptiveTdeeForUser: vi.fn() }));
 vi.mock("@suppr/nutrition-core/dailyTargetSnapshot", () => ({ snapshotDailyTargetIfMissing: vi.fn() }));
 vi.mock("@/lib/healthKitMealWriter", () => ({ writeMealToHealthKitIfEnabled: vi.fn() }));
@@ -54,11 +69,13 @@ type WriteAheadImpl = (
 function Harness({
   writeAheadImpl,
   onReady,
+  initialByDay,
 }: {
   writeAheadImpl: WriteAheadImpl;
   onReady: (api: ReturnType<typeof useCopyDuplicateMeal>, setByDaySpy: ReturnType<typeof vi.fn>) => void;
+  initialByDay?: ByDay;
 }) {
-  const [byDay] = useState<ByDay>(makeByDay());
+  const [byDay] = useState<ByDay>(initialByDay ?? makeByDay());
   const setByDaySpy = useRef(vi.fn()).current;
   const confirmLogHapticRef = useRef(() => {});
   const api = useCopyDuplicateMeal({
@@ -73,12 +90,13 @@ function Harness({
   return null;
 }
 
-function renderHarness(writeAheadImpl: WriteAheadImpl) {
+function renderHarness(writeAheadImpl: WriteAheadImpl, initialByDay?: ByDay) {
   let api!: ReturnType<typeof useCopyDuplicateMeal>;
   let setByDaySpy!: ReturnType<typeof vi.fn>;
   render(
     <Harness
       writeAheadImpl={writeAheadImpl}
+      initialByDay={initialByDay}
       onReady={(a, s) => {
         api = a;
         setByDaySpy = s;
@@ -176,5 +194,143 @@ describe("useCopyDuplicateMeal — range partial-failure reporting", () => {
     ]);
     expect(failed).toEqual([]);
     expect(succeeded).toHaveLength(2);
+  });
+});
+
+/**
+ * Two Lunch entries + one Dinner entry on the source day, so tests can
+ * confirm `copySlotToDateRange` only ever touches the SOURCE SLOT's rows
+ * (never leaks into a same-day different-slot entry).
+ */
+function makeSlotByDay(): ByDay {
+  return {
+    "2026-07-10": [
+      { ...MEAL, id: "meal-1", name: "Lunch" },
+      { ...MEAL, id: "meal-2", name: "Lunch", recipeTitle: "Rice bowl" },
+      { ...MEAL, id: "meal-3", name: "Dinner", recipeTitle: "Steak" },
+    ],
+  };
+}
+
+describe("useCopyDuplicateMeal — copySlotToDateRange (ENG-786 rebuild)", () => {
+  it("happy path: copies every item in the source slot to each target day, createdIdsByDay keyed per target day with the right count", async () => {
+    const writeAheadImpl: WriteAheadImpl = vi.fn(async () => ({ persisted: true, timedOut: false }));
+    const { api } = renderHarness(writeAheadImpl, makeSlotByDay());
+    const result = await api().copySlotToDateRange("2026-07-10", "Lunch", "Lunch", [
+      "2026-07-11",
+      "2026-07-12",
+    ]);
+    // Only the 2 Lunch items — the Dinner entry never enters the count.
+    expect(result.itemCount).toBe(2);
+    expect(result.succeeded.sort()).toEqual(["2026-07-11", "2026-07-12"]);
+    expect(result.failed).toEqual([]);
+    expect(Object.keys(result.createdIdsByDay).sort()).toEqual(["2026-07-11", "2026-07-12"]);
+    expect(result.createdIdsByDay["2026-07-11"]).toHaveLength(2);
+    expect(result.createdIdsByDay["2026-07-12"]).toHaveLength(2);
+    // Fresh minted ids — never reuses the source rows' own ids.
+    expect(result.createdIdsByDay["2026-07-11"]).not.toContain("meal-1");
+    expect(result.createdIdsByDay["2026-07-11"]).not.toContain("meal-2");
+    expect(result.createdIdsByDay["2026-07-12"]).not.toContain("meal-1");
+    expect(result.createdIdsByDay["2026-07-12"]).not.toContain("meal-2");
+  });
+
+  it("same-day-different-slot target is NOT excluded — copying Lunch onto the source day's Dinner is a legal target", async () => {
+    const writeAheadImpl: WriteAheadImpl = vi.fn(async () => ({ persisted: true, timedOut: false }));
+    const { api } = renderHarness(writeAheadImpl, makeSlotByDay());
+    const result = await api().copySlotToDateRange("2026-07-10", "Lunch", "Dinner", ["2026-07-10"]);
+    expect(result.itemCount).toBe(2);
+    expect(result.succeeded).toEqual(["2026-07-10"]);
+    expect(result.failed).toEqual([]);
+    expect(result.createdIdsByDay["2026-07-10"]).toHaveLength(2);
+  });
+
+  it("same-day-same-slot target IS excluded (true no-op) — no writeAhead call, empty result shape", async () => {
+    const writeAheadImpl: WriteAheadImpl = vi.fn(async () => ({ persisted: true, timedOut: false }));
+    const { api } = renderHarness(writeAheadImpl, makeSlotByDay());
+    const result = await api().copySlotToDateRange("2026-07-10", "Lunch", "Lunch", ["2026-07-10"]);
+    expect(result).toEqual({ succeeded: [], failed: [], itemCount: 0, createdIdsByDay: {} });
+    expect(writeAheadImpl).not.toHaveBeenCalled();
+  });
+
+  it("an empty source slot short-circuits to the empty result without calling writeAhead", async () => {
+    const writeAheadImpl: WriteAheadImpl = vi.fn(async () => ({ persisted: true, timedOut: false }));
+    const { api } = renderHarness(writeAheadImpl, makeSlotByDay());
+    const result = await api().copySlotToDateRange("2026-07-10", "Breakfast", "Breakfast", [
+      "2026-07-11",
+    ]);
+    expect(result).toEqual({ succeeded: [], failed: [], itemCount: 0, createdIdsByDay: {} });
+    expect(writeAheadImpl).not.toHaveBeenCalled();
+  });
+
+  it("partial failure: a target day whose write doesn't persist lands in `failed`, not `succeeded`, but its ids still land in createdIdsByDay (optimistic — ENG-1447)", async () => {
+    const outcomes: Record<string, boolean> = { "2026-07-11": true, "2026-07-12": false };
+    const writeAheadImpl: WriteAheadImpl = vi.fn(async (dayKey) => ({
+      persisted: outcomes[dayKey],
+      timedOut: false,
+    }));
+    const { api } = renderHarness(writeAheadImpl, makeSlotByDay());
+    const result = await api().copySlotToDateRange("2026-07-10", "Lunch", "Lunch", [
+      "2026-07-11",
+      "2026-07-12",
+    ]);
+    expect(result.succeeded).toEqual(["2026-07-11"]);
+    expect(result.failed).toEqual(["2026-07-12"]);
+    expect(result.createdIdsByDay["2026-07-11"]).toHaveLength(2);
+    expect(result.createdIdsByDay["2026-07-12"]).toHaveLength(2);
+  });
+});
+
+describe("useCopyDuplicateMeal — undoCopyToSlot (ENG-786 rebuild)", () => {
+  it("removes exactly the ids passed from local state, across multiple days", () => {
+    const writeAheadImpl: WriteAheadImpl = vi.fn(async () => ({ persisted: true, timedOut: false }));
+    const { api, setByDaySpy } = renderHarness(writeAheadImpl, makeSlotByDay());
+    api().undoCopyToSlot({
+      "2026-07-11": ["new-1", "new-2"],
+      "2026-07-12": ["new-3"],
+    });
+    expect(setByDaySpy()).toHaveBeenCalledTimes(1);
+    const updater = setByDaySpy().mock.calls[0]![0] as (prev: ByDay) => ByDay;
+    const prev: ByDay = {
+      "2026-07-11": [
+        { ...MEAL, id: "new-1" },
+        { ...MEAL, id: "new-2" },
+        { ...MEAL, id: "keep-1" },
+      ],
+      "2026-07-12": [{ ...MEAL, id: "new-3" }],
+      "2026-07-13": [{ ...MEAL, id: "untouched" }],
+    };
+    const next = updater(prev);
+    // Exactly the passed ids are removed from each day; other rows on the
+    // same day (and days not mentioned at all) are untouched.
+    expect(next["2026-07-11"]!.map((m) => m.id)).toEqual(["keep-1"]);
+    expect(next["2026-07-12"]).toEqual([]);
+    expect(next["2026-07-13"]!.map((m) => m.id)).toEqual(["untouched"]);
+  });
+
+  it("issues one Supabase delete `.in(id, allIds)` across every id from every day", () => {
+    const writeAheadImpl: WriteAheadImpl = vi.fn(async () => ({ persisted: true, timedOut: false }));
+    const { api } = renderHarness(writeAheadImpl, makeSlotByDay());
+    api().undoCopyToSlot({
+      "2026-07-11": ["new-1", "new-2"],
+      "2026-07-12": ["new-3"],
+    });
+    expect(supabaseFrom).toHaveBeenCalledWith("nutrition_entries");
+    expect(supabaseDeleteIn).toHaveBeenCalledWith("id", ["new-1", "new-2", "new-3"]);
+  });
+
+  it("no-ops on empty input — no setByDay call, no Supabase delete", () => {
+    const writeAheadImpl: WriteAheadImpl = vi.fn(async () => ({ persisted: true, timedOut: false }));
+    const { api, setByDaySpy } = renderHarness(writeAheadImpl, makeSlotByDay());
+    api().undoCopyToSlot({});
+    expect(setByDaySpy()).not.toHaveBeenCalled();
+    expect(supabaseFrom).not.toHaveBeenCalled();
+  });
+
+  it("no-ops when every day's id list is empty (no ids anywhere to delete)", () => {
+    const writeAheadImpl: WriteAheadImpl = vi.fn(async () => ({ persisted: true, timedOut: false }));
+    const { api, setByDaySpy } = renderHarness(writeAheadImpl, makeSlotByDay());
+    api().undoCopyToSlot({ "2026-07-11": [], "2026-07-12": [] });
+    expect(setByDaySpy()).not.toHaveBeenCalled();
+    expect(supabaseFrom).not.toHaveBeenCalled();
   });
 });

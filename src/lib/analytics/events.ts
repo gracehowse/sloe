@@ -1289,9 +1289,13 @@ export type FoodLoggedSource =
   | "food_search"    // FoodSearch panel confirm (USDA/OFF/Edamam/FatSecret)
   | "quick_add"      // QuickAddPanel tap (Favourite/Frequent/Recent/Eat-again)
   | "saved_meal"     // Re-log from My meals tab
-  | "log_again"      // ENG-786 — one-tap "Log this/these again" on a Today slot
+  | "log_again"      // ENG-786 — retired 2026-07-21 (superseded by "copy_slot"
+                     // below); kept in the union so historical events still
+                     // typecheck, no new call sites emit it
   | "custom_food"    // Logged from custom food entry
   | "copy_meal"      // Per-meal copy flow
+  | "copy_slot"      // ENG-786 rebuild — "Copy to another day", a whole
+                     // slot's entries to a chosen day + meal slot
   | "duplicate_day"  // Day-level duplicate flow
   | "barcode"        // Barcode scanner commit
   | "voice"          // Voice log commit

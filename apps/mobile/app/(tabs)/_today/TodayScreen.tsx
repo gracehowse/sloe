@@ -85,6 +85,7 @@ import { TodayLoadingSkeleton } from "@/components/today/TodayLoadingSkeleton";
 import DayStrip from "@/components/charts/DayStrip";
 import JournalDatePickerModal from "@/components/JournalDatePickerModal";
 import CopyMealSheet from "@/components/CopyMealSheet";
+import CopySlotSheetHost from "@/components/today/CopySlotSheetHost";
 import DuplicateDaySheet from "@/components/DuplicateDaySheet";
 import VoiceLogSheet from "@/components/VoiceLogSheet";
 import PhotoLogSheet from "@/components/PhotoLogSheet";
@@ -611,6 +612,9 @@ export default function TrackerScreen() {
   const [journalCalendarOpen, setJournalCalendarOpen] = useState(false);
   /** Batch 1.4 — Copy-meal sheet: the meal id being copied, or null. */
   const [copyMealTargetId, setCopyMealTargetId] = useState<string | null>(null);
+  /** ENG-786 rebuild — Copy-slot sheet: the slot being copied, or null
+   *  (parallel to, not merged with, `copyMealTargetId`). */
+  const [copySlotTarget, setCopySlotTarget] = useState<{ slot: string } | null>(null);
   /** Batch 1.4 — Duplicate-day sheet visibility. */
   const [duplicateDayOpen, setDuplicateDayOpen] = useState(false);
   const [showPrevious, setShowPrevious] = useState(false);
@@ -1896,6 +1900,14 @@ export default function TrackerScreen() {
     selectedDate.getDay() as WeekdayIndex,
   );
   const isToday = dayKey === dateKeyFromDate(new Date());
+  // ENG-786 rebuild — Fable default-target ruling: CopyMealSheet's own
+  // "tomorrow" default reads as still-past when viewing a past day, so a
+  // past-viewed day overrides the sheet's initial target to TODAY instead
+  // (undefined keeps the sheet's own tomorrow default). Shared by both
+  // CopyMealSheet render sites.
+  const todayDayKeyForCopySheet = dateKeyFromDate(new Date());
+  const copySheetInitialTargetDayKey =
+    dayKey >= todayDayKeyForCopySheet ? undefined : todayDayKeyForCopySheet;
 
   // Maintenance tile + popover + activity-bonus baseline. Resolves via
   // the shared `resolveMaintenance`: adaptive TDEE wins at medium/high
@@ -3278,7 +3290,7 @@ export default function TrackerScreen() {
   // `useCopyDuplicateMeal` (ENG-1522: honest persisted/failed reporting
   // instead of a premature success alert; also keeps this pinned
   // screen-budget file from growing).
-  const { copyMealToDate, copyMealToDateRange, duplicateDay, duplicateDayToDateRange } = useCopyDuplicateMeal({
+  const { copyMealToDate, copyMealToDateRange, copySlotToDateRange, undoCopyToSlot, duplicateDay, duplicateDayToDateRange } = useCopyDuplicateMeal({
     byDay,
     setByDay,
     userId,
@@ -3539,46 +3551,6 @@ export default function TrackerScreen() {
     }
     return groups;
   }, [mealsToday]);
-
-  /** ENG-786 — "Log again": re-insert a slot's current entries as fresh
-   *  entries on the viewed day. Clones each `JournalMeal` with a new id +
-   *  the current time, preserving the baked macros (kcal/P/C/F + fibre +
-   *  micros + portionMultiplier), then appends + persists immediately.
-   *  Source = `mealGroups[slot]`, so it re-logs exactly what the user sees
-   *  in that slot. `createdAt` is dropped so the clone reads as a fresh
-   *  log, not a copy of the original's timestamp. The new rows are
-   *  individually swipe-removable (the v1 undo; ENG-786 P2 = a dedicated
-   *  undo toast). Gated at the call site by `today_log_again`. */
-  const logAgainSlot = useCallback(
-    (slot: string) => {
-      if (!userId) return;
-      const source = mealGroups[slot] ?? [];
-      if (source.length === 0) return;
-      const timeLabel = new Date().toLocaleTimeString(undefined, {
-        hour: "numeric",
-        minute: "2-digit",
-      });
-      const clones: JournalMeal[] = source.map((m) => ({
-        ...m,
-        id: newMealId(),
-        time: timeLabel,
-        createdAt: undefined,
-      }));
-      setByDay((prev) => ({ ...prev, [dayKey]: [...(prev[dayKey] ?? []), ...clones] }));
-      // Commit confirm haptic fires once inside the funnel (ENG-1016).
-      void persistMealsImmediate(dayKey, clones);
-      try {
-        for (const m of clones) {
-          track(AnalyticsEvents.food_logged, {
-            source: "log_again",
-            calories: m.calories,
-            slot,
-          });
-        }
-      } catch { /* analytics fire-and-forget */ }
-    },
-    [userId, mealGroups, dayKey, persistMealsImmediate],
-  );
 
   const toggleSlotCollapse = useCallback((slot: string) => {
     setCollapsedSlots((prev) => {
@@ -4073,8 +4045,8 @@ export default function TrackerScreen() {
             onRequestPortion={
               isFeatureEnabled("today-edit-entry-v2") ? openPortionConfirm : undefined
             }
-            onLogAgain={
-              isFeatureEnabled("today_log_again") ? logAgainSlot : undefined
+            onCopySlot={
+              isFeatureEnabled("today_log_again") ? (slot) => setCopySlotTarget({ slot }) : undefined
             }
             hintVisibleForSlot={hintVisibleForSlot}
             onDismissUsualMealHint={dismissUsualMealHint}
@@ -5375,28 +5347,32 @@ export default function TrackerScreen() {
         }}
       />
 
-      {/* Batch 1.4 — Copy meal sheet */}
+      {/* Batch 1.4 — Copy meal sheet (single item) */}
       {copyMealTargetId && (() => {
         const meal = (byDay[dayKey] ?? []).find((m) => m.id === copyMealTargetId);
         if (!meal) return null;
+        const sourceSlot = meal.name || "Other";
         return (
           <CopyMealSheet
             visible={true}
             onClose={() => setCopyMealTargetId(null)}
             sourceDayKey={dayKey}
+            sourceSlot={sourceSlot}
+            slots={MEAL_SLOTS}
+            initialTargetDayKey={copySheetInitialTargetDayKey}
             mealLabel={meal.recipeTitle}
-            onConfirm={(targetDayKeys, summary) => {
+            onConfirm={(targetDayKeys, targetSlot, summary) => {
               if (targetDayKeys.length === 0) {
                 Alert.alert("Copy meal", summary);
                 return;
               }
               // ENG-1522 — await the persist before claiming success (unpersisted: writeAhead already alerted "Saved on this device").
               if (targetDayKeys.length === 1) {
-                void copyMealToDate(dayKey, meal.id, targetDayKeys[0]!).then((persisted) => {
+                void copyMealToDate(dayKey, meal.id, targetDayKeys[0]!, targetSlot).then((persisted) => {
                   if (persisted) Alert.alert("Copied", summary);
                 });
               } else {
-                void copyMealToDateRange(dayKey, meal.id, targetDayKeys).then(({ succeeded, failed }) => {
+                void copyMealToDateRange(dayKey, meal.id, targetDayKeys, targetSlot).then(({ succeeded, failed }) => {
                   const { title, message } = copyDuplicateBatchAlert("Copied", targetDayKeys.length, succeeded.length, failed.length, summary);
                   Alert.alert(title, message);
                 });
@@ -5414,6 +5390,30 @@ export default function TrackerScreen() {
           />
         );
       })()}
+
+      {/* ENG-786 rebuild — Copy meal sheet (whole slot), parallel to the
+          single-item sheet above (different data shape). Render + onConfirm/
+          toast wiring live in `CopySlotSheetHost` (screen-budget). */}
+      <CopySlotSheetHost
+        copySlotTarget={copySlotTarget}
+        onClose={() => setCopySlotTarget(null)}
+        dayKey={dayKey}
+        mealGroups={mealGroups}
+        slots={MEAL_SLOTS}
+        initialTargetDayKey={copySheetInitialTargetDayKey}
+        colors={{
+          text: colors.text,
+          textSecondary: colors.textSecondary,
+          textTertiary: colors.textTertiary,
+          card: colors.card,
+          cardBorder: colors.cardBorder,
+          background: colors.background,
+          primaryForeground: colors.primaryForeground,
+        }}
+        copySlotToDateRange={copySlotToDateRange}
+        undoCopyToSlot={undoCopyToSlot}
+        insetTop={insets.top}
+      />
 
       {/* Batch 1.4 — Duplicate day sheet */}
       <DuplicateDaySheet

@@ -10,10 +10,22 @@ import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 import { snapshotDailyTargetIfMissing } from "@suppr/nutrition-core/dailyTargetSnapshot";
 import { ENERGY_NUMBERS_V1_FLAG } from "@suppr/nutrition-core/energyNumbers";
 import { writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
-import { cloneMealWithoutId, sanitizeCopyTargets } from "@suppr/nutrition-core/copyMeals";
+import { captureException } from "@/lib/errorTracking";
+import { cloneMealWithoutId, sanitizeCopyTargets, sanitizeCopySlotTargets } from "@suppr/nutrition-core/copyMeals";
 import type { useJournalWriteAhead } from "@/hooks/useJournalWriteAhead";
 
 type WriteAhead = ReturnType<typeof useJournalWriteAhead>["writeAhead"];
+
+/** Clones `meal`, renaming it onto `targetSlot` when the caller passed one
+ *  and it actually differs from the meal's own slot (`name`) — the slot
+ *  field IS the clone target, so a same-slot copy must not "override" it
+ *  into a no-op string compare. Module-level: pure function of its
+ *  arguments, no hook state to close over. */
+function cloneForSlot(meal: JournalMeal, targetSlot?: string): Omit<JournalMeal, "id"> {
+  const cloned = cloneMealWithoutId(meal) as Omit<JournalMeal, "id">;
+  if (targetSlot && targetSlot !== meal.name) return { ...cloned, name: targetSlot };
+  return cloned;
+}
 
 /**
  * Batch 1.4 "copy meal" / "duplicate day" — extracted from `TodayScreen.tsx`
@@ -52,8 +64,8 @@ export function useCopyDuplicateMeal(args: {
       targetDayKey: string,
       clones: Omit<JournalMeal, "id">[],
       opts?: { suppressFailureAlert?: boolean },
-    ): Promise<{ count: number; persisted: boolean }> => {
-      if (clones.length === 0) return { count: 0, persisted: true };
+    ): Promise<{ count: number; persisted: boolean; ids: string[] }> => {
+      if (clones.length === 0) return { count: 0, persisted: true, ids: [] };
       // Re-anchor each clone's `eatenAt` onto the TARGET day before it
       // reaches memory/DB — `buildNutritionEntryRow` derives `date_key`
       // from `eaten_at`, so skipping this buckets the copy back onto the
@@ -69,7 +81,8 @@ export function useCopyDuplicateMeal(args: {
         ...prev,
         [targetDayKey]: [...(prev[targetDayKey] ?? []), ...withIds],
       }));
-      if (!userId) return { count: withIds.length, persisted: true };
+      const ids = withIds.map((m) => m.id);
+      if (!userId) return { count: withIds.length, persisted: true, ids };
       // Single shared row shape (launch-audit P1-2) — builder guarantees
       // eaten_at/date_key + recipe_id FK propagation (Schema refactor P2).
       const dbRows = withIds.map((m) =>
@@ -82,7 +95,7 @@ export function useCopyDuplicateMeal(args: {
         onEnqueued: () => confirmLogHapticRef.current(),
         suppressFailureAlert: opts?.suppressFailureAlert,
       });
-      if (!persisted) return { count: withIds.length, persisted: false };
+      if (!persisted) return { count: withIds.length, persisted: false, ids };
       void refreshAdaptiveTdeeForUser(supabase, userId);
       // F-2 — snapshot today's target regardless of `targetDayKey`.
       void snapshotDailyTargetIfMissing(supabase, userId, { canonicalEnergyInputs: isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG) });
@@ -105,18 +118,23 @@ export function useCopyDuplicateMeal(args: {
           origin: "duplicate",
         });
       }
-      return { count: withIds.length, persisted: true };
+      return { count: withIds.length, persisted: true, ids };
     },
     [profileTimeZone, userId, writeAhead, setByDay, confirmLogHapticRef],
   );
 
   const copyMealToDate = useCallback(
-    async (sourceDayKey: string, mealId: string, targetDayKey: string): Promise<boolean> => {
+    async (
+      sourceDayKey: string,
+      mealId: string,
+      targetDayKey: string,
+      targetSlot?: string,
+    ): Promise<boolean> => {
       if (!sourceDayKey || !mealId || !targetDayKey) return false;
       if (sourceDayKey === targetDayKey) return false;
       const meal = (byDay[sourceDayKey] ?? []).find((m) => m.id === mealId);
       if (!meal) return false;
-      const cloned = cloneMealWithoutId(meal) as Omit<JournalMeal, "id">;
+      const cloned = cloneForSlot(meal, targetSlot);
       const { persisted } = await insertClonedRowsIntoDay(targetDayKey, [cloned]);
       try { track(AnalyticsEvents.meal_copied, { source: "copy_meal", batchSize: 1, targetDayCount: 1 }); } catch { /* noop */ }
       return persisted;
@@ -129,17 +147,18 @@ export function useCopyDuplicateMeal(args: {
       sourceDayKey: string,
       mealId: string,
       targetDayKeys: string[],
+      targetSlot?: string,
     ): Promise<{ succeeded: string[]; failed: string[] }> => {
       if (!sourceDayKey || !mealId) return { succeeded: [], failed: [] };
-      const clean = sanitizeCopyTargets(sourceDayKey, targetDayKeys);
-      if (clean.length === 0) return { succeeded: [], failed: [] };
       const meal = (byDay[sourceDayKey] ?? []).find((m) => m.id === mealId);
-      if (!meal) return { succeeded: [], failed: clean };
+      if (!meal) return { succeeded: [], failed: [] };
+      const clean = sanitizeCopySlotTargets(sourceDayKey, meal.name, targetSlot ?? meal.name, targetDayKeys);
+      if (clean.length === 0) return { succeeded: [], failed: [] };
       let totalInserted = 0;
       const succeeded: string[] = [];
       const failed: string[] = [];
       for (const t of clean) {
-        const cloned = cloneMealWithoutId(meal) as Omit<JournalMeal, "id">;
+        const cloned = cloneForSlot(meal, targetSlot);
         // Suppress the per-day writeAhead alert — see copyDuplicateBatchAlert.
         const { count, persisted } = await insertClonedRowsIntoDay(t, [cloned], { suppressFailureAlert: true });
         totalInserted += count;
@@ -162,6 +181,109 @@ export function useCopyDuplicateMeal(args: {
       return { succeeded, failed };
     },
     [byDay, insertClonedRowsIntoDay],
+  );
+
+  /**
+   * ENG-786 rebuild (2026-07-21) — "Copy to another day" replaces the old
+   * instant same-slot-same-day "Log again" (`logAgainSlot`, deleted:
+   * silently doubled a whole slot's calories with no confirmation, no
+   * undo, and stamped clones with the CURRENT wall-clock time even when
+   * the viewed day was in the past). Copies every entry currently in
+   * `sourceSlot` on `sourceDayKey` to each of `targetDayKeys`, optionally
+   * renaming the slot on the way (`targetSlot`). `cloneForSlot` preserves
+   * each source entry's own `time` (never re-stamped to "now") — the same
+   * guarantee the single-item copy path already had via
+   * `cloneMealWithoutId`'s default (no `time` override).
+   *
+   * Returns `createdIdsByDay` (every id minted, keyed by the target day it
+   * landed on) so the host can offer a real Undo via `undoCopyToSlot` even
+   * when the multi-day quick-range wrote to several days the user isn't
+   * currently viewing.
+   */
+  const copySlotToDateRange = useCallback(
+    async (
+      sourceDayKey: string,
+      sourceSlot: string,
+      targetSlot: string,
+      targetDayKeys: string[],
+    ): Promise<{
+      succeeded: string[];
+      failed: string[];
+      itemCount: number;
+      createdIdsByDay: Record<string, string[]>;
+    }> => {
+      const empty = { succeeded: [], failed: [], itemCount: 0, createdIdsByDay: {} };
+      if (!sourceDayKey || !sourceSlot) return empty;
+      const sourceMeals = (byDay[sourceDayKey] ?? []).filter((m) => (m.name || "Other") === sourceSlot);
+      if (sourceMeals.length === 0) return empty;
+      const clean = sanitizeCopySlotTargets(sourceDayKey, sourceSlot, targetSlot, targetDayKeys);
+      if (clean.length === 0) return empty;
+      let totalInserted = 0;
+      const succeeded: string[] = [];
+      const failed: string[] = [];
+      const createdIdsByDay: Record<string, string[]> = {};
+      for (const t of clean) {
+        const clones = sourceMeals.map((m) => cloneForSlot(m, targetSlot));
+        // Suppress the per-day writeAhead alert — see copyDuplicateBatchAlert.
+        const { count, persisted, ids } = await insertClonedRowsIntoDay(t, clones, { suppressFailureAlert: true });
+        totalInserted += count;
+        if (ids.length > 0) createdIdsByDay[t] = ids;
+        (persisted ? succeeded : failed).push(t);
+      }
+      try {
+        track(AnalyticsEvents.meal_copied, {
+          source: "copy_slot",
+          batchSize: sourceMeals.length,
+          targetDayCount: clean.length,
+        });
+      } catch { /* noop */ }
+      if (totalInserted > 0) {
+        try {
+          track(AnalyticsEvents.food_logged, {
+            count: totalInserted,
+            batched: true,
+            source: "copy_slot",
+          });
+        } catch { /* noop */ }
+      }
+      return { succeeded, failed, itemCount: sourceMeals.length, createdIdsByDay };
+    },
+    [byDay, insertClonedRowsIntoDay],
+  );
+
+  /**
+   * Undo for `copySlotToDateRange` — removes exactly the rows it created,
+   * per target day, both from local `byDay` state and Supabase. Deliberately
+   * simpler than the primary swipe-delete path (`TodayScreen.tsx`'s
+   * `deleteMeal`): it skips that path's Apple Health tombstone handling,
+   * because these are same-session, just-created copy clones — undoing
+   * within the ~5s toast window on a copy of an `apple_health`-sourced
+   * entry is a narrow edge where, at worst, a later HK sync could re-import
+   * the (already-undone) clone. Acceptable for a first cut; not a silent
+   * gap since it's documented here.
+   */
+  const undoCopyToSlot = useCallback(
+    (createdIdsByDay: Record<string, string[]>) => {
+      const allIds = Object.values(createdIdsByDay).flat();
+      if (allIds.length === 0) return;
+      setByDay((prev) => {
+        const next = { ...prev };
+        for (const [day, ids] of Object.entries(createdIdsByDay)) {
+          const idSet = new Set(ids);
+          next[day] = (next[day] ?? []).filter((m) => !idSet.has(m.id));
+        }
+        return next;
+      });
+      if (!userId) return;
+      void supabase
+        .from("nutrition_entries")
+        .delete()
+        .in("id", allIds)
+        .then(({ error }) => {
+          if (error) captureException(error);
+        });
+    },
+    [userId, setByDay],
   );
 
   const duplicateDay = useCallback(
@@ -229,5 +351,5 @@ export function useCopyDuplicateMeal(args: {
     [byDay, insertClonedRowsIntoDay],
   );
 
-  return { copyMealToDate, copyMealToDateRange, duplicateDay, duplicateDayToDateRange };
+  return { copyMealToDate, copyMealToDateRange, copySlotToDateRange, undoCopyToSlot, duplicateDay, duplicateDayToDateRange };
 }

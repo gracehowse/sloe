@@ -8,8 +8,9 @@
  * food rows (dot · name · kcal · chevron), and an in-card `+ Add food` action.
  *
  * This file pins the NEW behaviour the re-skin introduced (the pre-existing
- * contracts — slot colours, add-more, Log-usual, Log-again, branded sheet —
- * stay covered by their own files, all still green):
+ * contracts — slot colours, add-more, Log-usual, Copy-to-another-day (ENG-786
+ * rebuild; was "Log-again"), branded sheet — stay covered by their own files,
+ * all still green):
  *   1. A populated, open slot renders an in-card `Add food` action
  *      (`today-add-food-{slot}`) that routes through `onOpenFabForSlot(slot)`
  *      — the SAME handler the empty-slot header tap fires (no new data path).

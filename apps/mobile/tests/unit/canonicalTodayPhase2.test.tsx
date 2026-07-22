@@ -174,9 +174,16 @@ describe("(tabs)/index.tsx — canonical Today composition root pin", () => {
     // around TodayHeroRing. After this change, the variant prop, the
     // hidePicker prop, and the heroVariant local variable should ALL
     // be absent from the composition root.
-    expect(indexSrc).not.toMatch(/<TodayHero[\s\S]+?variant=\{/);
-    expect(indexSrc).not.toMatch(/<TodayHero[\s\S]+?hidePicker/);
-    expect(indexSrc).not.toMatch(/<TodayHero[\s\S]+?onVariantChange/);
+    // Scope the prop check to the `<TodayHero …/>` opening tag itself
+    // (bounded at its self-closing `/>`). The old unbounded
+    // `/<TodayHero[\s\S]+?variant=\{/` cross-scanned the ENTIRE composition
+    // root, so any later, unrelated `variant=` token — e.g. the ENG-786
+    // "Copy to another day" success `<Toast variant={…}/>` — false-matched
+    // and failed this assertion even though TodayHero has no variant prop.
+    const todayHeroOpenTag = indexSrc.match(/<TodayHero\b[\s\S]*?\/>/)?.[0] ?? "";
+    expect(todayHeroOpenTag).not.toMatch(/variant=\{/);
+    expect(todayHeroOpenTag).not.toMatch(/hidePicker/);
+    expect(todayHeroOpenTag).not.toMatch(/onVariantChange/);
     expect(indexSrc).not.toMatch(/heroVariant: TodayHeroVariant/);
     expect(indexSrc).not.toContain('AsyncStorage.getItem(HERO_VARIANT_STORAGE_KEY)');
     // TodayHero is still rendered — pin the open tag so a future

@@ -1,7 +1,19 @@
 # One-tap "Log this meal again" from a populated Today slot
 
+> **⚠️ SUPERSEDED (2026-07-21) — do not implement from this doc.** The instant
+> "Log this/these again" row described below was replaced, before it ever ramped,
+> by the destination-picker-first **"Copy to another day"** flow. The
+> `logAgainSlot` handler + the `today-log-again-{slot}` row are deleted on both
+> platforms; the `today_log_again` flag is reused for the new behavior. Reason:
+> the instant relog was an unconfirmed, un-undoable, silently calorie-doubling
+> mutation that also mis-stamped the entry with the current wall-clock time when
+> viewing a past day. The deferred undo toast (§Undo below) is now shipped as a
+> real Undo on the copy toast. See
+> [`2026-07-21-copy-to-another-day.md`](2026-07-21-copy-to-another-day.md). This
+> doc is kept as the historical record of the original decision.
+
 **Date:** 2026-05-30
-**Status:** Resolved (both platforms implemented; flag-gated OFF pending sim/browser sign-off)
+**Status:** **Superseded 2026-07-21** by [`2026-07-21-copy-to-another-day.md`](2026-07-21-copy-to-another-day.md) (was: Resolved, flag-gated OFF pending sim/browser sign-off — never ramped)
 **Area:** Today / Logging / MFP-refugee retention loop
 **Flag:** `today_log_again` (visual/structural → flag-gated per CLAUDE.md)
 **Issue:** [ENG-786](https://linear.app/suppr/issue/ENG-786)

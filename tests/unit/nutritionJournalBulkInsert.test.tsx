@@ -89,7 +89,12 @@ vi.mock("../../src/lib/supabase/browserClient.ts", () => ({
         }
         return Promise.resolve({ error: null });
       },
-      delete: () => ({ eq: () => Promise.resolve({ error: null }) }),
+      // `.eq()` covers removeLoggedMeal's single-row delete; `.in()` covers
+      // `undoCopyToSlot`'s multi-row `delete().in("id", allIds)`.
+      delete: () => ({
+        eq: () => Promise.resolve({ error: null }),
+        in: () => Promise.resolve({ error: null }),
+      }),
     }),
   },
 }));
@@ -289,6 +294,187 @@ describe("useNutritionJournalState bulk insert (audit M3)", () => {
       batchSize: 1,
       targetDayCount: 7,
     });
+  });
+
+  it("copySlotToDateRange copies every entry in the source slot to each target day (ENG-786 rebuild)", async () => {
+    const sourceMeals: LoggedMeal[] = [
+      meal({ id: "m1", name: "Lunch", recipeTitle: "Chicken salad", time: "Lunch" }),
+      meal({ id: "m2", name: "Lunch", recipeTitle: "Sparkling water", time: "Lunch", calories: 0 }),
+    ];
+    const { result } = renderHook(() =>
+      useNutritionJournalState({
+        authedUserId: "user-1",
+        initialByDay: { "2026-04-17": sourceMeals },
+        selectedDateKey: "2026-04-17",
+      }),
+    );
+
+    let outcome!: { itemCount: number; createdIdsByDay: Record<string, string[]> };
+    await act(async () => {
+      outcome = await result.current.copySlotToDateRange(
+        "2026-04-17",
+        "Lunch",
+        "Lunch",
+        ["2026-04-18", "2026-04-19"],
+      );
+    });
+
+    // One insert per target day, each carrying both source-slot entries.
+    expect(writeCalls).toHaveLength(2);
+    for (const call of writeCalls) {
+      expect(Array.isArray(call.rows)).toBe(true);
+      expect((call.rows as unknown[]).length).toBe(2);
+    }
+
+    expect(outcome.itemCount).toBe(2);
+    expect(Object.keys(outcome.createdIdsByDay).sort()).toEqual([
+      "2026-04-18",
+      "2026-04-19",
+    ]);
+    expect(outcome.createdIdsByDay["2026-04-18"]).toHaveLength(2);
+    expect(outcome.createdIdsByDay["2026-04-19"]).toHaveLength(2);
+
+    const mealCopiedEvents = analyticsCalls.filter((c) => c.event === "meal_copied");
+    expect(mealCopiedEvents).toHaveLength(1);
+    expect(mealCopiedEvents[0]!.payload).toMatchObject({
+      source: "copy_slot",
+      batchSize: 2,
+      targetDayCount: 2,
+    });
+
+    const foodLoggedEvents = analyticsCalls.filter((c) => c.event === "food_logged");
+    expect(foodLoggedEvents).toHaveLength(1);
+    expect(foodLoggedEvents[0]!.payload).toMatchObject({
+      count: 4,
+      batched: true,
+      source: "copy_slot",
+    });
+  });
+
+  it("copySlotToDateRange renames the slot on the target day when targetSlot differs", async () => {
+    const sourceMeal = meal({ id: "m1", name: "Lunch", time: "Lunch" });
+    const { result } = renderHook(() =>
+      useNutritionJournalState({
+        authedUserId: "user-1",
+        initialByDay: { "2026-04-17": [sourceMeal] },
+        selectedDateKey: "2026-04-17",
+      }),
+    );
+
+    await act(async () => {
+      await result.current.copySlotToDateRange("2026-04-17", "Lunch", "Dinner", [
+        "2026-04-18",
+      ]);
+    });
+
+    const rows = writeCalls[0]!.rows as Array<Record<string, unknown>>;
+    // The cloned row is renamed onto the target slot, not the source slot.
+    expect(rows[0]!.name).toBe("Dinner");
+  });
+
+  it("copySlotToDateRange same-day + same-slot is a no-op; same-day + different-slot is not (ENG-786)", async () => {
+    const sourceMeal = meal({ id: "m1", name: "Lunch", time: "Lunch" });
+    const { result } = renderHook(() =>
+      useNutritionJournalState({
+        authedUserId: "user-1",
+        initialByDay: { "2026-04-17": [sourceMeal] },
+        selectedDateKey: "2026-04-17",
+      }),
+    );
+
+    // Same day, same slot -> sanitizeCopySlotTargets excludes it -> no-op.
+    let sameSlotOutcome!: { itemCount: number; createdIdsByDay: Record<string, string[]> };
+    await act(async () => {
+      sameSlotOutcome = await result.current.copySlotToDateRange(
+        "2026-04-17",
+        "Lunch",
+        "Lunch",
+        ["2026-04-17"],
+      );
+    });
+    expect(sameSlotOutcome.itemCount).toBe(0);
+    expect(writeCalls).toHaveLength(0);
+
+    // Same day, DIFFERENT slot -> legal target -> inserts.
+    let diffSlotOutcome!: { itemCount: number; createdIdsByDay: Record<string, string[]> };
+    await act(async () => {
+      diffSlotOutcome = await result.current.copySlotToDateRange(
+        "2026-04-17",
+        "Lunch",
+        "Dinner",
+        ["2026-04-17"],
+      );
+    });
+    expect(diffSlotOutcome.itemCount).toBe(1);
+    expect(writeCalls).toHaveLength(1);
+  });
+
+  it("copySlotToDateRange includes a legacy raw-'Snack' row when copying the normalized 'Snacks' slot (review fix, 2026-07-21)", async () => {
+    // `NutritionTracker`'s `mealsGrouped` groups by `normalizeJournalSlotName`,
+    // so a legacy `name: "Snack"` row is shown/counted under "Snacks" — the
+    // dialog always calls `copySlotToDateRange` with the NORMALIZED slot
+    // name ("Snacks"). Before the fix, this hook filtered by the raw name
+    // (`m.name === "Snacks"`), which excluded the legacy row entirely: the
+    // shown count and the copied count disagreed.
+    const legacySnackMeal = meal({ id: "m1", name: "Snack", recipeTitle: "Granola bar" });
+    const modernSnackMeal = meal({ id: "m2", name: "Snacks", recipeTitle: "Apple" });
+    const { result } = renderHook(() =>
+      useNutritionJournalState({
+        authedUserId: "user-1",
+        initialByDay: { "2026-04-17": [legacySnackMeal, modernSnackMeal] },
+        selectedDateKey: "2026-04-17",
+      }),
+    );
+
+    let outcome!: { itemCount: number; createdIdsByDay: Record<string, string[]> };
+    await act(async () => {
+      outcome = await result.current.copySlotToDateRange(
+        "2026-04-17",
+        "Snacks",
+        "Snacks",
+        ["2026-04-18"],
+      );
+    });
+
+    // Both the legacy "Snack" row and the modern "Snacks" row copy — count
+    // agrees with what `mealsGrouped`'s normalized grouping would show (2),
+    // not the raw-name-only count (1).
+    expect(outcome.itemCount).toBe(2);
+    expect(writeCalls).toHaveLength(1);
+    expect((writeCalls[0]!.rows as unknown[]).length).toBe(2);
+  });
+
+  it("undoCopyToSlot deletes exactly the created rows, across however many days, from state and Supabase", async () => {
+    const sourceMeal = meal({ id: "m1", name: "Lunch", time: "Lunch" });
+    const { result } = renderHook(() =>
+      useNutritionJournalState({
+        authedUserId: "user-1",
+        initialByDay: { "2026-04-17": [sourceMeal] },
+        selectedDateKey: "2026-04-17",
+      }),
+    );
+
+    let outcome!: { itemCount: number; createdIdsByDay: Record<string, string[]> };
+    await act(async () => {
+      outcome = await result.current.copySlotToDateRange("2026-04-17", "Lunch", "Lunch", [
+        "2026-04-18",
+        "2026-04-19",
+      ]);
+    });
+    expect(outcome.itemCount).toBe(1);
+
+    // Sanity: the copy actually landed in local state before undoing it.
+    expect(result.current.nutritionByDay["2026-04-18"]).toHaveLength(1);
+    expect(result.current.nutritionByDay["2026-04-19"]).toHaveLength(1);
+
+    act(() => {
+      result.current.undoCopyToSlot(outcome.createdIdsByDay);
+    });
+
+    expect(result.current.nutritionByDay["2026-04-18"]).toHaveLength(0);
+    expect(result.current.nutritionByDay["2026-04-19"]).toHaveLength(0);
+    // Untouched: the original source-day row survives the undo.
+    expect(result.current.nutritionByDay["2026-04-17"]).toHaveLength(1);
   });
 
   it("single-meal addLoggedMealForDate write-aheads a single-row batch and fires one food_logged event", async () => {

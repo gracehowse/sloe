@@ -205,6 +205,8 @@ describe("CopyMealDialog (web) — branded chrome (#7)", () => {
         open
         onOpenChange={() => undefined}
         sourceDayKey="2026-05-20"
+        sourceSlot="Dinner"
+        slots={["Breakfast", "Lunch", "Dinner", "Snacks"]}
         mealLabel="Salmon teriyaki bowl"
         mealMacros={{ calories: 620, protein: 42, carbs: 58, fat: 21 }}
         onConfirm={() => undefined}
@@ -227,6 +229,8 @@ describe("CopyMealDialog (web) — branded chrome (#7)", () => {
         open
         onOpenChange={() => undefined}
         sourceDayKey="2026-05-20"
+        sourceSlot="Dinner"
+        slots={["Breakfast", "Lunch", "Dinner", "Snacks"]}
         mealLabel="Salmon teriyaki bowl"
         onConfirm={() => undefined}
       />,

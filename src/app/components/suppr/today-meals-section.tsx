@@ -128,14 +128,12 @@ export interface TodayMealsSectionProps {
   /** Ship M1 — log a saved meal into a specific slot. */
   onLogSavedMeal: (meal: SavedMeal, slot: string) => void;
   /**
-   * ENG-786 — when set (flag `today_log_again` on), a "Log this/these
-   * again" row renders under each populated slot. Tapping it re-inserts
-   * that slot's current entries as fresh entries on the viewed day, with
-   * the same baked macros. Undefined (flag off) → no row, layout
-   * byte-identical to pre-ENG-786. Mirror:
-   * `apps/mobile/components/today/TodayMealsSection.tsx`.
+   * ENG-786 rebuild (2026-07-21, same `today_log_again` flag key) — a
+   * "Copy to another day" row opens a destination dialog (day(s) + target
+   * slot) instead of the deleted instant same-slot clone. Undefined (flag
+   * off) → no row, layout byte-identical. Mirror: `apps/mobile/.../TodayMealsSection.tsx`.
    */
-  onLogAgain?: (slot: string) => void;
+  onCopySlot?: (slot: string) => void;
   /**
    * ENG-1642 — creates a real shareable meal-share link (`/m/<token>`)
    * for the kebab "Share meal" action and returns its URL, or `null` on
@@ -319,7 +317,7 @@ export function TodayMealsSection({
   onOpenLogSheet,
   savedMeals,
   onLogSavedMeal,
-  onLogAgain,
+  onCopySlot,
   onShareMealLink,
   hintVisibleForSlot,
   onDismissUsualMealHint,
@@ -896,24 +894,19 @@ export function TodayMealsSection({
                     </div>
                   )}
 
-                  {/* ENG-786 — "Log this/these again". Re-inserts this
-                      slot's current entries as fresh entries on the viewed
-                      day with the same baked macros. Flag-gated via the
-                      `onLogAgain` prop (undefined when `today_log_again` is
-                      off → row absent, layout byte-identical). Mirror:
-                      `apps/mobile/components/today/TodayMealsSection.tsx`. */}
-                  {onLogAgain && (
+                  {/* ENG-786 rebuild — opens a destination dialog (day(s)
+                      + target slot) via `onCopySlot`; row absent when the
+                      `today_log_again` flag is off. */}
+                  {onCopySlot && (
                     <button
                       type="button"
-                      data-testid={`today-log-again-${sectionName}`}
-                      onClick={() => onLogAgain(sectionName)}
+                      data-testid={`today-copy-slot-${sectionName}`}
+                      onClick={() => onCopySlot(sectionName)}
                       className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 border-t border-border/40 text-[13px] font-semibold text-foreground hover:bg-muted/40 transition-colors"
-                      aria-label={`Log ${sectionName} again — re-add ${
-                        sectionMeals.length > 1 ? "these items" : "this item"
-                      } to the day`}
+                      aria-label={`Copy ${sectionName} to another day`}
                     >
-                      <Icons.refresh className="w-4 h-4" aria-hidden />
-                      {sectionMeals.length > 1 ? "Log these again" : "Log this again"}
+                      <Icons.copy className="w-4 h-4" aria-hidden />
+                      Copy to another day
                     </button>
                   )}
 
