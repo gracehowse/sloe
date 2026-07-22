@@ -251,7 +251,12 @@ function TodayHeroRingImpl({
         secondaryColor={secondaryColor}
         borderColor={borderColor}
         isDark={isDark}
-        suppressZeroBonus={emptyStateGrammarOn && isFreshDay}
+        // ENG-1653 (Grace, sim review): on the cluster hero BONUS always
+        // renders — as 0 on an empty day — reversing the ENG-1372 law-3
+        // fresh-day suppression for this layout (a constant three-cell row
+        // reads steadier than a grid that reflows when the first log lands).
+        // Legacy (flag-off) keeps the ENG-1372 suppression.
+        suppressZeroBonus={emptyStateGrammarOn && isFreshDay && !clusterHero}
       />
       {coachLine}
       {/* Macro-rings toggle (audit gap 5) — a tap-accessible counterpart to

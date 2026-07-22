@@ -164,7 +164,10 @@ function DesktopHeroStats({
   const toggleDialMode = () =>
     setDialMode((m) => (m === "remaining" ? "consumed" : "remaining"));
   const showFreshDayGrammar = emptyStateGrammarOn && isFreshDay;
-  const hideBonusCell = showFreshDayGrammar && bonusKcal <= 0;
+  // ENG-1653 (Grace, sim review): on the cluster hero BONUS always renders —
+  // 0 on an empty day — reversing the ENG-1372 law-3 fresh-day suppression
+  // for this layout. Legacy (flag-off) keeps the suppression.
+  const hideBonusCell = showFreshDayGrammar && bonusKcal <= 0 && !clusterHero;
   return (
     // Design Direction 2026 (ENG-795): canonical SupprCard so the desktop hero
     // adopts soft elevation (and drops its border) via the `elevation="card"`

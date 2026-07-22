@@ -235,8 +235,6 @@ export function TodayHeroRing({
   // rendering.
   const emptyStateGrammarOn = isFeatureEnabled("empty_state_grammar_v1");
   const showFreshDayGrammar = emptyStateGrammarOn && isFreshDay;
-  const hideBonusCell = showFreshDayGrammar && bonusKcal <= 0;
-
   // De-carded v3 hero (ENG-1247, flag today_hero_decard_v3, default OFF). The
   // prototype `.ring-hero` is a BARE centered block — no card chrome — with the
   // status line BELOW the ring (the 'P2' de-card this file long flagged as
@@ -252,6 +250,11 @@ export function TodayHeroRing({
   // `TodayHeroRing.tsx` (mobile).
   const clusterHero = isFeatureEnabled("today_hero_cluster_v3");
   const coachAtFoot = decard && clusterHero;
+  // ENG-1653 (Grace, sim review): on the cluster hero BONUS always renders —
+  // 0 on an empty day — reversing the ENG-1372 law-3 fresh-day suppression
+  // for this layout. Legacy (flag-off) keeps the suppression.
+  const hideBonusCell = showFreshDayGrammar && bonusKcal <= 0 && !clusterHero;
+
   // ENG-1653 (Grace, sim review): the macros toggle below the hero had been
   // DEAD since the jewel-dial swap (the dial ignores `expanded`; nothing else
   // read the state). On the cluster hero it becomes the v3 prototype's

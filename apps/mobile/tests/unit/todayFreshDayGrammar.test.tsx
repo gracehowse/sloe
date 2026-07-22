@@ -97,7 +97,10 @@ describe("TodayHeroRing / CalorieRingDial — empty_state_grammar_v1 wiring (sou
     expect(heroRingSrc).toMatch(/isFeatureEnabled\("empty_state_grammar_v1"\)/);
     expect(heroRingSrc).toMatch(/emptyStateGrammarOn && isFreshDay/);
     expect(heroRingSrc).toMatch(/<TodayFreshDayLogPill/);
-    expect(heroRingSrc).toMatch(/suppressZeroBonus=\{emptyStateGrammarOn && isFreshDay\}/);
+    // ENG-1653 (Grace, cluster-hero sim review): BONUS always renders on the
+    // cluster hero (0 on an empty day); the ENG-1372 suppression survives on
+    // the legacy (flag-off) path only.
+    expect(heroRingSrc).toMatch(/suppressZeroBonus=\{emptyStateGrammarOn && isFreshDay && !clusterHero\}/);
   });
 
   it("ENG-1477 regression guard: no emptyTrackWarm/surfaceWarm swap remains on the ring — every empty day reads the same tick colour", () => {
