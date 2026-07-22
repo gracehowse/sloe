@@ -122,7 +122,7 @@ export function mergeMobileStorybookVite(config: UserConfig): UserConfig {
     resolve: {
       alias: {
         "expo-haptics": path.join(stubsRoot, "expo-haptics.ts"),
-        "expo-router": path.join(coverageStubs, "expo-router.tsx"),
+        "expo-router": path.join(coverageStubs, "expo-router"),
         "expo-keep-awake": path.join(coverageStubs, "expo-keep-awake.ts"),
         "expo-constants": path.join(coverageStubs, "expo-constants.ts"),
         "expo-image": path.join(coverageStubs, "expo-image.tsx"),
@@ -134,7 +134,9 @@ export function mergeMobileStorybookVite(config: UserConfig): UserConfig {
         "expo-apple-authentication": path.join(coverageStubs, "expo-apple-authentication.tsx"),
         "@expo/vector-icons": path.join(coverageStubs, "expo-vector-icons.tsx"),
         "posthog-react-native": path.join(coverageStubs, "posthog-react-native.tsx"),
-        "react-native-reanimated": path.join(coverageStubs, "reanimated.ts"),
+        "@sentry/react-native": path.join(coverageStubs, "sentry-react-native.ts"),
+        "@shopify/react-native-skia": path.join(coverageStubs, "react-native-skia.tsx"),
+        "react-native-reanimated": path.join(coverageStubs, "reanimated"),
         "@react-native-async-storage/async-storage": path.join(stubsRoot, "async-storage.ts"),
       },
     },

@@ -47,8 +47,6 @@ jobs:
         run: npm run check:storybook-coverage
       - run: npx playwright install --with-deps chromium
       - run: npm run build-storybook
-      - name: Storybook tests (vitest — plays, a11y, interactions, 100% UI coverage)
-        run: npm run test:storybook:coverage
       - name: Publish Storybook to Chromatic
         # Prefer CHROMATIC_STORYBOOK_PROJECT_TOKEN when Storybook and Playwright
         # Chromatic are separate projects; else CHROMATIC_PROJECT_TOKEN.
@@ -56,6 +54,9 @@ jobs:
         # context in workflow `if` expressions and the whole Storybook workflow
         # fails to parse (0 jobs / no PR check). Empty token fails the step;
         # repo secrets are required for a published catalog.
+        #
+        # Publish runs immediately after a successful static build so the full
+        # catalog is browsable even if vitest interaction/a11y smoke fails.
         uses: chromaui/action@latest
         with:
           projectToken: ${{ secrets.CHROMATIC_STORYBOOK_PROJECT_TOKEN || secrets.CHROMATIC_PROJECT_TOKEN }}
@@ -71,3 +72,5 @@ jobs:
           # not a merge gate. Catalog completeness is gated by
           # check:storybook-coverage above.
           autoAcceptChanges: true
+      - name: Storybook tests (vitest — plays, a11y, interactions, 100% UI coverage)
+        run: npm run test:storybook:coverage
