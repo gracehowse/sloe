@@ -109,11 +109,15 @@ export function MealShareLandingClient({ token }: { token: string }) {
 
   const handleAddToLog = () => {
     // Also stash the token via the pending rail: a stale/expired session
-    // mid-hop gets bounced `/home` → `/login` by middleware, which drops the
+    // mid-hop gets bounced to `/login` by middleware, which drops the
     // `?mealShare=` query param — the pending rail is what resumes the
-    // share after auth lands in that case.
+    // share after auth lands in that case. Push to `/today` (not `/home`):
+    // `/home` with no `view`/`recipe` param server-redirects to `/today`
+    // and would strip `?mealShare=` on the way, leaving only the pending
+    // rail; `/today` preserves the param so the accept host's primary
+    // URL-param path fires directly.
     storePendingMealShare(cleanToken);
-    router.push(`/home?mealShare=${encodeURIComponent(cleanToken)}`);
+    router.push(`/today?mealShare=${encodeURIComponent(cleanToken)}`);
   };
 
   const handleSignUp = () => {
