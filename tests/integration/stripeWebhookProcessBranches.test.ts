@@ -21,6 +21,13 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type Stripe from "stripe";
+
+vi.mock("@sentry/nextjs", () => ({
+  captureMessage: vi.fn(),
+  captureException: vi.fn(),
+}));
+
+import * as Sentry from "@sentry/nextjs";
 import { processStripeWebhookEvent, _clearProcessedEventsForTesting } from "@/lib/stripe/webhookProcess";
 
 const userId = "11111111-1111-4111-8111-111111111111";
@@ -46,11 +53,29 @@ const trialUpdateIsMock = vi.fn(() => Promise.resolve({ error: null }));
 const trialUpdateEqMock = vi.fn(() => ({ is: trialUpdateIsMock }));
 const trialUpdateMock = vi.fn(() => ({ eq: trialUpdateEqMock }));
 
+// ENG-1490 #2: `stripe_subscription_event_versions` — the stale/out-of-order
+// guard's read (select().eq().maybeSingle()) and write (upsert()). Kept
+// distinct from the T23 `stripe_webhook_events` insert mock above: that
+// table dedupes on event.id (exact redelivery), this one tracks a
+// per-subscription high-water mark (stale-but-distinct events).
+let subVersionSelectResult: {
+  data: { last_event_created: string } | null;
+  error: { message: string } | null;
+} = { data: null, error: null };
+const subVersionMaybeSingleMock = vi.fn(() => Promise.resolve(subVersionSelectResult));
+const subVersionEqMock = vi.fn(() => ({ maybeSingle: subVersionMaybeSingleMock }));
+const subVersionSelectMock = vi.fn(() => ({ eq: subVersionEqMock }));
+let subVersionUpsertResult: { error: { message: string } | null } = { error: null };
+const subVersionUpsertMock = vi.fn(() => Promise.resolve(subVersionUpsertResult));
+
 vi.mock("@/lib/supabase/serverAnonClient", () => ({
   createSupabaseServiceRoleClient: () => ({
     from: (table: string) => {
       if (table === "stripe_webhook_events") {
         return { insert: insertMock };
+      }
+      if (table === "stripe_subscription_event_versions") {
+        return { select: subVersionSelectMock, upsert: subVersionUpsertMock };
       }
       // profiles: two distinct call shapes land here —
       //   .update({user_tier|stripe_customer_id}).eq("id", userId)              (2-link)
@@ -565,5 +590,244 @@ describe("processStripeWebhookEvent — trial_started_at persistence (ENG-1490 #
 
     await expect(processStripeWebhookEvent(stripe, event)).resolves.toBeUndefined();
     expect(trialUpdateMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("processStripeWebhookEvent — stale out-of-order event guard (ENG-1490 #2)", () => {
+  const mockUpdate = vi.mocked(updateProfileTierServiceRole);
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    _clearProcessedEventsForTesting();
+    insertResult = { error: null };
+    subVersionSelectResult = { data: null, error: null };
+    subVersionUpsertResult = { error: null };
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test_service_role";
+    process.env.STRIPE_PRICE_BASE_MONTHLY = "price_base_monthly_test";
+    process.env.STRIPE_PRICE_PRO_MONTHLY = "price_pro_monthly_test";
+  });
+
+  afterEach(() => {
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    delete process.env.STRIPE_PRICE_BASE_MONTHLY;
+    delete process.env.STRIPE_PRICE_PRO_MONTHLY;
+  });
+
+  function subEvent(overrides: {
+    id: string;
+    created: number;
+    type?: string;
+    status: string;
+  }): Stripe.Event {
+    return {
+      id: overrides.id,
+      created: overrides.created,
+      type: overrides.type ?? "customer.subscription.updated",
+      data: {
+        object: {
+          id: "sub_x",
+          status: overrides.status,
+          metadata: { supabase_user_id: userId },
+          items: { data: [{ price: { id: "price_pro_monthly_test" } }] },
+        },
+      },
+    } as unknown as Stripe.Event;
+  }
+
+  it("the normal in-order case is completely unaffected — first event applies and records its version", async () => {
+    const stripe = {} as Stripe;
+    const event = subEvent({ id: "evt_v1", created: 1000, status: "active" });
+
+    await processStripeWebhookEvent(stripe, event);
+
+    expect(mockUpdate).toHaveBeenCalledWith(userId, "pro");
+    // No prior version row (data: null) → not stale, proceeds straight to apply.
+    expect(subVersionMaybeSingleMock).toHaveBeenCalledOnce();
+    expect(subVersionUpsertMock).toHaveBeenCalledWith(
+      {
+        subscription_id: "sub_x",
+        last_event_created: new Date(1000 * 1000).toISOString(),
+        last_event_id: "evt_v1",
+      },
+      { onConflict: "subscription_id" },
+    );
+  });
+
+  it("a subsequent newer in-order event also applies normally and advances the recorded version", async () => {
+    subVersionSelectResult = { data: { last_event_created: new Date(1000 * 1000).toISOString() }, error: null };
+    const stripe = {} as Stripe;
+    const event = subEvent({ id: "evt_v2", created: 2000, status: "canceled" });
+
+    await processStripeWebhookEvent(stripe, event);
+
+    expect(mockUpdate).toHaveBeenCalledWith(userId, "free");
+    expect(subVersionUpsertMock).toHaveBeenCalledWith(
+      expect.objectContaining({ last_event_created: new Date(2000 * 1000).toISOString() }),
+      { onConflict: "subscription_id" },
+    );
+  });
+
+  it("a stale out-of-order 'active' event does NOT re-grant tier after a newer downgrade already applied", async () => {
+    // Newer 'canceled' event (created=2000) already applied and recorded.
+    subVersionSelectResult = { data: { last_event_created: new Date(2000 * 1000).toISOString() }, error: null };
+    const stripe = {} as Stripe;
+    // A stale redelivered 'active' snapshot from BEFORE the cancellation.
+    const event = subEvent({ id: "evt_stale_active", created: 1000, status: "active" });
+
+    await processStripeWebhookEvent(stripe, event);
+
+    expect(mockUpdate).not.toHaveBeenCalled();
+    // Must not overwrite the newer high-water mark with the stale one.
+    expect(subVersionUpsertMock).not.toHaveBeenCalled();
+  });
+
+  it("a stale-event skip is reported to Sentry, not just console.warn — ENG-1440's required mitigation for this guard", async () => {
+    // Same fixture as the previous test: a stale 'active' event that must be skipped.
+    subVersionSelectResult = { data: { last_event_created: new Date(2000 * 1000).toISOString() }, error: null };
+    const stripe = {} as Stripe;
+    const event = subEvent({ id: "evt_stale_active_alert", created: 1000, status: "active" });
+
+    await processStripeWebhookEvent(stripe, event);
+
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      expect.stringContaining("skipped stale out-of-order event"),
+      expect.objectContaining({
+        level: "warning",
+        tags: expect.objectContaining({ type: "stripe_webhook" }),
+        extra: expect.objectContaining({ subscriptionId: "sub_x", eventId: "evt_stale_active_alert" }),
+      }),
+    );
+  });
+
+  it("an in-order (non-stale) apply does NOT fire the stale-event Sentry alert", async () => {
+    const stripe = {} as Stripe;
+    const event = subEvent({ id: "evt_v1_no_alert", created: 1000, status: "active" });
+
+    await processStripeWebhookEvent(stripe, event);
+
+    expect(Sentry.captureMessage).not.toHaveBeenCalled();
+  });
+
+  it("a stale out-of-order 'canceled' event does NOT downgrade tier after a newer grant already applied", async () => {
+    // Newer 'active' event (created=2000) already applied and recorded.
+    subVersionSelectResult = { data: { last_event_created: new Date(2000 * 1000).toISOString() }, error: null };
+    const stripe = {} as Stripe;
+    // A stale redelivered 'canceled' snapshot from BEFORE the resubscribe.
+    const event = subEvent({ id: "evt_stale_canceled", created: 1000, status: "canceled" });
+
+    await processStripeWebhookEvent(stripe, event);
+
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(subVersionUpsertMock).not.toHaveBeenCalled();
+  });
+
+  it("customer.subscription.deleted is guarded too — a stale delete does not clobber a newer resubscribe", async () => {
+    subVersionSelectResult = { data: { last_event_created: new Date(2000 * 1000).toISOString() }, error: null };
+    const stripe = {} as Stripe;
+    const event = subEvent({
+      id: "evt_stale_delete",
+      created: 1000,
+      type: "customer.subscription.deleted",
+      status: "canceled",
+    });
+
+    await processStripeWebhookEvent(stripe, event);
+
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      expect.stringContaining("skipped stale out-of-order event"),
+      expect.objectContaining({
+        tags: expect.objectContaining({
+          event_type: "customer.subscription.deleted",
+        }),
+      }),
+    );
+  });
+
+  it("customer.subscription.deleted applies normally and records its version when not stale", async () => {
+    const stripe = {} as Stripe;
+    const event = subEvent({
+      id: "evt_delete_in_order",
+      created: 1000,
+      type: "customer.subscription.deleted",
+      status: "canceled",
+    });
+
+    await processStripeWebhookEvent(stripe, event);
+
+    expect(mockUpdate).toHaveBeenCalledWith(userId, "free");
+    expect(subVersionUpsertMock).toHaveBeenCalledWith(
+      expect.objectContaining({ subscription_id: "sub_x", last_event_id: "evt_delete_in_order" }),
+      { onConflict: "subscription_id" },
+    );
+  });
+
+  it("exact-duplicate redelivery (same event.id) is still a no-op via the existing T23 dedup, independent of the new guard", async () => {
+    insertResult = { error: { code: "23505", message: "duplicate key" } };
+    const stripe = {} as Stripe;
+    const event = subEvent({ id: "evt_dup_ordering", created: 1000, status: "active" });
+
+    await processStripeWebhookEvent(stripe, event);
+
+    expect(mockUpdate).not.toHaveBeenCalled();
+    // T23 dedup short-circuits before the switch statement even runs, so
+    // the new ordering guard's table is never touched.
+    expect(subVersionMaybeSingleMock).not.toHaveBeenCalled();
+    expect(subVersionUpsertMock).not.toHaveBeenCalled();
+  });
+
+  it("fails open (applies the event) when the version-lookup read errors", async () => {
+    subVersionSelectResult = { data: null, error: { message: "connection reset" } };
+    const stripe = {} as Stripe;
+    const event = subEvent({ id: "evt_read_error", created: 1000, status: "active" });
+
+    await processStripeWebhookEvent(stripe, event);
+
+    // Fail-open: can't determine staleness → apply rather than drop a
+    // legitimate tier change, mirroring isAlreadyProcessed's own philosophy.
+    expect(mockUpdate).toHaveBeenCalledWith(userId, "pro");
+  });
+
+  it("a failed version-write after applying is best-effort — does not block or throw past the tier grant", async () => {
+    subVersionUpsertResult = { error: { message: "rls denied" } };
+    const stripe = {} as Stripe;
+    const event = subEvent({ id: "evt_write_fails", created: 1000, status: "active" });
+
+    await expect(processStripeWebhookEvent(stripe, event)).resolves.toBeUndefined();
+    expect(mockUpdate).toHaveBeenCalledWith(userId, "pro");
+  });
+
+  it("checkout.session.completed is NOT guarded by subscription-version staleness (it re-fetches the subscription live)", async () => {
+    // Even with a newer version already recorded for this subscription, a
+    // checkout.session.completed handler re-fetches the subscription live
+    // from Stripe rather than trusting an embedded snapshot, so it must
+    // never consult (or be blocked by) the ordering guard.
+    subVersionSelectResult = { data: { last_event_created: new Date(5000 * 1000).toISOString() }, error: null };
+    const stripe = {
+      subscriptions: {
+        retrieve: vi.fn().mockResolvedValue({
+          id: "sub_x",
+          status: "active",
+          items: { data: [{ price: { id: "price_pro_monthly_test" } }] },
+        }),
+      },
+    } as unknown as Stripe;
+    const event = {
+      id: "evt_checkout_not_guarded",
+      created: 1000,
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          mode: "subscription",
+          client_reference_id: userId,
+          subscription: "sub_x",
+        },
+      },
+    } as Stripe.Event;
+
+    await processStripeWebhookEvent(stripe, event);
+
+    expect(mockUpdate).toHaveBeenCalledWith(userId, "pro");
+    expect(subVersionMaybeSingleMock).not.toHaveBeenCalled();
   });
 });
