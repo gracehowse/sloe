@@ -34,7 +34,8 @@ import { useAccent } from "@/context/theme";
 import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
 import { NUTRITION_DEFAULTS } from "@/constants/nutritionDefaults";
-import { dateKeyFromDate, type ByDay } from "@/lib/nutritionJournal";
+import { dateKeyFromDate } from "@/lib/nutritionJournal";
+import { useNutritionJournal } from "@/context/nutritionJournal";
 import {
   avgCaloriesOverRecentLoggedDays,
   calcGoalTimeline,
@@ -210,7 +211,16 @@ export default function ProgressScreen() {
 
   const [loading, setLoading] = useState(true);
   const [targets, setTargets] = useState(DEFAULT_TARGETS);
-  const [byDay, setByDay] = useState<ByDay>({});
+  // ENG-1475 — `byDay` now reads the ONE shared in-memory journal (same
+  // context Today writes to optimistically) instead of an independent
+  // `nutrition_entries` SELECT into a Progress-local `useState`. That
+  // local copy was the root cause of "iOS says 0/3 days logged, web says
+  // 1/3": a meal logged on Today updated Today's own state instantly, but
+  // Progress only caught up on its next focus's re-fetch. See
+  // `context/nutritionJournal.tsx` for the full contract; `ensureJournalHistory`
+  // below is this screen's only remaining `nutrition_entries` touchpoint —
+  // a merge-only history backfill, never a wholesale replace of `byDay`.
+  const { byDay, ensureJournalHistory } = useNutritionJournal();
   const {
     weightKg,
     goalWeightKg,
@@ -476,33 +486,30 @@ export default function ProgressScreen() {
       }
       return out;
     }
-    const entriesPromise = (async () =>
-      await supabase
-        .from("nutrition_entries")
-        // Sloe Figma 492:2 — `fiber_g` added so the AVERAGE ADHERENCE card's
-        // Fibre bar reads a REAL value (matches web `nutritionByDay.fiberG`),
-        // not a phantom 0. Legacy rows with null fibre count as 0 (never
-        // fabricated).
-        .select("date_key, calories, protein, carbs, fat, fiber_g")
-        .eq("user_id", userId)
-        .gte("date_key", ninetyDaysAgo)
-        .order("created_at", { ascending: true }))();
+    // ENG-1475 — `nutrition_entries` is no longer fetched into a
+    // Progress-local copy here. `byDay` now reads the shared
+    // `NutritionJournalProvider` journal (context/nutritionJournal.tsx),
+    // which Today's optimistic writes already keep current for the last
+    // `JOURNAL_BOOT_WINDOW_DAYS` (35d) — the window every stat on THIS
+    // screen actually needs for "days logged this week" correctness.
+    // `ensureJournalHistory` widens coverage to the full 90-day Progress
+    // trend window; it's a merge-only backfill (guarded to run once per
+    // session per widened start key — see the doc comment on it) so it's
+    // fired without blocking first paint, same treatment as the
+    // `getDailyTargets` background hydrate further down this function.
+    void ensureJournalHistory(ninetyDaysAgo);
     const profilePromise = (async () =>
       await supabase
         .from("profiles")
         .select("target_calories, target_protein, target_carbs, target_fat, target_fiber_g, weight_kg, goal_weight_kg, weight_kg_by_day, steps_by_day, daily_steps_goal, week_start_day, goal, plan_pace, sex, height_cm, age, activity_level, adaptive_tdee, adaptive_tdee_confidence, adaptive_tdee_updated_at, measured_tdee, measured_tdee_confidence, measured_tdee_updated_at, streak_freeze_budget_max, streak_freezes_earned_at, streak_freezes_used_history, weekly_recap_last_seen_week_key, weekly_recap_push_enabled, measurement_system, weight_surface_mode, milestone_30_shown_at, activity_burn_by_day, basal_burn_by_day, workouts_by_day, prefer_activity_adjusted_calories, user_tier")
         .eq("id", userId)
         .maybeSingle())();
-    const [entriesResult, profileResult] = await Promise.all([
-      raceProgress("nutrition_entries", entriesPromise),
-      raceProgress("profiles", profilePromise),
-    ]);
-    if (entriesResult === progressTimeoutSentinel || profileResult === progressTimeoutSentinel) {
+    const profileResult = await raceProgress("profiles", profilePromise);
+    if (profileResult === progressTimeoutSentinel) {
       // Hung query — bail out of hydrate path so the spinner clears
       // and the user sees the existing empty/hasData fallback.
       return;
     }
-    const { data: rows } = entriesResult;
     const { data: profile } = profileResult;
 
     // Re-read `steps_by_day` after the background HK sync completes so
@@ -622,27 +629,6 @@ export default function ProgressScreen() {
       setIsAdaptiveTdee(eff.isAdaptive);
     }
 
-    if (rows) {
-      const loaded: ByDay = {};
-      for (const r of rows) {
-        const k = r.date_key as string;
-        if (!loaded[k]) loaded[k] = [];
-        loaded[k].push({
-          id: "",
-          name: "",
-          recipeTitle: "",
-          time: "",
-          calories: (r.calories as number) ?? 0,
-          protein: (r.protein as number) ?? 0,
-          carbs: (r.carbs as number) ?? 0,
-          fat: (r.fat as number) ?? 0,
-          // Sloe Figma 492:2 — fibre rollup for the AVERAGE ADHERENCE card.
-          fiberG: ((r as { fiber_g?: number | null }).fiber_g as number) ?? 0,
-        });
-      }
-      setByDay(loaded);
-    }
-
     // H-4 — first paint unblocks here. `daily_targets` hydrates in the
     // background (see below); the UI renders with current-target
     // fallback until snapshots arrive.
@@ -679,12 +665,12 @@ export default function ProgressScreen() {
       // Skeleton-gate fix (2026-04-20): surface failures so we still
       // flip `loading` → false and the user gets the empty state +
       // a pull-to-refresh path rather than an indefinite skeleton.
-       
+
       console.warn("Progress loadData failed", err);
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, ensureJournalHistory]);
 
   useFocusEffect(useCallback(() => { void loadData(); }, [loadData]));
 

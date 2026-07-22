@@ -85,9 +85,8 @@ import { useShareIntent } from 'expo-share-intent';
 import { useCallback, useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 
-import { AuthProvider } from '@/context/auth';
-import { AnalyticsProvider } from '@/context/AnalyticsProvider';
-import { ThemeProvider as SupprThemeProvider, useTheme } from '@/context/theme';
+import { AppProviders } from '@/context/AppProviders';
+import { useTheme } from '@/context/theme';
 import { DrOutageBanner } from '@/components/ops/DrOutageBanner';
 import { SupabaseNotConfiguredScreen } from '@/components/ops/SupabaseNotConfiguredScreen';
 import { Colors } from "@/constants/theme";
@@ -96,7 +95,6 @@ import { consumeNewSocialRecipeUrlFromClipboard } from '@/lib/clipboardShareForw
 import { initErrorTracking } from '@/lib/errorTracking';
 import { hasSupabaseConfig } from '@/lib/supabase';
 import { RootErrorBoundary } from '@/components/ui/RootErrorBoundary';
-import { FontGate } from '@/components/FontGate';
 import { configurePurchases } from '@/lib/purchases';
 import { configureNotificationPresentation } from '@/lib/pushNotificationsSetup';
 import { safeGetClipboardString } from '@/lib/safeClipboard';
@@ -590,15 +588,9 @@ function RootLayoutInner() {
 function RootLayout() {
   return (
     <RootErrorBoundary>
-      <AuthProvider>
-        <AnalyticsProvider>
-          <FontGate>
-            <SupprThemeProvider>
-              <RootLayoutInner />
-            </SupprThemeProvider>
-          </FontGate>
-        </AnalyticsProvider>
-      </AuthProvider>
+      <AppProviders>
+        <RootLayoutInner />
+      </AppProviders>
     </RootErrorBoundary>
   );
 }
