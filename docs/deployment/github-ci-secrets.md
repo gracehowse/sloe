@@ -23,11 +23,11 @@ Without `E2E_*`, smoke tests that require a logged-in session may skip or hit lo
 | Secret | Purpose |
 |--------|---------|
 | `CHROMATIC_PROJECT_TOKEN` | Playwright E2E visual review (`.github/workflows/chromatic.yml`) **and** fallback for Storybook Chromatic publish. From Chromatic → Project → Manage → token (`chpt_…`). |
-| `CHROMATIC_STORYBOOK_PROJECT_TOKEN` | Optional. If Storybook and Playwright use **separate** Chromatic projects, set this to the Storybook project token. `.github/workflows/storybook.yml` prefers it over `CHROMATIC_PROJECT_TOKEN`. |
+| `CHROMATIC_STORYBOOK_PROJECT_TOKEN` | **Preferred for Storybook.** Create a separate Chromatic project for the component library so Playwright E2E snapshots do not share quota. `.github/workflows/storybook.yml` prefers it; falls back to `CHROMATIC_PROJECT_TOKEN` only until it exists. |
 
 Local: add the same names to `.env.local` (never commit) for `npm run chromatic` / `npm run chromatic:storybook`.
 
-**Always-current catalog (2026-07-22):** every visual component needs a sibling Storybook story (or an explicit skip). CI runs `npm run check:storybook-coverage` in `npm run ci` and in the Storybook workflow, then publishes Storybook builds to Chromatic so hosted snapshots stay in sync with PRs/`main`.
+**Always-current catalog (2026-07-22):** every visual component needs a sibling Storybook story (or an explicit skip). CI runs `npm run check:storybook-coverage`, publishes the **full library** for browse, and snapshots only the curated visual contract (`scripts/chromatic-storybook-visual-contract.txt`).
 
 ## Optional — other visual / beta tooling
 

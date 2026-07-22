@@ -1,13 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { SheetGrabberBar, SheetShell } from "./sheet-shell";
 import { Button } from "./button";
+import { chromaticVisualContract } from "../../../../.storybook/chromaticVisualContract";
 
 const noop = () => undefined;
 
 const meta = {
   component: SheetShell,
-  tags: ["autodocs"],
+  tags: ["autodocs", ...chromaticVisualContract.tags],
   parameters: {
+    ...chromaticVisualContract.parameters,
     layout: "fullscreen",
     docs: {
       description: {

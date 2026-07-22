@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { Text, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { chromaticVisualContract } from "../../../../.storybook/chromaticVisualContract";
 
 import { MobileStoryThemeProvider } from "@suppr/storybook-stubs/mobile-theme";
 import { Type } from "@/constants/theme";
@@ -12,7 +13,7 @@ const noop = () => undefined;
 const meta = {
   title: "Mobile/UI/SheetShell",
   component: SheetShell,
-  tags: ["autodocs"],
+  tags: ["autodocs", ...chromaticVisualContract.tags],
   decorators: [
     (Story) => (
       <MobileStoryThemeProvider>
@@ -25,6 +26,7 @@ const meta = {
     ),
   ],
   parameters: {
+    ...chromaticVisualContract.parameters,
     layout: "fullscreen",
     docs: {
       description: {

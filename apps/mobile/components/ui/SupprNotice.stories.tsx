@@ -2,11 +2,12 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { ChevronRight, Sparkles } from "lucide-react";
 import { MobileStoryThemeProvider } from "@suppr/storybook-stubs/mobile-theme";
 import { SupprNotice } from "./SupprNotice";
+import { chromaticVisualContract } from "../../../../.storybook/chromaticVisualContract";
 
 const meta = {
   title: "Mobile/UI/SupprNotice",
   component: SupprNotice,
-  tags: ["autodocs"],
+  tags: ["autodocs", ...chromaticVisualContract.tags],
   decorators: [
     (Story) => (
       <MobileStoryThemeProvider>
@@ -17,6 +18,7 @@ const meta = {
     ),
   ],
   parameters: {
+    ...chromaticVisualContract.parameters,
     layout: "fullscreen",
     docs: {
       description: {

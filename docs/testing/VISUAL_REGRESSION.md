@@ -92,7 +92,7 @@ npm run check:storybook-coverage # sibling-story ratchet (CI)
 npm run test:storybook         # vitest — plays, a11y, interactions
 npm run test:storybook:watch   # same, watch mode locally
 npm run test:storybook:coverage # 100% coverage gate on storied UI primitives (CI)
-npm run chromatic:storybook    # publish Storybook snapshots to Chromatic
+npm run chromatic:storybook    # publish library + curated visual-contract snapshots
 ```
 
 **Automating in CI (pick one or both):**
@@ -102,12 +102,12 @@ npm run chromatic:storybook    # publish Storybook snapshots to Chromatic
 | **Coverage ratchet** | `npm run check:storybook-coverage` | Fails if a visual `.tsx` lacks a sibling `*.stories.tsx` and is not in `scripts/storybook-coverage-skips.json` |
 | **Vitest** (default here) | `npm run test:storybook` | Storybook Test addon — story `play` functions, a11y checks, component tests in Chromium |
 | **Chromatic (Playwright CLI)** | `npm run chromatic` | Uploads Playwright archives from `./test-results` (run `chromatic-e2e` spec first) |
-| **Chromatic (Storybook CLI)** | `npm run chromatic:storybook` | Builds Storybook, uploads component snapshots |
+| **Chromatic (Storybook CLI)** | `npm run chromatic:storybook` | Publishes full library; snapshots curated visual contract only |
 | **Chromatic (Playwright E2E)** | CI only | `tests/e2e/chromatic-e2e.spec.ts` + `.github/workflows/chromatic.yml` |
 
-`.github/workflows/storybook.yml` on every PR: coverage ratchet → `build-storybook` → vitest coverage → **publish Storybook to Chromatic**.
+`.github/workflows/storybook.yml` on every PR: coverage ratchet → `build-storybook` → **publish full Storybook library** + curated visual-contract snapshots → vitest.
 
-`.github/workflows/chromatic.yml` runs **Playwright → Chromatic**: job `playwright` archives E2E pages (`@chromatic-com/playwright`), job `chromatic` uploads `./test-results` via `chromaui/action` with `playwright: true`. Requires `CHROMATIC_PROJECT_TOKEN` (use the token from your **Playwright** Chromatic project if you created one separately from Storybook; optional `CHROMATIC_STORYBOOK_PROJECT_TOKEN` for the Storybook project).
+`.github/workflows/chromatic.yml` runs **Playwright → Chromatic**: job `playwright` archives E2E pages (`@chromatic-com/playwright`), job `chromatic` uploads `./test-results` via `chromaui/action` with `playwright: true`. Requires `CHROMATIC_PROJECT_TOKEN` for the Playwright project; Storybook uses `CHROMATIC_STORYBOOK_PROJECT_TOKEN` (separate project — preferred).
 
 Required visual workflows intentionally run on every pull request, including
 docs-only PRs. Do not add top-level `pull_request.paths` filters to
@@ -122,7 +122,7 @@ the merge gate.
 
 HTML reports land in `coverage/storybook/` (`npm run test:storybook:coverage`).
 
-**Stories:** `src/app/components/**/*.stories.tsx` + `apps/mobile/components/**/*.stories.tsx` (colocated) and `apps/mobile/stories/roles/*.stories.tsx` (role catalog via `vite-plugin-rnw` in `.storybook/mobile-vite.ts`). Inventory: [`docs/design/2026-07-22-storybook-coverage-matrix.md`](../design/2026-07-22-storybook-coverage-matrix.md). **CI:** `.github/workflows/storybook.yml` (coverage ratchet + full Chromatic Storybook publish).
+**Stories:** `src/app/components/**/*.stories.tsx` + `apps/mobile/components/**/*.stories.tsx` (colocated) and `apps/mobile/stories/roles/*.stories.tsx` (role catalog via `vite-plugin-rnw` in `.storybook/mobile-vite.ts`). Inventory: [`docs/design/2026-07-22-storybook-coverage-matrix.md`](../design/2026-07-22-storybook-coverage-matrix.md). **CI:** `.github/workflows/storybook.yml` (coverage ratchet + full library publish + curated Chromatic snapshots).
 
 Add or update a story in the **same PR** when shipping or changing a visual component; still add a Playwright or Maestro baseline when the change affects a full page.
 
@@ -146,11 +146,11 @@ Pair with TestFlight (`npm run testflight:feedback`) for ASC screenshot threads;
 
 Hosted PR visual review for **web** (and mobile UI via RN-web Storybook). Two tracks:
 
-**Storybook components (required catalog — always current):** `.github/workflows/storybook.yml` publishes `storybook-static` to Chromatic on every PR with **`onlyChanged: false`** (full catalog every time). Do not rely on TurboSnap for Storybook publishes — with `onlyChanged: true` the Chromatic build row shows only the N *changed* stories (e.g. “4 Components / 4 Stories”) even when hundreds exist in the library. Local:
+**Storybook components (required catalog — always current):** full library always builds + publishes for browse. Chromatic *snapshots* are curated (`scripts/chromatic-storybook-visual-contract.txt`, preview `disableSnapshot: true` by default). TurboSnap/`onlyChanged` applies to that contract only. Local:
 
 ```bash
-export CHROMATIC_PROJECT_TOKEN=chpt_…   # or CHROMATIC_STORYBOOK_PROJECT_TOKEN
-npm run chromatic:storybook             # forces --only-changed=false
+export CHROMATIC_STORYBOOK_PROJECT_TOKEN=chpt_…   # preferred; else CHROMATIC_PROJECT_TOKEN
+npm run chromatic:storybook             # curated snapshots via chromatic.storybook.config.json
 ```
 
 **Playwright E2E (CI archives):** `.github/workflows/chromatic.yml` — public shell pages in `tests/e2e/chromatic-e2e.spec.ts`. Local dry-run (needs built app on :3100):
@@ -162,7 +162,7 @@ npx playwright test tests/e2e/chromatic-e2e.spec.ts --project=chromium
 npm run chromatic
 ```
 
-Add `CHROMATIC_PROJECT_TOKEN` (and optional `CHROMATIC_STORYBOOK_PROJECT_TOKEN`) as GitHub Actions secrets. If Chromatic shows separate **Storybook** vs **Playwright** projects, set both tokens accordingly.
+Add `CHROMATIC_PROJECT_TOKEN` (Playwright) and **`CHROMATIC_STORYBOOK_PROJECT_TOKEN`** (Storybook — create a separate Chromatic project so quotas do not collide) as GitHub Actions secrets.
 ---
 
 ## Release checklist

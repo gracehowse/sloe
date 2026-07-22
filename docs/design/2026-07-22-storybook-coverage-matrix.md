@@ -19,7 +19,7 @@ Canonical skip list: [`scripts/storybook-coverage-skips.json`](../../scripts/sto
 ## Pipeline
 
 - Web + mobile share one Storybook (`.storybook/main.ts` → RN-web aliases + stubs).
-- PR CI: coverage ratchet → `build-storybook` → vitest → Chromatic Storybook publish.
+- PR CI: coverage ratchet → `build-storybook` → Chromatic library publish + curated snapshots → vitest.
 - Playwright Chromatic (shell E2E archives) remains a separate workflow.
 
 ## Skip policy
@@ -39,5 +39,15 @@ Add a skip **only** when the surface cannot render without live auth/Supabase/ca
 ```bash
 npm run check:storybook-coverage
 npm run build-storybook
-npm run chromatic:storybook   # needs CHROMATIC_* token
+npm run chromatic:storybook   # curated contract; needs CHROMATIC_STORYBOOK_PROJECT_TOKEN (or fallback)
 ```
+
+
+## Chromatic visual contract
+
+Full catalog = Storybook browse. Snapshots = curated only.
+
+- Opt-in helper: `.storybook/chromaticVisualContract.ts`
+- File list: `scripts/chromatic-storybook-visual-contract.txt` (anatomy owners + mobile role catalog)
+- Preview default: `parameters.chromatic.disableSnapshot: true`
+- Config: `chromatic.storybook.config.json` (separate from Playwright `chromatic.config.json`)

@@ -2,11 +2,12 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { Text } from "react-native";
 import { MobileStoryThemeProvider } from "@suppr/storybook-stubs/mobile-theme";
 import { SupprCard } from "./SupprCard";
+import { chromaticVisualContract } from "../../../../.storybook/chromaticVisualContract";
 
 const meta = {
   title: "Mobile/UI/SupprCard",
   component: SupprCard,
-  tags: ["autodocs"],
+  tags: ["autodocs", ...chromaticVisualContract.tags],
   decorators: [
     (Story) => (
       <MobileStoryThemeProvider>
@@ -17,6 +18,7 @@ const meta = {
     ),
   ],
   parameters: {
+    ...chromaticVisualContract.parameters,
     layout: "fullscreen",
     docs: {
       description: {

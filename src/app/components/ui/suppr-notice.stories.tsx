@@ -1,11 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { ChevronRight, Sparkles } from "lucide-react";
 import { SupprNotice } from "./suppr-notice";
+import { chromaticVisualContract } from "../../../../.storybook/chromaticVisualContract";
 
 const meta = {
   component: SupprNotice,
-  tags: ["autodocs"],
+  tags: ["autodocs", ...chromaticVisualContract.tags],
   parameters: {
+    ...chromaticVisualContract.parameters,
     layout: "padded",
     docs: {
       description: {

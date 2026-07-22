@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { AddRowButton } from "./add-row-button";
+import { chromaticVisualContract } from "../../../../.storybook/chromaticVisualContract";
 
 const meta = {
   component: AddRowButton,
-  tags: ["autodocs"],
+  tags: ["autodocs", ...chromaticVisualContract.tags],
   parameters: {
+    ...chromaticVisualContract.parameters,
     layout: "padded",
     docs: {
       description: {

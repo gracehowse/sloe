@@ -1,0 +1,33 @@
+# Storybook Chromatic visual contract (curated snapshots)
+#
+# Full Storybook catalog always builds + publishes for browse.
+# Only files listed here (and tagged `chromatic` / disableSnapshot:false)
+# consume Chromatic snapshot quota on each PR.
+#
+# Keep this list small (~anatomy owners + role catalog).
+# Add a file here when it must not visually drift without review.
+
+src/app/components/ui/suppr-card.stories.tsx
+src/app/components/ui/suppr-notice.stories.tsx
+src/app/components/ui/icon-button.stories.tsx
+src/app/components/ui/count-badge.stories.tsx
+src/app/components/ui/sheet-shell.stories.tsx
+src/app/components/ui/add-row-button.stories.tsx
+
+apps/mobile/components/ui/SupprCard.stories.tsx
+apps/mobile/components/ui/SupprNotice.stories.tsx
+apps/mobile/components/ui/IconButton.stories.tsx
+apps/mobile/components/ui/CountBadge.stories.tsx
+apps/mobile/components/ui/SheetShell.stories.tsx
+apps/mobile/components/ui/AddRowButton.stories.tsx
+
+apps/mobile/stories/roles/AddRow.stories.tsx
+apps/mobile/stories/roles/Card.stories.tsx
+apps/mobile/stories/roles/Chip.stories.tsx
+apps/mobile/stories/roles/CommitPill.stories.tsx
+apps/mobile/stories/roles/CountBadge.stories.tsx
+apps/mobile/stories/roles/GhostPill.stories.tsx
+apps/mobile/stories/roles/IconButton.stories.tsx
+apps/mobile/stories/roles/InsetPanel.stories.tsx
+apps/mobile/stories/roles/Notice.stories.tsx
+apps/mobile/stories/roles/Sheet.stories.tsx

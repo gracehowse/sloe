@@ -23,6 +23,12 @@ const preview: Preview = {
     msw: {
       handlers: mswHandlers,
     },
+    // Full catalog publishes for browse; only stories that opt back in
+    // (see `.storybook/chromaticVisualContract.ts` + visual-contract file list)
+    // consume Chromatic snapshot quota. 2026-07-22 split.
+    chromatic: {
+      disableSnapshot: true,
+    },
   },
   decorators: [
     (Story) => (

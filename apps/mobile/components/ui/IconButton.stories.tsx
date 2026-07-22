@@ -2,11 +2,12 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { Bell } from "lucide-react";
 import { MobileStoryThemeProvider } from "@suppr/storybook-stubs/mobile-theme";
 import { IconButton } from "./IconButton";
+import { chromaticVisualContract } from "../../../../.storybook/chromaticVisualContract";
 
 const meta = {
   title: "Mobile/UI/IconButton",
   component: IconButton,
-  tags: ["autodocs"],
+  tags: ["autodocs", ...chromaticVisualContract.tags],
   decorators: [
     (Story) => (
       <MobileStoryThemeProvider>
@@ -17,6 +18,7 @@ const meta = {
     ),
   ],
   parameters: {
+    ...chromaticVisualContract.parameters,
     docs: {
       description: {
         component:

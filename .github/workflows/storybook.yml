@@ -1,6 +1,7 @@
 # Component-level Storybook build + coverage + Chromatic publish.
-# Interaction/a11y smoke via vitest; catalog completeness via check:storybook-coverage;
-# hosted snapshots via Chromatic Storybook (always-current — 2026-07-22 decision).
+# Full library always builds + uploads for browse.
+# Chromatic *snapshots* limited to the visual contract (anatomy owners + roles).
+# Decision: docs/decisions/2026-07-22-storybook-chromatic-always-current.md
 name: Storybook
 
 on:
@@ -16,6 +17,8 @@ on:
       - "src/styles/**"
       - "scripts/check-storybook-coverage.mjs"
       - "scripts/storybook-coverage-skips.json"
+      - "scripts/chromatic-storybook-visual-contract.txt"
+      - "chromatic.storybook.config.json"
       - ".github/workflows/storybook.yml"
   pull_request:
     # ENG-853: `storybook` is a required branch-protection context. A
@@ -30,10 +33,6 @@ jobs:
   storybook:
     runs-on: ubuntu-latest
     env:
-      # Same public Supabase env as Chromatic/visual workflows — Storybook
-      # stories that import the browser client need these inlined at build time.
-      # Without them Vite can emit an empty URL and Chromatic fails extraction
-      # with `supabaseUrl is required` after a successful upload.
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
     steps:
@@ -45,39 +44,46 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      # Mobile colocated stories need apps/mobile deps (react-native-svg, etc.).
-      # Root npm ci does not install them; without this, Vite fails to resolve
-      # packages that exist only under apps/mobile/package.json.
       - name: Install mobile dependencies
         run: npm ci --prefix apps/mobile
       - name: Storybook coverage ratchet (sibling stories or explicit skips)
         run: npm run check:storybook-coverage
       - run: npx playwright install --with-deps chromium
       - run: npm run build-storybook
-      - name: Publish Storybook to Chromatic
-        # Prefer CHROMATIC_STORYBOOK_PROJECT_TOKEN when Storybook and Playwright
-        # Chromatic are separate projects; else CHROMATIC_PROJECT_TOKEN.
-        # Do NOT gate this step on `secrets.*` in `if:` — GitHub rejects that
-        # context in workflow `if` expressions and the whole Storybook workflow
-        # fails to parse (0 jobs / no PR check). Empty token fails the step;
-        # repo secrets are required for a published catalog.
-        #
-        # Publish runs immediately after a successful static build so the full
-        # catalog is browsable even if vitest interaction/a11y smoke fails.
+      - name: Publish Storybook library + curated Chromatic snapshots
+        # Prefer CHROMATIC_STORYBOOK_PROJECT_TOKEN (dedicated Storybook project).
+        # Falls back to CHROMATIC_PROJECT_TOKEN (shares Playwright quota — temporary).
+        # Do NOT gate on `secrets.*` in `if:` — that makes the workflow unparsable.
         uses: chromaui/action@latest
         with:
           projectToken: ${{ secrets.CHROMATIC_STORYBOOK_PROJECT_TOKEN || secrets.CHROMATIC_PROJECT_TOKEN }}
+          configFile: chromatic.storybook.config.json
           storybookBuildDir: storybook-static
           exitZeroOnChanges: true
-          # Full catalog every publish (2026-07-22 always-current). TurboSnap
-          # `onlyChanged` in chromatic.config.json makes the dashboard show only
-          # the N changed stories (e.g. "4 Components / 4 Stories") and hides the
-          # real library size — wrong for the coverage gate. Playwright Chromatic
-          # already forces onlyChanged: false for the same reason.
-          onlyChanged: false
-          # Match Playwright Chromatic posture: inform + browsable history,
-          # not a merge gate. Catalog completeness is gated by
-          # check:storybook-coverage above.
+          onlyChanged: true
+          onlyStoryFiles: |
+            src/app/components/ui/suppr-card.stories.tsx
+            src/app/components/ui/suppr-notice.stories.tsx
+            src/app/components/ui/icon-button.stories.tsx
+            src/app/components/ui/count-badge.stories.tsx
+            src/app/components/ui/sheet-shell.stories.tsx
+            src/app/components/ui/add-row-button.stories.tsx
+            apps/mobile/components/ui/SupprCard.stories.tsx
+            apps/mobile/components/ui/SupprNotice.stories.tsx
+            apps/mobile/components/ui/IconButton.stories.tsx
+            apps/mobile/components/ui/CountBadge.stories.tsx
+            apps/mobile/components/ui/SheetShell.stories.tsx
+            apps/mobile/components/ui/AddRowButton.stories.tsx
+            apps/mobile/stories/roles/AddRow.stories.tsx
+            apps/mobile/stories/roles/Card.stories.tsx
+            apps/mobile/stories/roles/Chip.stories.tsx
+            apps/mobile/stories/roles/CommitPill.stories.tsx
+            apps/mobile/stories/roles/CountBadge.stories.tsx
+            apps/mobile/stories/roles/GhostPill.stories.tsx
+            apps/mobile/stories/roles/IconButton.stories.tsx
+            apps/mobile/stories/roles/InsetPanel.stories.tsx
+            apps/mobile/stories/roles/Notice.stories.tsx
+            apps/mobile/stories/roles/Sheet.stories.tsx
           autoAcceptChanges: true
       - name: Storybook tests (vitest — plays, a11y, interactions, 100% UI coverage)
         run: npm run test:storybook:coverage

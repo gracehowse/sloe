@@ -1,11 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { MobileStoryThemeProvider } from "@suppr/storybook-stubs/mobile-theme";
 import { AddRowButton } from "./AddRowButton";
+import { chromaticVisualContract } from "../../../../.storybook/chromaticVisualContract";
 
 const meta = {
   title: "Mobile/UI/AddRowButton",
   component: AddRowButton,
-  tags: ["autodocs"],
+  tags: ["autodocs", ...chromaticVisualContract.tags],
   decorators: [
     (Story) => (
       <MobileStoryThemeProvider>
@@ -24,6 +25,7 @@ const meta = {
     ),
   ],
   parameters: {
+    ...chromaticVisualContract.parameters,
     layout: "fullscreen",
     docs: {
       description: {

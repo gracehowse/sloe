@@ -1,11 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { Bell, Calendar, MoreHorizontal, X } from "lucide-react";
 import { IconButton } from "./icon-button";
+import { chromaticVisualContract } from "../../../../.storybook/chromaticVisualContract";
 
 const meta = {
   component: IconButton,
-  tags: ["autodocs"],
+  tags: ["autodocs", ...chromaticVisualContract.tags],
   parameters: {
+    ...chromaticVisualContract.parameters,
     layout: "padded",
     docs: {
       description: {

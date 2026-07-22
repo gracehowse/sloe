@@ -1,10 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { SupprCard } from "./suppr-card";
+import { chromaticVisualContract } from "../../../../.storybook/chromaticVisualContract";
 
 const meta = {
   component: SupprCard,
-  tags: ["ai-generated"],
-  parameters: { layout: "padded" },
+  tags: ["ai-generated", ...chromaticVisualContract.tags],
+  parameters: {
+    ...chromaticVisualContract.parameters,
+    layout: "padded",
+  },
 } satisfies Meta<typeof SupprCard>;
 
 export default meta;
