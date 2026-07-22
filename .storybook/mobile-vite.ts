@@ -23,6 +23,34 @@ function isMobileModule(importer: string | undefined): boolean {
   return MOBILE_PATH_PREFIXES.some((prefix) => importer.includes(prefix));
 }
 
+/** True when `source` resolves to the web or mobile Supabase browser client. */
+function isSupabaseClientSource(source: string, importer: string | undefined): boolean {
+  if (
+    source === "@/lib/supabase" ||
+    source === "@/lib/supabase/browserClient" ||
+    source.includes("lib/supabase/browserClient")
+  ) {
+    return true;
+  }
+  if (/(?:^|[\\/])lib[\\/]supabase(?:\.(?:ts|tsx|js|mjs))?$/.test(source)) {
+    return true;
+  }
+  // Relative imports like `./supabase` from apps/mobile/lib/authedFetch.ts
+  if (
+    importer &&
+    (source === "./supabase" ||
+      source === "./supabase.ts" ||
+      source === "../lib/supabase" ||
+      source === "../lib/supabase.ts")
+  ) {
+    const resolved = path.normalize(path.resolve(path.dirname(importer), source));
+    if (/(?:^|[\\/])lib[\\/]supabase(?:\.(?:ts|tsx|js))?$/.test(resolved)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function resolveMobileFile(basePath: string): string | null {
   const candidates = [
     basePath,
@@ -98,12 +126,8 @@ export function mergeMobileStorybookVite(config: UserConfig): UserConfig {
 
           // Module-scope createBrowserClient / createClient("", "") throws in
           // Chromatic's extraction browser — stub every supabase client import.
-          if (
-            source === "@/lib/supabase/browserClient" ||
-            source.includes("lib/supabase/browserClient") ||
-            source === "@/lib/supabase" ||
-            /(?:^|\/)lib\/supabase(?:\.tsx?)?$/.test(source)
-          ) {
+          // Includes relative `./supabase` from apps/mobile/lib/authedFetch.ts.
+          if (isSupabaseClientSource(source, importer)) {
             return path.join(coverageStubs, "supabase-browser-client.ts");
           }
 
