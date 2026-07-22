@@ -829,16 +829,12 @@ export default function PlannerScreen() {
   }, [userId]);
 
   const isFree = userTier === "free";
-  // Wave-2 (2026-04-30): the default day count is 7 (Plan = week tool),
-  // but free-tier users can only generate 1-day plans. When the async
-  // tier resolves to "free" — and the user hasn't manually changed the
-  // pick yet — clamp the chip back to 1 so the picker reflects reality.
-  // We track manual interaction via a ref so a Pro user who tapped "1"
-  // doesn't get bumped back to 7 on a later effect re-run.
+  // TWO-WAY sync — `userTier` starts "free" pre-resolve, so a one-way
+  // clamp left even Pro users stuck at 1 day forever (ENG-1646).
   const userPickedDaysRef = useRef(false);
   useEffect(() => {
-    if (isFree && !userPickedDaysRef.current) {
-      setDays(1);
+    if (!userPickedDaysRef.current) {
+      setDays(isFree ? 1 : 7);
     }
   }, [isFree]);
   const [planTargets, setPlanTargets] = useState<{
@@ -2003,13 +1999,14 @@ export default function PlannerScreen() {
     });
   }, [recipeFiberPool, plan?.length]);
 
-  // Keep "Plan length" chips aligned with the loaded plan (e.g. after sync).
+  // Keep "Plan length" chips aligned with the loaded plan. Gated off
+  // under v3 (ENG-1646) — a stale plan length otherwise re-locks generates.
   useEffect(() => {
-    if (!plan?.length) return;
+    if (!plan?.length || sloeV3Plan) return;
     if (plan.length === 1 || plan.length === 3 || plan.length === 7) {
       setDays(plan.length as 1 | 3 | 7);
     }
-  }, [plan?.length]);
+  }, [plan?.length, sloeV3Plan]);
 
   /**
    * F1 fix (audit 2026-04-28) — generate shopping_items rows from a
@@ -2201,6 +2198,9 @@ export default function PlannerScreen() {
       return;
     }
 
+    // ENG-1646: cap live from tier — `days` state can lag or go stale.
+    const effectiveDays = isFree ? 1 : days;
+
     // Group E Card 4 (premium-bar audit 2026-05-14): snapshot the
     // existing plan BEFORE regeneration so the post-generation diff
     // toast can count how many meals changed. We deep-copy the meals
@@ -2391,7 +2391,7 @@ export default function PlannerScreen() {
             (a, dp) => a + dp.meals.filter((m) => !m.isLocked).length,
             0,
           ),
-          days,
+          days: effectiveDays,
           platform: "mobile",
         });
       }
@@ -2418,7 +2418,7 @@ export default function PlannerScreen() {
                 generateSmartPlan({
                   recipes: recipePool,
                   targets,
-                  days,
+                  days: effectiveDays,
                   slotConfig: { slots: planSlots },
                 }),
               );
@@ -2427,7 +2427,7 @@ export default function PlannerScreen() {
       const generateDurationMs = Date.now() - generateStartMs;
       if (!keepLockedActive) {
         track(AnalyticsEvents.meal_plan_generated, {
-          days,
+          days: effectiveDays,
           durationMs: generateDurationMs,
           poolSize: recipePool.length,
           slotCount,
@@ -2551,7 +2551,7 @@ export default function PlannerScreen() {
     } finally {
       setGenerating(false);
     }
-  }, [savedRecipes, discoverRecipes, days, userId, enabledSlots, recipeFiberPool, planSourceSelector, planSource, winMomentsEnabled, plan, mealLockEnabled, allowBatchLeftovers, planCalorieFloor, startOffset, activePlanSlotId, adoptPlanStartDate, toast.showToast]);
+  }, [savedRecipes, discoverRecipes, days, isFree, userId, enabledSlots, recipeFiberPool, planSourceSelector, planSource, winMomentsEnabled, plan, mealLockEnabled, allowBatchLeftovers, planCalorieFloor, startOffset, activePlanSlotId, adoptPlanStartDate, toast.showToast]);
 
   const resetPlan = useResetPlanGate(planHasRealMeals, generatePlan);
   const requestLibraryGenerate = resetPlan.requestLibraryGenerate;
