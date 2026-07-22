@@ -22,6 +22,10 @@ const MOBILE_TODAY = readFileSync(
   resolve(__dirname, "../../apps/mobile/app/(tabs)/_today/TodayScreen.tsx"),
   "utf8",
 );
+const MOBILE_NUTRITION_JOURNAL_CONTEXT = readFileSync(
+  resolve(__dirname, "../../apps/mobile/context/nutritionJournal.tsx"),
+  "utf8",
+);
 const MOBILE_COPY_DUPLICATE = readFileSync(
   resolve(__dirname, "../../apps/mobile/hooks/useCopyDuplicateMeal.ts"),
   "utf8",
@@ -114,8 +118,14 @@ describe("Phase 2 — mobile insert sites populate recipe_id", () => {
     // Today inline load into the shared read-side SoT in
     // `nutritionEntryRow.ts` (NUTRITION_ENTRY_SELECT_COLUMNS +
     // journalRowToMeal), reused by the out-of-window day fetch. Pin the
-    // const carries recipe_id, the mapper carries it into recipeId, and
-    // Today consumes both.
+    // const carries recipe_id and the mapper carries it into recipeId.
+    //
+    // ENG-1475 — the boot-window `nutrition_entries` SELECT itself moved
+    // out of `TodayScreen.tsx` into the shared `NutritionJournalProvider`
+    // (`context/nutritionJournal.tsx`), so both Today and Progress read
+    // the same in-memory journal instead of each re-fetching into a
+    // screen-local copy. The SELECT/mapper pair this test pins now lives
+    // there, not in TodayScreen.tsx.
     const MOBILE_ENTRY_ROW = readFileSync(
       resolve(__dirname, "../../apps/mobile/lib/nutritionEntryRow.ts"),
       "utf8",
@@ -126,7 +136,9 @@ describe("Phase 2 — mobile insert sites populate recipe_id", () => {
     expect(MOBILE_ENTRY_ROW).toMatch(
       /recipeId:\s*\(r\.recipe_id as[\s\S]{0,60}\)\s*\?\?\s*undefined/,
     );
-    expect(MOBILE_TODAY).toMatch(/\.select\(NUTRITION_ENTRY_SELECT_COLUMNS\)/);
-    expect(MOBILE_TODAY).toMatch(/journalRowToMeal\(r\)/);
+    expect(MOBILE_NUTRITION_JOURNAL_CONTEXT).toMatch(
+      /\.select\(NUTRITION_ENTRY_SELECT_COLUMNS\)/,
+    );
+    expect(MOBILE_NUTRITION_JOURNAL_CONTEXT).toMatch(/journalRowToMeal\(r\)/);
   });
 });
