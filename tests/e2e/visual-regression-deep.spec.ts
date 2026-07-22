@@ -154,9 +154,16 @@ test.describe("Visual regression — deep authenticated routes", () => {
         .waitFor({ state: "visible", timeout: 5000 })
         .then(() => true)
         .catch(() => false);
+      // ENG-1641 (2026-07-22): the CTA is real again on both the editorial
+      // block (`EditorialProfileBlock`, `sloe_v3_profile` default-on) and the
+      // legacy flag-off banner, so for the golden free-tier account this
+      // skip should no longer trigger. Kept (not deleted) as a guard for a
+      // genuinely-Pro golden account — but the message no longer assumes
+      // that's *why* it's missing, since that assumption is exactly what let
+      // the ENG-1246 regression hide here unnoticed for three weeks.
       test.skip(
         !hasUpgrade,
-        "Free/Base upgrade row not visible — user may already be Pro.",
+        "No upgrade CTA found on /profile — either the golden account is on Pro, or the CTA has regressed again (see ENG-1641).",
       );
       await upgrade.click();
       await expect(page.locator("#upgrade-paywall-title")).toBeVisible({

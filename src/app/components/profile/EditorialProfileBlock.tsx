@@ -1,12 +1,16 @@
 "use client";
 
 import { memo } from "react";
-import { Check, ChevronRight, Circle, Flame, Shield } from "lucide-react";
+import { Check, ChevronRight, Circle, Crown, Flame, Shield } from "lucide-react";
 import { AvatarDisc } from "../ui/avatar-disc";
 import { RecipeHeroFallback } from "../suppr/RecipeHeroFallback";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
 import { useFallbackScheme } from "../../../lib/theme/useFallbackScheme";
+import {
+  PROFILE_UPGRADE_BANNER_TDEE_GLOSS,
+  PROFILE_UPGRADE_BANNER_TDEE_PLAIN,
+} from "../../../lib/onboarding/figmaCopy.ts";
 import {
   type EditorialProfileBlockModel,
   type StreakDotState,
@@ -36,6 +40,13 @@ export interface EditorialProfileBlockProps {
   onOpenRecipe: (recipeId: string) => void;
   /** "See all" → the recipe library. */
   onSeeAllRecipes: () => void;
+  /** Opens the shared upgrade paywall (same `openUpgradePromo` mechanism
+   *  every other surface uses). Omitted → no upgrade card renders (e.g. a
+   *  future host with no paywall access). ENG-1641: restores the CTA that
+   *  went dead when this block replaced the legacy Profile hub (ENG-1246) —
+   *  `App.tsx` always supplied the callback, this block just never called
+   *  it. Ignored when `isPro` (nothing to upgrade to). */
+  onUpgrade?: () => void;
 }
 
 /** Max recipes rendered in the preview grid — one tidy 2×3 wall. */
@@ -71,6 +82,7 @@ function EditorialProfileBlockImpl({
   recipeCount,
   onOpenRecipe,
   onSeeAllRecipes,
+  onUpgrade,
 }: EditorialProfileBlockProps) {
   const gridRecipes = recipes.slice(0, RECIPE_GRID_LIMIT);
   const fallbackScheme = useFallbackScheme(); // ENG-1528 — dark ramp underlay on dark cards
@@ -78,6 +90,11 @@ function EditorialProfileBlockImpl({
   // ENG-1593 — Rule 7 (DESIGN-CONSTITUTION.md): serif initial + frost-ring,
   // default-OFF (see src/lib/analytics/track.ts flag note).
   const avatarFrostRingV1 = isFeatureEnabled("avatar_monogram_frost_ring_v1");
+  // ENG-1469 — jargon gloss (ENG-1461 follow-up). Same flag + copy pair
+  // `Profile.tsx`'s legacy banner reads, so the upgrade message doesn't
+  // fork between the flag-on and flag-off render paths.
+  const glossOn = isFeatureEnabled("onboarding_jargon_gloss_v1");
+  const showUpgrade = !isPro && Boolean(onUpgrade);
 
   return (
     <div className="flex flex-col gap-4" data-testid="editorial-profile-block">
@@ -107,6 +124,33 @@ function EditorialProfileBlockImpl({
           </span>
         ) : null}
       </div>
+
+      {/* Upgrade — free/base only, editorial-card treatment (ENG-1641: the
+          legacy inline banner's mechanism, restyled to this block's card
+          grammar — soft-tint ground doubles as the card/page separation, no
+          hairline needed, matching the `PlanEmptyWeekCard` nudge-card
+          precedent). Sits right after Identity — the ENG-1246 IA it
+          replaces put the banner directly under the identity strip too, so
+          this restores the same "check your tier, see the upsell" order,
+          not just the same click target. */}
+      {showUpgrade ? (
+        <button
+          type="button"
+          onClick={onUpgrade}
+          aria-label="Upgrade to Pro"
+          data-testid="editorial-profile-upgrade-cta"
+          className="flex items-center gap-4 rounded-xl bg-primary-soft p-4 text-left transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:scale-[0.99]"
+        >
+          <Crown className="h-5 w-5 shrink-0 text-primary-solid" aria-hidden />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-foreground">Upgrade to Pro</span>
+            <span className="mt-1 block text-[11px] text-muted-foreground">
+              {glossOn ? PROFILE_UPGRADE_BANNER_TDEE_GLOSS : PROFILE_UPGRADE_BANNER_TDEE_PLAIN}
+            </span>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-primary-solid" aria-hidden />
+        </button>
+      ) : null}
 
       {/* Streak — dot row + best/freezes line. */}
       <div className="flex flex-col gap-3 rounded-xl bg-card p-4 card-slab">

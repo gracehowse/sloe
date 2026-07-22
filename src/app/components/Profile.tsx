@@ -450,7 +450,7 @@ export const Profile = memo(function Profile({ userTier, displayName, onUpgrade,
           recipeCount={recipeCount}
           onOpenRecipe={(id) => goHome(`view=library&recipe=${id}`)}
           onSeeAllRecipes={() => goHome("view=library")}
-        />
+          onUpgrade={onUpgrade} />
       </div>
     );
   }
