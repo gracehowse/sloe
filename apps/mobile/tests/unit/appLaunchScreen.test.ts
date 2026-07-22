@@ -22,7 +22,13 @@ describe("AppLaunchScreen", () => {
     const layoutSrc = readFileSync(join(ROOT, "app/_layout.tsx"), "utf8");
     const fontGateSrc = readFileSync(join(ROOT, "components/FontGate.tsx"), "utf8");
     expect(themeSrc).toContain("AppLaunchScreen");
-    expect(layoutSrc).toContain("FontGate");
+    // ENG-1475 — `FontGate` (+ the rest of the app-root provider stack)
+    // moved out of `_layout.tsx` into `context/AppProviders.tsx` so adding
+    // `NutritionJournalProvider` didn't push the pinned `_layout.tsx` past
+    // its screen-line-budget. Pin the delegation + the new home.
+    const appProvidersSrc = readFileSync(join(ROOT, "context/AppProviders.tsx"), "utf8");
+    expect(layoutSrc).toContain("AppProviders");
+    expect(appProvidersSrc).toContain("FontGate");
     expect(fontGateSrc).toContain("SplashScreen.hideAsync");
     expect(fontGateSrc).toContain("useFonts");
   });

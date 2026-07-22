@@ -21,7 +21,7 @@ import { useCardElevation } from "@/hooks/useCardElevation";
 import { useHealthSyncOnFocus } from "@/hooks/useHealthSyncOnFocus";
 import { useAppleHealthConnected } from "@/hooks/useAppleHealthConnected";
 import { useJournalWriteAhead, reportDroppedJournalWrites } from "@/hooks/useJournalWriteAhead";
-import { mergeJournalByDay } from "@suppr/nutrition-core/mergeJournalByDay";
+import { useNutritionJournal } from "@/context/nutritionJournal";
 import {
   resolveEffectiveDayTargets,
   parseDayTargetSchedule,
@@ -49,16 +49,12 @@ import {
   dateKeyFromDate,
   newMealId,
   normalizeJournalSlotName,
-  type ByDay,
   type JournalMeal,
 } from "@/lib/nutritionJournal";
 import {
   buildNutritionEntryRow,
   buildNutritionEntryUpdatePayload,
-  journalRowToMeal,
-  NUTRITION_ENTRY_SELECT_COLUMNS,
 } from "@/lib/nutritionEntryRow";
-import { journalBootWindowStartKey } from "@suppr/nutrition-core/journalWindow";
 import {
   buildDayNutrientDetailRows,
   formatMealNutritionMultiline,
@@ -371,7 +367,11 @@ export default function TrackerScreen() {
   // timeout race, ack-on-success, cold-start queue hydration). All retry /
   // storage logic lives in the hook + shared lib; TodayScreen call sites
   // only delegate (screen-budget pinned, may not grow).
-  const { writeAhead, flushQueue, loadQueuedByDay } = useJournalWriteAhead(supabase);
+  // ENG-1475 — `loadQueuedByDay` (queued-but-unflushed rows, for the
+  // cold-start merge) moved into the shared `NutritionJournalProvider`'s
+  // own `useJournalWriteAhead` instance so `refreshJournal` can call it
+  // directly; Today only needs `writeAhead` / `flushQueue` here now.
+  const { writeAhead, flushQueue } = useJournalWriteAhead(supabase);
   // ENG-1247 — pad main scroll by frosted (absolute) tab bar height to clear it.
   const tabBarHeight = useTabBarClearance();
   // ENG-1076 — declared here (above persistMealsImmediate /
@@ -400,7 +400,17 @@ export default function TrackerScreen() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [macroDisplayStyle] = useMacroDisplayStyle();
 
-  const [byDay, setByDay] = useState<ByDay>({});
+  // ENG-1475 — `byDay` / `setByDay` now come from the shared
+  // `NutritionJournalProvider` (mounted at the app root) instead of a
+  // Today-local `useState`, so every optimistic write below
+  // (`persistMealsImmediate` et al.) is visible to Progress instantly —
+  // no separate fetch, no cross-screen desync. `hydrated` stays LOCAL:
+  // it still gates Today's full skeleton (journal + meal-plan-day +
+  // planned-meals), a strictly larger readiness condition than the
+  // shared context's own `hydrated` (which only tracks the
+  // `nutrition_entries` boot fetch — see `refreshJournal` in
+  // `context/nutritionJournal.tsx`).
+  const { byDay, setByDay, refreshJournal: refreshSharedJournal } = useNutritionJournal();
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -2900,27 +2910,18 @@ export default function TrackerScreen() {
     // torched a healthy `nutrition_entries` result. Race each query
     // independently (still `Promise.all` so wall time is max of the two
     // caps, not the sum).
-    const JOURNAL_ENTRIES_TIMEOUT_MS = 45_000;
+    //
+    // ENG-1475 — the `nutrition_entries` boot-window fetch itself moved
+    // to the shared `NutritionJournalProvider` (`refreshSharedJournal`,
+    // aliased from `useNutritionJournal().refreshJournal`) so Today and
+    // Progress share ONE fetch-and-merge implementation instead of two
+    // independently-drifting copies. It still races its own internal
+    // 45s timeout (`JOURNAL_ENTRIES_TIMEOUT_MS` in
+    // `context/nutritionJournal.tsx`) — kept in the SAME `Promise.all`
+    // as `meal_plan_days` below so overall wall time is still the max of
+    // the two caps, not their sum.
     const MEAL_PLAN_DAYS_TIMEOUT_MS = 15_000;
-    // 2026-05-15 (ENG-542): window to the last 35 days. Covers the
-    // week-strip (7d) + trailing analytics (~28d). The .limit(20_000)
-    // guard removed (ENG-705): the 35-day date filter is the correct
-    // bound. Computation now shared with web via
-    // `journalBootWindowStartKey` (ENG-1290 / ENG-1325); days older
-    // than the window are fetched on demand by `useOutOfWindowJournalDay`.
-    const windowStartKey = journalBootWindowStartKey();
     const activePlanSlotId = await readActiveCloudMealPlanSlotId();
-    const entriesPromise = (async () =>
-      await supabase
-        .from("nutrition_entries")
-        // ENG-1325 — column list + row mapping shared with the
-        // out-of-window single-day fetch via `nutritionEntryRow.ts`
-        // (includes recipe_id, Schema refactor Phase 2).
-        .select(NUTRITION_ENTRY_SELECT_COLUMNS)
-        .eq("user_id", userId)
-        .gte("date_key", windowStartKey)
-        .order("date_key", { ascending: true })
-        .order("created_at", { ascending: true }))();
     const planDaysPromise = (async () =>
       await supabase
         .from("meal_plan_days")
@@ -2931,21 +2932,38 @@ export default function TrackerScreen() {
         .eq("slot_id", activePlanSlotId)
         .order("day", { ascending: true }))();
 
-    const [entriesPack, planDaysPack] = await Promise.all([
-      raceJournal("nutrition_entries", JOURNAL_ENTRIES_TIMEOUT_MS, entriesPromise),
+    const [journalResult, planDaysPack] = await Promise.all([
+      refreshSharedJournal(),
       raceJournal("meal_plan_days", MEAL_PLAN_DAYS_TIMEOUT_MS, planDaysPromise),
     ]);
 
-    const entriesTimedOut = entriesPack === journalRaceTimeout;
-    const rows =
-      entriesTimedOut ? [] : (entriesPack.data ?? []);
-    const error = entriesTimedOut ? null : entriesPack.error;
-
-    if (entriesTimedOut) {
+    if (journalResult.timedOut) {
       console.warn("[tracker] nutrition_entries timed out");
       setLoadError(
         "Your journal is taking too long to load. Check your network, then switch tabs and return to Today.",
       );
+    } else if (journalResult.error) {
+      // Schema refactor Phase 3 (2026-05-11) — the legacy
+      // `nutrition_journals` JSONB fallback was deleted along with its
+      // shim. The table was dropped 2026-04-21 so the fallback always
+      // returned null in production anyway. `looksLikeMissingTableError`
+      // can no longer fire (nutrition_entries is the only path), so any
+      // error here is a real load failure that should surface to the
+      // user. Deliberately does NOT blank `byDay` (pre-ENG-1475 this
+      // branch called `setByDay({})`) — see the doc comment on
+      // `refreshJournal` in `context/nutritionJournal.tsx` for why a
+      // shared journal must never do that on a transient later-focus
+      // error.
+      console.error("[tracker] load failed:", journalResult.error);
+      setLoadError(journalResult.error);
+    } else {
+      setLoadError(null);
+      // Audit/2026-04-30 — pre-populate the HealthKit-meal-write dedupe
+      // set with every meal that already exists in the journal at load
+      // time. This ensures the debounced sync effect only writes meals
+      // the user logs AFTER this feature shipped — not historical rows
+      // that pre-date Apple Health export.
+      void primeWrittenMealIds(userId, journalResult.loadedIds);
     }
 
     const planDayRows =
@@ -2963,54 +2981,6 @@ export default function TrackerScreen() {
             selectedDate,
           )
         : null;
-
-    let loaded: ByDay = {};
-
-    if (error) {
-      // Schema refactor Phase 3 (2026-05-11) — the legacy
-      // `nutrition_journals` JSONB fallback was deleted along with
-      // its shim. The table was dropped 2026-04-21 so the fallback
-      // always returned null in production anyway. `looksLikeMissingTableError`
-      // can no longer fire (nutrition_entries is the only path), so
-      // any error here is a real load failure that should surface to
-      // the user.
-      console.error("[tracker] load failed:", error.message ?? "");
-      setLoadError("Could not load your journal.");
-      setByDay({});
-    } else {
-      if (!entriesTimedOut) {
-        setLoadError(null);
-      }
-      for (const r of rows ?? []) {
-        const k = r.date_key as string;
-        if (!loaded[k]) loaded[k] = [];
-        // ENG-1325 — shared read-side mapper (`journalRowToMeal`) so the
-        // boot load and the out-of-window day fetch hydrate identically.
-        loaded[k].push(journalRowToMeal(r));
-      }
-      // Schema refactor Phase 3 (2026-05-11) — legacy by_day JSONB
-      // fallback removed. An empty `nutrition_entries` just means an
-      // empty journal; we no longer try the deleted legacy table.
-      //
-      // ENG-1447 — layer in write-ahead-queued-but-unflushed rows as a second
-      // "local" pass so a queued meal survives even a genuine cold start
-      // (`prev` is `{}` after a kill, not just a backgrounding).
-      const queuedByDay = await loadQueuedByDay();
-      const queuedMeals: ByDay = {};
-      for (const [k, queueRows] of Object.entries(queuedByDay)) {
-        queuedMeals[k] = queueRows.map((r) => journalRowToMeal(r));
-      }
-      setByDay((prev) => mergeJournalByDay(loaded, mergeJournalByDay(queuedMeals, prev)));
-      // Audit/2026-04-30 — pre-populate the HealthKit-meal-write dedupe
-      // set with every meal that already exists in the journal at load
-      // time. This ensures the debounced sync effect only writes meals
-      // the user logs AFTER this feature shipped — not historical rows
-      // that pre-date Apple Health export.
-      const existingIds = (rows ?? [])
-        .map((r) => r.id as string)
-        .filter((id): id is string => typeof id === "string" && id.length > 0);
-      void primeWrittenMealIds(userId, existingIds);
-    }
 
     // Planned meals for the journal `selectedDate`: `meal_plan_days.day`
     // is plan index 1..7 (same as Plan tab), not weekday — match via
@@ -3097,7 +3067,7 @@ export default function TrackerScreen() {
         /* analytics is best-effort */
       }
     }
-  }, [userId, selectedDate, loadQueuedByDay]);
+  }, [userId, selectedDate, refreshSharedJournal]);
 
   // Re-resolve planned meals when the journal date changes (focus alone
   // does not re-run when the user stays on this tab and swipes dates).

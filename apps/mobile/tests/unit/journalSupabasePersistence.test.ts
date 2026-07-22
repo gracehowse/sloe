@@ -55,6 +55,15 @@ const COPY_DUPLICATE_HOOK_SRC = readFileSync(
   resolve(REPO, "apps/mobile/hooks/useCopyDuplicateMeal.ts"),
   "utf8",
 );
+// ENG-1475 — the `nutrition_entries` boot-window fetch + write-ahead-queue
+// merge (formerly inline in `TodayScreen.loadJournal`) moved into the
+// shared `NutritionJournalProvider` so Today and Progress read/write ONE
+// journal instead of two independently-drifting copies. Pin its shape
+// where it now lives, same pattern as the other extracted-hook pins above.
+const NUTRITION_JOURNAL_CONTEXT_SRC = readFileSync(
+  resolve(REPO, "apps/mobile/context/nutritionJournal.tsx"),
+  "utf8",
+);
 
 describe("Today journal — every meal-add path persists to Supabase immediately", () => {
   it("declares persistMealsImmediate helper that delegates to the write-ahead hook", () => {
@@ -229,12 +238,36 @@ describe("Today journal — every meal-add path persists to Supabase immediately
     expect(slice).toMatch(/reportDroppedJournalWrites\(/);
   });
 
-  it("ENG-1447 part 3 — loadJournal hydrates write-ahead-queued rows into byDay before/alongside the server merge", () => {
+  it("ENG-1475 — TodayScreen.loadJournal delegates the nutrition_entries fetch to the shared journal context's refreshJournal, not an inline query", () => {
     const idx = SRC.indexOf("const loadJournal = useCallback");
     expect(idx).toBeGreaterThan(-1);
-    const mergeIdx = SRC.indexOf("mergeJournalByDay(loaded", idx);
+    const slice = SRC.slice(idx, idx + 4500);
+    // Delegates to the ONE shared journal (context/nutritionJournal.tsx) —
+    // no more inline `nutrition_entries` SELECT / `mergeJournalByDay` call
+    // in the screen itself. This is the actual ENG-1475 fix: Progress reads
+    // the SAME state Today writes to, instead of independently re-fetching
+    // into a screen-local copy that could desync ("iOS says 0/3 days
+    // logged, web says 1/3").
+    // Raced in the SAME `Promise.all` as `meal_plan_days` (not a separate
+    // sequential `await`) so overall wall time stays the max of the two
+    // caps, not their sum — see the comment immediately above this call
+    // site in TodayScreen.tsx.
+    expect(slice).toMatch(/=\s*await\s+Promise\.all\(\[/);
+    const promiseAllIdx = slice.search(/=\s*await\s+Promise\.all\(\[/);
+    expect(slice.slice(promiseAllIdx)).toMatch(/refreshSharedJournal\(\)/);
+    expect(slice).not.toMatch(/from\(["']nutrition_entries["']\)\s*\.select/);
+    expect(slice).not.toMatch(/mergeJournalByDay\(/);
+  });
+
+  it("ENG-1475 — the shared journal context (not TodayScreen) hydrates write-ahead-queued rows into byDay before/alongside the server merge", () => {
+    // Formerly pinned inline in `TodayScreen.loadJournal` (ENG-1447 part
+    // 3); moved verbatim into `refreshJournal` when the fetch relocated to
+    // the shared provider (ENG-1475) — same merge shape, new home.
+    const idx = NUTRITION_JOURNAL_CONTEXT_SRC.indexOf("const refreshJournal = useCallback");
+    expect(idx).toBeGreaterThan(-1);
+    const mergeIdx = NUTRITION_JOURNAL_CONTEXT_SRC.indexOf("mergeJournalByDay(loaded", idx);
     expect(mergeIdx).toBeGreaterThan(-1);
-    const slice = SRC.slice(idx, mergeIdx + 200);
+    const slice = NUTRITION_JOURNAL_CONTEXT_SRC.slice(idx, mergeIdx + 200);
     expect(slice).toMatch(/loadQueuedByDay\(\)/);
     // The queued rows are merged in as a second "local" layer underneath
     // whatever's already in memory, so they survive even when `prev` is `{}`
@@ -242,5 +275,24 @@ describe("Today journal — every meal-add path persists to Supabase immediately
     expect(slice).toMatch(
       /mergeJournalByDay\(loaded,\s*mergeJournalByDay\(queuedMeals,\s*prev\)\)/,
     );
+  });
+
+  it("ENG-1475 — refreshJournal never blanks byDay on a SELECT error (state is shared now; the old Today-local blank-on-error would wipe Progress's data too)", () => {
+    const idx = NUTRITION_JOURNAL_CONTEXT_SRC.indexOf("const refreshJournal = useCallback");
+    expect(idx).toBeGreaterThan(-1);
+    const nextFnIdx = NUTRITION_JOURNAL_CONTEXT_SRC.indexOf("const ensureJournalHistory", idx);
+    const slice = NUTRITION_JOURNAL_CONTEXT_SRC.slice(idx, nextFnIdx > -1 ? nextFnIdx : idx + 4000);
+    expect(slice).not.toMatch(/setByDay\(\{\}\)/);
+  });
+
+  it("ENG-1475 — Progress reads `byDay` from the shared context, not its own nutrition_entries SELECT", () => {
+    const PROGRESS_SRC = readFileSync(
+      resolve(REPO, "apps/mobile/app/(tabs)/progress.tsx"),
+      "utf8",
+    );
+    expect(PROGRESS_SRC).toMatch(/const\s*\{\s*byDay,\s*ensureJournalHistory\s*\}\s*=\s*useNutritionJournal\(\)/);
+    expect(PROGRESS_SRC).not.toMatch(/from\(["']nutrition_entries["']\)\s*\.select/);
+    // The 90-day window is a merge-only backfill call, not a replace.
+    expect(PROGRESS_SRC).toMatch(/void\s+ensureJournalHistory\(ninetyDaysAgo\)/);
   });
 });

@@ -35,6 +35,11 @@ import { render } from "@testing-library/react-native";
 
 // Defer the import until mocks are installed.
 import ProgressScreen from "../../app/(tabs)/progress";
+// ENG-1475 — Progress now reads `byDay` from the shared journal context
+// instead of an independent `nutrition_entries` SELECT into local state;
+// mounting it standalone (outside `apps/mobile/app/_layout.tsx`'s real
+// provider tree) needs the same wrapper.
+import { NutritionJournalProvider } from "@/context/nutritionJournal";
 
 void React;
 
@@ -189,7 +194,11 @@ describe("Progress tab — skeleton-first paint (H-4 regression pin)", () => {
       // paint is cheap and dataset-independent, so we assert that path
       // here and rely on the structural source test for the post-load
       // gate.
-      const { getByTestId, queryByTestId } = render(<ProgressScreen />);
+      const { getByTestId, queryByTestId } = render(
+        <NutritionJournalProvider>
+          <ProgressScreen />
+        </NutritionJournalProvider>,
+      );
 
       // The skeleton ScrollView renders at the top.
       expect(getByTestId("progress-skeleton")).toBeTruthy();
