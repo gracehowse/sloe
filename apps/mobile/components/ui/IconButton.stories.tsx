@@ -22,29 +22,30 @@ const meta = {
     docs: {
       description: {
         component:
-          "Anatomy role **IconButton** (mobile) — circular icon control. sm=32, md=40 on the Spacing ladder.",
+          "Anatomy role **IconButton** (mobile) — circular icon control. sm/md/lg diameters on the Spacing ladder.",
       },
     },
+  },
+  args: {
+    icon: Bell,
+    onPress: () => undefined,
+    accessibilityLabel: "Notifications",
   },
 } satisfies Meta<typeof IconButton>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const QuietMd: Story = {
+export const MutedMd: Story = {
   args: {
-    accessibilityLabel: "Notifications",
     size: "md",
-    tone: "quiet",
-    children: <Bell size={18} />,
+    variant: "muted",
   },
 };
 
 export const GhostSm: Story = {
   args: {
-    accessibilityLabel: "Notifications",
     size: "sm",
-    tone: "ghost",
-    children: <Bell size={16} />,
+    variant: "ghost",
   },
 };
