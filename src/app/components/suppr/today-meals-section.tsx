@@ -95,18 +95,18 @@ export interface TodayMealsSectionProps {
   onDeleteMeal: (mealId: string, recipeTitle: string) => void;
   /**
    * P5 parity gap #15 — open the per-meal nutrition-detail dialog
-   * (`<MealNutritionDialog>`). When set (flag `web_meal_nutrition_detail` on),
-   * a "View nutrition" item renders in each meal row's kebab menu. Undefined
-   * (flag off) → no item, the kebab + row layout is byte-identical to before.
-   * Mirror: the mobile meal row routes to `apps/mobile/app/meal-nutrition.tsx`.
+   * (`<MealNutritionDialog>`). When set, a "View nutrition" item renders in
+   * each meal row's kebab menu. Host always wires this (`web_meal_nutrition_detail`
+   * collapsed, ENG-1651); undefined stays supported defensively. Mirror:
+   * the mobile meal row routes to `apps/mobile/app/meal-nutrition.tsx`.
    */
   onOpenMealNutrition?: (mealId: string) => void;
   /**
    * ENG-837 — open the per-slot nutrition-detail dialog
    * (`<MealNutritionDialog slotAggregate>`), summing every logged item in the
-   * slot. When set (flag `web_meal_nutrition_detail` on), a quiet "View slot
-   * nutrition" affordance renders on each POPULATED slot header. Undefined (flag
-   * off) → no affordance, the slot header is byte-identical to before. Mirror:
+   * slot. When set, a quiet "View slot nutrition" affordance renders on each
+   * POPULATED slot header. Host always wires this (`web_meal_nutrition_detail`
+   * collapsed, ENG-1651); undefined stays supported defensively. Mirror:
    * the mobile slot opens `apps/mobile/app/meal-nutrition.tsx?slot=&date=`.
    */
   onOpenSlotNutrition?: (slot: string) => void;
@@ -625,9 +625,9 @@ export function TodayMealsSection({
                     ghost icon-button (NOT a filled CTA — one filled CTA per
                     screen rule). `stopPropagation` so it opens the slot-aggregate
                     dialog instead of toggling the slot collapse. Only renders when
-                    the host wired `onOpenSlotNutrition` (flag
-                    `web_meal_nutrition_detail` on); flag-OFF → absent, slot header
-                    byte-identical. Mirror: mobile slot → meal-nutrition.tsx?slot=. */}
+                    the host wired `onOpenSlotNutrition` — always true now
+                    (`web_meal_nutrition_detail` collapsed, ENG-1651). Mirror:
+                    mobile slot → meal-nutrition.tsx?slot=. */}
                 {onOpenSlotNutrition && hasMeals ? (
                   <button
                     type="button"
@@ -829,10 +829,10 @@ export function TodayMealsSection({
                             )}
                             {/* P5 parity gap #15 — "View nutrition" opens the
                                 per-meal nutrition-detail dialog. Only renders when
-                                the host wired `onOpenMealNutrition` (flag
-                                `web_meal_nutrition_detail` on); flag-OFF → absent,
-                                kebab byte-identical to before. Mirror: the mobile
-                                meal row routes to `meal-nutrition.tsx`. */}
+                                the host wired `onOpenMealNutrition` — always true
+                                now (`web_meal_nutrition_detail` collapsed,
+                                ENG-1651). Mirror: the mobile meal row routes to
+                                `meal-nutrition.tsx`. */}
                             {onOpenMealNutrition && (
                               <DropdownMenuItem
                                 data-testid={`today-meal-view-nutrition-${meal.id}`}

@@ -1997,24 +1997,14 @@ export const NutritionTracker = memo(function NutritionTracker({
         onOpenDuplicateDay={() => setDuplicateDayOpen(true)}
         onRequestCopyMeal={setCopyMealTargetId}
         onDeleteMeal={(mealId) => removeLoggedMeal(mealId)}
-        // P5 parity gap #15 — "View nutrition" kebab item + per-meal dialog,
-        // gated behind `web_meal_nutrition_detail`. Flag OFF → prop undefined →
-        // no kebab item, meal row byte-identical to today. Mirror:
-        // apps/mobile/app/meal-nutrition.tsx.
-        onOpenMealNutrition={
-          isFeatureEnabled("web_meal_nutrition_detail")
-            ? setMealNutritionTargetId
-            : undefined
-        }
+        // P5 parity gap #15 — "View nutrition" kebab item + per-meal dialog.
+        // `web_meal_nutrition_detail` collapsed (ENG-1651) — permanently ON
+        // via REDESIGN_DEFAULT_ON. Mirror: apps/mobile/app/meal-nutrition.tsx.
+        onOpenMealNutrition={setMealNutritionTargetId}
         // ENG-837 — "View slot nutrition" header affordance + slot-aggregate
-        // dialog, gated behind the SAME `web_meal_nutrition_detail` flag. Flag
-        // OFF → prop undefined → no slot affordance, header byte-identical.
-        // Mirror: apps/mobile/app/meal-nutrition.tsx?slot=&date=.
-        onOpenSlotNutrition={
-          isFeatureEnabled("web_meal_nutrition_detail")
-            ? setSlotNutritionTarget
-            : undefined
-        }
+        // dialog, same flag (collapsed). Mirror:
+        // apps/mobile/app/meal-nutrition.tsx?slot=&date=.
+        onOpenSlotNutrition={setSlotNutritionTarget}
         onEditMeal={
           isFeatureEnabled("web_logged_meal_edit")
             ? setEditMealTargetId
@@ -2527,10 +2517,11 @@ export const NutritionTracker = memo(function NutritionTracker({
       })()}
 
       {/* P5 parity gap #15 — per-meal nutrition-detail dialog (web mirror of
-          apps/mobile/app/meal-nutrition.tsx). Gated behind
-          `web_meal_nutrition_detail`; resolves the full LoggedMeal (with micros)
-          from `mealsForSelectedDate` by id — no Supabase fetch. */}
-      {isFeatureEnabled("web_meal_nutrition_detail") && (
+          apps/mobile/app/meal-nutrition.tsx). Resolves the full LoggedMeal
+          (with micros) from `mealsForSelectedDate` by id — no Supabase fetch.
+          `web_meal_nutrition_detail` collapsed (ENG-1651) — permanently ON
+          via REDESIGN_DEFAULT_ON. */}
+      {
         <MealNutritionDialog
           meal={
             mealNutritionTargetId
@@ -2549,15 +2540,16 @@ export const NutritionTracker = memo(function NutritionTracker({
           }
           onMacroTap={macroTapFromDialog(() => setMealNutritionTargetId(null))}
         />
-      )}
+      }
 
       {/* ENG-837 — slot-aggregate nutrition dialog (web mirror of
-          apps/mobile/app/meal-nutrition.tsx?slot=&date=). Same flag as the
-          per-meal dialog. Sums the targeted slot's meals (resolved from
-          `mealsGrouped`, keyed identically by `normalizeJournalSlotName`) via
-          the shared `sumMicrosFromLoggedMeals` / `sumDayFiberFromMeals` helpers
-          inside the dialog — no Supabase fetch, no re-summing math here. */}
-      {isFeatureEnabled("web_meal_nutrition_detail") && (
+          apps/mobile/app/meal-nutrition.tsx?slot=&date=). Sums the targeted
+          slot's meals (resolved from `mealsGrouped`, keyed identically by
+          `normalizeJournalSlotName`) via the shared `sumMicrosFromLoggedMeals`
+          / `sumDayFiberFromMeals` helpers inside the dialog — no Supabase
+          fetch, no re-summing math here. `web_meal_nutrition_detail`
+          collapsed (ENG-1651) — same flag as the per-meal dialog, above. */}
+      {
         <MealNutritionDialog
           meal={null}
           slotAggregate={
@@ -2573,7 +2565,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           onClose={() => setSlotNutritionTarget(null)}
           onMacroTap={macroTapFromDialog(() => setSlotNutritionTarget(null))}
         />
-      )}
+      }
 
       {isFeatureEnabled("web_logged_meal_edit") && (
         <EditMealDialog

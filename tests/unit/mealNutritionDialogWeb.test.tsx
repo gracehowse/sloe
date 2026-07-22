@@ -15,15 +15,18 @@
  *  - the empty micros state for a meal with no published micros
  *  - the macro-split percentages sum to EXACTLY 100 (the shared Hamilton-rounding
  *    guarantee — `macroCalorieSplit`)
- *  - flag OFF (host omits `onOpenMealNutrition`) → no "View nutrition" affordance
- *    in the kebab; flag ON → item present and wired
+ *  - `TodayMealsSection` renders the "View nutrition" kebab item + wires it
+ *    when `onOpenMealNutrition` is provided (component-level prop contract —
+ *    the host always provides it now, `web_meal_nutrition_detail` collapsed
+ *    ENG-1651, but the component itself stays resilient if it's omitted)
  *  - ENG-837 slot-aggregate mode: the dialog sums multiple meals' kcal / macros /
  *    micros / fibre EXACTLY (hand-computed fixture), renders the slot label as the
  *    title, shows the slot-empty state, hides Edit, and leaves single-meal mode
- *    untouched; the "View slot nutrition" header affordance is flag-gated (present
- *    on populated slots only, calls the handler with the slot name, stopPropagation)
- *  - source-check that the host gates BOTH the slot affordance prop and the
- *    aggregate dialog mount behind `web_meal_nutrition_detail`
+ *    untouched; the "View slot nutrition" header affordance renders on populated
+ *    slots only, calls the handler with the slot name, stopPropagation
+ *  - source-check that the host unconditionally wires BOTH the slot affordance
+ *    prop and the aggregate dialog mount (no `web_meal_nutrition_detail` read
+ *    left, ENG-1651)
  *
  * Pairs with apps/mobile/tests/unit/macroCalorieSplitLargestRemainder.test.ts
  * (shared rounding) so the per-meal numbers can't drift between platforms. The
@@ -514,7 +517,7 @@ describe("TodayMealsSection (web) — 'View nutrition' kebab item (gap #15 wirin
     cleanup();
   });
 
-  it("flag OFF (onOpenMealNutrition omitted): no 'View nutrition' item, legacy actions intact", async () => {
+  it("onOpenMealNutrition omitted: no 'View nutrition' item, legacy actions intact (defensive — the host always wires this now)", async () => {
     render(<TodayMealsSection {...baseProps()} />);
     await openKebab();
     expect(screen.queryByTestId("today-meal-view-nutrition-m-dinner")).toBeNull();
@@ -524,7 +527,7 @@ describe("TodayMealsSection (web) — 'View nutrition' kebab item (gap #15 wirin
     expect(screen.getByText("Delete")).toBeTruthy();
   });
 
-  it("flag ON (handler wired): 'View nutrition' item renders and calls the handler with the meal id", async () => {
+  it("onOpenMealNutrition provided: 'View nutrition' item renders and calls the handler with the meal id", async () => {
     const onOpenMealNutrition = vi.fn();
     render(<TodayMealsSection {...baseProps({ onOpenMealNutrition })} />);
     await openKebab();
@@ -543,13 +546,13 @@ describe("TodayMealsSection (web) — 'View slot nutrition' header affordance (E
     cleanup();
   });
 
-  it("flag OFF (onOpenSlotNutrition omitted): no slot-nutrition affordance on any header", () => {
+  it("onOpenSlotNutrition omitted: no slot-nutrition affordance on any header (defensive — the host always wires this now)", () => {
     render(<TodayMealsSection {...baseProps()} />);
     // Populated Dinner slot — still no affordance when the host didn't wire it.
     expect(screen.queryByTestId("today-slot-view-nutrition-Dinner")).toBeNull();
   });
 
-  it("flag ON (handler wired): affordance renders on a POPULATED slot and calls the handler with the slot name", () => {
+  it("onOpenSlotNutrition provided: affordance renders on a POPULATED slot and calls the handler with the slot name", () => {
     const onOpenSlotNutrition = vi.fn();
     render(<TodayMealsSection {...baseProps({ onOpenSlotNutrition })} />);
     const btn = screen.getByTestId("today-slot-view-nutrition-Dinner");
@@ -559,7 +562,7 @@ describe("TodayMealsSection (web) — 'View slot nutrition' header affordance (E
     expect(onOpenSlotNutrition).toHaveBeenCalledWith("Dinner");
   });
 
-  it("flag ON: NO affordance on an EMPTY slot (nothing to aggregate)", () => {
+  it("NO affordance on an EMPTY slot (nothing to aggregate)", () => {
     const onOpenSlotNutrition = vi.fn();
     render(<TodayMealsSection {...baseProps({ onOpenSlotNutrition })} />);
     // Breakfast / Lunch / Snacks are empty in baseProps → no slot-nutrition button.
@@ -579,30 +582,23 @@ describe("TodayMealsSection (web) — 'View slot nutrition' header affordance (E
   });
 });
 
-// --- Source-check: the slot-aggregate affordance + dialog mount are gated ---
-// behind `web_meal_nutrition_detail` in the host (ENG-837). The flag is a
-// PostHog runtime flag (no static constant to assert), so we pin the gate at the
-// source level: this regresses if anyone removes the `isFeatureEnabled` guard
-// around either the slot affordance prop or the aggregate dialog mount, which
-// would change flag-OFF behaviour (the non-negotiable: flag OFF == byte-identical
-// to today). Mirrors the per-meal gate that shipped with gap #15.
-describe("NutritionTracker host — slot-aggregate is flag-gated (ENG-837)", () => {
+// --- Source-check: the slot-aggregate affordance + dialog mount are wired ---
+// unconditionally in the host (ENG-837). `web_meal_nutrition_detail` collapsed
+// (ENG-1651) — it was permanently ON via REDESIGN_DEFAULT_ON. Pins the absence
+// of the old gate at the source level, mirroring the per-meal gate's collapse
+// (gap #15, same flag).
+describe("NutritionTracker host — slot-aggregate wiring unconditional (ENG-837, ENG-1651)", () => {
   const hostSource = readFileSync(
     join(process.cwd(), "src/app/components/NutritionTracker.tsx"),
     "utf8",
   );
 
-  it("wires onOpenSlotNutrition only when web_meal_nutrition_detail is on", () => {
-    // The slot affordance prop must be gated, falling back to undefined (flag off).
-    const gated =
-      /onOpenSlotNutrition=\{[\s\S]*?isFeatureEnabled\("web_meal_nutrition_detail"\)[\s\S]*?setSlotNutritionTarget[\s\S]*?:\s*undefined[\s\S]*?\}/;
-    expect(hostSource).toMatch(gated);
+  it("no longer gates onOpenSlotNutrition on web_meal_nutrition_detail", () => {
+    expect(hostSource).not.toMatch(/isFeatureEnabled\("web_meal_nutrition_detail"\)/);
+    expect(hostSource).toMatch(/onOpenSlotNutrition=\{setSlotNutritionTarget\}/);
   });
 
-  it("mounts the slot-aggregate MealNutritionDialog only under web_meal_nutrition_detail", () => {
-    // The aggregate dialog mount (the one passing slotAggregate) sits inside an
-    // isFeatureEnabled("web_meal_nutrition_detail") guard.
-    expect(hostSource).toMatch(/isFeatureEnabled\("web_meal_nutrition_detail"\)/);
+  it("mounts the slot-aggregate MealNutritionDialog unconditionally", () => {
     expect(hostSource).toMatch(/slotAggregate=\{/);
   });
 });

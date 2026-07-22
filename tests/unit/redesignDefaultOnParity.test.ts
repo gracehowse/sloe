@@ -50,9 +50,6 @@ const WEB_ONLY = new Set([
   //  ProgressEnergyEquation landed — see REDESIGN_DEFAULT_ON on both platforms.)
   "web_apple_health_card",
   "web_progress_weight_empty",
-  // ENG-837/P5#15 — web per-meal/slot nutrition detail; mobile already ships
-  // the native `meal-nutrition` route, so this flag is web-only by design.
-  "web_meal_nutrition_detail",
   // ENG-1225 #24 — web Settings two-pane layout (mobile Settings is native).
   "sloe_v3_settings",
   // ENG-1204 / D-07 — landing hero HYBRID (web-only).

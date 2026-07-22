@@ -318,9 +318,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "web_apple_health_card",
   //   Progress weight empty-state (no weigh-ins yet); off → bare empty chart.
   "web_progress_weight_empty",
-  //   Today meal nutrition detail (MealNutritionDialog + slot detail) — fixes
-  //   an asymmetric parity break (mobile already live, web was OFF).
-  "web_meal_nutrition_detail",
   // ENG-1225 flag-collapse sweep (2026-06-22) — the v3 cook-mode baseline
   // (audit launch-blocker #4). Built (ENG-944/946/947/948/949) but dark-by-
   // default until this sweep; on-device SEE found a swipe-surface render bug
