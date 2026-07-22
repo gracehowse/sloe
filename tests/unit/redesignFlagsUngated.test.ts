@@ -11,6 +11,12 @@
  * `design_system_elevation` collapsed out of REDESIGN_DEFAULT_ON (ENG-1651):
  * the flag was removed entirely and the code now ships its ON-branch styling
  * unconditionally, so it no longer appears in this suite's flag lists.
+ *
+ * `design_system_brandmark` likewise collapsed out of REDESIGN_DEFAULT_ON
+ * (ENG-1651, lighter-touch slice): it already had zero live isFeatureEnabled
+ * call sites (brand mark unified unconditionally 2026-06-04), so removing it
+ * from the default-on set is pure vestigial-reference cleanup — no behavior
+ * changes. It no longer appears in this suite's flag lists.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -28,7 +34,6 @@ import { isFeatureEnabled } from "@/lib/analytics/track";
 
 const REDESIGN_FLAGS = [
   "design_system_colours",
-  "design_system_brandmark",
   "design_system_icons",
   "redesign_winmoment",
   "redesign_motion",

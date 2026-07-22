@@ -12,8 +12,10 @@
  *    `bg-white/...` chrome). (no branded test id)
  *
  * The flag is mocked at the analytics boundary so both branches are exercised
- * deterministically (PostHog is never loaded in jsdom). The same mock controls
- * SupprMark's internal `design_system_brandmark` read.
+ * deterministically (PostHog is never loaded in jsdom). `SupprMark` itself has
+ * no flag read (the brand mark unified unconditionally 2026-06-04) — whether
+ * it renders at all here is controlled entirely by `redesign_branded_sheets`
+ * deciding whether `FeatureErrorBoundary` mounts the branded fallback.
  */
 import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";

@@ -65,8 +65,12 @@ describe("visual cohesion gate manifest (ENG-1142)", () => {
   });
 
   it("pins ENG-838 flag-ON visual coverage", () => {
+    // `web-subscription-card` collapsed out of REDESIGN_VISUAL_FLAGS (ENG-1651,
+    // lighter-touch slice): the flag is fully removed from app code
+    // (ENG-1334, entitlement-only gating now), so forcing it ON during visual
+    // capture was already inert — matches the established
+    // design_system_elevation collapse pattern for this same pin.
     expect(VISUAL_UTILS).toContain("REDESIGN_VISUAL_FLAGS");
-    expect(VISUAL_UTILS).toContain('"web-subscription-card"');
     expect(VISUAL_UTILS).toContain('"redesign_search_results"');
     expect(AUTHED_SPEC).toContain("forceRedesignVisualFlagsOn(page)");
     expect(DEEP_SPEC).toContain("forceRedesignVisualFlagsOn(page)");

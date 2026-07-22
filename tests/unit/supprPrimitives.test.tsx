@@ -37,7 +37,6 @@ void React;
 // flat path under test.)
 const FLAT_FLAGS = {
   design_system_colours: false,
-  design_system_brandmark: false,
   design_system_icons: false,
 } as const;
 beforeEach(() => {

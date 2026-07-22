@@ -4,7 +4,6 @@ export const VISUAL_GOLDEN_NOW_ISO =
   process.env.E2E_VISUAL_NOW?.trim() || "2026-06-16T17:00:00.000Z";
 
 export const REDESIGN_VISUAL_FLAGS = [
-  "design_system_brandmark",
   "design_system_colours",
   "design_system_icons",
   "redesign_branded_sheets",
@@ -12,7 +11,6 @@ export const REDESIGN_VISUAL_FLAGS = [
   "redesign_search_results",
   "redesign_winmoment",
   "web-meal-nutrition-detail",
-  "web-subscription-card",
   // ENG-1629 — default-OFF gutter convergence (Targets.tsx + RecipeDetail.tsx
   // onto `.product-shell`). Force it ON here so the committed cohesion-gate
   // baselines (`deep-recipe-detail-*.png`, `deep-targets-*.png`) capture the
