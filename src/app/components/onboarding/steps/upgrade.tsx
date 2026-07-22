@@ -32,7 +32,7 @@ import { Sparkles } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { UpgradePaywallDialog } from "@/app/components/suppr/upgrade-paywall-dialog";
 import { AnalyticsEvents } from "@/lib/analytics/events";
-import { track } from "@/lib/analytics/track";
+import { isFeatureEnabled, track } from "@/lib/analytics/track";
 import { PRICING_TIERS } from "@/lib/landing/pricingTiers";
 import { useOnboarding } from "../context";
 import { StepBody, StepHeader, useStepOverline } from "../scaffold";
@@ -42,12 +42,18 @@ const proTier = PRICING_TIERS.find((t) => t.name === "Pro");
 export function UpgradeStep() {
   const { set, complete } = useOnboarding();
   const overline = useStepOverline();
-  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const inlinePaywall = isFeatureEnabled("onboarding_terminal_paywall_v1");
+  const [dialogOpen, setDialogOpen] = React.useState(inlinePaywall);
   const annualPrice = proTier?.annualPrice ?? proTier?.price ?? "—";
 
   React.useEffect(() => {
     track(AnalyticsEvents.onboarding_upgrade_step_viewed, { platform: "web" });
   }, []);
+
+  // ENG-1459 — one ask: open the full paywall as the terminal surface (no stacked trial page).
+  React.useEffect(() => {
+    if (inlinePaywall) setDialogOpen(true);
+  }, [inlinePaywall]);
 
   const chooseFree = React.useCallback(() => {
     set({ trialChoice: "free" });
@@ -80,44 +86,57 @@ export function UpgradeStep() {
         subtitle="Try Sloe Pro free for 7 days — unlimited saved recipes, multi-day macro-matched meal plans, and AI photo & voice logging. Cancel anytime. No payment due now."
       />
 
-      {/* Static price callout (ENG-1516) — deliberately NON-interactive.
-          It was a selectable option card whose click toggled a `trialChoice`
-          selected-highlight that nothing consumed (dead affordance —
-          same pattern as the mobile twin, fixed on both). The step keeps
-          exactly two affordances: the buttons below (legal C4). Layout
-          mirrors the card's resting render so nothing visually shifts,
-          minus the radio/hover/press signifiers that implied a choice. */}
-      <div className="flex items-center gap-3.5 rounded-card border border-border bg-card p-4">
-        <Sparkles className="size-5 shrink-0 text-primary" aria-hidden />
-        <div className="flex-1 min-w-0">
-          <div className="font-semibold text-foreground tracking-tight leading-snug text-base">
-            7-day free trial
+      {/* ENG-1459 — when `onboarding_terminal_paywall_v1` is on, the UpgradePaywallDialog
+          IS the terminal ask (opened above). Hide the duplicate trial card + primary so
+          the user is not asked twice. Continue on Free stays for legal C4 skip. */}
+      {!inlinePaywall ? (
+        <>
+          {/* Static price callout (ENG-1516) — deliberately NON-interactive. */}
+          <div className="flex items-center gap-3.5 rounded-card border border-border bg-card p-4">
+            <Sparkles className="size-5 shrink-0 text-primary" aria-hidden />
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-foreground tracking-tight leading-snug text-base">
+                7-day free trial
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                {`Then ${annualPrice}${proTier?.annualPeriod ?? "/year"} — first charge on Day 7. Region pricing at checkout.`}
+              </div>
+            </div>
           </div>
-          <div className="text-xs text-muted-foreground mt-0.5 leading-snug">
-            {`Then ${annualPrice}${proTier?.annualPeriod ?? "/year"} — first charge on Day 7. Region pricing at checkout.`}
-          </div>
-        </div>
-      </div>
 
-      <div className="mt-4 flex flex-col gap-3">
-        <Button
-          type="button"
-          size="lg"
-          className="h-12 rounded-full font-bold"
-          onClick={chooseTrial}
-        >
-          Start free trial
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          className="h-12 rounded-full font-semibold"
-          onClick={chooseFree}
-        >
-          Continue on Free
-        </Button>
-      </div>
+          <div className="mt-4 flex flex-col gap-3">
+            <Button
+              type="button"
+              size="lg"
+              className="h-12 rounded-full font-bold"
+              onClick={chooseTrial}
+            >
+              Start free trial
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="h-12 rounded-full font-semibold"
+              onClick={chooseFree}
+            >
+              Continue on Free
+            </Button>
+          </div>
+        </>
+      ) : (
+        <div className="mt-4 flex flex-col gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="h-12 rounded-full font-semibold"
+            onClick={chooseFree}
+          >
+            Continue on Free
+          </Button>
+        </div>
+      )}
 
       {/* The dialog carries the binding disclosure + Stripe checkout.
           `from="onboarding"` attributes the funnel; `defaultPeriod="annual"`

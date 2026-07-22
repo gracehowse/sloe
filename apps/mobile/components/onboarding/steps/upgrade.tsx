@@ -47,6 +47,8 @@ export function UpgradeStep() {
   // ENG-1510 — no price const here: the exact figure is deferred to the App
   // Store (localised/VAT-inclusive), so this step never prints a GBP amount.
   const typeScaleV1Enabled = isFeatureEnabled("type_scale_v1");
+  // ENG-1459 — collapse stacked trial ask: jump straight to the compliant paywall.
+  const inlinePaywall = isFeatureEnabled("onboarding_terminal_paywall_v1");
 
   React.useEffect(() => {
     track(AnalyticsEvents.onboarding_upgrade_step_viewed, { platform: "mobile" });
@@ -92,6 +94,13 @@ export function UpgradeStep() {
     }
   }, [savingPlan, set, persist, router]);
 
+  React.useEffect(() => {
+    if (!inlinePaywall) return;
+    void chooseTrial();
+    // Intentionally once on mount when the flag is on — the paywall is the terminal ask.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inlinePaywall]);
+
   return (
     <MobileStepBody>
       <MobileStepHeader
@@ -100,69 +109,64 @@ export function UpgradeStep() {
         subtitle="Try Sloe Pro free for 7 days — unlimited saved recipes, multi-day macro-matched meal plans, and AI photo & voice logging. Cancel anytime. No payment due now."
       />
 
-      {/* Static price callout (ENG-1516) — deliberately NON-interactive.
-          It was a PressableScale whose tap toggled a `trialChoice`
-          selected-highlight that nothing consumed (not persisted, never
-          read by either CTA, couldn't be deselected) — a dead affordance
-          dressed as a choice. The step keeps exactly two affordances:
-          "Start free trial" + "Continue on Free" below (legal C4).
-          Mirrors the same fix on the web twin. */}
-      <View
-        style={{
-          borderWidth: 1,
-          borderColor: colors.border,
-          borderRadius: Radius.xl,
-          padding: Spacing.md,
-          marginBottom: Spacing.sm,
-        }}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
-          <Sparkles size={20} color={colors.navPrimary} />
-          <View style={{ flex: 1 }}>
-            <Text style={[Type.body, { color: colors.text, fontWeight: "600" }]}>
-              7-day free trial
-            </Text>
-            {/* Price intentionally deferred to the App Store (2026-07-09
-                degraded-paywall decision, docs/decisions/2026-07-09-mobile-
-                degraded-paywall-disclosure.md): App Store prices are localised
-                and VAT-inclusive, so a fixed GBP SSOT figure here is a
-                misleading-price claim on non-GBP storefronts. The paywall this
-                step routes to shows the live RevenueCat priceString. */}
-            <Text style={[Type.caption, { color: colors.textSecondary, marginTop: 4 }]}>
-              First charge on Day 7 — your exact price confirms in the App Store
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      <PressableScale
-        haptic="confirm"
-        onPress={() => void chooseTrial()}
-        disabled={savingPlan}
-        accessibilityState={{ busy: savingPlan, disabled: savingPlan }}
-        style={{
-          backgroundColor: colors.navPrimary,
-          borderRadius: Radius.full,
-          paddingVertical: Spacing.md,
-          alignItems: "center",
-          marginBottom: Spacing.sm,
-          opacity: savingPlan ? 0.7 : 1,
-        }}
-      >
-        {savingPlan ? (
-          <ActivityIndicator size="small" color={accent.primaryForeground} />
-        ) : (
-          <Text
-            style={
-              typeScaleV1Enabled
-                ? [Type.button, { color: accent.primaryForeground }]
-                : [Type.body, { color: accent.primaryForeground, fontWeight: "700" }]
-            }
+      {/* ENG-1459 — flag ON: paywall route is the terminal ask (auto-opened).
+          Hide the duplicate trial card + primary; keep Continue on Free (legal C4). */}
+      {!inlinePaywall ? (
+        <>
+          <View
+            style={{
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderRadius: Radius.xl,
+              padding: Spacing.md,
+              marginBottom: Spacing.sm,
+            }}
           >
-            Start free trial
-          </Text>
-        )}
-      </PressableScale>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
+              <Sparkles size={20} color={colors.navPrimary} />
+              <View style={{ flex: 1 }}>
+                <Text style={[Type.body, { color: colors.text, fontWeight: "600" }]}>
+                  7-day free trial
+                </Text>
+                <Text style={[Type.caption, { color: colors.textSecondary, marginTop: 4 }]}>
+                  First charge on Day 7 — your exact price confirms in the App Store
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <PressableScale
+            haptic="confirm"
+            onPress={() => void chooseTrial()}
+            disabled={savingPlan}
+            accessibilityState={{ busy: savingPlan, disabled: savingPlan }}
+            style={{
+              backgroundColor: colors.navPrimary,
+              borderRadius: Radius.full,
+              paddingVertical: Spacing.md,
+              alignItems: "center",
+              marginBottom: Spacing.sm,
+              opacity: savingPlan ? 0.7 : 1,
+            }}
+          >
+            {savingPlan ? (
+              <ActivityIndicator size="small" color={accent.primaryForeground} />
+            ) : (
+              <Text
+                style={
+                  typeScaleV1Enabled
+                    ? [Type.button, { color: accent.primaryForeground }]
+                    : [Type.body, { color: accent.primaryForeground, fontWeight: "700" }]
+                }
+              >
+                Start free trial
+              </Text>
+            )}
+          </PressableScale>
+        </>
+      ) : savingPlan ? (
+        <ActivityIndicator size="small" color={accent.primarySolid} style={{ marginBottom: Spacing.sm }} />
+      ) : null}
 
       <PressableScale haptic="none" onPress={chooseFree} disabled={savingPlan}>
         <Text

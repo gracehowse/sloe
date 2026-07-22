@@ -55,6 +55,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   plugins.push("./plugins/withIosXcodeAutomaticSigning.js");
   plugins.push("./plugins/withSentryDisableUploadLocalXcode");
   plugins.push("./plugins/withStoreKitConfiguration.js");
+  plugins.push("./plugins/withFmtConstevalFix.js"); // ENG-1654 — Xcode 26.x fmt consteval
 
   const apiOverride = process.env.SUPPR_API_URL_OVERRIDE?.trim();
   const extra = apiOverride

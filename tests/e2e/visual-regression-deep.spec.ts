@@ -80,6 +80,9 @@ test.describe("Visual regression — deep authenticated routes", () => {
         await preferencesNav.click();
       }
       const fastingLink = page.getByTestId("settings-fasting-link");
+      // ENG-1640 — wait for visibility after Preferences pane mounts; desktop
+      // two-pane can still be settling when scrollIntoViewIfNeeded runs.
+      await fastingLink.waitFor({ state: "visible", timeout: 10_000 });
       await fastingLink.scrollIntoViewIfNeeded();
       await stabilizeForScreenshot(page, 1500);
       await expect(page).toHaveScreenshot(
