@@ -6,14 +6,19 @@
  * divergent empty/error states (different icon sets, different CTA
  * colours, one floating in a sea of whitespace).
  *
- * Pins the flag-gated visual behaviour so a regression breaks the test:
+ * Pins the visual behaviour so a regression breaks the test:
  *   - the body always wraps in an elevated card (modern radius + shadow via
  *     `useCardElevation`) — `design_system_elevation` collapsed (ENG-1651),
  *     it was permanently ON; there is no more flat, card-less layout.
- *   - `design_system_colours` ON  → the CTA fills BLUE (`Accent.primary`,
- *     the single commit-action colour); OFF → the caller's legacy fill
- *     (e.g. the saturated macro hue passed via `ctaColorLegacy`).
+ *   - the CTA always fills BLUE (`Accent.primary`, the single commit-action
+ *     colour) — `design_system_colours` collapsed (ENG-1651), it was
+ *     permanently ON; the legacy per-caller `ctaColorLegacy` fill (e.g. the
+ *     saturated macro hue) no longer exists as a prop.
  *   - the CTA fires `onPress`, and is omitted entirely when no `ctaLabel`.
+ *
+ * ENG-1651 (2026-07-22): `NutritionDetailEmptyState` no longer reads
+ * `isFeatureEnabled` at all. The mock below is kept only to prove that (see
+ * "gate removed" below).
  */
 import * as React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
@@ -50,8 +55,6 @@ function flatten(style: unknown): Record<string, unknown> {
   }
   return (style as Record<string, unknown>) ?? {};
 }
-
-const MACRO_HUE = "#C8794E"; // a macro colour (Sloe carbs — clay)
 
 beforeEach(() => {
   flagFn.mockReset();
@@ -96,34 +99,32 @@ describe("NutritionDetailEmptyState (mobile)", () => {
     expect(queryByRole("button")).toBeNull();
   });
 
-  it("colours mapping — flag OFF uses the legacy macro hue, flag ON uses BLUE", () => {
-    // design_system_colours OFF → legacy saturated-macro fill.
-    flagFn.mockImplementation((f: string) => false);
-    const off = render(
+  it("the CTA fills BLUE (Accent.primary), the single commit-action colour", () => {
+    const { getByLabelText } = render(
       <NutritionDetailEmptyState
         icon={Salad}
         title="No meals logged yet"
         ctaLabel="Log a meal"
-        ctaColorLegacy={MACRO_HUE}
         onPress={() => undefined}
       />,
     );
-    const offBtn = off.getByLabelText("Log a meal");
-    expect(flatten(offBtn.props.style).backgroundColor).toBe(MACRO_HUE);
+    const btn = getByLabelText("Log a meal");
+    expect(flatten(btn.props.style).backgroundColor).toBe(Accent.primary);
+  });
 
-    // design_system_colours ON → BLUE commit colour regardless of legacy hue.
+  it("gate removed: the CTA stays BLUE regardless of what an isFeatureEnabled mock returns for the retired flag", () => {
     flagFn.mockImplementation((f: string) => f === "design_system_colours");
-    const on = render(
+    const { getByLabelText } = render(
       <NutritionDetailEmptyState
         icon={Salad}
         title="No meals logged yet"
         ctaLabel="Log a meal"
-        ctaColorLegacy={MACRO_HUE}
         onPress={() => undefined}
       />,
     );
-    const onBtn = on.getByLabelText("Log a meal");
-    expect(flatten(onBtn.props.style).backgroundColor).toBe(Accent.primary);
+    const btn = getByLabelText("Log a meal");
+    expect(flatten(btn.props.style).backgroundColor).toBe(Accent.primary);
+    expect(flagFn).not.toHaveBeenCalled();
   });
 
   it("structure — always wraps the body in an elevated card (modern radius)", () => {

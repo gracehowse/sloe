@@ -4,8 +4,6 @@ export const VISUAL_GOLDEN_NOW_ISO =
   process.env.E2E_VISUAL_NOW?.trim() || "2026-06-16T17:00:00.000Z";
 
 export const REDESIGN_VISUAL_FLAGS = [
-  "design_system_colours",
-  "redesign_branded_sheets",
   "redesign_motion",
   "redesign_search_results",
   "redesign_winmoment",

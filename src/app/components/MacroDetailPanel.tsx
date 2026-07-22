@@ -202,10 +202,10 @@ export function MacroDetailPanel({
   // one-line empty state is removed.
   // P5 parity gap #9 (2026-05-31). Mirror of the mobile macro-detail empty
   // state's "Log a meal" commit CTA (NutritionDetailEmptyState +
-  // apps/mobile/app/macro-detail.tsx): the CTA recolours its fill to the blue
-  // commit colour when `design_system_colours` is ON, and falls back to the
-  // saturated macro hue (mobile's `ctaColorLegacy={config.color}`) when OFF.
-  const redesignColours = isFeatureEnabled("design_system_colours");
+  // apps/mobile/app/macro-detail.tsx): the CTA fills the blue commit colour.
+  // `design_system_colours` collapsed (ENG-1651) — this was permanently ON
+  // via REDESIGN_DEFAULT_ON; the legacy saturated-macro-hue fill (mobile's
+  // former `ctaColorLegacy`) is gone.
 
   // Web macro-detail is a Dialog (mobile's is a full screen routing to Today).
   // Mirror the mobile CTA action — open the Today log flow — by closing the
@@ -290,18 +290,14 @@ export function MacroDetailPanel({
                 Log a meal to see your {config.label.toLowerCase()} broken down here.
               </p>
               {/* Blue commit CTA (parity gap #9): mirrors the mobile
-                  macro-detail empty-state "Log a meal" button. Fill recolours
-                  to the blue commit colour under `design_system_colours`;
-                  flag-OFF keeps the saturated macro hue (mobile's
-                  `ctaColorLegacy={config.color}`). */}
+                  macro-detail empty-state "Log a meal" button.
+                  `design_system_colours` collapsed (ENG-1651) — the legacy
+                  saturated macro-hue fill is gone. */}
               <button
                 type="button"
                 onClick={handleLogMeal}
                 aria-label="Log a meal on Today"
-                className={`mt-3 inline-flex items-center gap-2 rounded-md px-6 py-2.5 text-sm font-bold ${
-                  redesignColours ? "bg-primary text-primary-foreground" : "text-white"
-                }`}
-                style={!redesignColours ? { backgroundColor: config.cssVar } : undefined}
+                className="mt-3 inline-flex items-center gap-2 rounded-md px-6 py-2.5 text-sm font-bold bg-primary text-primary-foreground"
               >
                 <Plus className="h-4 w-4" strokeWidth={2.25} aria-hidden />
                 Log a meal

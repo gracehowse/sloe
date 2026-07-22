@@ -2,13 +2,15 @@
 /**
  * `RootErrorBoundary` (mobile) — ENG-799 brand-language recovery UI.
  *
- * The recovery render is gated by the `redesign_branded_sheets` flag:
- *   - flag OFF → the prior hardcoded-hex dark layout (no `testID`).
- *   - flag ON  → the branded layout (`root-error-boundary-branded`):
- *     token colours, the inline ring brand mark, and the blue CTA.
+ * The recovery render (`root-error-boundary-branded`): token colours, the
+ * inline ring brand mark, and the blue CTA. Must: render the recovery copy,
+ * capture the error exactly once, and recover (clear the error) when
+ * "Try again" is pressed.
  *
- * Both paths must: render the recovery copy, capture the error exactly
- * once, and recover (clear the error) when "Try again" is pressed.
+ * ENG-1651 (2026-07-22): `redesign_branded_sheets` collapsed — the flag was
+ * permanently ON via REDESIGN_DEFAULT_ON, so the branded layout is the only
+ * recovery UI now. `RootErrorBoundary` no longer reads `isFeatureEnabled` at
+ * all; the mock below is kept only to prove that (see "gate removed" below).
  */
 import * as React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
@@ -46,19 +48,7 @@ describe("RootErrorBoundary (mobile) — ENG-799 branded recovery UI", () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
   });
 
-  it("flag OFF: renders the legacy recovery layout (no branded testID)", () => {
-    const throwIt = { current: true };
-    const { getByText, queryByTestId } = render(
-      <RootErrorBoundary>
-        <Boom throwIt={throwIt} />
-      </RootErrorBoundary>,
-    );
-    expect(getByText("Something went wrong")).toBeTruthy();
-    expect(queryByTestId("root-error-boundary-branded")).toBeNull();
-  });
-
-  it("flag ON: renders the branded recovery layout with the brand mark + CTA", () => {
-    flagFn.mockImplementation((f: string) => f === "redesign_branded_sheets");
+  it("renders the branded recovery layout with the brand mark + CTA", () => {
     const throwIt = { current: true };
     const { getByText, getByTestId } = render(
       <RootErrorBoundary>
@@ -70,8 +60,19 @@ describe("RootErrorBoundary (mobile) — ENG-799 branded recovery UI", () => {
     expect(getByText("Try again")).toBeTruthy();
   });
 
-  it("captures the error exactly once (both paths route through Sentry)", () => {
+  it("gate removed: renders the branded layout regardless of what an isFeatureEnabled mock returns for the retired flag", () => {
     flagFn.mockImplementation((f: string) => f === "redesign_branded_sheets");
+    const throwIt = { current: true };
+    const { getByTestId } = render(
+      <RootErrorBoundary>
+        <Boom throwIt={throwIt} />
+      </RootErrorBoundary>,
+    );
+    expect(getByTestId("root-error-boundary-branded")).toBeTruthy();
+    expect(flagFn).not.toHaveBeenCalled();
+  });
+
+  it("captures the error exactly once", () => {
     const throwIt = { current: true };
     render(
       <RootErrorBoundary>
@@ -81,8 +82,7 @@ describe("RootErrorBoundary (mobile) — ENG-799 branded recovery UI", () => {
     expect(captureFn).toHaveBeenCalledTimes(1);
   });
 
-  it("flag ON: 'Try again' clears the error and re-renders children", () => {
-    flagFn.mockImplementation((f: string) => f === "redesign_branded_sheets");
+  it("'Try again' clears the error and re-renders children", () => {
     const throwIt = { current: true };
     const { getByText, queryByText, queryByTestId } = render(
       <RootErrorBoundary>
@@ -94,20 +94,5 @@ describe("RootErrorBoundary (mobile) — ENG-799 branded recovery UI", () => {
     fireEvent.press(getByText("Try again"));
     expect(queryByTestId("root-error-boundary-branded")).toBeNull();
     expect(queryByText("Something went wrong")).toBeNull();
-  });
-
-  it("a throwing flag client falls back to the legacy layout (never re-crashes)", () => {
-    flagFn.mockImplementation(() => {
-      throw new Error("flag client cold");
-    });
-    const throwIt = { current: true };
-    const { getByText, queryByTestId } = render(
-      <RootErrorBoundary>
-        <Boom throwIt={throwIt} />
-      </RootErrorBoundary>,
-    );
-    // Recovery UI still renders; branded path skipped because the flag threw.
-    expect(getByText("Something went wrong")).toBeTruthy();
-    expect(queryByTestId("root-error-boundary-branded")).toBeNull();
   });
 });

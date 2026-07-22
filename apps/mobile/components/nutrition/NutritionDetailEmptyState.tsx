@@ -5,7 +5,6 @@ import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
-import { isFeatureEnabled } from "@/lib/analytics";
 import { PressableScale } from "@/components/ui/PressableScale";
 
 /**
@@ -22,17 +21,16 @@ import { PressableScale } from "@/components/ui/PressableScale";
  * two icon sets, two CTA colours. This unifies all of them into one elevated,
  * iconified card with a single commit-colour CTA.
  *
- * Flag behaviour (visual changes stay gated, OLD path alive in the else):
+ * Flag behaviour (both flags collapsed, ENG-1651 — permanently ON via
+ * REDESIGN_DEFAULT_ON, so there is only one path now):
  *   - The body wraps in an elevated card (`useCardElevation`) with the
  *     modern `Radius.xl` corner + an icon chip, so the empty state reads as
  *     a designed surface, not a dead end. `design_system_elevation`
- *     collapsed (ENG-1651) — this was permanently ON via
- *     REDESIGN_DEFAULT_ON; the legacy flat, card-less layout is removed.
- *   - `design_system_colours` ON  → the CTA fills BLUE (`accent.primary`,
- *     the single commit-action colour) via `PressableScale`. OFF → the
- *     caller's legacy `ctaColorLegacy` fill (e.g. the saturated macro hue
- *     on macro-detail) on a `PressableScale` — the scale press is a pure
- *     micro-interaction upgrade with no colour change, so it isn't gated.
+ *     collapsed — the legacy flat, card-less layout is gone.
+ *   - The CTA always fills BLUE (`accent.primary`, the single commit-action
+ *     colour) via `PressableScale`. `design_system_colours` collapsed — the
+ *     legacy per-caller saturated-hue fill (e.g. the macro hue on
+ *     macro-detail) is gone.
  *
  * The CTA is OPTIONAL: error states that only need a "Go back" affordance
  * still get the elevated card + icon, with the CTA wired to `onPress`.
@@ -48,13 +46,6 @@ export interface NutritionDetailEmptyStateProps {
   ctaLabel?: string;
   /** CTA press handler. Required when `ctaLabel` is set. */
   onPress?: () => void;
-  /**
-   * Legacy CTA fill colour for the flag-OFF (`design_system_colours`) path —
-   * e.g. the saturated macro hue on macro-detail, or `accent.primary` on the
-   * meal-nutrition error states (which were already blue). When the flag is
-   * ON the CTA always fills BLUE regardless of this value.
-   */
-  ctaColorLegacy?: string;
   /** Optional leading icon inside the CTA (e.g. Plus for "Log a meal"). */
   ctaIcon?: LucideIcon;
   /** a11y label for the CTA. Defaults to `ctaLabel`. */
@@ -69,7 +60,6 @@ export function NutritionDetailEmptyState({
   subtitle,
   ctaLabel,
   onPress,
-  ctaColorLegacy,
   ctaIcon: CtaIcon,
   ctaA11yLabel,
   testID,
@@ -78,9 +68,8 @@ export function NutritionDetailEmptyState({
   const accent = useAccent();
   const colors = useThemeColors();
   const elevation = useCardElevation();
-  const redesignColours = isFeatureEnabled("design_system_colours");
 
-  const ctaColor = redesignColours ? accent.primary : (ctaColorLegacy ?? accent.primary);
+  const ctaColor = accent.primary;
 
   const body = (
     <View style={{ alignItems: "center", gap: Spacing.sm }}>

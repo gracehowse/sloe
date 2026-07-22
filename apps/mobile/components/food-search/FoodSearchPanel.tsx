@@ -367,14 +367,13 @@ export default function FoodSearchPanel({
   // Source/confidence chrome and `MacroColors` stay warm.
   const accent = useAccent();
   // 2026-05-31 design-direction (LANE: commit-colour CTAs): the single
-  // commit-action colour is the secondary accent. The "Use this" log
-  // commit CTA below historically painted `Accent.success` (green) — but
-  // green is now reserved strictly for the calorie-ring state + macro
-  // identity, never a commit-button fill. Gate behind `design_system_colours`:
-  //   flag ON  → accent commit CTA (damson under Frost, else clay)
-  //   flag OFF → existing green (old path stays alive in the `else`).
-  const commitCtaColor = isFeatureEnabled("design_system_colours") ? accent.primary : Accent.success;
-  const commitCtaSoft = isFeatureEnabled("design_system_colours") ? accent.primarySoft : Accent.successSoft; // ENG-1521 — the CTA family's Soft step
+  // commit-action colour is the secondary accent (damson under Frost, else
+  // clay) — green is reserved strictly for the calorie-ring state + macro
+  // identity, never a commit-button fill. `design_system_colours` collapsed
+  // (ENG-1651) — this was permanently ON via REDESIGN_DEFAULT_ON; the legacy
+  // green fill is gone.
+  const commitCtaColor = accent.primary;
+  const commitCtaSoft = accent.primarySoft; // ENG-1521 — the CTA family's Soft step
   // 2026-05-31 design-direction (LANE: search-results UI — ENG-814).
   // Gate the redesigned results body behind `redesign_search_results`:
   //   flag ON  → unified segmented control + softly-elevated grouped

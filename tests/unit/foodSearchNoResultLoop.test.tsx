@@ -48,9 +48,11 @@ void React;
 const { trackSpy } = vi.hoisted(() => ({ trackSpy: vi.fn() }));
 vi.mock("../../src/lib/analytics/track", () => ({
   track: trackSpy,
-  // The panel reads `isFeatureEnabled("design_system_colours")` for the commit
-  // CTA colour. Default false → exercises the legacy (green) CTA path, matching
-  // this suite's intent (it tests the no-result loop, not the CTA colour).
+  // ENG-1651 — `design_system_colours` collapsed: the panel no longer reads
+  // it (the commit CTA is unconditionally blue). This mock still backs the
+  // panel's other live flag reads (`component_grammar_dedup`,
+  // `editable_eaten_at`); default false is fine — this suite tests the
+  // no-result loop, not those flags.
   isFeatureEnabled: vi.fn(() => false),
 }));
 

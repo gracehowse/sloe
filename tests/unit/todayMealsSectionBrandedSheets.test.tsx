@@ -4,18 +4,21 @@
  * (gaps #6, #7, #25, #27).
  *
  * Pairs with apps/mobile/components/today/TodayMealsSection.tsx
- * (MealActionSheet, gated by `redesign_branded_sheets`) and mobile's
- * 2026-05-22 removal of the per-meal source badge from the meal row.
+ * (MealActionSheet) and mobile's 2026-05-22 removal of the per-meal source
+ * badge from the meal row.
  *
  * Asserts the web side of those parity decisions:
- *  - #6/#27: the meal "more actions" dropdown gains a branded header
- *    (SupprMark + thumbnail/title/macro line) when `redesign_branded_sheets`
- *    is ON, and stays a bare dropdown when OFF.
- *  - #7: the copy-meal dialog inherits the same branded chrome under the
- *    flag, plain header when OFF.
+ *  - #6/#27: the meal "more actions" dropdown carries a branded header
+ *    (SupprMark + thumbnail/title/macro line).
+ *  - #7: the copy-meal dialog carries the same branded chrome.
  *  - #25: the per-meal NutritionSourceBadge (✓/✎ dingbats) no longer
- *    renders on the meal row under EITHER flag state (presence parity with
- *    mobile, which removed it 2026-05-22).
+ *    renders on the meal row (presence parity with mobile, which removed
+ *    it 2026-05-22).
+ *
+ * ENG-1651 (2026-07-22): `redesign_branded_sheets` collapsed — the flag was
+ * permanently ON via REDESIGN_DEFAULT_ON, so the branded chrome is the only
+ * path now (the legacy bare-dropdown / plain-header paths are gone). The
+ * flag mock below is kept only to prove that (see "gate removed" tests).
  */
 import * as React from "react";
 import { describe, expect, it, vi, beforeEach, beforeAll } from "vitest";
@@ -106,7 +109,7 @@ describe("TodayMealsSection (web) — source badge presence parity (#25)", () =>
     flagFn.mockImplementation(() => false);
   });
 
-  it("does NOT render the per-meal NutritionSourceBadge on the meal row (flag OFF)", () => {
+  it("does NOT render the per-meal NutritionSourceBadge on the meal row", () => {
     render(<TodayMealsSection {...baseProps()} />);
     // The legacy badge renders "✓ Verified" for a fatsecret source. Its
     // absence is the parity assertion. The meal title still renders.
@@ -115,7 +118,7 @@ describe("TodayMealsSection (web) — source badge presence parity (#25)", () =>
     expect(screen.queryByText(/✓ Verified/)).toBeNull();
   });
 
-  it("does NOT render the per-meal NutritionSourceBadge with redesign_branded_sheets ON", () => {
+  it("gate removed: badge stays absent regardless of what an isFeatureEnabled mock returns for the retired flag", () => {
     flagFn.mockImplementation(
       (flag: string) => flag === "redesign_branded_sheets",
     );
@@ -124,26 +127,12 @@ describe("TodayMealsSection (web) — source badge presence parity (#25)", () =>
   });
 });
 
-describe("TodayMealsSection (web) — redesign_branded_sheets kebab header (#6, #27)", () => {
+describe("TodayMealsSection (web) — branded kebab header (#6, #27)", () => {
   beforeEach(() => {
     flagFn.mockImplementation(() => false);
   });
 
-  it("flag OFF: kebab dropdown has NO branded header band", async () => {
-    render(<TodayMealsSection {...baseProps()} />);
-    await openKebab();
-    expect(
-      screen.queryByTestId("today-meal-action-branded-header-m-dinner"),
-    ).toBeNull();
-    // Legacy actions still present.
-    expect(screen.getByText("Copy to another day…")).toBeTruthy();
-    expect(screen.getByText("Delete")).toBeTruthy();
-  });
-
-  it("flag ON: kebab dropdown renders SupprMark + title + macro header band", async () => {
-    flagFn.mockImplementation(
-      (flag: string) => flag === "redesign_branded_sheets",
-    );
+  it("kebab dropdown renders SupprMark + title + macro header band", async () => {
     render(<TodayMealsSection {...baseProps()} />);
     await openKebab();
     const header = screen.getByTestId(
@@ -161,6 +150,17 @@ describe("TodayMealsSection (web) — redesign_branded_sheets kebab header (#6, 
     // Legacy actions remain reachable under the branded chrome.
     expect(screen.getByText("Copy to another day…")).toBeTruthy();
     expect(screen.getByText("Delete")).toBeTruthy();
+  });
+
+  it("gate removed: branded header renders regardless of what an isFeatureEnabled mock returns for the retired flag", async () => {
+    flagFn.mockImplementation(
+      (flag: string) => flag === "redesign_branded_sheets",
+    );
+    render(<TodayMealsSection {...baseProps()} />);
+    await openKebab();
+    expect(
+      screen.getByTestId("today-meal-action-branded-header-m-dinner"),
+    ).toBeTruthy();
   });
 });
 
@@ -180,10 +180,7 @@ describe("TodayMealsSection (web) — usual-picker brand mark (#6/#27) + motion 
     flagFn.mockImplementation(() => false);
   });
 
-  it("branded ON: opening the 2+ usual picker shows the SupprMark in the header", () => {
-    flagFn.mockImplementation(
-      (flag: string) => flag === "redesign_branded_sheets",
-    );
+  it("opening the 2+ usual picker shows the SupprMark in the header", () => {
     render(
       <TodayMealsSection
         {...baseProps({ savedMeals: [SAVED, SECOND] })}
@@ -195,18 +192,6 @@ describe("TodayMealsSection (web) — usual-picker brand mark (#6/#27) + motion 
     );
     expect(screen.getByTestId("usual-picker-branded-mark")).toBeTruthy();
   });
-
-  it("branded OFF: usual picker has no brand mark", () => {
-    render(
-      <TodayMealsSection
-        {...baseProps({ savedMeals: [SAVED, SECOND] })}
-      />,
-    );
-    fireEvent.click(
-      screen.getByTestId("today-log-usual-pill-Dinner"),
-    );
-    expect(screen.queryByTestId("usual-picker-branded-mark")).toBeNull();
-  });
 });
 
 describe("CopyMealDialog (web) — branded chrome (#7)", () => {
@@ -214,24 +199,7 @@ describe("CopyMealDialog (web) — branded chrome (#7)", () => {
     flagFn.mockImplementation(() => false);
   });
 
-  it("flag OFF: plain header with the meal label in the description", () => {
-    render(
-      <CopyMealDialog
-        open
-        onOpenChange={() => undefined}
-        sourceDayKey="2026-05-20"
-        mealLabel="Salmon teriyaki bowl"
-        onConfirm={() => undefined}
-      />,
-    );
-    expect(screen.queryByTestId("copy-meal-branded-header")).toBeNull();
-    expect(screen.getByText("Copy meal to another day")).toBeTruthy();
-  });
-
-  it("flag ON: branded header with SupprMark + title + macro line", () => {
-    flagFn.mockImplementation(
-      (flag: string) => flag === "redesign_branded_sheets",
-    );
+  it("branded header with SupprMark + title + macro line", () => {
     render(
       <CopyMealDialog
         open
@@ -248,5 +216,21 @@ describe("CopyMealDialog (web) — branded chrome (#7)", () => {
       within(header).getByText(/620 kcal · 42g P · 58g C · 21g F/),
     ).toBeTruthy();
     expect(within(header).getByLabelText("Sloe")).toBeTruthy();
+  });
+
+  it("gate removed: branded header renders regardless of what an isFeatureEnabled mock returns for the retired flag", () => {
+    flagFn.mockImplementation(
+      (flag: string) => flag === "redesign_branded_sheets",
+    );
+    render(
+      <CopyMealDialog
+        open
+        onOpenChange={() => undefined}
+        sourceDayKey="2026-05-20"
+        mealLabel="Salmon teriyaki bowl"
+        onConfirm={() => undefined}
+      />,
+    );
+    expect(screen.getByTestId("copy-meal-branded-header")).toBeTruthy();
   });
 });

@@ -1,6 +1,5 @@
 import React, { memo, useMemo, useState, type ReactNode } from "react";
 import {
-  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -318,9 +317,10 @@ function SlotMacroChips({
  * kcal · P/C/F macro preview. Matches the approved prototype at
  * `docs/prototypes/2026-05-31-design-direction/surface-meal-actionsheet.html`.
  *
- * Reachability is gated at the call site by the `redesign_branded_sheets`
- * flag — flag OFF keeps the native `Alert.alert` path alive, flag ON
- * opens this sheet. Pure presentation: the host owns each action handler.
+ * `redesign_branded_sheets` collapsed (ENG-1651): the flag was permanently
+ * ON via REDESIGN_DEFAULT_ON, so this sheet is the only long-press path now
+ * — the prior native `Alert.alert` path is gone. Pure presentation: the
+ * host owns each action handler.
  */
 interface MealActionSheetProps {
   meal: JournalMeal | null;
@@ -591,7 +591,6 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
     onRequestCopyMeal,
     onDeleteMeal,
     showMealTimestamps,
-    formatMealMacroDetail,
     formatMealTimeDisplay,
     formatMealSourceLabelForRow,
     textColor,
@@ -666,15 +665,16 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
   }, [slots, mealGroups]);
 
   // ENG-799 (Redesign — Design Direction 2026, 2026-05-31) — the meal
-  // long-press gesture. Flag ON → open the branded `MealActionSheet`
-  // (cream surface, grabber, thumbnail + macro header, blue accent rows,
-  // red Delete). Flag OFF → the prior raw `Alert.alert` path stays alive
-  // verbatim. State holds the meal whose row was long-pressed.
-  const brandedSheets = isFeatureEnabled("redesign_branded_sheets");
+  // long-press gesture opens the branded `MealActionSheet` (cream surface,
+  // grabber, thumbnail + macro header, blue accent rows, red Delete).
+  // `redesign_branded_sheets` collapsed (ENG-1651): the flag was permanently
+  // ON via REDESIGN_DEFAULT_ON, so this is the only long-press path now —
+  // the prior raw `Alert.alert` path is gone. State holds the meal whose
+  // row was long-pressed.
   const [actionSheetMeal, setActionSheetMeal] = useState<JournalMeal | null>(null);
 
-  // Shared "Share meal" handler used by BOTH the native Alert path and the
-  // branded sheet so the share-text + analytics stay identical. ENG-1642 —
+  // Shared "Share meal" handler so the share-text + analytics stay
+  // consistent wherever it's invoked from. ENG-1642 —
   // the link-vs-text branch (flag `meal_share_links_v1`) + its analytics
   // live in `@/lib/mealShare` (`shareJournalMeal`), not here — this file is
   // a pinned only-shrink screen-budget surface
@@ -683,23 +683,8 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
   const shareMeal = (m: JournalMeal) => shareJournalMeal(m, "today_meal_row_longpress");
 
   const handleMealLongPress = (m: JournalMeal) => {
-    if (brandedSheets) {
-      haptics.select();
-      setActionSheetMeal(m);
-      return;
-    }
-    Alert.alert(m.recipeTitle, formatMealMacroDetail(m), [
-      { text: "Cancel", style: "cancel" },
-      { text: "Edit", onPress: () => onLongPressEdit(m) },
-      { text: "Copy to another day", onPress: () => onRequestCopyMeal(m.id) },
-      {
-        text: "Share meal",
-        onPress: () => {
-          void shareMeal(m);
-        },
-      },
-      { text: "Delete", style: "destructive", onPress: () => onDeleteMeal(m.id) },
-    ]);
+    haptics.select();
+    setActionSheetMeal(m);
   };
 
   // NOTE — NO "Today's Meals" section title (deliberate, not an oversight).
@@ -1097,20 +1082,9 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                       accessibilityLabel={`${m.recipeTitle}, ${Math.round(m.calories)} kcal`}
                       onPress={() => onPressMeal(m.id)}
                       onLongPress={() => {
-                        if (brandedSheets) {
-                          // ENG-799 — flag ON: branded cream action sheet.
-                          haptics.select();
-                          setActionSheetMeal(m);
-                          return;
-                        }
-                        // Flag OFF — prior raw iOS Alert path, kept alive verbatim.
-                        Alert.alert(m.recipeTitle, formatMealMacroDetail(m), [
-                          { text: "Cancel", style: "cancel" },
-                          { text: "Edit", onPress: () => onLongPressEdit(m) },
-                          { text: "Copy to another day", onPress: () => onRequestCopyMeal(m.id) },
-                          { text: "Share meal", onPress: () => void shareMeal(m) },
-                          { text: "Delete", style: "destructive", onPress: () => onDeleteMeal(m.id) },
-                        ]);
+                        // ENG-799 — branded cream action sheet.
+                        haptics.select();
+                        setActionSheetMeal(m);
                       }}
                       style={{
                         paddingVertical: Spacing.sm,
@@ -1496,12 +1470,11 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
         </Pressable>
       </Modal>
 
-      {/* ENG-799 — branded meal action sheet (flag `redesign_branded_sheets`
-          ON). Renders only when a meal row was long-pressed in the branded
-          path; `actionSheetMeal` stays null in the flag-off Alert path so
-          this is an inert no-op there. Each action closes the sheet first,
-          then defers to the host handler (avoids modal-over-modal stacking
-          on iOS when Edit opens the edit-entry sheet). */}
+      {/* ENG-799 — branded meal action sheet. Renders only when a meal row
+          was long-pressed (`actionSheetMeal` stays null otherwise, so this
+          is an inert no-op). Each action closes the sheet first, then
+          defers to the host handler (avoids modal-over-modal stacking on
+          iOS when Edit opens the edit-entry sheet). */}
       <MealActionSheet
         meal={actionSheetMeal}
         macroDetail={actionSheetMeal ? formatMacroTrailer({
