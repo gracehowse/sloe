@@ -868,6 +868,108 @@ export default function FoodSearchPanel({
     [initialAmount, initialUnit],
   );
 
+  /**
+   * ENG-931 — log default serving without opening preview (row body still
+   * opens preview). Re-added under ENG-1659: the ENG-1651 flag-collapse
+   * (round 2, slice 5) deleted this alongside the dead legacy flat-list
+   * `renderItem` it was only reachable from — the redesigned
+   * `FoodSearchFeedItem` row never wired the affordance in, so the function
+   * had zero live callers on mobile even though web's redesigned
+   * `FoodSearchResultRow` kept calling its own copy via `onQuickLog`. This
+   * restores parity: wired to `FoodSearchFeedItem`'s new `onQuickLog` prop
+   * below (both grammarDedup branches). Mirrors web's `onQuickLogResult`
+   * (`src/app/components/food-search/FoodSearchPanel.tsx`) 1:1.
+   */
+  const onQuickLogResult = useCallback(
+    async (item: SearchRow) => {
+      if (item._source === "CUSTOM") {
+        await onPickResult(item);
+        return;
+      }
+      setLoadingKey(item.key);
+      try {
+        const commit = (fields: Omit<SelectedFood, never>) => {
+          onSelect(fields as SelectedFood);
+        };
+
+        if (
+          (item._source === "GenericBeverage" || item._source === "GenericFood") &&
+          item.macrosPer100g
+        ) {
+          const allPortions = buildPortions([], item.primaryServing);
+          const { portion, quantity } = item.primaryServing
+            ? { portion: allPortions[0], quantity: 1 }
+            : resolveInitialPortion(allPortions, initialAmount, initialUnit);
+          commit({
+            name: item.name,
+            source: "USDA",
+            macrosPer100g: item.macrosPer100g,
+            ...(item.microsPer100g ? { microsPer100g: item.microsPer100g } : {}),
+            portions: allPortions,
+            chosenPortion: portion,
+            quantity,
+            verified: item.verified === true,
+          });
+          return;
+        }
+
+        if (item._source === "OFF" && item.macrosPer100g) {
+          const allPortions = buildPortions([], item.primaryServing);
+          const { portion, quantity } = item.primaryServing
+            ? { portion: allPortions[0], quantity: 1 }
+            : resolveInitialPortion(allPortions, initialAmount, initialUnit);
+          commit({
+            name: item.name,
+            source: "OFF",
+            macrosPer100g: item.macrosPer100g,
+            microsPer100g: item.microsPer100g,
+            portions: allPortions,
+            chosenPortion: portion,
+            quantity,
+            barcode: item._offCode,
+            imageUrl: item.imageUrl,
+            verified: item.verified === true,
+          });
+          return;
+        }
+
+        if (item._source === "USDA" && item._fdcId) {
+          const result = await getFoodMacros(item._fdcId);
+          const fields = buildUsdaPreviewFields(
+            {
+              name: item.name,
+              fdcId: item._fdcId,
+              macrosPer100g: item.macrosPer100g,
+              microsPer100g: item.microsPer100g,
+              primaryServing: item.primaryServing,
+            },
+            result,
+            initialAmount,
+            initialUnit,
+          );
+          if (!fields) {
+            Alert.alert(
+              "Couldn't load this item",
+              "Please check your connection and try again, or pick another option.",
+            );
+            return;
+          }
+          commit({
+            ...fields,
+            quantity: fields.quantity,
+            verified: item.verified === true,
+          });
+          return;
+        }
+
+        await onPickResult(item);
+      } finally {
+        setLoadingKey(null);
+      }
+    },
+    [initialAmount, initialUnit, onPickResult, onSelect],
+  );
+
   const handleCreateCustomFood = useCallback(
     async (payload: CreateCustomFoodPayload) => {
       if (!customEnabled || !supabase || !userId) return;
@@ -1438,9 +1540,10 @@ export default function FoodSearchPanel({
         styles={styles}
         onPickResult={onPickResult}
         onLongPressCustom={openCustomFoodActions}
+        onQuickLog={(row) => void onQuickLogResult(row)}
       />
     ),
-    [loadingKey, mc, styles, onPickResult, openCustomFoodActions],
+    [loadingKey, mc, styles, onPickResult, openCustomFoodActions, onQuickLogResult],
   );
 
   // Locale-resolved hint flag (2026-04-26 — Premier Free is US-only).
