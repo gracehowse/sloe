@@ -56,7 +56,14 @@ This is the canonical home of the **Monetisation / Paywall Loop**:
   trial-eligible SKU and can route straight to `/paywall?from=onboarding`
   before the user ever reaches Today (see
   [`onboarding-to-first-log.md`](./onboarding-to-first-log.md)). This is
-  the single highest-volume entry into this loop.
+  the single highest-volume entry into this loop. **ENG-1459
+  (`onboarding_upgrade_inline_paywall_v1`, DEFAULT-OFF):** behind the flag
+  the onboarding terminal step no longer routes to a second surface at
+  all — it renders this loop's own sell content (hero, pricing, trust
+  strip, CMA disclosure, checkout CTA) inline in the step itself. Every
+  other entry point into this loop (voice_log, photo_log, settings,
+  trial_end, meal_planner, recipe_import, …) is unaffected — see
+  `onboarding-to-first-log.md` §7 for the full detail.
 - **AI-Assisted Logging & Trust Loop** — voice/photo taster exhaustion on
   Today is the second-highest-volume entry (see [`food-tracking.md`](./food-tracking.md)).
 - **Settings & Control Loop** — manage/cancel (Step 7 below) is a branch of

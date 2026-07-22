@@ -56,3 +56,18 @@ comment in `state.ts` cited a
 exist on disk. This addendum is that missing record, backfilled 2026-07-21
 (ENG-1605) from the PR #692 commit history once the broken citation was
 found.
+
+## Addendum (2026-07-22 — ENG-1459, inline paywall collapse)
+
+The terminal `upgrade` step described above kept a two-surface shape even
+after becoming terminal: a static price callout plus a *separate*
+modal/route (`UpgradePaywallDialog` on web, `/paywall?from=onboarding` on
+mobile) that "Start free trial" opened. ENG-1459 collapses that into one
+inline screen behind a new flag, `onboarding_upgrade_inline_paywall_v1`
+(DEFAULT-OFF pending a sim/web visual check): the step renders the
+paywall's own sell content directly, in place of opening the second
+surface. "Continue on Free" keeps running the same terminal `complete()`
+path described above; nothing about the funnel's step order, its
+default-ON gate (`onboarding_conversion_funnel_v1`), or its terminal-step
+semantics changes. Full detail: `docs/journeys/onboarding-to-first-log.md`
+§7 and the ENG-1459 commit's legal-preservation checklist.

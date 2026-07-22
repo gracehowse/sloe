@@ -25,29 +25,65 @@
  * `paywall_viewed` + `paywall_dismissed` with `from: "onboarding"` on
  * open/close, and this step emits `onboarding_trial_choice` for the
  * trial-vs-free decision so skip-rate is measurable.
+ *
+ * ENG-1459 (flag `onboarding_upgrade_inline_paywall_v1`, DEFAULT-OFF —
+ * see the registration comment in `src/lib/analytics/track.ts`) —
+ * Headspace-model collapse: instead of a static price callout plus a
+ * separate modal, the flag-on branch renders the paywall's own sell
+ * content (`UpgradePaywallContent`) directly in the step. One screen,
+ * one scroll, one decision. The flag-OFF branch below is the
+ * pre-ENG-1459 flow, byte-identical.
  */
 import * as React from "react";
 import { Sparkles } from "lucide-react";
 
 import { Button } from "@/app/components/ui/button";
 import { UpgradePaywallDialog } from "@/app/components/suppr/upgrade-paywall-dialog";
+import { UpgradePaywallContent } from "@/app/components/paywall/UpgradePaywallContent";
 import { AnalyticsEvents } from "@/lib/analytics/events";
-import { track } from "@/lib/analytics/track";
+import { track, isFeatureEnabled } from "@/lib/analytics/track";
 import { PRICING_TIERS } from "@/lib/landing/pricingTiers";
 import { useOnboarding } from "../context";
 import { StepBody, StepHeader, useStepOverline } from "../scaffold";
 
 const proTier = PRICING_TIERS.find((t) => t.name === "Pro");
 
+/** ENG-1459 — see the flag-registration comment in `src/lib/analytics/track.ts`. */
+const INLINE_PAYWALL_FLAG = "onboarding_upgrade_inline_paywall_v1";
+
 export function UpgradeStep() {
   const { set, complete } = useOnboarding();
   const overline = useStepOverline();
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const annualPrice = proTier?.annualPrice ?? proTier?.price ?? "—";
+  const inlinePaywall = isFeatureEnabled(INLINE_PAYWALL_FLAG);
 
   React.useEffect(() => {
     track(AnalyticsEvents.onboarding_upgrade_step_viewed, { platform: "web" });
   }, []);
+
+  // ENG-1459 legal C10 — flag-on has no dialog to fire `paywall_viewed`/
+  // `upsell_variant_shown` on open, so this step fires them on STEP MOUNT
+  // instead (mechanical translation of "viewed" semantics: the step IS
+  // the paywall surface now, not a launcher for one). `paywall_dismissed`/
+  // `upsell_variant_dismissed` still fire from `UpgradePaywallContent`
+  // itself when "Continue on Free" is tapped — see its `onSecondaryCta`.
+  React.useEffect(() => {
+    if (!inlinePaywall) return;
+    track(AnalyticsEvents.paywall_viewed, {
+      from: "onboarding",
+      tier: "pro",
+      surface: "onboarding_inline",
+      platform: "web",
+    });
+    track(AnalyticsEvents.upsell_variant_shown, {
+      variant: "free_to_pro",
+      from: "onboarding",
+      surface: "onboarding_inline",
+      platform: "web",
+      user_tier: "free",
+    });
+  }, [inlinePaywall]);
 
   const chooseFree = React.useCallback(() => {
     set({ trialChoice: "free" });
@@ -71,6 +107,46 @@ export function UpgradeStep() {
     // the disclosure + checkout; it emits paywall_viewed on open.
     setDialogOpen(true);
   }, [set]);
+
+  // ENG-1459 — flag-on primary-CTA intent tracking. The merged screen has
+  // no separate "Start free trial" button to hang this on (the Upgrade
+  // CTA inside `UpgradePaywallContent` IS the trial ask, since
+  // `defaultPeriod="annual"` preselects the trial-eligible SKU), so this
+  // fires the instant that CTA is tapped, before checkout starts.
+  const markTrialIntent = React.useCallback(() => {
+    set({ trialChoice: "trial" });
+    track(AnalyticsEvents.onboarding_trial_choice, {
+      choice: "trial",
+      platform: "web",
+    });
+  }, [set]);
+
+  if (inlinePaywall) {
+    // ENG-1459 design decision (plan ambiguity #1): the paywall content's
+    // own hero ("Cook what you love...") replaces this step's title +
+    // subtitle rather than stacking both — two headlines pitching the
+    // same thing is the exact "two stacked asks" problem this ticket
+    // exists to fix. The step overline ("Step N of M") is kept standalone
+    // above the content so onboarding position context doesn't disappear.
+    // Plan ambiguity #2: the paywall content's native secondary-CTA
+    // treatment (plain text button) wins over this step's previous
+    // bespoke outline button — the whole point of "become the paywall
+    // module inline" is that the step stops carrying its own CTA chrome.
+    return (
+      <StepBody>
+        <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground-tertiary mb-2">
+          {overline}
+        </div>
+        <UpgradePaywallContent
+          from="onboarding"
+          userTier="free"
+          defaultPeriod="annual"
+          onSecondaryCta={chooseFree}
+          onPrimaryCtaIntent={markTrialIntent}
+        />
+      </StepBody>
+    );
+  }
 
   return (
     <StepBody>

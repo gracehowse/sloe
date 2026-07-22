@@ -883,6 +883,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "ingredient_text_rows_v1", // ENG-1611 — foods/ingredients render as TEXT (no glyph/monogram/photo tiles) on log-sheet rows + recipe-detail ingredients; off = legacy tiles (kill switch). Web + mobile.
   "recipe_estimated_cost_v1", // ENG-1274 — per-serving grocery cost estimate (Pro) on recipe-detail hero meta; off = hidden (kill switch). Web + mobile.
   "web_gutter_convergence_v1", // ENG-1629 — converges web Targets.tsx/RecipeDetail.tsx page gutters onto .product-shell. WEB-ONLY: mobile has no Tailwind product-shell equivalent; registered here only for the web ↔ mobile KNOWN_DEFAULT_OFF_FLAGS discoverability parity.
+  "onboarding_upgrade_inline_paywall_v1", // ENG-1459 — collapses the onboarding terminal step's two-surface "See Pro" ask (static callout + router.push("/paywall?from=onboarding")) into one inline screen (PaywallContent rendered directly in the step via useOnboardingInlinePaywall, no route push). DEFAULT-OFF: net-new structural/visual money-flow UI with no device/sim visual validation landed in this change yet (root CLAUDE.md feature-flag rule); off = the existing two-button + route-push flow, byte-identical. Ramp via PostHog once Grace has done a sim visual check. Keep in sync with src/lib/analytics/track.ts.
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

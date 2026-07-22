@@ -266,6 +266,28 @@ hands off to the **Monetisation / Paywall Loop**
 trigger → checkout → webhook → `profiles.user_tier` reconciliation →
 manage/cancel path in detail; this doc only covers the in-flow ask itself.
 
+**ENG-1459 (2026-07-22) — inline collapse variant, flag
+`onboarding_upgrade_inline_paywall_v1` (DEFAULT-OFF):** behind the flag,
+the `upgrade` step above stops being "static callout → separate paywall
+modal/route" and instead renders the paywall's own sell content
+(hero/features/price/trust-strip/disclosure/CTA) directly inside the step —
+one screen, one scroll, one Upgrade-or-Continue-free decision, instead of
+the two-surface handoff described above. Web: `UpgradePaywallContent`
+(`src/app/components/paywall/UpgradePaywallContent.tsx`) renders inline in
+place of opening `UpgradePaywallDialog`. Mobile: `PaywallContent`
+(`apps/mobile/components/paywall/PaywallContent.tsx`), fed by
+`useOnboardingInlinePaywall`, renders inline instead of
+`router.push("/paywall?from=onboarding")`. Every other entry point into
+the dialog/route (settings, voice_log, photo_log, trial_end, meal_planner,
+recipe_import, …) is untouched — this only changes the onboarding
+terminal step's own presentation. Flag-off is byte-identical to the
+two-surface flow described above. See
+`docs/decisions/2026-06-28-onboarding-conversion-funnel-and-plan-actions.md`
+for the funnel's own history and the ENG-1459 commit for the full
+legal-preservation checklist this variant carries over unchanged (CMA
+auto-renewal disclosure, VAT gate, trust strip, C4 skip affordance, C10
+analytics honesty, Pro-guard).
+
 **When the flag is off:** both steps auto-skip and `data-bridges` becomes
 terminal — a byte-identical legacy flow. This is the **most current**
 description of the onboarding tail; it supersedes any older doc describing a

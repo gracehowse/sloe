@@ -724,6 +724,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "library_single_filter_row_v1", // ENG-1607 — Cookbook single provenance chip row (v3); off = legacy two-row stack (kill switch). Web + mobile.
   "recipe_estimated_cost_v1", // ENG-1274 — per-serving grocery cost estimate (Pro) on recipe-detail hero meta; off = hidden (kill switch). Web + mobile.
   "web_gutter_convergence_v1", // ENG-1629 — converge Targets.tsx (px-pm-5) + RecipeDetail.tsx (px-6/max-w-4xl) onto .product-shell's gutter; off = exact pre-ENG-1629 gutters (kill switch). WEB-ONLY.
+  "onboarding_upgrade_inline_paywall_v1", // ENG-1459 — collapses the onboarding terminal step's two-surface "See Pro" ask (static callout + separate UpgradePaywallDialog modal) into one inline screen (UpgradePaywallContent rendered directly in the step, no dialog). DEFAULT-OFF: net-new structural/visual money-flow UI with no device/sim visual validation landed in this change yet (root CLAUDE.md feature-flag rule); off = the existing two-button + dialog flow, byte-identical. Ramp via PostHog once Grace has done a sim/web visual check. Keep in sync with apps/mobile/lib/analytics.ts.
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

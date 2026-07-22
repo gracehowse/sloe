@@ -17,6 +17,16 @@
  *     (Decision 2 / legal C4).
  *
  * No confirmshaming, no urgency timer, no pre-ticked trial (legal C5).
+ *
+ * ENG-1459 (flag `onboarding_upgrade_inline_paywall_v1`, DEFAULT-OFF —
+ * see the registration comment in `apps/mobile/lib/analytics.ts`) —
+ * Headspace-model collapse: instead of a static price callout that routes
+ * to a separate `/paywall` screen, the flag-on branch renders the
+ * paywall's own sell content (`PaywallContent`, fed by
+ * `useOnboardingInlinePaywall`) directly in this step. One screen, one
+ * scroll, one decision. The flag-OFF branch below is the pre-ENG-1459
+ * flow, byte-identical — `apps/mobile/app/paywall.tsx` itself is
+ * UNCHANGED by this ticket (see `PaywallContent.tsx`'s doc comment).
  */
 import * as React from "react";
 import { ActivityIndicator, Text, View } from "react-native";
@@ -27,10 +37,15 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAccent } from "@/context/theme";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
+import { PaywallContent } from "@/components/paywall/PaywallContent";
+import { useOnboardingInlinePaywall } from "@/components/paywall/useOnboardingInlinePaywall";
+
+/** ENG-1459 — see the flag-registration comment in `apps/mobile/lib/analytics.ts`. */
+const INLINE_PAYWALL_FLAG = "onboarding_upgrade_inline_paywall_v1";
 
 export function UpgradeStep() {
   // ENG-1516 made the price card static, so `state.trialChoice` is no longer
@@ -44,6 +59,17 @@ export function UpgradeStep() {
   // CTA carries a real async commit: disable + spinner while the profile
   // write lands (no double-submit, no silent failure).
   const [savingPlan, setSavingPlan] = React.useState(false);
+  const inlinePaywall = isFeatureEnabled(INLINE_PAYWALL_FLAG);
+  // ENG-1459 — flag-on: persist the plan on mount (same ENG-1507 intent —
+  // land the profile write before the personalised-plan card reads it —
+  // just moved from "before the CTA tap" to "before the merged screen
+  // renders", since there's no separate CTA-then-navigate step anymore).
+  const persistedOnMountRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!inlinePaywall || persistedOnMountRef.current) return;
+    persistedOnMountRef.current = true;
+    void persist();
+  }, [inlinePaywall, persist]);
   // ENG-1510 — no price const here: the exact figure is deferred to the App
   // Store (localised/VAT-inclusive), so this step never prints a GBP amount.
 
@@ -62,6 +88,24 @@ export function UpgradeStep() {
     // notifications-prompt screen.
     complete();
   }, [set, complete]);
+
+  const markTrialIntent = React.useCallback(() => {
+    set({ trialChoice: "trial" });
+    track(AnalyticsEvents.onboarding_trial_choice, {
+      choice: "trial",
+      platform: "mobile",
+    });
+  }, [set]);
+
+  // ENG-1459 — flag-on inline paywall. Hooks must stay above any early
+  // return, so this is called unconditionally; `useOnboardingInlinePaywall`
+  // itself only fetches offerings / fires analytics once mounted, and the
+  // flag-off branch below simply never renders `<PaywallContent>`.
+  const inlineOffer = useOnboardingInlinePaywall({
+    onExit: complete,
+    onContinueFree: chooseFree,
+    onPrimaryCtaIntent: markTrialIntent,
+  });
 
   const chooseTrial = React.useCallback(async () => {
     if (savingPlan) return;
@@ -90,6 +134,32 @@ export function UpgradeStep() {
       setSavingPlan(false);
     }
   }, [savingPlan, set, persist, router]);
+
+  if (inlinePaywall) {
+    // ENG-1459 design decision (mirrors the web twin): the paywall
+    // content's own hero replaces this step's title + subtitle rather
+    // than stacking both. The step overline is kept standalone above the
+    // content so onboarding position context ("Step N of M") doesn't
+    // disappear. The paywall content's native "Continue for free"
+    // treatment wins over this step's previous bespoke button.
+    return (
+      <MobileStepBody>
+        <Text
+          style={{
+            fontSize: 11,
+            fontWeight: "600",
+            textTransform: "uppercase",
+            letterSpacing: 1.3,
+            color: colors.textTertiary,
+            marginBottom: Spacing.sm,
+          }}
+        >
+          {overline}
+        </Text>
+        <PaywallContent offer={inlineOffer} />
+      </MobileStepBody>
+    );
+  }
 
   return (
     <MobileStepBody>
