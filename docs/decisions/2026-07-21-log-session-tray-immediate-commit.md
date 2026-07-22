@@ -77,12 +77,19 @@ synchronous commit result; "basket"/"cart" stay banned in all six pinned files
 
 ## Gating + rollout
 
-- Flag `log_session_tray_v1` (default OFF, in `KNOWN_DEFAULT_OFF_FLAGS` on both
-  `src/lib/analytics/track.ts` and `apps/mobile/lib/analytics.ts`). Ramp via
-  PostHog. Flag OFF ⇒ no tray prop is threaded ⇒ S13-closes-sheet, byte-identical
-  to pre-ENG-1643 (the required `else` path).
-- Removal condition: 100% for two weeks, no regression → a cleanup PR removes
-  only the in-sheet S13 branch (S13 stays for voice/photo/manual/other hosts).
+- Flag `log_session_tray_v1` — registered in `REDESIGN_DEFAULT_ON` on both
+  `src/lib/analytics/track.ts` and `apps/mobile/lib/analytics.ts`, **default
+  ON**, per Grace's standing "we always ship flags on" convention (corrected
+  2026-07-22; the PR that merged this feature initially shipped it in
+  `KNOWN_DEFAULT_OFF_FLAGS`/default OFF, following the root CLAUDE.md's generic
+  staged-ramp flag language rather than this repo's actual prevailing
+  default-ON-with-PostHog-kill-switch convention — fixed in a follow-up PR
+  same day). PostHog remains the emergency kill switch, not a staged rollout
+  mechanism. Flag OFF ⇒ no tray prop is threaded ⇒ S13-closes-sheet,
+  byte-identical to pre-ENG-1643 (the required `else` path).
+- Removal condition: once no rollback need has surfaced, a cleanup PR removes
+  the flag check + the in-sheet S13 branch (S13 stays for voice/photo/manual/
+  other hosts).
 
 ## Consequences
 
