@@ -1,31 +1,12 @@
 /**
  * FoodSearchFeedItem — one row of the redesigned (ENG-814) sectioned
- * search-results feed, extracted from `FoodSearchPanel.tsx` (which is pinned
- * by the screen-line ratchet and may only shrink).
+ * search-results feed (extracted from pinned `FoodSearchPanel.tsx`).
  *
- * ENG-1532 (component grammar dedup) — the feed renders ONE of two row
- * grammars, gated by `component_grammar_dedup`:
+ * ENG-1532 (`component_grammar_dedup`): ON → plain history-row skeleton
+ * (kcal-leads sub-line, chevron; no big right KCAL numeral); OFF → soft
+ * elevated card. Keep in sync with web `FoodSearchResultRow.tsx`.
  *
- *   flag ON  → PLAIN ROWS with the exact skeleton of the "Past logged" /
- *              "Favourites" history rows (title line with the inline
- *              confidence chip, unified kcal-leads-basis-trails sub-line via
- *              the shared `formatFoodSearchRowSubline`, hairline separators,
- *              right-side `›` chevron). The big right-aligned KCAL display
- *              numeral dies — it invited misreading per-100g values as
- *              per-serving (Fable ruling 2026-07-16).
- *   flag OFF → today's soft-elevated grouped CARD render, byte-intact (the
- *              PostHog kill switch). Keep in sync with the web sibling
- *              `src/app/components/food-search/FoodSearchResultRow.tsx`.
- *
- * Section overlines ("Best matches" / "More results") render identically on
- * both paths.
- *
- * ENG-1659 — the quick-log "+" affordance (ENG-931: log the default serving
- * without opening the preview) is wired into BOTH grammars via `onQuickLog`.
- * Web's redesigned `FoodSearchResultRow.tsx` has carried this since the
- * ENG-814/815 redesign; mobile's redesigned row never got it, a gap the
- * ENG-1651 flag-collapse surfaced when it deleted the dead legacy renderer
- * that used to be the only reachable caller of `onQuickLogResult`.
+ * ENG-1659 — quick-log "+" via `onQuickLog` on both grammars (web parity).
  */
 import {
   ActivityIndicator,
