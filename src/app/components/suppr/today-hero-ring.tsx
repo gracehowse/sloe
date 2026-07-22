@@ -10,6 +10,7 @@ import { useCalorieRingGeometry } from "../../../lib/hooks/useCalorieRingGeometr
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { SupprCard } from "../ui/suppr-card.tsx";
 import {
+  type ChipState,
   HeroCoachChip,
   HeroStatusChip,
   RingStatCell,
