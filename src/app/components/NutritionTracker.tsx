@@ -1997,24 +1997,14 @@ export const NutritionTracker = memo(function NutritionTracker({
         onOpenDuplicateDay={() => setDuplicateDayOpen(true)}
         onRequestCopyMeal={setCopyMealTargetId}
         onDeleteMeal={(mealId) => removeLoggedMeal(mealId)}
-        // P5 parity gap #15 — "View nutrition" kebab item + per-meal dialog,
-        // gated behind `web_meal_nutrition_detail`. Flag OFF → prop undefined →
-        // no kebab item, meal row byte-identical to today. Mirror:
-        // apps/mobile/app/meal-nutrition.tsx.
-        onOpenMealNutrition={
-          isFeatureEnabled("web_meal_nutrition_detail")
-            ? setMealNutritionTargetId
-            : undefined
-        }
+        // P5 parity gap #15 — "View nutrition" kebab item + per-meal dialog.
+        // `web_meal_nutrition_detail` collapsed (ENG-1651) — always wired now.
+        // Mirror: apps/mobile/app/meal-nutrition.tsx.
+        onOpenMealNutrition={setMealNutritionTargetId}
         // ENG-837 — "View slot nutrition" header affordance + slot-aggregate
-        // dialog, gated behind the SAME `web_meal_nutrition_detail` flag. Flag
-        // OFF → prop undefined → no slot affordance, header byte-identical.
-        // Mirror: apps/mobile/app/meal-nutrition.tsx?slot=&date=.
-        onOpenSlotNutrition={
-          isFeatureEnabled("web_meal_nutrition_detail")
-            ? setSlotNutritionTarget
-            : undefined
-        }
+        // dialog. Same collapsed flag as above — always wired now. Mirror:
+        // apps/mobile/app/meal-nutrition.tsx?slot=&date=.
+        onOpenSlotNutrition={setSlotNutritionTarget}
         onEditMeal={
           isFeatureEnabled("web_logged_meal_edit")
             ? setEditMealTargetId
@@ -2527,53 +2517,52 @@ export const NutritionTracker = memo(function NutritionTracker({
       })()}
 
       {/* P5 parity gap #15 — per-meal nutrition-detail dialog (web mirror of
-          apps/mobile/app/meal-nutrition.tsx). Gated behind
-          `web_meal_nutrition_detail`; resolves the full LoggedMeal (with micros)
-          from `mealsForSelectedDate` by id — no Supabase fetch. */}
-      {isFeatureEnabled("web_meal_nutrition_detail") && (
-        <MealNutritionDialog
-          meal={
-            mealNutritionTargetId
-              ? mealsForSelectedDate.find((m) => m.id === mealNutritionTargetId) ?? null
-              : null
-          }
-          open={mealNutritionTargetId != null}
-          onClose={() => setMealNutritionTargetId(null)}
-          onEdit={
-            isFeatureEnabled("web_logged_meal_edit")
-              ? (mealId) => {
-                  setMealNutritionTargetId(null);
-                  setEditMealTargetId(mealId);
-                }
-              : undefined
-          }
-          onMacroTap={macroTapFromDialog(() => setMealNutritionTargetId(null))}
-        />
-      )}
+          apps/mobile/app/meal-nutrition.tsx). `web_meal_nutrition_detail`
+          collapsed (ENG-1651) — always mounted now; resolves the full
+          LoggedMeal (with micros) from `mealsForSelectedDate` by id — no
+          Supabase fetch. */}
+      <MealNutritionDialog
+        meal={
+          mealNutritionTargetId
+            ? mealsForSelectedDate.find((m) => m.id === mealNutritionTargetId) ?? null
+            : null
+        }
+        open={mealNutritionTargetId != null}
+        onClose={() => setMealNutritionTargetId(null)}
+        onEdit={
+          isFeatureEnabled("web_logged_meal_edit")
+            ? (mealId) => {
+                setMealNutritionTargetId(null);
+                setEditMealTargetId(mealId);
+              }
+            : undefined
+        }
+        onMacroTap={macroTapFromDialog(() => setMealNutritionTargetId(null))}
+      />
 
       {/* ENG-837 — slot-aggregate nutrition dialog (web mirror of
-          apps/mobile/app/meal-nutrition.tsx?slot=&date=). Same flag as the
-          per-meal dialog. Sums the targeted slot's meals (resolved from
-          `mealsGrouped`, keyed identically by `normalizeJournalSlotName`) via
-          the shared `sumMicrosFromLoggedMeals` / `sumDayFiberFromMeals` helpers
-          inside the dialog — no Supabase fetch, no re-summing math here. */}
-      {isFeatureEnabled("web_meal_nutrition_detail") && (
-        <MealNutritionDialog
-          meal={null}
-          slotAggregate={
-            slotNutritionTarget
-              ? {
-                  slotLabel: slotNutritionTarget,
-                  meals:
-                    mealsGrouped.find((g) => g.name === slotNutritionTarget)?.meals ?? [],
-                }
-              : null
-          }
-          open={slotNutritionTarget != null}
-          onClose={() => setSlotNutritionTarget(null)}
-          onMacroTap={macroTapFromDialog(() => setSlotNutritionTarget(null))}
-        />
-      )}
+          apps/mobile/app/meal-nutrition.tsx?slot=&date=). Same
+          `web_meal_nutrition_detail` collapse (ENG-1651) as the per-meal
+          dialog above — always mounted now. Sums the targeted slot's meals
+          (resolved from `mealsGrouped`, keyed identically by
+          `normalizeJournalSlotName`) via the shared `sumMicrosFromLoggedMeals`
+          / `sumDayFiberFromMeals` helpers inside the dialog — no Supabase
+          fetch, no re-summing math here. */}
+      <MealNutritionDialog
+        meal={null}
+        slotAggregate={
+          slotNutritionTarget
+            ? {
+                slotLabel: slotNutritionTarget,
+                meals:
+                  mealsGrouped.find((g) => g.name === slotNutritionTarget)?.meals ?? [],
+              }
+            : null
+        }
+        open={slotNutritionTarget != null}
+        onClose={() => setSlotNutritionTarget(null)}
+        onMacroTap={macroTapFromDialog(() => setSlotNutritionTarget(null))}
+      />
 
       {isFeatureEnabled("web_logged_meal_edit") && (
         <EditMealDialog

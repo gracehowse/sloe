@@ -62,8 +62,8 @@ import { MacroTotalGrid, type MacroTotalCell, type MacroTotalKey } from "./Macro
  * the confidence policy, and the micro display list are likewise the SHARED
  * web/mobile modules, so the numbers match mobile by construction.
  *
- * Feature flag: the entire affordance(s) + this dialog mount behind
- * `web_meal_nutrition_detail` at the call site (NutritionTracker). This
+ * The affordance(s) + this dialog mount unconditionally at the call site
+ * (NutritionTracker) — `web_meal_nutrition_detail` collapsed, ENG-1651. This
  * component renders nothing of its own when `open` is false.
  */
 

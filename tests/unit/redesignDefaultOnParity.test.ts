@@ -50,9 +50,6 @@ const WEB_ONLY = new Set([
   //  ProgressEnergyEquation landed — see REDESIGN_DEFAULT_ON on both platforms.)
   "web_apple_health_card",
   "web_progress_weight_empty",
-  // ENG-837/P5#15 — web per-meal/slot nutrition detail; mobile already ships
-  // the native `meal-nutrition` route, so this flag is web-only by design.
-  "web_meal_nutrition_detail",
   // ENG-1225 #24 — web Settings two-pane layout (mobile Settings is native).
   "sloe_v3_settings",
   // ENG-1204 / D-07 — landing hero HYBRID (web-only).
@@ -198,4 +195,10 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
   // REDESIGN_DEFAULT_ON and GATE_15_SHARED on both platforms: the flag was
   // removed entirely and the dedicated "Log usual" row now ships
   // unconditionally, so it's no longer parsed out of either source file.)
+
+  // (ENG-1651 — `web_meal_nutrition_detail` collapsed out of
+  // REDESIGN_DEFAULT_ON on web: the flag was removed entirely and its
+  // ON-branch (MealNutritionDialog, per-meal + slot-aggregate) now mounts
+  // unconditionally in NutritionTracker.tsx, so it no longer belongs in the
+  // WEB_ONLY carve-out above.)
 });
