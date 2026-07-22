@@ -9,11 +9,14 @@
 import Constants from "expo-constants";
 import { Share } from "react-native";
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { normalizeJournalSlotName, type JournalMeal } from "@/lib/nutritionJournal";
 import { buildMealShareText } from "@suppr/shared/share/buildMealShareText";
 import {
   MEAL_SHARE_FLAG,
+  MEAL_SHARE_STORAGE_KEY,
   buildMealShareUrl,
   mealToShareItem,
   normaliseMealShareToken,
@@ -92,6 +95,38 @@ export async function getMealShare(rawToken: string): Promise<MealShareLookup> {
   const { data, error } = await supabase.rpc("get_meal_share", { p_token: token });
   if (error) return { status: "invalid" };
   return parseMealShareLookup(data);
+}
+
+/**
+ * ENG-1649 — signed-out resume rail (mobile mirror of web's
+ * `storePendingMealShare`/`takePendingMealShare` in `mealShareClient.ts`,
+ * which use `localStorage`). When a signed-out recipient taps "Sign in to
+ * add this" on `/meal-shared`, the token is stashed in AsyncStorage under
+ * the SHARED `MEAL_SHARE_STORAGE_KEY`; the post-auth drain in
+ * `app/_layout.tsx` reads + clears it and re-opens the accept screen. Only
+ * a normalised (valid 32-hex) token is ever stored. Both swallow storage
+ * errors — the resume is a nicety, never a hard dependency.
+ */
+export async function storePendingMealShare(rawToken: string): Promise<void> {
+  const token = normaliseMealShareToken(rawToken);
+  if (!token) return;
+  try {
+    await AsyncStorage.setItem(MEAL_SHARE_STORAGE_KEY, token);
+  } catch {
+    /* storage denied — resume just won't fire */
+  }
+}
+
+/** Read + clear the pending token (at-most-once resume). */
+export async function takePendingMealShare(): Promise<string | null> {
+  try {
+    const token = await AsyncStorage.getItem(MEAL_SHARE_STORAGE_KEY);
+    if (token == null) return null;
+    await AsyncStorage.removeItem(MEAL_SHARE_STORAGE_KEY);
+    return normaliseMealShareToken(token);
+  } catch {
+    return null;
+  }
 }
 
 /**
