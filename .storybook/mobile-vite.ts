@@ -96,11 +96,13 @@ export function mergeMobileStorybookVite(config: UserConfig): UserConfig {
             );
           }
 
-          // Module-scope createBrowserClient throws without a URL in Chromatic's
-          // extraction browser — stub every import path to the browser client.
+          // Module-scope createBrowserClient / createClient("", "") throws in
+          // Chromatic's extraction browser — stub every supabase client import.
           if (
             source === "@/lib/supabase/browserClient" ||
-            source.includes("lib/supabase/browserClient")
+            source.includes("lib/supabase/browserClient") ||
+            source === "@/lib/supabase" ||
+            /(?:^|\/)lib\/supabase(?:\.tsx?)?$/.test(source)
           ) {
             return path.join(coverageStubs, "supabase-browser-client.ts");
           }
@@ -153,6 +155,14 @@ export function mergeMobileStorybookVite(config: UserConfig): UserConfig {
         "@shopify/react-native-skia": path.join(coverageStubs, "react-native-skia.tsx"),
         "react-native-reanimated": path.join(coverageStubs, "reanimated"),
         "@react-native-async-storage/async-storage": path.join(stubsRoot, "async-storage.ts"),
+        [path.resolve(mobileRoot, "lib/supabase.ts")]: path.join(
+          coverageStubs,
+          "supabase-browser-client.ts",
+        ),
+        [path.resolve(repoRoot, "src/lib/supabase/browserClient.ts")]: path.join(
+          coverageStubs,
+          "supabase-browser-client.ts",
+        ),
       },
     },
     define: {

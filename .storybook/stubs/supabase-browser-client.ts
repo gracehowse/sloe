@@ -40,6 +40,10 @@ function query(): FakeQuery {
   return self;
 }
 
+export function hasSupabaseConfig(): boolean {
+  return false;
+}
+
 export const supabase = {
   from: (_table: string) => query(),
   auth: {
@@ -49,6 +53,9 @@ export const supabase = {
       data: { subscription: { unsubscribe: () => undefined } },
     }),
     signOut: async () => ({ error: null }),
+    signInWithPassword: async () => ({ data: { user: null, session: null }, error: null }),
+    signInWithOAuth: async () => ({ data: { provider: "google", url: null }, error: null }),
+    exchangeCodeForSession: async () => ({ data: { session: null }, error: null }),
   },
   channel: () => ({
     on: () => ({ subscribe: () => undefined }),
