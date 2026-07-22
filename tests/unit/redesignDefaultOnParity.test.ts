@@ -171,7 +171,6 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
     // their Lucide ON-branch unconditionally.
     const core = [
       "redesign_motion",
-      "redesign_search_results",
     ];
     for (const flag of core) {
       expect(web.has(flag)).toBe(true);
@@ -214,13 +213,18 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
   // collapsed out of REDESIGN_DEFAULT_ON on both platforms: both flags were
   // removed entirely and their ON-branch styling now ships unconditionally,
   // so neither is parsed out of either source file and neither belongs in
-  // the "core design-system flags" list above. `redesign_search_results`
-  // stays flag-gated (its collapse was split out to PR #1039), so it remains
-  // in the core list above.)
+  // the "core design-system flags" list above.)
 
   // (ENG-1651 — `redesign_winmoment` collapsed permanently-on: removed from
   // REDESIGN_DEFAULT_ON on both platforms and from every call site (win-tone
   // headline/pulse logic, weight-save haptics, weekly-checkin card mode all
   // now unconditional), so it's no longer parsed out of either source file
   // and no longer belongs in the "core design-system flags" list above.)
+
+  // (ENG-1651 — `redesign_search_results` collapsed out of REDESIGN_DEFAULT_ON
+  // on both platforms: the flag was removed entirely and its ON-branch
+  // (FoodSearchFeedItem-based rendering + SearchResultConfidenceChip) now
+  // ships unconditionally on web and mobile, so it's no longer parsed out of
+  // either source file and no longer belongs in the "core design-system
+  // flags" list above.)
 });

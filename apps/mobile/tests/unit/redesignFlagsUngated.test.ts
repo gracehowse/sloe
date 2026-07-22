@@ -2,7 +2,7 @@
 /**
  * Redesign 2026 flags are UN-GATED (mobile) — default ON in every build.
  *
- * Grace 2026-06-01: "turn everything on, never flag-gate again." The 3
+ * Grace 2026-06-01: "turn everything on, never flag-gate again." The 2
  * redesign flags resolve ON in `isFeatureEnabled` regardless of PostHog
  * rollout state or the (bundle-dead) env-force — see REDESIGN_DEFAULT_ON in
  * apps/mobile/lib/analytics.ts. This is the fix-by-elimination for ENG-840
@@ -37,9 +37,13 @@
  * `design_system_colours` and `redesign_branded_sheets` likewise collapsed
  * out of REDESIGN_DEFAULT_ON (ENG-1651): both flags were removed entirely and
  * the code now ships their ON-branch styling unconditionally, so neither
- * appears in this suite's flag lists. `redesign_search_results` stays
- * flag-gated (its collapse was split out to PR #1039), so it remains in the
- * flag list below.
+ * appears in this suite's flag lists.
+ *
+ * `redesign_search_results` collapsed out of REDESIGN_DEFAULT_ON (ENG-1651)
+ * on both platforms: the flag was removed entirely and its ON-branch
+ * (FoodSearchFeedItem-based rendering + SearchResultConfidenceChip) now ships
+ * unconditionally on web and mobile, so it no longer appears in this suite's
+ * flag lists.
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from "vitest";
@@ -79,7 +83,6 @@ beforeAll(async () => {
 
 const REDESIGN_FLAGS = [
   "redesign_motion",
-  "redesign_search_results",
 ];
 
 const GATE_15_FLAGS = [

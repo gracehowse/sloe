@@ -471,7 +471,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // §3.1). Default-on; off → legacy stacked ActionRow list.
   "create_recipe_action_sheet_grid_v1",
   "redesign_motion",
-  "redesign_search_results",
   "today-weekly-insight-mobile",
   "today_meals_figma_654",
   // ENG-771 (Gate 1) — MFP-refugee logging loop: ship the loop features

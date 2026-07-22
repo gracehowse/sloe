@@ -10,7 +10,8 @@
  *
  *   VOICE  → BOTH platforms render the shared SearchResultConfidenceChip as
  *            `tier="estimated"` (never Verified — CLAUDE.md trust posture),
- *            gated on `redesign_search_results`, addressable via the shared
+ *            unconditional now that `redesign_search_results` has collapsed
+ *            permanently-on (ENG-1651), addressable via the shared
  *            `voice-confidence-chip` test hook.
  *   PHOTO  → NEITHER platform renders the chip (the 2026-05-01 range-first
  *            re-architecture dropped it). Guards against a future web-only
@@ -44,20 +45,17 @@ const WEB_PHOTO_SRC = readFileSync(WEB_PHOTO, "utf8");
 const MOBILE_PHOTO_SRC = readFileSync(MOBILE_PHOTO, "utf8");
 
 describe("ENG-1429 — voice AI-log review shows the chip on BOTH platforms", () => {
-  it("web voice review row gates the chip on redesign_search_results", () => {
-    expect(WEB_VOICE_SRC).toMatch(
+  it("web voice review row renders the shared chip as tier=estimated with the shared test hook, unconditionally", () => {
+    expect(WEB_VOICE_SRC).not.toMatch(
       /isFeatureEnabled\(\s*["']redesign_search_results["']\s*\)/,
     );
-  });
-
-  it("web voice review row renders the shared chip as tier=estimated with the shared test hook", () => {
     expect(WEB_VOICE_SRC).toMatch(/SearchResultConfidenceChip/);
     expect(WEB_VOICE_SRC).toMatch(/tier=["']estimated["']/);
     expect(WEB_VOICE_SRC).toMatch(/testId=["']voice-confidence-chip["']/);
   });
 
-  it("mobile voice review row gates the same chip on the same flag as estimated", () => {
-    expect(MOBILE_VOICE_SRC).toMatch(
+  it("mobile voice review row renders the same chip as estimated, unconditionally", () => {
+    expect(MOBILE_VOICE_SRC).not.toMatch(
       /isFeatureEnabled\(\s*["']redesign_search_results["']\s*\)/,
     );
     expect(MOBILE_VOICE_SRC).toMatch(/SearchResultConfidenceChip/);

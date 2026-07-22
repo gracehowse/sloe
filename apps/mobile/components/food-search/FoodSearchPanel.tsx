@@ -61,7 +61,6 @@ import {
 import {
   Barcode,
   Check,
-  CheckCircle2,
   ChevronRight,
   Minus,
   Plus,
@@ -97,11 +96,6 @@ import {
   type PrimaryServing,
 } from "@suppr/nutrition-core/primaryServing";
 import {
-  resolveFoodSearchHeadline,
-  FOOD_SEARCH_PER_SERVING_BADGE,
-  FOOD_SEARCH_PER_100G_BADGE,
-} from "@suppr/nutrition-core/foodSearchHeadline";
-import {
   projectRemaining,
   portionFitHintForPreview,
   type MacroConsumed,
@@ -119,14 +113,12 @@ import {
   buildCustomFoodPortions,
   customFoodToMacrosPer100g,
   isLearnedCustomFood,
-  isLearnedCustomFoodSource,
   LEARNED_CUSTOM_FOOD_REUSE_CUE,
   type CustomFood,
 } from "@suppr/nutrition-core/customFoods";
 import CreateCustomFoodSheet, {
   type CreateCustomFoodPayload,
 } from "../CreateCustomFoodSheet";
-import Badge from "../Badge";
 import { FatSecretBadge } from "../ui/FatSecretBadge";
 import { FoodSearchFeedItem } from "./FoodSearchFeedItem";
 import { track } from "@/lib/analytics";
@@ -215,12 +207,12 @@ export type SearchRow = Omit<UnifiedSearchResult, "_source"> & {
 };
 
 /**
- * Redesign (ENG-814) — discriminated FlatList feed row for the sectioned,
+ * Redesign (ENG-814, `redesign_search_results` collapsed permanently-on
+ * ENG-1651) — discriminated FlatList feed row for the sectioned,
  * grouped-card results body. `header` rows render a section label
  * ("Best matches" / "More results"); `row` rows render a result inside its
  * section's soft-elevated card, carrying within-card position so the card
- * corners + inset seams render correctly. Only used on the
- * `redesign_search_results`-flagged path.
+ * corners + inset seams render correctly.
  */
 export type RenderRow =
   | { kind: "header"; key: string; label: string }
@@ -374,20 +366,16 @@ export default function FoodSearchPanel({
   // green fill is gone.
   const commitCtaColor = accent.primary;
   const commitCtaSoft = accent.primarySoft; // ENG-1521 — the CTA family's Soft step
-  // 2026-05-31 design-direction (LANE: search-results UI — ENG-814).
-  // Gate the redesigned results body behind `redesign_search_results`:
-  //   flag ON  → unified segmented control + softly-elevated grouped
-  //              result cards + "Best matches"/"More results" section
-  //              headers + a legible confidence chip (soft-blue Verified
-  //              / amber Estimated) driven by each row's `confidenceTier`.
-  //   flag OFF → the existing pill row + flat hairline list + CheckCircle2
-  //              tick (the old path stays alive, untouched, in the `else`).
-  // Matches docs/prototypes/2026-05-31-design-direction/surface-search-results.html.
-  const redesignSearch = isFeatureEnabled("redesign_search_results");
+  // 2026-05-31 design-direction (LANE: search-results UI — ENG-814,
+  // `redesign_search_results` collapsed permanently-on ENG-1651): unified
+  // segmented control + softly-elevated grouped result cards + "Best
+  // matches"/"More results" section headers + a legible confidence chip
+  // (soft-blue Verified / amber Estimated) driven by each row's
+  // `confidenceTier`. Matches
+  // docs/prototypes/2026-05-31-design-direction/surface-search-results.html.
   const typeScaleV1 = isFeatureEnabled("type_scale_v1"); // ENG-1002 — whole-app font-scale gate
   // Soft-elevation treatment for the grouped result cards (light = soft
-  // shadow + no border; dark = tonal lift + hairline; flag-off = flat).
-  // Only consumed on the redesigned path.
+  // shadow + no border; dark = tonal lift + hairline).
   const cardElevation = useCardElevation();
   const [results, setResults] = useState<SearchRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -880,97 +868,6 @@ export default function FoodSearchPanel({
     [initialAmount, initialUnit],
   );
 
-  /** ENG-931 — log default serving without opening preview (row body still opens preview). */
-  const onQuickLogResult = useCallback(
-    async (item: SearchRow) => {
-      if (item._source === "CUSTOM") {
-        await onPickResult(item);
-        return;
-      }
-      setLoadingKey(item.key);
-      try {
-        const commit = (fields: Omit<SelectedFood, never>) => {
-          onSelect(fields as SelectedFood);
-        };
-
-        if (
-          (item._source === "GenericBeverage" || item._source === "GenericFood") &&
-          item.macrosPer100g
-        ) {
-          const allPortions = buildPortions([], item.primaryServing);
-          const { portion, quantity } = item.primaryServing
-            ? { portion: allPortions[0], quantity: 1 }
-            : resolveInitialPortion(allPortions, initialAmount, initialUnit);
-          commit({
-            name: item.name,
-            source: "USDA",
-            macrosPer100g: item.macrosPer100g,
-            ...(item.microsPer100g ? { microsPer100g: item.microsPer100g } : {}),
-            portions: allPortions,
-            chosenPortion: portion,
-            quantity,
-            verified: item.verified === true,
-          });
-          return;
-        }
-
-        if (item._source === "OFF" && item.macrosPer100g) {
-          const allPortions = buildPortions([], item.primaryServing);
-          const { portion, quantity } = item.primaryServing
-            ? { portion: allPortions[0], quantity: 1 }
-            : resolveInitialPortion(allPortions, initialAmount, initialUnit);
-          commit({
-            name: item.name,
-            source: "OFF",
-            macrosPer100g: item.macrosPer100g,
-            microsPer100g: item.microsPer100g,
-            portions: allPortions,
-            chosenPortion: portion,
-            quantity,
-            barcode: item._offCode,
-            imageUrl: item.imageUrl,
-            verified: item.verified === true,
-          });
-          return;
-        }
-
-        if (item._source === "USDA" && item._fdcId) {
-          const result = await getFoodMacros(item._fdcId);
-          const fields = buildUsdaPreviewFields(
-            {
-              name: item.name,
-              fdcId: item._fdcId,
-              macrosPer100g: item.macrosPer100g,
-              microsPer100g: item.microsPer100g,
-              primaryServing: item.primaryServing,
-            },
-            result,
-            initialAmount,
-            initialUnit,
-          );
-          if (!fields) {
-            Alert.alert(
-              "Couldn't load this item",
-              "Please check your connection and try again, or pick another option.",
-            );
-            return;
-          }
-          commit({
-            ...fields,
-            quantity: fields.quantity,
-            verified: item.verified === true,
-          });
-          return;
-        }
-
-        await onPickResult(item);
-      } finally {
-        setLoadingKey(null);
-      }
-    },
-    [initialAmount, initialUnit, onPickResult, onSelect],
-  );
-
   const handleCreateCustomFood = useCallback(
     async (payload: CreateCustomFoodPayload) => {
       if (!customEnabled || !supabase || !userId) return;
@@ -1318,14 +1215,6 @@ export default function FoodSearchPanel({
       paddingHorizontal: mode === "compact" ? Spacing.md : Spacing.xl,
       paddingBottom: 40,
     },
-    resultRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingVertical: mode === "compact" ? Spacing.sm : Spacing.md,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-      gap: Spacing.md,
-    },
     resultName: { fontSize: 14, color: colors.text, fontWeight: "500" },
     macroPreview: {
       flexDirection: "row",
@@ -1369,102 +1258,6 @@ export default function FoodSearchPanel({
       lineHeight: 18,
     },
   }), [colors, mode]);
-
-  const renderItem = useCallback(
-    ({ item }: { item: SearchRow }) => {
-      const isLoading = loadingKey === item.key;
-      const isCustom = item._source === "CUSTOM";
-      const customFood = isCustom ? item._custom : null;
-      const headline = resolveFoodSearchHeadline(item);
-      const primary = item.primaryServing ?? null;
-
-      return (
-        <View style={styles.resultRow}>
-          <Pressable
-            style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: Spacing.md }}
-            onPress={() => onPickResult(item)}
-            onLongPress={isCustom && customFood ? () => openCustomFoodActions(customFood) : undefined}
-            disabled={isLoading}
-            accessibilityRole="button"
-            accessibilityLabel={
-              isCustom
-                ? `Custom food: ${item.name}. Long-press for edit or delete.`
-                : primary
-                  ? `${item.name}. ${primary.kcal} kcal per ${primary.label}, ${primary.grams} grams.`
-                  : item.name
-            }
-          >
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, flexWrap: "wrap" }}>
-                {isCustom && <Badge variant="custom">Custom</Badge>}
-                {item.verified && !isCustom && (
-                  <CheckCircle2 size={14} color={Accent.success} />
-                )}
-                <Text style={styles.resultName} numberOfLines={2}>
-                  {item.name}
-                </Text>
-              </View>
-              {headline.mode === "per-serving" ? (
-                <>
-                  <View style={styles.macroPreview}>
-                    <Text style={[styles.macroPreviewText, { color: mc.protein }]}>P {headline.macros.protein}g</Text>
-                    <Text style={[styles.macroPreviewText, { color: mc.carbs }]}>C {headline.macros.carbs}g</Text>
-                    <Text style={[styles.macroPreviewText, { color: mc.fat }]}>F {headline.macros.fat}g</Text>
-                  </View>
-                  <Text style={styles.perLabel}>{FOOD_SEARCH_PER_SERVING_BADGE}</Text>
-                  <Text style={styles.per100g}>
-                    {headline.servingLabel}
-                    {headline.per100gReference ? ` · ${headline.per100gReference}` : ""}
-                  </Text>
-                </>
-              ) : headline.mode === "per-100g" && headline.macros ? (
-                <>
-                  <View style={styles.macroPreview}>
-                    <Text style={[styles.macroPreviewText, { color: mc.protein }]}>P {headline.macros.protein}g</Text>
-                    <Text style={[styles.macroPreviewText, { color: mc.carbs }]}>C {headline.macros.carbs}g</Text>
-                    <Text style={[styles.macroPreviewText, { color: mc.fat }]}>F {headline.macros.fat}g</Text>
-                  </View>
-                  <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
-                </>
-              ) : headline.mode === "per-100g" ? (
-                <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
-              ) : (
-                <Text style={styles.per100g}>Tap for nutrition info</Text>
-              )}
-              {customFood && isLearnedCustomFoodSource(customFood.source) ? (
-                <Text
-                  testID="learned-custom-food-cue"
-                  style={{ fontSize: 11, fontStyle: "italic", color: colors.textSecondary, marginTop: 2 }}
-                >
-                  {LEARNED_CUSTOM_FOOD_REUSE_CUE}
-                </Text>
-              ) : null}
-            </View>
-            {headline.mode !== "placeholder" && !isLoading ? (
-              <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text, fontVariant: ["tabular-nums"], marginRight: 4 }}>{headline.headlineKcal}</Text>
-            ) : null}
-          </Pressable>
-          {isLoading ? (
-            <ActivityIndicator size="small" color={accent.primary} />
-          ) : item._source !== "CUSTOM" ? (
-            <Pressable
-              onPress={() => void onQuickLogResult(item)}
-              accessibilityRole="button"
-              accessibilityLabel={`Quick log ${item.name} at default serving`}
-              testID={`food-search-quick-log-${item.key}`}
-              hitSlop={8}
-              style={{ padding: 4 }}
-            >
-              <Plus size={18} color={accent.primarySolid} strokeWidth={2.5} />
-            </Pressable>
-          ) : (
-            <ChevronRight size={16} color={colors.textTertiary} />
-          )}
-        </View>
-      );
-    },
-    [loadingKey, onPickResult, onQuickLogResult, colors, accent, openCustomFoodActions, styles],
-  );
 
   // ── History-first search (ENG-1033) + Favourites-in-search (ENG-1041) ──
   // MFP grammar: when the user has TYPED a query, surface matching items
@@ -1586,14 +1379,9 @@ export default function FoodSearchPanel({
   // prototype's "Best matches" / "More results" sections using the SHARED
   // scorer (`splitFoodSearchResults` → `splitBestMatches`). Web sections
   // identically off the same function, so the two surfaces never drift.
-  // Only computed on the redesigned path; falls back to a single Best
-  // section otherwise (the flat list ignores it).
   const sectionedResults = useMemo(
-    () =>
-      redesignSearch
-        ? splitFoodSearchResults(query.trim(), filteredResults as UnifiedSearchResult[])
-        : { best: [] as UnifiedSearchResult[], more: [] as UnifiedSearchResult[] },
-    [redesignSearch, query, filteredResults],
+    () => splitFoodSearchResults(query.trim(), filteredResults as UnifiedSearchResult[]),
+    [query, filteredResults],
   );
 
   /** ENG-1121 — FatSecret attribution when branded rows or premier autocomplete show. */
@@ -1617,7 +1405,6 @@ export default function FoodSearchPanel({
   // renderer can draw the soft-elevated wrapper + section header + inset
   // seam without grouping support in FlatList.
   const redesignFeed = useMemo<RenderRow[]>(() => {
-    if (!redesignSearch) return [];
     const feed: RenderRow[] = [];
     const pushSection = (label: string, rows: SearchRow[]) => {
       if (rows.length === 0) return;
@@ -1635,7 +1422,7 @@ export default function FoodSearchPanel({
     pushSection("Best matches", sectionedResults.best as SearchRow[]);
     pushSection("More results", sectionedResults.more as SearchRow[]);
     return feed;
-  }, [redesignSearch, sectionedResults]);
+  }, [sectionedResults]);
 
   // FlatList renderItem for the redesigned, sectioned feed — extracted to
   // `<FoodSearchFeedItem>` (ENG-1532) so this pinned file only shrinks.
@@ -2196,76 +1983,42 @@ export default function FoodSearchPanel({
       >
         {CATEGORY_LIST.map((cat) => {
           const isActive = cat === activeCategory;
-          // Redesign (ENG-814): one unified segmented control — softly
+          // Redesign (ENG-814, `redesign_search_results` collapsed
+          // permanently-on ENG-1651): one unified segmented control — softly
           // elevated rounded-rect segments with the prototype's friendlier
-          // labels. Flag OFF keeps the existing full-pill chips. Same
-          // underlying `activeCategory` filter in both paths.
-          if (redesignSearch) {
-            const liftStyle =
-              cardElevation.shadowStyle && !isActive ? cardElevation.shadowStyle : undefined;
-            return (
-              <Pressable
-                key={cat}
-                onPress={() => setActiveCategory(cat)}
-                accessibilityRole="button"
-                accessibilityLabel={`${UNIFIED_LABEL[cat]} foods`}
-                accessibilityState={{ selected: isActive }}
-                testID={`food-search-category-${cat}`}
-                hitSlop={6}
-                style={[
-                  {
-                    paddingHorizontal: 16,
-                    paddingVertical: 8,
-                    borderRadius: Radius.md,
-                    borderWidth: 1,
-                    borderColor: isActive ? accent.primary : colors.cardBorder,
-                    backgroundColor: isActive ? accent.primary : colors.card,
-                  },
-                  liftStyle,
-                ]}
-              >
-                <Text
-                  style={{
-                    fontSize: 13,
-                    fontWeight: "700",
-                    color: isActive ? accent.primaryForeground : colors.textSecondary,
-                    letterSpacing: 0.2,
-                  }}
-                >
-                  {UNIFIED_LABEL[cat]}
-                </Text>
-              </Pressable>
-            );
-          }
+          // labels.
+          const liftStyle =
+            cardElevation.shadowStyle && !isActive ? cardElevation.shadowStyle : undefined;
           return (
             <Pressable
               key={cat}
               onPress={() => setActiveCategory(cat)}
               accessibilityRole="button"
-              accessibilityLabel={`${cat} foods`}
+              accessibilityLabel={`${UNIFIED_LABEL[cat]} foods`}
               accessibilityState={{ selected: isActive }}
               testID={`food-search-category-${cat}`}
               hitSlop={6}
-              style={{
-                paddingHorizontal: Spacing.dense,
-                paddingVertical: Spacing.sm,
-                borderRadius: Radius.full,
-                borderWidth: 1,
-                borderColor: isActive ? accent.primary : colors.border,
-                backgroundColor: isActive ? accent.primary : "transparent",
-              }}
+              style={[
+                {
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: Radius.md,
+                  borderWidth: 1,
+                  borderColor: isActive ? accent.primary : colors.cardBorder,
+                  backgroundColor: isActive ? accent.primary : colors.card,
+                },
+                liftStyle,
+              ]}
             >
               <Text
                 style={{
-                  fontFamily: Type.captionSmall.fontFamily,
-                  fontSize: Type.captionSmall.fontSize,
-                  lineHeight: Type.captionSmall.lineHeight,
+                  fontSize: 13,
                   fontWeight: "700",
                   color: isActive ? accent.primaryForeground : colors.textSecondary,
                   letterSpacing: 0.2,
                 }}
               >
-                {cat}
+                {UNIFIED_LABEL[cat]}
               </Text>
             </Pressable>
           );
@@ -2595,25 +2348,11 @@ export default function FoodSearchPanel({
           <ActivityIndicator size="large" color={accent.primary} />
           <Text style={styles.hint}>Searching...</Text>
         </View>
-      ) : redesignSearch ? (
+      ) : (
         <FlatList<RenderRow>
           data={redesignFeed}
           keyExtractor={(item) => item.key}
           renderItem={renderRedesignItem}
-          contentContainerStyle={styles.list}
-          keyboardShouldPersistTaps="handled"
-          onEndReached={() => {
-            void loadMore();
-          }}
-          onEndReachedThreshold={0.4}
-          ListEmptyComponent={renderEmptyState}
-          ListFooterComponent={renderListFooter}
-        />
-      ) : (
-        <FlatList<SearchRow>
-          data={filteredResults}
-          keyExtractor={(item) => item.key}
-          renderItem={renderItem}
           contentContainerStyle={styles.list}
           keyboardShouldPersistTaps="handled"
           onEndReached={() => {
