@@ -12,6 +12,7 @@ import {
   registerExpoPushTokenForUser,
 } from "@/lib/expoPushToken";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
 
@@ -184,6 +185,7 @@ function PermissionCard({
   // Notifications = warning), the granted border/badge (`Accent.success*`), and
   // the disabled state keep their own tokens.
   const accent = useAccent();
+  const typeScaleV1Enabled = isFeatureEnabled("type_scale_v1");
   return (
     <View
       style={{
@@ -281,7 +283,12 @@ function PermissionCard({
               opacity: busy ? 0.6 : pressed ? 0.85 : 1,
             })}
           >
-            <Text style={{ color: accent.primaryForeground, fontSize: 13, fontWeight: "700" }}>
+            <Text
+              style={{
+                color: accent.primaryForeground,
+                ...(typeScaleV1Enabled ? Type.button : { fontSize: 13, fontWeight: "700" }),
+              }}
+            >
               {busy ? "Asking…" : "Allow"}
             </Text>
           </Pressable>

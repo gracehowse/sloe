@@ -3,6 +3,7 @@ import { Text, View } from "react-native";
 import { ChevronRight, type LucideIcon } from "lucide-react-native";
 
 import { PressableScale } from "@/components/ui/PressableScale";
+import { Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -93,10 +94,8 @@ export function SettingsRow({
       <View style={{ flex: 1 }}>
         <Text
           style={{
-            fontSize: 13,
-            fontWeight: "600",
+            ...Type.captionStrong,
             color: colors.text,
-            lineHeight: 17,
           }}
         >
           {label}

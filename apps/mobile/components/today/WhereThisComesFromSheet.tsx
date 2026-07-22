@@ -12,7 +12,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { RefreshCw, X } from "lucide-react-native";
 
-import { FontFamily, Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
 
@@ -122,9 +122,7 @@ function WhereThisComesFromSheetImpl({
             <Text
               style={{
                 flex: 1,
-                fontFamily: FontFamily.serifRegular,
-                fontSize: 24,
-                lineHeight: 28,
+                ...Type.title,
                 color: textColor,
               }}
             >

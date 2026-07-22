@@ -15,6 +15,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react-native";
 
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { clampJournalDate, journalRangeBounds } from "@/lib/journalNavigation";
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
@@ -82,6 +83,8 @@ export default function DuplicateDaySheet({
   // Secondary accent (Frost flag → damson, else clay) for the active range
   // selection (start/end + in-range tint) and the Duplicate CTA.
   const accent = useAccent();
+  // ENG-1002/type_scale_v1 — whole-app font-family + size consistency gate.
+  const typeScaleV1 = isFeatureEnabled("type_scale_v1");
   const defaultStart = useMemo(() => addDays(sourceDayKey, 1), [sourceDayKey]);
   const defaultEnd = useMemo(() => addDays(sourceDayKey, 7), [sourceDayKey]);
   const [mode, setMode] = useState<Mode>("single");
@@ -326,7 +329,7 @@ export default function DuplicateDaySheet({
               accessibilityRole="button"
               accessibilityLabel="Cancel"
             >
-              <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>Cancel</Text>
+              <Text style={typeScaleV1 ? { ...Type.button, color: colors.text } : { fontSize: 14, fontWeight: "600", color: colors.text }}>Cancel</Text>
             </PressableScale>
             <PressableScale
               onPress={() => {
@@ -351,7 +354,7 @@ export default function DuplicateDaySheet({
               accessibilityLabel="Duplicate"
               accessibilityState={{ disabled: !canConfirm }}
             >
-              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Duplicate</Text>
+              <Text style={typeScaleV1 ? { ...Type.button, color: colors.primaryForeground } : { fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Duplicate</Text>
             </PressableScale>
           </View>
         </Pressable>

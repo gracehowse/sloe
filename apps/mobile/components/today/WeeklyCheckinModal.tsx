@@ -3,7 +3,7 @@ import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X, TrendingUp } from "lucide-react-native";
-import { FontFamily, Radius, Spacing, Type } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { SupprButton } from "@/components/ui/SupprButton";
 import type { WeeklyCheckinContent } from "@/lib/weeklyCheckin";
@@ -241,8 +241,7 @@ function WeeklyCheckinModalImpl({
               <Text
                 style={[
                   {
-                    fontFamily: FontFamily.serifRegular,
-                    fontSize: 22,
+                    ...Type.statValue,
                     color: accent.primarySolid,
                   },
                   tabularStyle,

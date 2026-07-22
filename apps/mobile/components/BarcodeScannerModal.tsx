@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   ActivityIndicator,
@@ -1432,7 +1432,7 @@ export default function BarcodeScannerModal({
                         onPress={onManualSubmit}
                         disabled={!manualName.trim() || !(Number(manualCalories) > 0)}
                       >
-                        <Text style={styles.manualSubmitText}>Log to {mealSlot}</Text>
+                        <Text style={isFeatureEnabled("type_scale_v1") ? { ...Type.button, color: colors.primaryForeground } : styles.manualSubmitText}>Log to {mealSlot}</Text>
                       </Pressable>
                       <Pressable style={styles.scanAgainBtn} onPress={onReset}>
                         <Text style={styles.scanAgainText}>Back to scanner</Text>
@@ -1541,7 +1541,7 @@ export default function BarcodeScannerModal({
                         accessibilityLabel={`Log to ${mealSlot}`}
                       >
                         <Check size={16} color={colors.primaryForeground} />
-                        <Text style={styles.useBtnText} numberOfLines={1} ellipsizeMode="tail">
+                        <Text style={isFeatureEnabled("type_scale_v1") ? { ...Type.button, color: colors.primaryForeground } : styles.useBtnText} numberOfLines={1} ellipsizeMode="tail">
                           Log to {mealSlot} · {pickerState ? formatPortion(pickerState) : portionSummary.replace(/\s*\(~?[\d.]+\s*g\)\s*$/, "")}
                         </Text>
                       </Pressable>
@@ -1598,7 +1598,7 @@ export default function BarcodeScannerModal({
                         accessibilityRole="button"
                         accessibilityLabel="Log this product now"
                       >
-                        <Text style={styles.correctionSuccessDoneText}>Log this now</Text>
+                        <Text style={isFeatureEnabled("type_scale_v1") ? { ...Type.button, color: colors.primaryForeground } : styles.correctionSuccessDoneText}>Log this now</Text>
                       </Pressable>
                       <Pressable
                         style={styles.correctionSuccessDoneSecondary}
@@ -1836,7 +1836,7 @@ export default function BarcodeScannerModal({
                         onPress={submitCorrection}
                         disabled={!corrName.trim() || corrPer100g == null || corrSaving}
                       >
-                        <Text style={styles.manualSubmitText}>{corrSaving ? "Saving..." : "Save Correction"}</Text>
+                        <Text style={isFeatureEnabled("type_scale_v1") ? { ...Type.button, color: colors.primaryForeground } : styles.manualSubmitText}>{corrSaving ? "Saving..." : "Save Correction"}</Text>
                       </Pressable>
                       <Pressable style={styles.scanAgainBtn} onPress={() => setCorrectionMode(false)}>
                         <Text style={styles.scanAgainText}>Cancel</Text>

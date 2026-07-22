@@ -384,6 +384,7 @@ export default function FoodSearchPanel({
   //              tick (the old path stays alive, untouched, in the `else`).
   // Matches docs/prototypes/2026-05-31-design-direction/surface-search-results.html.
   const redesignSearch = isFeatureEnabled("redesign_search_results");
+  const typeScaleV1 = isFeatureEnabled("type_scale_v1"); // ENG-1002 — whole-app font-scale gate
   // Soft-elevation treatment for the grouped result cards (light = soft
   // shadow + no border; dark = tonal lift + hairline; flag-off = flat).
   // Only consumed on the redesigned path.
@@ -1946,14 +1947,14 @@ export default function FoodSearchPanel({
             onPress={onConfirmPreview}
           >
             <Check size={18} color={colors.primaryForeground} />
-            <Text style={{ color: colors.primaryForeground, fontWeight: "700", fontSize: 15 }}>Use this</Text>
+            <Text style={typeScaleV1 ? { ...Type.button, color: colors.primaryForeground } : { color: colors.primaryForeground, fontWeight: "700", fontSize: 15 }}>Use this</Text>
           </Pressable>
         </View>
         <Pressable
           style={{ borderRadius: Radius.md, paddingVertical: Spacing.md, alignItems: "center" }}
           onPress={() => setPreview(null)}
         >
-          <Text style={{ color: colors.textSecondary, fontWeight: "600" }}>Back to results</Text>
+          <Text style={typeScaleV1 ? { ...Type.button, color: colors.textSecondary } : { color: colors.textSecondary, fontWeight: "600" }}>Back to results</Text>
         </Pressable>
       </View>
       </View>
@@ -2018,9 +2019,7 @@ export default function FoodSearchPanel({
             }}
           >
             <Plus size={16} color={accent.primary} />
-            <Text style={{ fontSize: 14, fontWeight: "700", color: accent.primarySolid }}>
-              Add as custom food
-            </Text>
+            <Text style={typeScaleV1 ? { ...Type.body, fontWeight: "600", color: accent.primarySolid } : { fontSize: 14, fontWeight: "700", color: accent.primarySolid }}>Add as custom food</Text>
           </Pressable>
         ) : null}
         <Pressable

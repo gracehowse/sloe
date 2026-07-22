@@ -153,7 +153,7 @@ function NarrativeStat({
         {label}
       </div>
       <div
-        className="text-[18px] font-bold text-foreground tabular-nums leading-none"
+        className={`${isFeatureEnabled("type_scale_v1") ? "font-[family-name:var(--font-headline)] text-xl font-normal" : "text-[18px] font-bold"} text-foreground tabular-nums leading-none`}
         style={{ letterSpacing: "-0.02em" }}
       >
         {value.toLocaleString()}

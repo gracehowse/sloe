@@ -24,6 +24,7 @@ import { Text, View } from "react-native";
 import { Minus, Plus, PlusCircle, UtensilsCrossed } from "lucide-react-native";
 
 import { FontFamily, Radius, Spacing, Type } from "@/constants/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { PressableScale } from "@/components/ui/PressableScale";
@@ -58,6 +59,9 @@ export function RecipeServingsFooter({
   const colors = useThemeColors();
   // Secondary accent (Frost flag → damson, else clay) for the Cook Mode CTA.
   const accent = useAccent();
+  // type_scale_v1 — Cook Mode + Log pill labels move onto Type.button;
+  // flag-OFF keeps the legacy hand-rolled bodyLarge+700 assembly.
+  const typeScaleV1 = isFeatureEnabled("type_scale_v1");
 
   const roundBtn = (enabled: boolean) => ({
     width: 32,
@@ -164,10 +168,14 @@ export function RecipeServingsFooter({
           <UtensilsCrossed size={18} color={accent.primarySolid} />
           <Text
             style={{
-              fontFamily: Type.bodyLarge.fontFamily,
-              fontSize: Type.bodyLarge.fontSize,
-              lineHeight: Type.bodyLarge.lineHeight,
-              fontWeight: "700",
+              ...(typeScaleV1
+                ? Type.button
+                : {
+                    fontFamily: Type.bodyLarge.fontFamily,
+                    fontSize: Type.bodyLarge.fontSize,
+                    lineHeight: Type.bodyLarge.lineHeight,
+                    fontWeight: "700",
+                  }),
               color: accent.primarySolid,
             }}
           >
@@ -188,10 +196,14 @@ export function RecipeServingsFooter({
             <PlusCircle size={18} color="#fff" />
             <Text
               style={{
-                fontFamily: Type.bodyLarge.fontFamily,
-                fontSize: Type.bodyLarge.fontSize,
-                lineHeight: Type.bodyLarge.lineHeight,
-                fontWeight: "700",
+                ...(typeScaleV1
+                  ? Type.button
+                  : {
+                      fontFamily: Type.bodyLarge.fontFamily,
+                      fontSize: Type.bodyLarge.fontSize,
+                      lineHeight: Type.bodyLarge.lineHeight,
+                      fontWeight: "700",
+                    }),
                 color: "#fff",
               }}
             >

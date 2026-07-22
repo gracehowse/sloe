@@ -49,7 +49,7 @@ export function StepHeader({
         // overline is a calm muted-ink label, not a primary-tinted
         // shout. The clay accent is reserved for the CTA + selected
         // states per the Sloe three-role colour law.
-        <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground-tertiary mb-2.5">
+        <div className="text-xs font-semibold uppercase tracking-[0.12em] text-foreground-tertiary mb-2.5">
           {overline}
         </div>
       )}
@@ -61,7 +61,7 @@ export function StepHeader({
       <h1
         className={cn(
           "font-[family-name:var(--font-headline)] font-medium tracking-tight text-foreground-brand leading-tight m-0",
-          compact ? "text-[24px]" : "text-[28px]",
+          compact ? "text-2xl" : "text-3xl",
         )}
         style={{ textWrap: "balance" } as React.CSSProperties}
       >

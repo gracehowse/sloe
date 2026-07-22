@@ -908,14 +908,14 @@ export default function CreateRecipeScreen() {
       paddingHorizontal: Spacing.xl, paddingTop: Spacing.md,
     },
     // Gap 7 (sev 3): redesign submit is a FILLED primary (dark #1B1814-style
-    // ink slab matching the Recipe Detail "Log all" footer), 52pt, serif label.
-    // A final-commit CTA must read as primary, not a ghost outline.
+    // ink slab matching Recipe Detail's "Log all" footer), 52pt, sans Type.button
+    // label (2026-06-12 button-system: CTAs aren't serif). Primary, not ghost.
     saveBtn: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
       gap: Spacing.sm, backgroundColor: accentInk,
       borderRadius: Radius.xl, minHeight: 52, paddingVertical: Spacing.md,
     },
-    saveBtnText: { ...Type.headline, color: colors.primaryForeground, fontWeight: "600" },
+    saveBtnText: { ...Type.button, color: colors.primaryForeground },
     // Legacy submit — aubergine OUTLINE (flag-off path).
     saveBtnLegacy: {
       flexDirection: "row", alignItems: "center", justifyContent: "center",
@@ -1258,8 +1258,8 @@ export default function CreateRecipeScreen() {
           (not absolutely positioned) so it can never overlap scrollable rows.
           We measure its height via onLayout so the ScrollView reserves matching
           bottom padding. Gap 7 (sev 3): redesign submit is a FILLED primary
-          (dark ink slab matching Recipe Detail's "Log all" footer, serif label);
-          legacy is the aubergine outline. */}
+          (dark ink slab matching Recipe Detail's "Log all" footer, sans
+          `Type.button` label); legacy is the aubergine outline. */}
       <View
         style={[styles.footer, { paddingBottom: insets.bottom + Spacing.md }]}
         onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}

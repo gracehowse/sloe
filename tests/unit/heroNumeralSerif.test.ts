@@ -49,6 +49,36 @@ const SERIF_MOBILE = "fontFamily: FontFamily.serifRegular";
 const SERIF_WEB_HEADLINE = "font-[family-name:var(--font-headline)]";
 const SERIF_WEB_DISPLAY = "font-[family-name:var(--font-display)]";
 
+/**
+ * Mobile serif can be expressed two ways, both Newsreader:
+ *   1. the raw `fontFamily: FontFamily.serifRegular` literal, or
+ *   2. a named `Type.*` ramp token whose definition points at
+ *      `FontFamily.serif*` (statValue/title/headline/heroValue/cardHeroValue/
+ *      ringValue/display/screenTitle/navTitle/pageTitle — verified serif in
+ *      `apps/mobile/constants/theme.ts`).
+ * ENG-1002's font-consistency sweep migrated several hero numerals from (1)
+ * onto (2); the rendered face is unchanged. This matcher recognises both so
+ * the test still guards "the numeral reads serif" without pinning the exact
+ * mechanism. A migration to a SANS token (body/button/caption/macroValue…)
+ * would contain none of these markers and correctly fail.
+ */
+const SERIF_MOBILE_MARKERS = [
+  SERIF_MOBILE,
+  "Type.statValue",
+  "Type.title",
+  "Type.headline",
+  "Type.heroValue",
+  "Type.cardHeroValue",
+  "Type.ringValue",
+  "Type.display",
+  "Type.screenTitle",
+  "Type.navTitle",
+  "Type.pageTitle",
+];
+function containsSerifMobile(src: string): boolean {
+  return SERIF_MOBILE_MARKERS.some((m) => src.includes(m));
+}
+
 describe("SLOE hero numerals — mobile reads serif (Newsreader)", () => {
   it("TrajectoryCard projected-kg hero is serif, no sans 800, kg stays sans", () => {
     const src = read("apps/mobile/components/progress/TrajectoryCard.tsx");
@@ -117,7 +147,8 @@ describe("SLOE hero numerals — mobile reads serif (Newsreader)", () => {
     // there now.
     const src = read("apps/mobile/components/today/TodayWeekSummaryStats.tsx");
     // All three big stat numerals converted; none should carry sans 800.
-    expect(src).toContain(SERIF_MOBILE);
+    // ENG-1002 moved these onto the serif `Type.title` ramp token.
+    expect(containsSerifMobile(src), "TodayWeekSummaryStats serif numerals").toBe(true);
     // The Total/Daily/Net stat numerals are the only fontSize: 24 + tabular
     // numbers on this surface; ensure no `fontSize: 24` numeral keeps 800.
     const big24 = src
@@ -136,22 +167,26 @@ describe("SLOE hero numerals — mobile reads serif (Newsreader)", () => {
     // The serif <Text> opens on the line above the `{timeline.daysToGoal}`
     // numeral; the nested " days to goal" label stays sans on the numeral line.
     const block = blockAround(src, "{timeline.daysToGoal}<Text", 1, 0);
-    expect(block).toContain("FontFamily.serifRegular");
+    // ENG-1002 moved the numeral onto the serif `Type.statValue` ramp token.
+    expect(containsSerifMobile(block), "days-to-goal serif numeral").toBe(true);
     expect(block).toContain("FontFamily.sansMedium");
   });
 
   it("WeeklyCheckinModal suggested-target hero is serif (no sans 800)", () => {
     const src = read("apps/mobile/components/today/WeeklyCheckinModal.tsx");
-    expect(src).toContain(SERIF_MOBILE);
+    // ENG-1002 moved the suggested-target numeral onto serif `Type.statValue`.
+    expect(containsSerifMobile(src), "WeeklyCheckinModal serif numeral").toBe(true);
   });
 
   it("GoalPace slider + sheets hero numerals are serif", () => {
     const slider = read("apps/mobile/components/recap/GoalPaceSlider.tsx");
     const editor = read("apps/mobile/components/recap/GoalPaceEditorSheet.tsx");
     const retune = read("apps/mobile/components/recap/GoalPaceRetuneSheet.tsx");
-    expect(slider).toContain(SERIF_MOBILE);
-    expect(editor).toContain(SERIF_MOBILE);
-    expect(retune).toContain(SERIF_MOBILE);
+    // Slider keeps the raw literal; editor + retune moved onto serif
+    // `Type.statValue` (ENG-1002). All three still render Newsreader.
+    expect(containsSerifMobile(slider), "GoalPaceSlider serif numeral").toBe(true);
+    expect(containsSerifMobile(editor), "GoalPaceEditorSheet serif numeral").toBe(true);
+    expect(containsSerifMobile(retune), "GoalPaceRetuneSheet serif numeral").toBe(true);
   });
 
   it("onboarding ruler + stepper + pace + reveal hero numerals are serif", () => {

@@ -47,10 +47,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useAccent } from "@/context/theme";
-import { track } from "@/lib/analytics";
+import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import Badge from "./Badge";
 
@@ -114,6 +114,8 @@ export default function AiPaywallSheet({
 }: AiPaywallSheetProps) {
   // Secondary accent (Frost flag → damson, else clay) for the upgrade CTA.
   const accent = useAccent();
+  // ENG-1002/type_scale_v1 — whole-app font-family + size consistency gate.
+  const typeScaleV1 = isFeatureEnabled("type_scale_v1");
   const insets = useSafeAreaInsets();
   const copy = FEATURE_COPY[feature];
   const titleRef = useRef<Text | null>(null);
@@ -286,7 +288,7 @@ export default function AiPaywallSheet({
               justifyContent: "center",
             }}
           >
-            <Text style={{ fontSize: 15, fontWeight: "700", color: colors.primaryForeground }}>
+            <Text style={typeScaleV1 ? { ...Type.button, color: colors.primaryForeground } : { fontSize: 15, fontWeight: "700", color: colors.primaryForeground }}>
               See Pro plans
             </Text>
           </PressableScale>
@@ -305,11 +307,15 @@ export default function AiPaywallSheet({
             }}
           >
             <Text
-              style={{
-                fontSize: 14,
-                fontWeight: "600",
-                color: colors.textSecondary,
-              }}
+              style={
+                typeScaleV1
+                  ? { ...Type.button, color: colors.textSecondary }
+                  : {
+                      fontSize: 14,
+                      fontWeight: "600",
+                      color: colors.textSecondary,
+                    }
+              }
             >
               Not now
             </Text>

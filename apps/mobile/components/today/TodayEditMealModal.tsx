@@ -448,7 +448,7 @@ function EditEntryV2(props: TodayEditMealModalProps) {
                 accessibilityLabel="Save changes"
                 style={[v2.saveBtn, { borderColor: accent.primarySolid }]}
               >
-                <Text style={{ color: accent.primarySolid, ...Type.headline }}>Save changes</Text>
+                <Text style={{ color: accent.primarySolid, ...Type.button }}>Save changes</Text>
               </PressableScale>
             </View>
             </View>

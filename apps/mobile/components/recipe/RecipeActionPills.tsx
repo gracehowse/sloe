@@ -34,7 +34,8 @@
 import { Text, View } from "react-native";
 import { Pencil, PlusCircle } from "lucide-react-native";
 
-import { FontFamily, Spacing } from "@/constants/theme";
+import { FontFamily, Spacing, Type } from "@/constants/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { useAccent } from "@/context/theme";
 import { SupprButton } from "@/components/ui/SupprButton";
 
@@ -61,11 +62,13 @@ export function RecipeActionPills({
   // "Log" CTA's solid fill + white label come from SupprButton variant="primary".
   const accent = useAccent();
 
-  const pillLabel = {
-    fontFamily: FontFamily.sansSemibold,
-    fontSize: 14,
-    fontWeight: "700" as const,
-  };
+  const pillLabel = isFeatureEnabled("type_scale_v1")
+    ? { ...Type.button }
+    : {
+        fontFamily: FontFamily.sansSemibold,
+        fontSize: 14,
+        fontWeight: "700" as const,
+      };
 
   // ENG-1247 — in flag-ON (Log-in-footer) mode the row is purely the owner
   // Edit pill; for a non-owner there is nothing to show, so skip the row.

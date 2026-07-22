@@ -66,7 +66,7 @@ import {
   markNotificationsPromptDismissed,
   registerExpoPushTokenForUser,
 } from "@/lib/expoPushToken";
-import { track } from "@/lib/analytics";
+import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
@@ -324,7 +324,7 @@ function AppleHealthCard({ userId }: { userId: string | null }) {
           {busy ? (
             <ActivityIndicator color={accent.primaryForeground} size="small" />
           ) : (
-            <Text style={{ color: accent.primaryForeground, fontSize: 13, fontWeight: "700" }}>
+            <Text style={{ color: accent.primaryForeground, ...(isFeatureEnabled("type_scale_v1") ? Type.button : { fontSize: 13, fontWeight: "700" }) }}>
               Allow Health access
             </Text>
           )}
@@ -419,7 +419,7 @@ function NotificationsCard({ userId }: { userId: string | null }) {
           {busy ? (
             <ActivityIndicator color={accent.primaryForeground} size="small" />
           ) : (
-            <Text style={{ color: accent.primaryForeground, fontSize: 13, fontWeight: "700" }}>
+            <Text style={{ color: accent.primaryForeground, ...(isFeatureEnabled("type_scale_v1") ? Type.button : { fontSize: 13, fontWeight: "700" }) }}>
               Turn on
             </Text>
           )}

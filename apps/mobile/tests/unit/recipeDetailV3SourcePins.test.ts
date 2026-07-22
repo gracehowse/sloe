@@ -70,8 +70,11 @@ describe("mobile recipe-detail — kcal lives in the macro strip CAL column (ENG
   it("the CAL value renders in the Newsreader serif + tabular-nums + plum (calories token)", () => {
     // The CAL number is the macro-strip value: serif 24px, tabular-nums, plum
     // (the aubergine `navPrimary` token), NOT the retired 17-pt sans headline.
-    expect(MACRO_STRIP).toMatch(/fontFamily:\s*FontFamily\.serifRegular/);
-    expect(MACRO_STRIP).toMatch(/fontSize:\s*24/);
+    // Font-consistency sweep (ENG-1630): the hand-duplicated
+    // `fontFamily: FontFamily.serifRegular, fontSize: 24, lineHeight: 28,
+    // fontWeight: "400"` literal was replaced by the canonical `Type.title`
+    // token, which resolves to those exact same values (plus letterSpacing).
+    expect(MACRO_STRIP).toMatch(/\.\.\.Type\.title/);
     expect(MACRO_STRIP).toMatch(/fontVariant:\s*\["tabular-nums"\]/);
     // calories column colour comes from the plum token, not a hardcoded hex.
     // ENG-1223: `macroValueColor` is now scheme-aware (takes `isDark`); calories
@@ -175,8 +178,10 @@ describe("mobile recipe-detail — macro summary is the ENG-920 flat Figma 332:2
   });
 
   it("strip values render in the Newsreader serif at 24px (not the old sans bold tile)", () => {
-    expect(MACRO_STRIP).toContain("FontFamily.serifRegular");
-    expect(MACRO_STRIP).toContain("fontSize: 24");
+    // Font-consistency sweep (ENG-1630): pinned via the `Type.title` token
+    // (serifRegular/24/28/400) rather than a hand-duplicated literal — see
+    // the token definition in constants/theme.ts.
+    expect(MACRO_STRIP).toContain("...Type.title");
     // Flat strip: NO per-macro progress-bar fill (the old `width: %` bar).
     expect(MACRO_STRIP).not.toMatch(/width:\s*`\$\{Math\.min\(/);
     // Column dividers via borderLeft (the strip column rule).

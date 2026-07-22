@@ -228,6 +228,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
   // ENG-1506 — balanced-band wording + empty-headline state + maintenance
   // qualifier, gated together; off → the exact legacy card.
   const energyV1 = isFeatureEnabled(ENERGY_NUMBERS_V1_FLAG);
+  const typeScaleV1 = isFeatureEnabled("type_scale_v1"); // whole-app font-scale gate; off → exact legacy sizes
   const net = totalBurnKcal - consumedCalories;
   const isDeficit = net >= 0;
   const chipState = netEnergyChipState(net);
@@ -404,7 +405,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
         {emptyHeadline ? (
           <>
             {/* ENG-1506 — empty state: em-dash on the Type ramp, no 52px zero. */}
-            <Text testID="today-activity-bonus-net-headline" style={{ ...Type.display, color: textSecondaryColor }}>
+            <Text testID="today-activity-bonus-net-headline" style={{ ...(typeScaleV1 ? Type.cardHeroValue : Type.display), color: textSecondaryColor }}>
               {NET_ENERGY_EMPTY_HEADLINE}
             </Text>
             <Text style={{ fontSize: 13, color: textTertiaryColor, marginTop: 8, marginBottom: Spacing.md }}>
@@ -417,9 +418,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
           <Text
             testID="today-activity-bonus-net-headline"
             style={{
-              fontFamily: FontFamily.serifRegular,
-              fontSize: 52,
-              lineHeight: 52,
+              ...(typeScaleV1 ? Type.cardHeroValue : { fontFamily: FontFamily.serifRegular, fontSize: 52, lineHeight: 52 }),
               color: netHeadlineColor,
               fontVariant: ["tabular-nums"],
             }}
@@ -524,7 +523,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
               Burned
             </Text>
           </View>
-          <Text style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}>
+          <Text style={{ ...(typeScaleV1 ? Type.statValue : Type.headline), color: textColor, fontVariant: ["tabular-nums"] }}>
             {totalBurnKcal.toLocaleString()}
           </Text>
         </View>
@@ -537,7 +536,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
               Eaten
             </Text>
           </View>
-          <Text style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}>
+          <Text style={{ ...(typeScaleV1 ? Type.statValue : Type.headline), color: textColor, fontVariant: ["tabular-nums"] }}>
             {consumedCalories.toLocaleString()}
           </Text>
         </View>
@@ -555,7 +554,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
                   Maintenance
                 </Text>
               </View>
-              <Text style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}>
+              <Text style={{ ...(typeScaleV1 ? Type.statValue : Type.headline), color: textColor, fontVariant: ["tabular-nums"] }}>
                 {maintenanceTdeeKcal!.toLocaleString()}
               </Text>
               {/* ENG-1506 — explicit source qualifier under the kcal. */}
@@ -573,7 +572,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
       </View>
 
       {effectiveCalorieGoal > 0 && (
-        <Text style={{ fontSize: 11, color: textSecondaryColor, marginBottom: Spacing.sm, textAlign: "center" }}>
+        <Text style={{ ...Type.caption, color: textSecondaryColor, marginBottom: Spacing.sm, textAlign: "center" }}>
           Calorie goal {isToday ? "today" : "for this day"} ·{" "}
           <Text style={{ color: textColor, fontWeight: "600" }}>{effectiveCalorieGoal.toLocaleString()} kcal</Text>
         </Text>
@@ -603,7 +602,7 @@ function TodayActivityBonusCardImpl(props: TodayActivityBonusCardProps) {
                 <Flame size={IconSize.lg} color={Accent.activity} strokeWidth={2} />
                 <Text
                   testID="today-burn-card-headline"
-                  style={{ ...Type.headline, color: textColor, fontVariant: ["tabular-nums"] }}
+                  style={{ ...(typeScaleV1 ? Type.heroValue : Type.headline), color: textColor, fontVariant: ["tabular-nums"] }}
                 >
                   {(basalBurnKcal + (activityBurnKcal ?? 0)).toLocaleString()}
                 </Text>

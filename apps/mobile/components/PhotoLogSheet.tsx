@@ -173,6 +173,7 @@ export default function PhotoLogSheet({
   // correction loop takes. Reset on each fresh open + on re-analyse.
   const [refineRound, setRefineRound] = useState(1);
   const refineEnabled = isFeatureEnabled("log_refine_describe_v1");
+  const typeScaleV1 = isFeatureEnabled("type_scale_v1"); // ENG-1002 — whole-app font-scale gate
   /** Snapshot of the AI's items in `AiLoggedItem` form so the photo-
    *  corrections-persist helper can diff user edits at commit time
    *  (the helper expects that shape). Stored as a ref because we
@@ -893,9 +894,7 @@ export default function PhotoLogSheet({
                   borderRadius: Radius.md,
                 }}
               >
-                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.text }}>
-                  {stage === "review" ? "Back" : "Cancel"}
-                </Text>
+                <Text style={typeScaleV1 ? { ...Type.button, color: colors.text } : { fontSize: 14, fontWeight: "600", color: colors.text }}>{stage === "review" ? "Back" : "Cancel"}</Text>
               </Pressable>
               {stage === "pick" && (
                 <Pressable
@@ -911,7 +910,7 @@ export default function PhotoLogSheet({
                     backgroundColor: asset ? accent.primary : colors.cardBorder,
                   }}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Analyse</Text>
+                  <Text style={typeScaleV1 ? { ...Type.button, color: colors.primaryForeground } : { fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Analyse</Text>
                 </Pressable>
               )}
               {stage === "error" && (
@@ -927,7 +926,7 @@ export default function PhotoLogSheet({
                     backgroundColor: accent.primary,
                   }}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Try again</Text>
+                  <Text style={typeScaleV1 ? { ...Type.button, color: colors.primaryForeground } : { fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Try again</Text>
                 </Pressable>
               )}
               {stage === "review" && (
@@ -944,9 +943,7 @@ export default function PhotoLogSheet({
                     backgroundColor: items.length === 0 ? colors.cardBorder : accent.primary,
                   }}
                 >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>
-                    Save to today
-                  </Text>
+                  <Text style={typeScaleV1 ? { ...Type.button, color: colors.primaryForeground } : { fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Save to today</Text>
                 </Pressable>
               )}
             </View>

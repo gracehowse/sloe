@@ -105,7 +105,7 @@ export function SupprButton({
         }
         onClick?.(e);
       }}
-      className={cn("font-semibold", SIZE_CLASSES[size], VARIANT_CLASSES[variant], className)}
+      className={cn("font-body font-semibold", SIZE_CLASSES[size], VARIANT_CLASSES[variant], className)}
       {...rest}
     >
       {loading ? (

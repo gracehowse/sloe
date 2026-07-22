@@ -158,7 +158,7 @@ function PermissionCard({
           {icon}
         </div>
         <div className="flex-1">
-          <div className="text-[15px] font-bold text-foreground tracking-tight">
+          <div className="text-base font-bold text-foreground tracking-tight">
             {title}
           </div>
           <div className="text-xs text-muted-foreground mt-1 leading-relaxed">

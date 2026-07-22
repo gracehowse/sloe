@@ -90,7 +90,7 @@ export function UpgradeStep() {
       <div className="flex items-center gap-3.5 rounded-card border border-border bg-card p-4">
         <Sparkles className="size-5 shrink-0 text-primary" aria-hidden />
         <div className="flex-1 min-w-0">
-          <div className="font-semibold text-foreground tracking-tight leading-snug text-[15px]">
+          <div className="font-semibold text-foreground tracking-tight leading-snug text-base">
             7-day free trial
           </div>
           <div className="text-xs text-muted-foreground mt-0.5 leading-snug">

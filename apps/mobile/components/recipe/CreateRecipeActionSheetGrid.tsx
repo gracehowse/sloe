@@ -12,6 +12,7 @@ import {
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
+import { isFeatureEnabled } from "@/lib/analytics";
 
 type GoFn = (pathname: string, params?: Record<string, string>) => void;
 
@@ -215,7 +216,11 @@ function SourceTile({
       <View style={{ gap: Spacing.xs }}>
         <Text
           style={{
-            ...(primary ? Type.headline : Type.bodyMuted),
+            ...(isFeatureEnabled("type_scale_v1")
+              ? Type.button // all four source tiles share one control label
+              : primary
+                ? Type.button
+                : Type.bodyMuted),
             color: colors.text,
           }}
         >

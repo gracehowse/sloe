@@ -106,7 +106,7 @@ export function DietStep() {
               // NO border; unselected = quiet `bg-card` + muted label, NO
               // border. Was `bg-primary/15`+`border-primary` selected /
               // `border-border` unselected.
-              className={`px-3.5 py-2 rounded-full text-[13px] transition-pm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+              className={`px-3.5 py-2 rounded-full text-sm transition-pm cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
                 on
                   ? "bg-primary-soft text-primary-solid font-semibold"
                   : "bg-card text-muted-foreground font-medium hover:bg-muted/60"

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { StyleSheet, Text, View, type ViewStyle } from "react-native";
-import { Radius, Spacing } from "@/constants/theme";
+import { Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -63,9 +63,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.full,
   },
   label: {
-    fontSize: 11,
-    fontWeight: "500",
-    lineHeight: 14,
+    ...Type.caption,
   },
 });
 

@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Camera, Clock, Plus, ScanBarcode, Sparkles, type LucideIcon } from "lucide-react";
 
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import type { FoodHistoryItem } from "../../../lib/nutrition/foodHistory";
 
 /** Source → chip glyph (prototype `srcChip` map). Plain recents use the clock. */
@@ -31,10 +32,21 @@ export interface TodayRecentsRowProps {
  */
 export function TodayRecentsRow({ recents, onReLog, onOpenAll }: TodayRecentsRowProps) {
   const items = recents.slice(0, 6);
+  // type_scale_v1 (visible-resize, ENG font-consistency sweep): 18px → 24px
+  // + brand ink; off = legacy 18px foreground (kill switch).
+  const typeScaleV1 = isFeatureEnabled("type_scale_v1");
   return (
     <div className="mt-5">
       <div className="mb-2 flex items-center justify-between">
-        <h2 className="font-[family-name:var(--font-headline)] text-[18px] text-foreground">Quick add</h2>
+        <h2
+          className={
+            typeScaleV1
+              ? "font-[family-name:var(--font-headline)] text-2xl font-medium text-foreground-brand"
+              : "font-[family-name:var(--font-headline)] text-[18px] text-foreground"
+          }
+        >
+          Quick add
+        </h2>
         <button
           type="button"
           onClick={onOpenAll}

@@ -7,7 +7,7 @@ import { SupprButton } from "@/components/ui/SupprButton";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { track } from "@/lib/analytics";
+import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { supabase } from "@/lib/supabase";
 import { cancelWeeklyRecapPush } from "@/lib/weeklyRecapPush";
@@ -39,6 +39,7 @@ export function WeeklyRecapPushPicker({
   const colors = useThemeColors();
   const accent = useAccent();
   const insets = useSafeAreaInsets();
+  const typeScaleV1Enabled = isFeatureEnabled("type_scale_v1");
 
   return (
     <Modal
@@ -113,7 +114,12 @@ export function WeeklyRecapPushPicker({
             }}
           >
             <View style={{ flex: 1, paddingRight: Spacing.md }}>
-              <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text }}>
+              <Text
+                style={{
+                  ...(typeScaleV1Enabled ? Type.captionStrong : { fontSize: 15, fontWeight: "600" }),
+                  color: colors.text,
+                }}
+              >
                 Send weekly recap
               </Text>
               <Text

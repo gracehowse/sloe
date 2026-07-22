@@ -87,17 +87,23 @@ export function FoodSearchFeedItem({
   // ENG-1532 — component grammar dedup. ON → the unified plain-row grammar;
   // OFF → the ENG-814 grouped-card render below, byte-intact (kill switch).
   const grammarDedup = isFeatureEnabled("component_grammar_dedup");
+  // ENG-1002/type_scale_v1 — whole-app font-family + size consistency gate.
+  const typeScaleV1 = isFeatureEnabled("type_scale_v1");
 
   if (item.kind === "header") {
     return (
       <Text
         testID={`food-search-section-${item.label === "Best matches" ? "best" : "more"}`}
         style={{
-          fontSize: 11,
-          fontWeight: "800",
-          letterSpacing: 0.6,
-          color: colors.textTertiary,
-          textTransform: "uppercase",
+          ...(typeScaleV1
+            ? { ...Type.label, color: colors.textTertiary }
+            : {
+                fontSize: 11,
+                fontWeight: "800",
+                letterSpacing: 0.6,
+                color: colors.textTertiary,
+                textTransform: "uppercase",
+              }),
           marginTop: Spacing.md,
           marginBottom: Spacing.sm,
           // Mirrors the pre-extraction 2px optical inset (half the xs step —

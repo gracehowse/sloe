@@ -369,7 +369,7 @@ export function Targets({ onNavigate, onBack, onEdit }: TargetsProps) {
 
       {/* Title + subtitle */}
       <div className="mb-5">
-        <h1 className="text-[24px] md:text-[28px] font-bold text-foreground -tracking-[0.02em]">
+        <h1 className={isFeatureEnabled("type_scale_v1") ? "screen-title text-foreground" : "text-[24px] md:text-[28px] font-bold text-foreground -tracking-[0.02em]"}>
           Targets
         </h1>
         <p className="text-[13px] text-muted-foreground mt-1">

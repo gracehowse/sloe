@@ -15,7 +15,7 @@
  */
 import { Text, View } from "react-native";
 
-import { FontFamily, Spacing, Type } from "@/constants/theme";
+import { Spacing, Type } from "@/constants/theme";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { macroColorFor } from "@/lib/macroColors";
 import { useResolvedScheme } from "@/context/theme";
@@ -90,10 +90,7 @@ export function RecipeMacroStrip({
         >
           <Text
             style={{
-              fontFamily: FontFamily.serifRegular,
-              fontSize: 24,
-              lineHeight: 28,
-              fontWeight: "400",
+              ...Type.title,
               color: macroValueColor(cell.key, colors.navPrimary, isDark),
               fontVariant: ["tabular-nums"],
             }}

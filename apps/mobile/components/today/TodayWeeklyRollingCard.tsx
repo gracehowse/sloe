@@ -71,7 +71,7 @@ export function TodayWeeklyRollingCard({
             marginTop: i === 0 ? 0 : Spacing.sm,
           }}
         >
-          <Text style={{ fontSize: 14, color: textSecondaryColor }}>{row.label}</Text>
+          <Text style={{ ...Type.body, color: textSecondaryColor }}>{row.label}</Text>
           <Text style={{ ...Type.headline, color: valueColor, fontVariant: ["tabular-nums"] }}>
             {row.value}
           </Text>

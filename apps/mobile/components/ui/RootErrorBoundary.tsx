@@ -128,7 +128,7 @@ export class RootErrorBoundary extends React.Component<Props, State> {
             opacity: pressed ? 0.85 : 1,
           })}
         >
-          <Text style={{ color: Accent.primaryForeground, ...Type.headline }}>Try again</Text>
+          <Text style={{ color: Accent.primaryForeground, ...Type.button }}>Try again</Text>
         </Pressable>
         {this.state.resets >= 2 ? (
           <Text

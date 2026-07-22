@@ -289,9 +289,10 @@ describe("ENG-920 (resolved 2026-06-07) — recipe-detail macro summary is the F
     // Re-pinned 2026-06-09: the mobile strip is the extracted `RecipeMacroStrip`
     // component (testID `recipe-macros-grid` lives there now).
     expect(MOBILE_MACRO_STRIP).toContain('testID="recipe-macros-grid"');
-    // Serif Newsreader value at the Figma 24px size.
-    expect(MOBILE_MACRO_STRIP).toContain("FontFamily.serifRegular");
-    expect(MOBILE_MACRO_STRIP).toContain("fontSize: 24");
+    // Serif Newsreader value at the Figma 24px size — now via the named
+    // `Type.title` ramp token (ENG-1002), which IS FontFamily.serifRegular /
+    // fontSize 24 in theme.ts, so the numeral still reads Newsreader at 24px.
+    expect(MOBILE_MACRO_STRIP).toContain("Type.title");
     // Column dividers via borderLeft (the flat-strip column rule).
     expect(MOBILE_MACRO_STRIP).toContain("borderLeftWidth");
     // No per-macro progress-bar fill in the strip (the old `width: %` bar).

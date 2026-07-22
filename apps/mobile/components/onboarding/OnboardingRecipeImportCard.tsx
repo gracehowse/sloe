@@ -13,7 +13,7 @@ import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useAuth } from "@/context/auth";
 import { authedFetch } from "@/lib/authedFetch";
-import { track } from "@/lib/analytics";
+import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import {
   saveImportedRecipe,
@@ -48,6 +48,7 @@ export function MobileOnboardingRecipeImportCard() {
   const userId = session?.user?.id ?? null;
   const { set } = useOnboarding();
   const base = apiBase();
+  const typeScaleV1Enabled = isFeatureEnabled("type_scale_v1");
 
   const runImport = React.useCallback(
     async (url: string) => {
@@ -258,7 +259,12 @@ export function MobileOnboardingRecipeImportCard() {
               opacity: !flow.url.trim() ? 0.5 : pressed ? 0.85 : 1,
             })}
           >
-            <Text style={{ color: accent.primaryForeground, fontSize: 13, fontWeight: "700" }}>
+            <Text
+              style={{
+                color: accent.primaryForeground,
+                ...(typeScaleV1Enabled ? Type.button : { fontSize: 13, fontWeight: "700" }),
+              }}
+            >
               {flow.url.trim() ? "Import this recipe" : "Paste a link to import"}
             </Text>
           </Pressable>

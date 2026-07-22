@@ -6,6 +6,7 @@ import { Download, Settings as SettingsIcon, X } from "lucide-react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 
 /**
@@ -53,6 +54,7 @@ export function CancelExportPromptSheet({
   exporting = false,
 }: CancelExportPromptSheetProps) {
   const colors = useThemeColors();
+  const typeScaleV1Enabled = isFeatureEnabled("type_scale_v1");
 
   return (
     <Modal
@@ -163,8 +165,7 @@ export function CancelExportPromptSheet({
               <View style={{ flex: 1 }}>
                 <Text
                   style={{
-                    fontSize: 14,
-                    fontWeight: "700",
+                    ...(typeScaleV1Enabled ? Type.captionStrong : { fontSize: 14, fontWeight: "700" }),
                     color: colors.text,
                   }}
                 >
@@ -220,8 +221,7 @@ export function CancelExportPromptSheet({
               <View style={{ flex: 1 }}>
                 <Text
                   style={{
-                    fontSize: 14,
-                    fontWeight: "700",
+                    ...(typeScaleV1Enabled ? Type.captionStrong : { fontSize: 14, fontWeight: "700" }),
                     color: colors.text,
                   }}
                 >

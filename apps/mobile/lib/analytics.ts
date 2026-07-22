@@ -715,6 +715,15 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // is the kill switch if mobile misbehaves. Off → S13 card closes the sheet
   // (kill switch). Web + mobile — keep in sync with src/lib/analytics/track.ts.
   "log_session_tray_v1",
+  // Whole-app font-family + size consistency gate: adopts `Type.cardHeroValue`
+  // (36px serif, one card-payoff numeral tier below `ringValue` 48) and the
+  // rest of the `Type` ramp on card-hero / stat-tile numerals + CTA labels
+  // that currently render off-ramp or larger than the ring's own centre value.
+  // DEFAULT-ON per the beta-window "always flag on" policy; off → every gated
+  // surface keeps its exact pre-existing font size/family (kill switch). No
+  // Linear ticket yet — file one before flag cleanup. Keep in sync with
+  // src/lib/analytics/track.ts.
+  "type_scale_v1",
 ]);
 
 /**
@@ -857,8 +866,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
  * `expenditure_trend_card` (ENG-953); the "always flag on" batch (ENG-1279,
  * 2026-06-30): `progress_plateau_insight_v1` (ENG-954), `weigh_in_reminder_v1`
- * (ENG-955), `portion_fit_hint_v1` (ENG-854); and `import_magic_moment`
- * (ENG-728) + `paywall_trajectory_chart_v1` (ENG-969).
+ * (ENG-955), `portion_fit_hint_v1` (ENG-854); `import_magic_moment`
+ * (ENG-728) + `paywall_trajectory_chart_v1` (ENG-969); and `type_scale_v1`
+ * (ENG-1002 — the whole-app font-family + size consistency gate).
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "logsheet_ai_method_tooltip",

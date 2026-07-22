@@ -140,7 +140,7 @@ export function PaceStep() {
                   : "bg-card text-foreground hover:bg-muted/60"
               }`}
             >
-              <span className="text-[13px] font-bold tracking-tight">
+              <span className="text-sm font-bold tracking-tight">
                 {p.label}
               </span>
               <span className="text-[10px] text-muted-foreground tabular-nums">
@@ -263,7 +263,7 @@ function ProjectionTile({
             serif display face (matching the rate numeral above + mobile pace);
             the `kcal` unit stays sans. */}
         <div
-          className="font-[family-name:var(--font-display)] text-[22px] font-normal tracking-tight tabular-nums leading-none text-foreground"
+          className="font-[family-name:var(--font-display)] text-xl font-normal tracking-tight tabular-nums leading-none text-foreground"
           style={{ letterSpacing: "-0.02em" }}
         >
           {Math.round(tweenedTarget).toLocaleString()}
@@ -277,7 +277,7 @@ function ProjectionTile({
         {/* SLOE Phase 0: the vs-TDEE hero numeral reads in the Newsreader serif
             display face; the `kcal / day` unit stays sans. */}
         <div
-          className="font-[family-name:var(--font-display)] text-[22px] font-normal tracking-tight tabular-nums leading-none"
+          className="font-[family-name:var(--font-display)] text-xl font-normal tracking-tight tabular-nums leading-none"
           style={{ letterSpacing: "-0.02em", color: accent }}
         >
           {sign}

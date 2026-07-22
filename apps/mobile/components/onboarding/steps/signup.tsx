@@ -7,7 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { supabase } from "@/lib/supabase";
-import { track } from "@/lib/analytics";
+import { isFeatureEnabled, track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { useOnboarding } from "../context";
 import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
@@ -60,6 +60,7 @@ export function MobileSignupStep() {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const appleAvailable = Platform.OS === "ios";
+  const typeScaleV1Enabled = isFeatureEnabled("type_scale_v1");
 
   const onAppleSignIn = React.useCallback(async () => {
     setError(null);
@@ -154,7 +155,12 @@ export function MobileSignupStep() {
           ) : (
             <>
               <Ionicons name="logo-apple" size={18} color={Accent.primaryForeground} />
-              <Text style={{ color: Accent.primaryForeground, fontSize: 15, fontWeight: "700" }}>
+              <Text
+                style={{
+                  color: Accent.primaryForeground,
+                  ...(typeScaleV1Enabled ? Type.button : { fontSize: 15, fontWeight: "700" }),
+                }}
+              >
                 Sign in with Apple
               </Text>
             </>

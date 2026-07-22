@@ -1426,7 +1426,7 @@ export default function ProgressScreen() {
             ) : (<>
             <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: Spacing.dense }}>
               <View style={{ flex: 1 }}>
-                <Text style={{ ...Type.display, fontSize: 30, lineHeight: 34, color: t.text, fontVariant: ["tabular-nums"] }}>
+                <Text style={{ ...(isFeatureEnabled("type_scale_v1") ? Type.cardHeroValue : { ...Type.display, fontSize: 30, lineHeight: 34 }), color: t.text, fontVariant: ["tabular-nums"] }}>
                   {latestWeightKg != null ? fmtW(latestWeightKg) : "—"}
                 </Text>
                 {weekDeltaKg != null && Math.abs(weekDeltaKg) >= 0.05 ? (
@@ -1650,7 +1650,7 @@ export default function ProgressScreen() {
             <View>
               {/* headers census 2026-06-10: hand-rolled eyebrow → Type.label token. */}
               <Text style={{ ...Type.label, color: accent.primarySolid }}>Daily Calories</Text>
-              <Text style={{ ...Type.display, fontSize: 24, lineHeight: 28, color: t.text, marginTop: 4, fontVariant: ["tabular-nums"] }}>
+              <Text style={{ ...(isFeatureEnabled("type_scale_v1") ? Type.cardHeroValue : { ...Type.display, fontSize: 24, lineHeight: 28 }), color: t.text, marginTop: 4, fontVariant: ["tabular-nums"] }}>
                 {weekStats.avgCalories.toLocaleString()}<Text style={{ fontSize: 14, color: t.sub }}> avg</Text>
               </Text>
             </View>
@@ -1809,7 +1809,7 @@ export default function ProgressScreen() {
             </View>
 
             <View style={{ flexDirection: "row", alignItems: "baseline", gap: Spacing.sm, marginBottom: Spacing.sm }}>
-              <Text style={{ ...Type.display, color: showAdaptiveExtras || showMeasuredExtras ? t.green : t.text, fontVariant: ["tabular-nums"] }}>
+              <Text style={{ ...(isFeatureEnabled("type_scale_v1") ? Type.cardHeroValue : Type.display), color: showAdaptiveExtras || showMeasuredExtras ? t.green : t.text, fontVariant: ["tabular-nums"] }}>
                 {resolved.kcal.toLocaleString()}
               </Text>
               <Text style={{ fontSize: 13, color: t.sub }}>kcal/day</Text>
@@ -2002,7 +2002,7 @@ export default function ProgressScreen() {
                       Newsreader serif; the " days to goal" label stays sans. */}
                   <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
                     {timeline.daysToGoal != null ? (
-                      <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 22, color: t.accent, fontVariant: ["tabular-nums"] }}>
+                      <Text style={{ ...Type.statValue, color: t.accent, fontVariant: ["tabular-nums"] }}>
                         {timeline.daysToGoal}<Text style={{ fontFamily: FontFamily.sansMedium, fontSize: 12, fontWeight: "500", color: t.sub }}> days to goal</Text>
                       </Text>
                     ) : timeline.cappedAtMaxDays ? (

@@ -295,13 +295,16 @@ function StatCell({
 }) {
   const valueColor =
     valueTone === "positive" ? "text-success" : "text-foreground";
+  // type_scale_v1 (visible-resize): 18px → text-xl (22px); off = legacy
+  // fixed 18px (kill switch).
+  const statCellSizeClass = isFeatureEnabled("type_scale_v1") ? "text-xl" : "text-[18px]";
   return (
     <div className="min-w-0 text-center px-1">
       <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground truncate">
         {label}
       </div>
       <div
-        className={`mt-1 font-[family-name:var(--font-headline)] text-[18px] font-normal tabular-nums leading-tight ${valueColor}`}
+        className={`mt-1 font-[family-name:var(--font-headline)] ${statCellSizeClass} font-normal tabular-nums leading-tight ${valueColor}`}
       >
         {value}
       </div>

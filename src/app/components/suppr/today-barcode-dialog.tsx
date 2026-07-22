@@ -534,7 +534,7 @@ export function TodayBarcodeDialog(props: TodayBarcodeDialogProps) {
                                 />
                               </div>
                               <div className="flex flex-col items-end shrink-0">
-                                <span className="text-[18px] font-extrabold text-foreground tabular-nums leading-none">
+                                <span className="text-lg font-extrabold text-foreground tabular-nums leading-none">
                                   {scaled.calories}
                                 </span>
                                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 mt-0.5">
