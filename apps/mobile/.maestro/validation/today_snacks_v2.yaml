@@ -1,11 +1,13 @@
 # @cases TC-TODAY-SNACKS-V2
 # @screen today
-# PR #246 — validate flag `today_log_usual_row_v2` on Snacks slot.
+# PR #246 — validate the dedicated Log-usual row on the Snacks slot.
+# Originally gated behind flag `today_log_usual_row_v2`; that flag was
+# collapsed permanently ON 2026-07-22 (ENG-1651) — the dedicated-row
+# layout is now the only code path, no PostHog targeting needed.
 #
 # Prereqs:
 #   - Suppr app installed on the booted sim.
 #   - E2E user signed in (gracemturner@hotmail.co.uk).
-#   - PostHog flag `today_log_usual_row_v2` enabled for this user.
 #   - `npx tsx scripts/e2e-seed-today-snacks.ts` run beforehand so
 #     the user has 1 saved Snacks meal + 2 Snacks entries today.
 #
@@ -62,23 +64,6 @@ name: "today_snacks_v2 — Log-usual row v2 validation (PR 246)"
 - assertVisible:
     text: "Today"
 
-# 2026-05-15: PostHog feature flags are fetched async via /decide on
-# identify, so the first render of Today often reads the flag BEFORE
-# the fetch completes — `isFeatureEnabled('today_log_usual_row_v2')`
-# returns false even when the flag is correctly targeted for this
-# user. To get the v2 layout to render, we need to force a re-mount
-# of TodayMealsSection AFTER flags have loaded. Tapping Plan → back
-# to Today does this cheaply and is robust to layout drift.
-# Coordinates: Plan = 2nd tab (~30%, 96%), Today = 1st tab (~10%, 96%).
-- tapOn:
-    point: "30%,96%"
-- waitForAnimationToEnd:
-    timeout: 2000
-- tapOn:
-    point: "10%,96%"
-- waitForAnimationToEnd:
-    timeout: 2000
-
 # Scroll to the Snacks slot. testID is the canonical locator now.
 # `centerElement: false` because Snacks is at the bottom of the Today
 # scroll content and there isn't enough room below to center it
@@ -93,8 +78,9 @@ name: "today_snacks_v2 — Log-usual row v2 validation (PR 246)"
     centerElement: false
     visibilityPercentage: 50
 
-# Check 1 — header clean: in-header `Log usual` chip MUST NOT exist
-# when flag is on. The flag-off variant has testID `*-in-header-*`.
+# Check 1 — header clean: the legacy in-header `Log usual` chip
+# (testID `*-in-header-*`) must never render — that code path was
+# removed with the flag collapse (ENG-1651).
 - assertNotVisible:
     id: "today-log-usual-pill-in-header-Snacks"
 - takeScreenshot: .maestro/artifacts/today_snacks_v2/01-header-clean

@@ -98,7 +98,6 @@ const GATE_15_SHARED = [
   "ring_empty_macro_parity_v1",
   "log-sheet-slot-selector",
   "today_log_again",
-  "today_log_usual_row_v2",
   "log_sheet_nl_text_v1",
   "recipe_share_card_v1",
   "cook_log_servings_confirm",
@@ -194,4 +193,9 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
   // styling now ships unconditionally, so it's no longer parsed out of either
   // source file and no longer belongs in the "core design-system flags" list
   // above.)
+
+  // (ENG-1651 round 2, slice 3 — `today_log_usual_row_v2` collapsed out of
+  // REDESIGN_DEFAULT_ON and GATE_15_SHARED on both platforms: the flag was
+  // removed entirely and the dedicated "Log usual" row now ships
+  // unconditionally, so it's no longer parsed out of either source file.)
 });

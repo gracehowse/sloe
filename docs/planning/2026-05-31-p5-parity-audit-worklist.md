@@ -5,6 +5,8 @@
 
 All web changes ship behind the named flag with the old path alive in the `else`, per the feature-flag non-negotiable. Parity = match the mobile reference exactly (platform-native deviations allowed: no haptics on web).
 
+**2026-07-22 addendum:** gaps #2, #3, and #30 quote `today_log_usual_row_v2` as a live `isFeatureEnabled` read in `today-meals-section.tsx` — that flag was permanently collapsed on (ENG-1651), so the code citation is now stale (the read no longer exists; behavior is unconditional). The evidence below is left as the original point-in-time audit record, not updated in place.
+
 ## Confirmed gaps
 
 ### [1] P1 · Today win-moment celebration is entirely unwired on web — useWebWinMoment + WinMomentPlayer never mount on the live Today surface (NutritionTracker.tsx)

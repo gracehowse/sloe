@@ -264,7 +264,7 @@ testID-driven, and run against a known-seeded fixture. Built for the
 
 | Flow | Validates | Seed |
 |---|---|---|
-| `validation/today_snacks_v2.yaml` | PR #246 — flag `today_log_usual_row_v2` Snacks header relayout | `npm run e2e:seed:today-snacks` |
+| `validation/today_snacks_v2.yaml` | PR #246 — Snacks header relayout / dedicated Log-usual row (originally behind flag `today_log_usual_row_v2`, collapsed permanently ON, ENG-1651) | `npm run e2e:seed:today-snacks` |
 
 ### Why testIDs not text
 

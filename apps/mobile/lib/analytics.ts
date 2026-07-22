@@ -326,13 +326,14 @@ export function identify(
   // default behaviour is to re-fetch flags on identify, but the call
   // is fire-and-forget and lands on the next flush tick — meaning
   // `isFeatureEnabled` can return a stale `false` for the first
-  // render of any screen that depends on a flag-gated layout (e.g.
-  // `today_log_usual_row_v2`). Surfaced while wiring Maestro
-  // validation for PR #246: the user was identified with email, the
-  // flag was correctly targeted, but the Today screen still rendered
-  // the flag-off variant because flags hadn't refreshed yet.
-  // `reloadFeatureFlagsAsync` triggers an immediate /decide call so
-  // the next render sees the right value.
+  // render of any screen that depends on a flag-gated layout. Surfaced
+  // while wiring Maestro validation for PR #246 (the then-flag-gated
+  // `today_log_usual_row_v2` header relayout, since collapsed
+  // permanently-on under ENG-1651): the user was identified with
+  // email, the flag was correctly targeted, but the Today screen
+  // still rendered the flag-off variant because flags hadn't
+  // refreshed yet. `reloadFeatureFlagsAsync` triggers an immediate
+  // /decide call so the next render sees the right value.
   c.reloadFeatureFlagsAsync().catch(() => {
     /* swallow */
   });
@@ -471,7 +472,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // default-on; PostHog rows remain kill switches via isFeatureDisabled.
   "today_log_again",
   "log-sheet-slot-selector",
-  "today_log_usual_row_v2",
   // ENG-978/979 — shareable import-success card + creator credit (keep in sync w/ track.ts).
   "recipe_share_card_v1",
   "log_sheet_nl_text_v1",
@@ -899,7 +899,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
  *
  *  Env-key mapping: uppercase the flag and replace hyphens with
  *  underscores (env-var names can't contain hyphens). So
- *  `today_log_usual_row_v2` → `EXPO_PUBLIC_FLAG_FORCE_TODAY_LOG_USUAL_ROW_V2`,
+ *  `today_log_again` → `EXPO_PUBLIC_FLAG_FORCE_TODAY_LOG_AGAIN`,
  *  and `log-sheet-slot-selector` → `EXPO_PUBLIC_FLAG_FORCE_LOG_SHEET_SLOT_SELECTOR`.
  */
 export function isFeatureEnabled(flag: string): boolean {
