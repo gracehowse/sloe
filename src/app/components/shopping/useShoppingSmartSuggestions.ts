@@ -65,9 +65,14 @@ export function useShoppingSmartSuggestions(input: {
   addToPlan: (suggestion: ShoppingSmartSuggestion) => Promise<void>;
 } {
   const enabled = isFeatureEnabled("smart_suggestions_v1");
+  // Defensive defaults — ShoppingList unit tests (and any host that mounts
+  // before AppData has hydrated) may omit library/items arrays.
+  const savedRecipes = input.savedRecipesForLibrary ?? [];
+  const shoppingItems = input.shoppingItems ?? [];
+  const nutritionByDay = input.nutritionByDay ?? {};
   const poolIds = useMemo(
-    () => input.savedRecipesForLibrary.map((r) => r.id),
-    [input.savedRecipesForLibrary],
+    () => savedRecipes.map((r) => r.id),
+    [savedRecipes],
   );
   const poolKey = poolIds.join(",");
   const [ingredientsByRecipeId, setIngredientsByRecipeId] = useState<IngredientsByRecipeId>(
@@ -95,7 +100,8 @@ export function useShoppingSmartSuggestions(input: {
   }, [enabled, input.userId, poolKey]);
 
   const remainingBudget = useMemo(() => {
-    const consumed = (input.nutritionByDay[todayKey()] ?? []).reduce(
+    if (!input.nutritionTargets) return null;
+    const consumed = (nutritionByDay[todayKey()] ?? []).reduce(
       (acc, m) => ({
         calories: acc.calories + (m.calories || 0),
         protein: acc.protein + (m.protein || 0),
@@ -105,7 +111,7 @@ export function useShoppingSmartSuggestions(input: {
       { calories: 0, protein: 0, carbs: 0, fat: 0 },
     );
     return computeRemaining(input.nutritionTargets, consumed);
-  }, [input.nutritionTargets, input.nutritionByDay]);
+  }, [input.nutritionTargets, nutritionByDay]);
 
   const excludeRecipeIds = useMemo(() => {
     const ids = new Set<string>();
@@ -119,7 +125,7 @@ export function useShoppingSmartSuggestions(input: {
 
   const candidates = useMemo((): OverlapCandidateRecipe[] => {
     const out: OverlapCandidateRecipe[] = [];
-    for (const r of input.savedRecipesForLibrary) {
+    for (const r of savedRecipes) {
       const ingredients = ingredientsByRecipeId.get(r.id);
       if (!ingredients?.length) continue;
       out.push({
@@ -133,17 +139,17 @@ export function useShoppingSmartSuggestions(input: {
       });
     }
     return out;
-  }, [input.savedRecipesForLibrary, ingredientsByRecipeId]);
+  }, [savedRecipes, ingredientsByRecipeId]);
 
   const suggestions = useMemo(() => {
     if (!enabled) return [];
     return rankIngredientOverlapSuggestions({
-      currentIngredientNames: input.shoppingItems.map((i) => i.name),
+      currentIngredientNames: shoppingItems.map((i) => i.name),
       candidates,
       remainingBudget,
       excludeRecipeIds,
     });
-  }, [enabled, input.shoppingItems, candidates, remainingBudget, excludeRecipeIds]);
+  }, [enabled, shoppingItems, candidates, remainingBudget, excludeRecipeIds]);
 
   const addToPlan = async (suggestion: ShoppingSmartSuggestion) => {
     if (addingRecipeId) return;
