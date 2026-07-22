@@ -30,14 +30,36 @@ const MOBILE_PANEL_PATH = resolve(
 );
 const MOBILE_VERIFY_PATH = resolve(__dirname, "../../lib/verifyRecipe.ts");
 /**
+ * ENG-814/ENG-1532 (redesign_search_results collapsed permanently-on,
+ * ENG-1651) — the row-level headline rendering (`resolveFoodSearchHeadline`,
+ * `FOOD_SEARCH_PER_SERVING_BADGE`/`FOOD_SEARCH_PER_100G_BADGE`,
+ * `headline.mode === ...` branches) now lives in the extracted
+ * `FoodSearchFeedItem.tsx` (pulled out of `FoodSearchPanel.tsx` to stay
+ * under the screen-line-budget ratchet), not in the panel itself.
+ */
+const MOBILE_FEED_ITEM_PATH = resolve(
+  __dirname,
+  "../../components/food-search/FoodSearchFeedItem.tsx",
+);
+/**
  * 2026-04-30 — web FoodSearch.tsx (1568 LOC) was extracted into
  * `food-search/FoodSearchPanel.tsx` (commit `cb1317f`). The wrapper
- * keeps only the dialog shell; primary-serving + headline imports
- * + row JSX all live in the panel. Source-pin parity reads the panel.
+ * keeps only the dialog shell; primary-serving imports + the search-body
+ * wiring live in the panel. Source-pin parity reads the panel.
  */
-const WEB_PATH = resolve(
+const WEB_PANEL_PATH = resolve(
   __dirname,
   "../../../../src/app/components/food-search/FoodSearchPanel.tsx",
+);
+/**
+ * ENG-814/ENG-1532 (`redesign_search_results` collapsed permanently-on,
+ * ENG-1651) — the row-level headline rendering lives in the extracted
+ * `FoodSearchResultRow.tsx`, the web sibling of mobile's
+ * `FoodSearchFeedItem.tsx`.
+ */
+const WEB_ROW_PATH = resolve(
+  __dirname,
+  "../../../../src/app/components/food-search/FoodSearchResultRow.tsx",
 );
 const HELPER_PATH = resolve(
   __dirname,
@@ -50,17 +72,25 @@ const HEADLINE_HELPER_PATH = resolve(
 
 const MOBILE_MODAL_SRC = readFileSync(MOBILE_MODAL_PATH, "utf8");
 const MOBILE_PANEL_SRC = readFileSync(MOBILE_PANEL_PATH, "utf8");
+const MOBILE_FEED_ITEM_SRC = readFileSync(MOBILE_FEED_ITEM_PATH, "utf8");
 const MOBILE_VERIFY_SRC = readFileSync(MOBILE_VERIFY_PATH, "utf8");
-const WEB_SRC = readFileSync(WEB_PATH, "utf8");
+const WEB_PANEL_SRC = readFileSync(WEB_PANEL_PATH, "utf8");
+const WEB_ROW_SRC = readFileSync(WEB_ROW_PATH, "utf8");
 const HELPER_SRC = readFileSync(HELPER_PATH, "utf8");
 const HEADLINE_HELPER_SRC = readFileSync(HEADLINE_HELPER_PATH, "utf8");
 /**
- * Combined mobile source — primary-serving / headline wiring now
- * lives in the panel, but the modal still mounts the panel. Either
- * file can host the import as long as the canonical helper is the
- * one being used.
+ * Combined mobile source — primary-serving wiring lives in the panel;
+ * headline rendering (resolveFoodSearchHeadline, mode branches, badges)
+ * lives in the extracted FoodSearchFeedItem.tsx (ENG-1532). The modal still
+ * mounts the panel. Any of the three files can host an import as long as
+ * the canonical helper is the one being used.
  */
-const MOBILE_COMBINED_SRC = `${MOBILE_MODAL_SRC}\n${MOBILE_PANEL_SRC}`;
+const MOBILE_COMBINED_SRC = `${MOBILE_MODAL_SRC}\n${MOBILE_PANEL_SRC}\n${MOBILE_FEED_ITEM_SRC}`;
+/**
+ * Combined web source — same split as mobile: primary-serving wiring in the
+ * panel, headline rendering in the extracted FoodSearchResultRow.tsx.
+ */
+const WEB_SRC = `${WEB_PANEL_SRC}\n${WEB_ROW_SRC}`;
 
 const SOURCE_HELPERS = [
   "pickEdamamPrimaryServing",
@@ -112,7 +142,6 @@ describe("food search primary-serving parity (TestFlight APo0qS9vcFvmBJEJJ_-61YA
         /from\s+["'][^"']*\/(?:nutrition|nutrition-core)\/foodSearchHeadline["']/,
       );
       expect(src).toMatch(/\bresolveFoodSearchHeadline\b/);
-      expect(src).toMatch(/FOOD_SEARCH_PER_SERVING_BADGE/);
       expect(src).toMatch(/FOOD_SEARCH_PER_100G_BADGE/);
       // The row render must branch on the helper's mode tag.
       expect(src).toMatch(/headline\.mode\s*===\s*"per-serving"/);
@@ -120,6 +149,13 @@ describe("food search primary-serving parity (TestFlight APo0qS9vcFvmBJEJJ_-61YA
       // Headline kcal number is read from the helper, not recomputed.
       expect(src).toMatch(/headline\.headlineKcal/);
     }
+
+    // Mobile's per-serving branch shows an uppercase "PER SERVING" badge
+    // (FoodSearchFeedItem.tsx). Web's redesigned FoodSearchResultRow.tsx does
+    // NOT — a known, pre-existing parity gap (predates this collapse, was
+    // already the live shipped state), tracked as ENG-1660. Not asserted on
+    // web here until that's fixed.
+    expect(MOBILE_COMBINED_SRC).toMatch(/FOOD_SEARCH_PER_SERVING_BADGE/);
   });
 
   it("the shared helper defines the single per-serving reference format", () => {

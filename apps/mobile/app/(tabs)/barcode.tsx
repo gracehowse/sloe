@@ -62,8 +62,8 @@ export default function BarcodeScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
 
-  // Search redesign uses the food-search chip + blue CTA; the old binary path is the kill switch.
-  const searchRedesign = isFeatureEnabled("redesign_search_results");
+  // `redesign_search_results` collapsed permanently-on (ENG-1651) — the
+  // food-search chip + blue CTA ship unconditionally now.
   const trustSourceName = isFeatureEnabled("trust_source_name_v1");
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -954,29 +954,19 @@ export default function BarcodeScreen() {
                   );
                 })}
             </View>
-            {searchRedesign ? (
-              // Redesign: legible Verified/Estimated chip (search-results
-              // language) + the source line beneath it for provenance.
-              <View style={{ alignItems: "center", gap: Spacing.xs }}>
-                <SearchResultConfidenceChip
-                  tier={barcodeConfidenceTier(product)}
-                  sourceLabel={barcodeTrustSourceName(product)}
-                  testID="barcode-confidence-chip"
-                />
-                <Text style={styles.source}>{trustSourceName ? barcodeTrustProvenanceLabel(product) : barcodeProvenanceLabel(product)}</Text>
-              </View>
-            ) : product.verified ? (
-              // Old path (binary green tick): preserved for flag-off.
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4 }}>
-                <Check size={11} color={Colors.dark.textTertiary} strokeWidth={3} />
-                <Text style={styles.source}>{trustSourceName ? barcodeTrustSourceName(product) : "Verified"}</Text>
-              </View>
-            ) : (
+            {/* Legible Verified/Estimated chip (search-results language) +
+                the source line beneath it for provenance. */}
+            <View style={{ alignItems: "center", gap: Spacing.xs }}>
+              <SearchResultConfidenceChip
+                tier={barcodeConfidenceTier(product)}
+                sourceLabel={barcodeTrustSourceName(product)}
+                testID="barcode-confidence-chip"
+              />
               <Text style={styles.source}>{trustSourceName ? barcodeTrustProvenanceLabel(product) : barcodeProvenanceLabel(product)}</Text>
-            )}
+            </View>
             <View style={styles.btnRow}>
               <Pressable
-                style={[styles.logBtn, searchRedesign && { backgroundColor: accent.primary }]}
+                style={[styles.logBtn, { backgroundColor: accent.primary }]}
                 onPress={handleLog}
                 disabled={logging}
                 accessibilityLabel={`Log ${product.name} to ${mealSlot}`}
@@ -1119,7 +1109,7 @@ export default function BarcodeScreen() {
             <Pressable
               style={[
                 styles.logBtn,
-                searchRedesign && { backgroundColor: accent.primary },
+                { backgroundColor: accent.primary },
                 { opacity: manualName.trim() && Number(manualCalories) > 0 ? 1 : 0.4 },
               ]}
               onPress={handleManualLog}

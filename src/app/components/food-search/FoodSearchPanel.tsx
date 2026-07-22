@@ -49,9 +49,8 @@
  * Prop names + signatures kept identical for sync-enforcer cross-check.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Barcode, Loader2, Plus } from "lucide-react";
+import { Barcode, Loader2 } from "lucide-react";
 import { Icons } from "../ui/icons";
-import { Badge } from "../suppr/badge";
 import { FilterChip } from "../ui/filter-chip";
 import {
   CreateCustomFoodDialog,
@@ -83,7 +82,6 @@ import {
   buildCustomFoodPortions,
   customFoodToMacrosPer100g,
   isLearnedCustomFood,
-  isLearnedCustomFoodSource,
   LEARNED_CUSTOM_FOOD_REUSE_CUE,
   type CustomFood,
 } from "../../../lib/nutrition/customFoods";
@@ -96,11 +94,6 @@ import {
   type PrimaryServing,
 } from "../../../lib/nutrition/primaryServing";
 import { inferNaturalServingFromName } from "../../../lib/nutrition/inferNaturalServing";
-import {
-  resolveFoodSearchHeadline,
-  FOOD_SEARCH_PER_SERVING_BADGE,
-  FOOD_SEARCH_PER_100G_BADGE,
-} from "../../../lib/nutrition/foodSearchHeadline";
 import { AnalyticsEvents } from "../../../lib/analytics/events";
 import { track } from "../../../lib/analytics/track";
 import { fetchFatSecretAutocomplete } from "@/lib/nutrition/fatsecretAutocompleteClient";
@@ -835,25 +828,24 @@ export function FoodSearchPanel({
   const commitCtaClass = isFeatureEnabled("design_system_colours")
     ? "bg-primary text-primary-foreground hover:bg-primary/90"
     : "bg-success text-white hover:bg-success/90";
-  // ENG-815 (LANE: search-results UI). Gate the redesigned results body —
-  // one segmented control, elevated grouped result cards, a legible
-  // Verified / Estimated confidence chip, Best/More split — behind
-  // `redesign_search_results`. flag OFF keeps the legacy flat hairline list
-  // alive in the `else` (the old `divide-y` block below). Pixel + behaviour
-  // parity with the mobile sibling lane (same flag, same prototype).
-  const searchResultsRedesign = isFeatureEnabled("redesign_search_results");
+  // ENG-815 (LANE: search-results UI, `redesign_search_results` collapsed
+  // permanently-on ENG-1651). One segmented control, elevated grouped
+  // result cards, a legible Verified / Estimated confidence chip, Best/More
+  // split. Pixel + behaviour parity with the mobile sibling lane (same
+  // prototype).
   // ENG-1532 — component grammar dedup. ON → best-match results render as
   // plain rows with the Past-logged skeleton (hairline `divide-y`, no card
   // wrapper — see `<FoodSearchResultRow>`); OFF → today's grouped-card
   // render, byte-intact (the PostHog kill switch).
   const grammarDedup = isFeatureEnabled("component_grammar_dedup");
-  // ENG P5 parity (gap #5/#9). `redesign_search_results` gates the STRUCTURE
-  // (segmented control + grouped cards). Flat-card surfaces (2026-06-12,
-  // Withings grammar — decision: docs/decisions/2026-06-12-flat-card-surfaces.md):
-  // result-group cards are BORDERLESS-FLAT (no hairline, no shadow) — the
-  // quiet card fill on the cream ground is the separation, mirroring the
-  // mobile `useCardElevation` flat result. `design_system_elevation` collapsed
-  // (ENG-1651) — this was permanently ON via REDESIGN_DEFAULT_ON.
+  // ENG P5 parity (gap #5/#9). The segmented control + grouped cards ship
+  // unconditionally now (`redesign_search_results` collapsed permanently-on,
+  // ENG-1651). Flat-card surfaces (2026-06-12, Withings grammar — decision:
+  // docs/decisions/2026-06-12-flat-card-surfaces.md): result-group cards are
+  // BORDERLESS-FLAT (no hairline, no shadow) — the quiet card fill on the
+  // cream ground is the separation, mirroring the mobile `useCardElevation`
+  // flat result. `design_system_elevation` also collapsed (ENG-1651) — this
+  // was permanently ON via REDESIGN_DEFAULT_ON.
   const [results, setResults] = useState<SearchResult[]>([]);
   // ENG-815 — one unified segmented control (replaces the prototype's two
   // clashing filter languages). Every category here has REAL backing logic —
@@ -950,7 +942,6 @@ export function FoodSearchPanel({
   // the JSX. `compact` shaves vertical padding for LogSheet's smaller
   // budget; everything else stays identical.
   const px = mode === "compact" ? "px-3" : "px-6";
-  const rowPy = mode === "compact" ? "py-1.5" : "py-2";
 
   const backfillMissingMacros = useCallback((items: SearchResult[]) => {
     const id = ++backfillRef.current;
@@ -2126,9 +2117,10 @@ export function FoodSearchPanel({
             queries — a parity break. Relaxed to render whenever the user has
             searched (`query.trim()`), so a no-result query keeps the filter
             control visible above the "No results" empty state, matching mobile.
-            The strip's STRUCTURE stays under `redesign_search_results`
-            (`design_system_elevation`, gap #5, collapsed — ENG-1651). */}
-        {searchResultsRedesign && query.trim() && (
+            The strip's STRUCTURE ships unconditionally (`redesign_search_results`
+            collapsed permanently-on, ENG-1651; `design_system_elevation`, gap #5,
+            collapsed earlier in the same sweep). */}
+        {query.trim() && (
           <div
             role="tablist"
             aria-label="Filter food results"
@@ -2285,9 +2277,10 @@ export function FoodSearchPanel({
         )}
 
         {/* ENG-815 — redesigned results body: elevated grouped result cards,
-            Best/More split, legible Verified/Estimated confidence chip. Old
-            flat hairline list stays alive in the `else` below. */}
-        {searchResultsRedesign && results.length > 0 ? (
+            Best/More split, legible Verified/Estimated confidence chip.
+            Unconditional (`redesign_search_results` collapsed permanently-on,
+            ENG-1651). */}
+        {results.length > 0 ? (
           <div data-testid="food-search-results-redesign">
             {filteredResults.length === 0 ? (
               <p
@@ -2344,141 +2337,6 @@ export function FoodSearchPanel({
                   </div>
                 ))
             )}
-          </div>
-        ) : dedupedResults.length > 0 ? (
-          <div className="divide-y divide-border">
-            {dedupedResults.map((item) => {
-              const isCustom = item._source === "CUSTOM";
-              const customFood = isCustom ? item._custom : null;
-              const headline = resolveFoodSearchHeadline(item);
-              return (
-                <div
-                  key={item.key}
-                  className={`flex items-center gap-1 ${rowPy} px-2 -mx-2 rounded-lg hover:bg-muted/60 transition-colors relative`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => onPickResult(item)}
-                    disabled={loadingKey === item.key}
-                    className="flex-1 min-w-0 flex items-center gap-3 py-2 text-left"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        {isCustom && (
-                          <Badge variant="custom">Custom</Badge>
-                        )}
-                        {item.verified && !isCustom && (
-                          <Icons.check className="h-3.5 w-3.5 text-success shrink-0" />
-                        )}
-                        <span className="text-sm font-medium text-foreground truncate">{item.name}</span>
-                      </div>
-                      {headline.mode === "per-serving" ? (
-                        <>
-                          <div className="flex gap-2 mt-0.5 text-[11px] text-muted-foreground">
-                            <span>{headline.macros.calories} kcal</span>
-                            <span className="text-[var(--macro-protein)]">P:{headline.macros.protein}g</span>
-                            <span className="text-[var(--macro-carbs)]">C:{headline.macros.carbs}g</span>
-                            <span className="text-[var(--macro-fat)]">F:{headline.macros.fat}g</span>
-                          </div>
-                          <span className="text-[10px] font-semibold uppercase tracking-wider text-success">
-                            {FOOD_SEARCH_PER_SERVING_BADGE}
-                          </span>
-                          <span className="block text-[10px] text-muted-foreground/80">
-                            {headline.servingLabel}
-                            {headline.per100gReference ? ` · ${headline.per100gReference}` : ""}
-                          </span>
-                        </>
-                      ) : headline.mode === "per-100g" && headline.macros ? (
-                        <>
-                          <div className="flex gap-2 mt-0.5 text-[11px] text-muted-foreground">
-                            <span>{headline.macros.calories} kcal</span>
-                            <span className="text-[var(--macro-protein)]">P:{headline.macros.protein}g</span>
-                            <span className="text-[var(--macro-carbs)]">C:{headline.macros.carbs}g</span>
-                            <span className="text-[var(--macro-fat)]">F:{headline.macros.fat}g</span>
-                          </div>
-                          <span className="text-[10px] text-muted-foreground/80">{FOOD_SEARCH_PER_100G_BADGE}</span>
-                        </>
-                      ) : headline.mode === "per-100g" ? (
-                        <span className="text-[11px] text-muted-foreground">{headline.headlineKcal} kcal {FOOD_SEARCH_PER_100G_BADGE}</span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">Tap for nutrition info</span>
-                      )}
-                      {customFood && isLearnedCustomFoodSource(customFood.source) ? (
-                        <span
-                          className="block mt-0.5 text-[11px] italic text-muted-foreground/90"
-                          data-testid="learned-custom-food-cue"
-                        >
-                          {LEARNED_CUSTOM_FOOD_REUSE_CUE}
-                        </span>
-                      ) : null}
-                    </div>
-                    {headline.mode !== "placeholder" && loadingKey !== item.key ? (
-                      <span className="text-sm font-bold text-foreground tabular-nums">{headline.headlineKcal}</span>
-                    ) : null}
-                    {loadingKey === item.key ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    ) : isCustom ? (
-                      <Icons.forward className="h-4 w-4 text-muted-foreground" />
-                    ) : null}
-                  </button>
-                  {!isCustom && loadingKey !== item.key ? (
-                    <button
-                      type="button"
-                      onClick={() => void onQuickLogResult(item)}
-                      aria-label={`Quick log ${item.name} at default serving`}
-                      data-testid={`food-search-quick-log-${item.key}`}
-                      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-primary hover:bg-muted/60"
-                    >
-                      <Plus className="h-4 w-4" strokeWidth={2.5} aria-hidden />
-                    </button>
-                  ) : null}
-                  {isCustom && customFood && (
-                    <div className="relative shrink-0">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setMenuOpenFor((cur) => (cur === customFood.id ? null : customFood.id));
-                        }}
-                        aria-label={`More options for ${customFood.name}`}
-                        aria-haspopup="menu"
-                        aria-expanded={menuOpenFor === customFood.id}
-                        className="h-8 w-8 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                      >
-                        <span aria-hidden="true" className="text-lg leading-none">⋯</span>
-                      </button>
-                      {menuOpenFor === customFood.id && (
-                        <div
-                          role="menu"
-                          className="absolute right-0 top-9 z-10 min-w-[9rem] rounded-md border border-border bg-card shadow-lg py-1"
-                        >
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => {
-                              setMenuOpenFor(null);
-                              setEditingFood(customFood);
-                              setCreateOpen(true);
-                            }}
-                            className="w-full text-left px-3 py-1.5 text-sm text-foreground hover:bg-muted/60"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => handleDeleteCustomFood(customFood)}
-                            className="w-full text-left px-3 py-1.5 text-sm text-destructive hover:bg-muted/60"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
           </div>
         ) : null}
 

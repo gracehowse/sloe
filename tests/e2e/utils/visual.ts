@@ -7,7 +7,6 @@ export const REDESIGN_VISUAL_FLAGS = [
   "design_system_colours",
   "redesign_branded_sheets",
   "redesign_motion",
-  "redesign_search_results",
   "redesign_winmoment",
   "web-meal-nutrition-detail",
   // ENG-1629 — default-OFF gutter convergence (Targets.tsx + RecipeDetail.tsx

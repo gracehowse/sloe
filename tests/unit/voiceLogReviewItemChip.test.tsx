@@ -1,13 +1,21 @@
 /**
  * VoiceLogReviewItem — the web voice-log review row (ENG-1429). Pins the ported
  * Verified/Estimated confidence chip behaviour:
- *   - flag OFF (`redesign_search_results`) → no chip (legacy path alive).
- *   - flag ON → the shared chip renders, addressable as `voice-confidence-chip`.
+ *   - the shared chip always renders, addressable as `voice-confidence-chip`
+ *     (`redesign_search_results` collapsed permanently-on, ENG-1651 — the
+ *     old flag-OFF no-chip path no longer exists in source, so there's
+ *     nothing left to assert there).
  *   - the chip is ALWAYS "Estimated" — even for a high-confidence item — because
  *     an AI-parsed item is an estimate by definition (CLAUDE.md trust posture),
  *     mirroring the mobile AiLogReviewItem's hardcoded `tier="estimated"`.
  *   - the granular High/Med/Low signal + "AI estimate" badge still render
  *     (regression guard for the extraction out of voice-log-dialog).
+ *
+ * The `isFeatureEnabled` mock below stays generic-OFF: it's not gating this
+ * chip anymore, but the shared `SearchResultConfidenceChip` still reads the
+ * real, still-live `trust_source_name_v1` flag internally, and this suite
+ * needs that flag OFF so the pinned "Estimated" default label (not the
+ * trust-copy source label) is what renders.
  */
 import * as React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -52,16 +60,7 @@ afterEach(() => {
 });
 
 describe("VoiceLogReviewItem — confidence chip port (ENG-1429)", () => {
-  it("flag OFF: renders no Verified/Estimated confidence chip", () => {
-    flagFn.mockReturnValue(false);
-    renderItem(makeItem());
-    expect(screen.queryByTestId("voice-confidence-chip")).toBeNull();
-    // The legacy AI badge is still there — the row is unchanged otherwise.
-    expect(screen.getByText("AI estimate")).toBeInTheDocument();
-  });
-
-  it("flag ON: renders the shared chip addressable as voice-confidence-chip, reading 'Estimated'", () => {
-    flagFn.mockImplementation((f: string) => f === "redesign_search_results");
+  it("renders the shared chip addressable as voice-confidence-chip, reading 'Estimated'", () => {
     renderItem(makeItem());
     const chip = screen.getByTestId("voice-confidence-chip");
     expect(chip).toBeInTheDocument();
@@ -70,8 +69,7 @@ describe("VoiceLogReviewItem — confidence chip port (ENG-1429)", () => {
     expect(chip.style.color).toContain("var(--chip-estimated)");
   });
 
-  it("flag ON: the chip stays 'Estimated' even for a high-confidence item (never 'Structured')", () => {
-    flagFn.mockImplementation((f: string) => f === "redesign_search_results");
+  it("the chip stays 'Estimated' even for a high-confidence item (never 'Structured')", () => {
     renderItem(makeItem({ confidence: 0.99 }));
     const chip = screen.getByTestId("voice-confidence-chip");
     expect(chip.textContent).toContain("Estimated");
@@ -79,8 +77,7 @@ describe("VoiceLogReviewItem — confidence chip port (ENG-1429)", () => {
     expect(screen.queryByText("Structured")).toBeNull();
   });
 
-  it("flag ON: still renders the low-confidence verify gate + AI badge (extraction regression guard)", () => {
-    flagFn.mockImplementation((f: string) => f === "redesign_search_results");
+  it("still renders the low-confidence verify gate + AI badge (extraction regression guard)", () => {
     renderItem(makeItem({ confidence: 0.3 }));
     expect(
       screen.getByText(/Low confidence — please verify the portion and macros/i),

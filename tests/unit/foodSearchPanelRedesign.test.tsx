@@ -1,20 +1,22 @@
 /**
- * ENG-815 — web FoodSearchPanel redesigned results body (`redesign_search_results`).
+ * ENG-815 — web FoodSearchPanel redesigned results body.
  *
- * Pins the flag-gated redesign that mirrors the approved prototype
+ * Pins the redesign that mirrors the approved prototype
  * (`docs/prototypes/2026-05-31-design-direction/surface-search-results.html`)
- * and the mobile sibling lane:
- *   1. flag OFF → legacy flat hairline list (no redesigned container, no chip)
- *   2. flag ON  → elevated grouped result cards + Best/More section split
- *   3. flag ON  → legible Verified / Estimated confidence chip sourced from the
- *      data layer's `confidenceTier` (never source alone)
- *   4. flag ON  → one unified segmented control that filters real `_source`
- *      rows (no dead affordance)
+ * and the mobile sibling lane. `redesign_search_results` collapsed
+ * permanently-on (ENG-1651) — the flag was removed entirely and every
+ * behavior below now ships unconditionally, so there is no OFF path left to
+ * pin:
+ *   1. elevated grouped result cards + Best/More section split
+ *   2. legible Verified / Estimated confidence chip sourced from the data
+ *      layer's `confidenceTier` (never source alone)
+ *   3. one unified segmented control that filters real `_source` rows (no
+ *      dead affordance)
  *
  * Cross-platform parity pair: mirror against the mobile sibling lane's
- * `redesign_search_results` coverage. The tier + split math is shared
- * (`foodSearchRanking.ts`), so both surfaces section + label identically —
- * `foodSearchConfidenceTierParity.test.ts` pins that wiring.
+ * coverage. The tier + split math is shared (`foodSearchRanking.ts`), so both
+ * surfaces section + label identically — `foodSearchConfidenceTierParity.test.ts`
+ * pins that wiring.
  */
 import * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -31,7 +33,10 @@ vi.mock("../../src/lib/nutrition/customFoodsClient", () => ({
   deleteCustomFood: vi.fn(),
 }));
 
-// Flag + analytics module mocked so we can flip `redesign_search_results`.
+// Flag + analytics module mocked so we can flip the flags that still gate
+// behavior here (`trust_source_name_v1`, `component_grammar_dedup`).
+// `redesign_search_results` collapsed permanently-on (ENG-1651) — it is no
+// longer toggled through this mock.
 vi.mock("../../src/lib/analytics/track", () => ({
   track: vi.fn(),
   isFeatureEnabled: vi.fn(() => false),
@@ -143,24 +148,9 @@ async function drain() {
   });
 }
 
-describe("ENG-815 — FoodSearchPanel redesigned results (flag-gated)", () => {
-  it("flag OFF: renders the legacy flat list, no redesigned container or chip", async () => {
-    flagFn.mockReturnValue(false);
-    vi.stubGlobal("fetch", BOTH_SOURCES);
-    const { container } = renderPanel();
-    await drain();
-
-    await screen.findByText("Tilapia, Raw, Fillet");
-    // Legacy hairline list, not the elevated grouped redesign.
-    expect(container.querySelector('[data-testid="food-search-results-redesign"]')).toBeNull();
-    expect(container.querySelector('[data-testid="food-search-category-tabs"]')).toBeNull();
-    expect(screen.queryByText("Best matches")).toBeNull();
-    // No legible confidence chip in the legacy path.
-    expect(container.querySelector('[data-testid="food-search-confidence-verified"]')).toBeNull();
-  });
-
-  it("flag ON: renders the redesigned container with the Best/More section grouping", async () => {
-    enableFlags("redesign_search_results", "trust_source_name_v1");
+describe("ENG-815 — FoodSearchPanel redesigned results (unconditional, ENG-1651)", () => {
+  it("renders the redesigned container with the Best/More section grouping", async () => {
+    enableFlags("trust_source_name_v1");
     vi.stubGlobal("fetch", BOTH_SOURCES);
     const { container } = renderPanel();
     await drain();
@@ -177,8 +167,8 @@ describe("ENG-815 — FoodSearchPanel redesigned results (flag-gated)", () => {
     expect(card).not.toBeNull();
   });
 
-  it("flag ON: names the source in the confidence chip for a source-backed row", async () => {
-    enableFlags("redesign_search_results", "trust_source_name_v1");
+  it("names the source in the confidence chip for a source-backed row", async () => {
+    enableFlags("trust_source_name_v1");
     vi.stubGlobal(
       "fetch",
       makeFetchStub({
@@ -197,8 +187,7 @@ describe("ENG-815 — FoodSearchPanel redesigned results (flag-gated)", () => {
     expect(screen.getByText(/per 100g · USDA/i)).toBeInTheDocument();
   });
 
-  it("flag ON: renders the Estimated chip for an unverified branded row", async () => {
-    flagFn.mockImplementation((f: string) => f === "redesign_search_results");
+  it("renders the Estimated chip for an unverified branded row", async () => {
     vi.stubGlobal(
       "fetch",
       makeFetchStub({
@@ -217,8 +206,7 @@ describe("ENG-815 — FoodSearchPanel redesigned results (flag-gated)", () => {
     expect(screen.getByText(/per 100g · FatSecret/i)).toBeInTheDocument();
   });
 
-  it("flag ON: the unified segmented control filters by source", async () => {
-    flagFn.mockImplementation((f: string) => f === "redesign_search_results");
+  it("the unified segmented control filters by source", async () => {
     vi.stubGlobal("fetch", BOTH_SOURCES);
     renderPanel();
     await drain();
@@ -242,8 +230,7 @@ describe("ENG-815 — FoodSearchPanel redesigned results (flag-gated)", () => {
   });
 
   // ── ENG P5 parity (gap #11) — Estimated chip warm-amber, not warning orange ──
-  it("flag ON: the Estimated chip uses the warm-amber --chip-estimated token, not the over-budget --warning orange", async () => {
-    enableFlags("redesign_search_results");
+  it("the Estimated chip uses the warm-amber --chip-estimated token, not the over-budget --warning orange", async () => {
     vi.stubGlobal(
       "fetch",
       makeFetchStub({
@@ -273,9 +260,10 @@ describe("ENG-815 — FoodSearchPanel redesigned results (flag-gated)", () => {
   // retired; the card drops its border (Withings quiet-fill grammar) but
   // carries NO shadow. `design_system_elevation` collapsed (ENG-1651) — this
   // was permanently ON via REDESIGN_DEFAULT_ON, so there is no OFF path left
-  // to pin. The inactive pills carry no lift either.
-  it("structure ON: grouped cards are borderless-FLAT (no soft shadow, no border)", async () => {
-    enableFlags("redesign_search_results");
+  // to pin. `redesign_search_results` (the grouped-card container itself)
+  // likewise collapsed permanently-on (ENG-1651). The inactive pills carry no
+  // lift either.
+  it("grouped cards are borderless-FLAT (no soft shadow, no border)", async () => {
     vi.stubGlobal("fetch", BOTH_SOURCES);
     const { container } = renderPanel();
     await drain();
@@ -295,8 +283,7 @@ describe("ENG-815 — FoodSearchPanel redesigned results (flag-gated)", () => {
   });
 
   // ── ENG P5 parity (gap #30) — segmented control is query-gated, not result-gated ──
-  it("flag ON: the segmented control renders on a zero-result query (matches mobile, not result-count gated)", async () => {
-    enableFlags("redesign_search_results");
+  it("the segmented control renders on a zero-result query (matches mobile, not result-count gated)", async () => {
     // Every source returns empty → query is non-empty but results.length === 0.
     vi.stubGlobal(
       "fetch",
@@ -318,8 +305,7 @@ describe("ENG-815 — FoodSearchPanel redesigned results (flag-gated)", () => {
     expect(screen.getByTestId("food-search-category-tabs")).toBeInTheDocument();
   });
 
-  it("flag ON: the segmented control is hidden until the user has searched (empty query)", async () => {
-    enableFlags("redesign_search_results");
+  it("the segmented control is hidden until the user has searched (empty query)", async () => {
     vi.stubGlobal("fetch", BOTH_SOURCES);
     renderPanel({ query: "" });
     await drain();
@@ -342,7 +328,7 @@ describe("ENG-815 — FoodSearchPanel redesigned results (flag-gated)", () => {
 // `apps/mobile/tests/unit/foodSearchRedesignResults.test.tsx`.
 describe("ENG-1532 — unified search-row grammar (component_grammar_dedup)", () => {
   it("flag ON: best matches render as plain rows — no card wrapper, unified sub-line, no KCAL numeral", async () => {
-    enableFlags("redesign_search_results", "component_grammar_dedup", "trust_source_name_v1");
+    enableFlags("component_grammar_dedup", "trust_source_name_v1");
     vi.stubGlobal("fetch", BOTH_SOURCES);
     const { container } = renderPanel();
     await drain();
@@ -370,7 +356,8 @@ describe("ENG-1532 — unified search-row grammar (component_grammar_dedup)", ()
   });
 
   it("flag OFF (kill switch): the carded render stays byte-intact — card wrapper + KCAL numeral, no plain rows", async () => {
-    enableFlags("redesign_search_results"); // component_grammar_dedup OFF
+    // component_grammar_dedup OFF (default from beforeEach) — redesign_search_results
+    // collapsed permanently-on (ENG-1651), so no flag setup is needed here.
     vi.stubGlobal("fetch", BOTH_SOURCES);
     renderPanel();
     await drain();

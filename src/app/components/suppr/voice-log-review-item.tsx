@@ -4,8 +4,9 @@
  * VoiceLogReviewItem — the web twin of the mobile
  * `apps/mobile/components/AiLogReviewItem.tsx`. One editable review row for a
  * single AI-parsed voice-log item: name, per-macro fields, the granular
- * High/Med/Low confidence dot, the "AI estimate" badge, and (behind
- * `redesign_search_results`) the shared Verified/Estimated confidence chip.
+ * High/Med/Low confidence dot, the "AI estimate" badge, and the shared
+ * Verified/Estimated confidence chip (`redesign_search_results` collapsed
+ * permanently-on, ENG-1651).
  *
  * Extracted from `voice-log-dialog.tsx` (ENG-1429) so the dialog stays a thin
  * composition shell and the review row mirrors the mobile shared component
@@ -28,7 +29,6 @@ import {
   isLowConfidence,
   type AiLoggedItem,
 } from "../../../lib/nutrition/aiLogging";
-import { isFeatureEnabled } from "../../../lib/analytics/track";
 
 const MACRO_KEYS = ["calories", "protein", "carbs", "fat"] as const;
 
@@ -47,11 +47,12 @@ export function VoiceLogReviewItem({
 }: VoiceLogReviewItemProps) {
   const level = classifyConfidence(item.confidence);
   const low = isLowConfidence(item);
-  // Search-results redesign (2026-05-31): adopt the same Verified/Estimated chip
-  // language used by the food-search + barcode result surfaces, so a voice-logged
-  // result reads as the same product. AI-parsed items are ALWAYS an estimate —
-  // never "Verified" (CLAUDE.md trust posture). Mirrors mobile AiLogReviewItem.
-  const searchRedesign = isFeatureEnabled("redesign_search_results");
+  // Search-results redesign (2026-05-31, `redesign_search_results` collapsed
+  // permanently-on ENG-1651): adopt the same Verified/Estimated chip language
+  // used by the food-search + barcode result surfaces, so a voice-logged
+  // result reads as the same product. AI-parsed items are ALWAYS an estimate
+  // — never "Verified" (CLAUDE.md trust posture). Mirrors mobile
+  // AiLogReviewItem.
 
   return (
     <div
@@ -72,9 +73,7 @@ export function VoiceLogReviewItem({
           )}
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
-          {searchRedesign && (
-            <SearchResultConfidenceChip tier="estimated" testId="voice-confidence-chip" />
-          )}
+          <SearchResultConfidenceChip tier="estimated" testId="voice-confidence-chip" />
           <ConfidenceDot level={level} showLabel />
           <Badge
             variant="ai"

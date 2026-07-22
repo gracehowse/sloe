@@ -2,9 +2,11 @@
 /**
  * Food-search results redesign (mobile) — ENG-814.
  *
- * Pins the `redesign_search_results`-flagged results body for the MOBILE
- * FoodSearchPanel against the approved prototype
- * (docs/prototypes/2026-05-31-design-direction/surface-search-results.html):
+ * Pins the results body for the MOBILE FoodSearchPanel against the approved
+ * prototype (docs/prototypes/2026-05-31-design-direction/surface-search-results.html).
+ * `redesign_search_results` collapsed permanently-on (ENG-1651) — the panel no
+ * longer reads any flag for this; the sectioned/chip'd body below is the only
+ * path there is:
  *
  *  - ONE unified segmented control — the prototype's friendlier labels
  *    ("Recent" / "My foods") render in place of the old pills ("Recents" /
@@ -17,8 +19,11 @@
  *    A defensively-absent tier falls back to the CONSERVATIVE "Estimated"
  *    label — never "Verified" — so a missing signal can never over-claim
  *    trust (CLAUDE.md trust posture; matches the web sibling ENG-815).
- *  - Flag OFF: the old flat path renders — old pill labels, no section
- *    headers, no Verified/Estimated chip. The old path must stay alive.
+ *
+ * `trust_source_name_v1` (still real, still flag-gated) is forced ON where a
+ * test asserts the sourced chip label (e.g. "USDA"). `component_grammar_dedup`
+ * (ENG-1532, also still real and untouched by the ENG-1651 collapse) gates
+ * the second describe block below.
  *
  * The network boundary (`searchFoods`) is mocked; `splitFoodSearchResults`
  * is mocked to delegate to the REAL shared `splitBestMatches` so the test
@@ -159,8 +164,8 @@ function flagOn(...flags: string[]) {
 }
 
 describe("FoodSearchPanel results redesign (mobile, ENG-814)", () => {
-  it("flag ON: renders unified labels, Best/More section headers and confidence chips", async () => {
-    flagOn("redesign_search_results", "trust_source_name_v1");
+  it("renders unified labels, Best/More section headers and confidence chips (trust_source_name_v1 ON for the sourced label)", async () => {
+    flagOn("trust_source_name_v1");
     const { findByText, findByTestId, queryByText } = render(
       <FoodSearchPanel
         query="chicken"
@@ -195,8 +200,7 @@ describe("FoodSearchPanel results redesign (mobile, ENG-814)", () => {
     await findByText("Estimated");
   });
 
-  it("flag ON: confidence chips render via the shared SearchResultConfidenceChip", async () => {
-    flagOn("redesign_search_results");
+  it("confidence chips render via the shared SearchResultConfidenceChip (unconditional)", async () => {
     const { findAllByTestId } = render(
       <FoodSearchPanel
         query="chicken"
@@ -213,39 +217,13 @@ describe("FoodSearchPanel results redesign (mobile, ENG-814)", () => {
     expect(chips.length).toBe(2);
   });
 
-  it("flag OFF: renders the old flat path — old pill labels, no sections, no confidence chip", async () => {
-    // All flags off (default).
-    const { findByText, queryByText, queryByTestId } = render(
-      <FoodSearchPanel
-        query="chicken"
-        onSelect={() => {}}
-        supabase={SUPABASE_STUB}
-        userId="u1"
-        mode="full"
-      />,
-    );
-    await drainDebounce();
-
-    // Old pill grammar still renders.
-    await findByText("Recents");
-    await findByText("Custom");
-
-    // No redesign section headers and no confidence chip in the flat path.
-    expect(queryByTestId("food-search-section-best")).toBeNull();
-    expect(queryByTestId("food-search-section-more")).toBeNull();
-    expect(queryByTestId("confidence-chip")).toBeNull();
-    expect(queryByText("Verified")).toBeNull();
-    expect(queryByText("Estimated")).toBeNull();
-  });
-
-  it("flag ON: a defensively-absent tier falls back to the conservative 'Estimated' label, never 'Verified'", async () => {
+  it("a defensively-absent tier falls back to the conservative 'Estimated' label, never 'Verified'", async () => {
     // Both rows here carry NO confidenceTier — the defensive edge case. The
     // chip must render "Estimated" (the lower-trust label), never "Verified",
     // and never invent a third tier string.
     const untiered = ROWS.map(({ confidenceTier: _drop, ...rest }) => rest);
     const verifyRecipe = await import("@/lib/verifyRecipe");
     vi.mocked(verifyRecipe.searchFoods).mockResolvedValueOnce(untiered as never);
-    flagOn("redesign_search_results");
     const { findAllByText, queryByText } = render(
       <FoodSearchPanel
         query="chicken"
@@ -280,7 +258,7 @@ describe("FoodSearchPanel results redesign (mobile, ENG-814)", () => {
 // `tests/unit/foodSearchPanelRedesign.test.tsx`.
 describe("ENG-1532 — unified search-row grammar (component_grammar_dedup)", () => {
   it("flag ON: best matches render as plain rows — unified sub-line, no KCAL numeral, chips + overlines stay", async () => {
-    flagOn("redesign_search_results", "component_grammar_dedup", "trust_source_name_v1");
+    flagOn("component_grammar_dedup", "trust_source_name_v1");
     const { findByTestId, findByText, findAllByTestId, queryByText } = render(
       <FoodSearchPanel
         query="chicken"
@@ -311,7 +289,7 @@ describe("ENG-1532 — unified search-row grammar (component_grammar_dedup)", ()
   });
 
   it("flag OFF (kill switch): the carded render stays byte-intact — KCAL numeral, no plain rows", async () => {
-    flagOn("redesign_search_results"); // component_grammar_dedup OFF
+    // component_grammar_dedup OFF (default) — no setup needed.
     const { findAllByText, queryByTestId } = render(
       <FoodSearchPanel
         query="chicken"

@@ -464,7 +464,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   "redesign_winmoment",
   "redesign_motion",
   "redesign_branded_sheets",
-  "redesign_search_results",
   "today-weekly-insight-mobile",
   "today_meals_figma_654",
   // ENG-771 (Gate 1) — MFP-refugee logging loop: ship the loop features
