@@ -230,7 +230,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // per the growth-builds-default-ON convention.
 
   "redesign_motion",
-  "redesign_search_results",
   "today-weekly-insight-mobile",
   "today_meals_figma_654",
   // ENG-1642 — the real shareable meal-link create/accept flow. DEFAULT-ON

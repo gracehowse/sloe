@@ -3,7 +3,7 @@
  * Redesign 2026 flags are UN-GATED (web) — default ON in every build.
  *
  * Grace 2026-06-01: "turn everything on, never flag-gate again." Parity with
- * apps/mobile/lib/analytics.ts: `isFeatureEnabled` returns ON for the 3
+ * apps/mobile/lib/analytics.ts: `isFeatureEnabled` returns ON for the 2
  * redesign flags regardless of PostHog rollout, via REDESIGN_DEFAULT_ON in
  * src/lib/analytics/track.ts. An explicit dev/test force still wins so the
  * pre-redesign visual captures keep working.
@@ -29,9 +29,13 @@
  * `design_system_colours` and `redesign_branded_sheets` likewise collapsed
  * out of REDESIGN_DEFAULT_ON (ENG-1651): both flags were removed entirely and
  * the code now ships their ON-branch styling unconditionally, so neither
- * appears in this suite's flag lists. `redesign_search_results` stays
- * flag-gated (its collapse was split out to PR #1039), so it remains in the
- * flag list below.
+ * appears in this suite's flag lists.
+ *
+ * `redesign_search_results` collapsed out of REDESIGN_DEFAULT_ON (ENG-1651)
+ * on both platforms: the flag was removed entirely and its ON-branch
+ * (FoodSearchFeedItem-based rendering + SearchResultConfidenceChip) now ships
+ * unconditionally on web and mobile, so it no longer appears in this suite's
+ * flag lists.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -49,7 +53,6 @@ import { isFeatureEnabled } from "@/lib/analytics/track";
 
 const REDESIGN_FLAGS = [
   "redesign_motion",
-  "redesign_search_results",
 ];
 
 /** Gate 1.5 surfaces — must resolve ON without PostHog (see redesignDefaultOnParity.test.ts). */

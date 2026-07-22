@@ -65,13 +65,17 @@ describe("visual cohesion gate manifest (ENG-1142)", () => {
   });
 
   it("pins ENG-838 flag-ON visual coverage", () => {
-    // `web-subscription-card` collapsed out of REDESIGN_VISUAL_FLAGS (ENG-1651,
-    // lighter-touch slice): the flag is fully removed from app code
-    // (ENG-1334, entitlement-only gating now), so forcing it ON during visual
-    // capture was already inert — matches the established
-    // design_system_elevation collapse pattern for this same pin.
+    // `web-subscription-card` and `redesign_search_results` both collapsed
+    // out of REDESIGN_VISUAL_FLAGS (ENG-1651): `web-subscription-card` was
+    // already fully removed from app code (ENG-1334, entitlement-only gating
+    // now); `redesign_search_results` resolved true in every build since
+    // ENG-814/815 (2026-05-31/06-01) via REDESIGN_DEFAULT_ON, and its last
+    // call sites were collapsed to their unconditional ON branch — so forcing
+    // either ON during visual capture was already inert. Matches the
+    // established design_system_elevation collapse pattern for this same pin.
+    // The gate15 food-search-results-redesign coverage below is unaffected:
+    // it pins the testid/screenshot name, not the (now-removed) flag string.
     expect(VISUAL_UTILS).toContain("REDESIGN_VISUAL_FLAGS");
-    expect(VISUAL_UTILS).toContain('"redesign_search_results"');
     expect(AUTHED_SPEC).toContain("forceRedesignVisualFlagsOn(page)");
     expect(DEEP_SPEC).toContain("forceRedesignVisualFlagsOn(page)");
     expect(GATE15_AUTHED_SPEC).toContain(

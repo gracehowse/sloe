@@ -1,24 +1,12 @@
 /**
  * FoodSearchFeedItem — one row of the redesigned (ENG-814) sectioned
- * search-results feed, extracted from `FoodSearchPanel.tsx` (which is pinned
- * by the screen-line ratchet and may only shrink).
+ * search-results feed (extracted from pinned `FoodSearchPanel.tsx`).
  *
- * ENG-1532 (component grammar dedup) — the feed renders ONE of two row
- * grammars, gated by `component_grammar_dedup`:
+ * ENG-1532 (`component_grammar_dedup`): ON → plain history-row skeleton
+ * (kcal-leads sub-line, chevron; no big right KCAL numeral); OFF → soft
+ * elevated card. Keep in sync with web `FoodSearchResultRow.tsx`.
  *
- *   flag ON  → PLAIN ROWS with the exact skeleton of the "Past logged" /
- *              "Favourites" history rows (title line with the inline
- *              confidence chip, unified kcal-leads-basis-trails sub-line via
- *              the shared `formatFoodSearchRowSubline`, hairline separators,
- *              right-side `›` chevron). The big right-aligned KCAL display
- *              numeral dies — it invited misreading per-100g values as
- *              per-serving (Fable ruling 2026-07-16).
- *   flag OFF → today's soft-elevated grouped CARD render, byte-intact (the
- *              PostHog kill switch). Keep in sync with the web sibling
- *              `src/app/components/food-search/FoodSearchResultRow.tsx`.
- *
- * Section overlines ("Best matches" / "More results") render identically on
- * both paths.
+ * ENG-1659 — quick-log "+" via `onQuickLog` on both grammars (web parity).
  */
 import {
   ActivityIndicator,
@@ -29,13 +17,14 @@ import {
   type TextStyle,
   type ViewStyle,
 } from "react-native";
-import { ChevronRight } from "lucide-react-native";
+import { ChevronRight, Plus } from "lucide-react-native";
 
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { isFeatureEnabled } from "@/lib/analytics";
+import { PressableScale } from "@/components/ui/PressableScale";
 import {
   resolveFoodSearchHeadline,
   FOOD_SEARCH_PER_SERVING_BADGE,
@@ -71,6 +60,10 @@ export type FoodSearchFeedItemProps = {
   styles: FeedItemStyles;
   onPickResult: (row: SearchRow) => void;
   onLongPressCustom: (food: CustomFood) => void;
+  /** ENG-1659/ENG-931 — log the row's default serving without opening the
+   *  preview. Hidden for custom foods (they use long-press edit/delete
+   *  instead) and while this row is already loading. */
+  onQuickLog: (row: SearchRow) => void;
 };
 
 export function FoodSearchFeedItem({
@@ -80,6 +73,7 @@ export function FoodSearchFeedItem({
   styles,
   onPickResult,
   onLongPressCustom,
+  onQuickLog,
 }: FoodSearchFeedItemProps) {
   const colors = useThemeColors();
   const accent = useAccent();
@@ -142,83 +136,105 @@ export function FoodSearchFeedItem({
       foodSearchSourceLabel(row._source),
     );
     return (
-      <Pressable
-        key={row.key}
-        testID={`search-row-${row.key}`}
-        onPress={() => onPickResult(row)}
-        onLongPress={
-          isCustom && customFood ? () => onLongPressCustom(customFood) : undefined
-        }
-        disabled={isLoading}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-        style={({ pressed }) => ({
+      <View
+        style={{
           flexDirection: "row",
           alignItems: "center",
           paddingVertical: Spacing.dense,
           borderBottomWidth: item.isLast ? 0 : StyleSheet.hairlineWidth,
           borderBottomColor: colors.border,
-          opacity: pressed ? 0.6 : 1,
-        })}
+        }}
       >
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: Spacing.sm,
-              flexWrap: "wrap",
-            }}
-          >
-            <Text
-              style={{ fontSize: 15, fontWeight: "600", color: colors.text }}
-              numberOfLines={1}
-            >
-              {row.name}
-            </Text>
-            {isCustom ? (
-              <Badge variant="custom">Custom</Badge>
-            ) : (
-              <SearchResultConfidenceChip tier={chipTier} sourceLabel={sourceLabel} />
-            )}
-          </View>
-          <Text
-            style={{
-              ...Type.captionSmall,
-              color: colors.textSecondary,
-              // Mirrors the Past-logged rows' 2px baseline offset (half the
-              // xs step — derived from the token, not an ad-hoc literal).
-              marginTop: Spacing.xs / 2,
-              fontVariant: ["tabular-nums"],
-            }}
-            numberOfLines={1}
-          >
-            {subline ?? "Tap for nutrition info"}
-          </Text>
-          {customFood && isLearnedCustomFoodSource(customFood.source) ? (
-            <Text
-              testID="learned-custom-food-cue"
+        <Pressable
+          key={row.key}
+          testID={`search-row-${row.key}`}
+          onPress={() => onPickResult(row)}
+          onLongPress={
+            isCustom && customFood ? () => onLongPressCustom(customFood) : undefined
+          }
+          disabled={isLoading}
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel}
+          style={({ pressed }) => ({
+            flex: 1,
+            minWidth: 0,
+            flexDirection: "row",
+            alignItems: "center",
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <View
               style={{
-                fontSize: 11,
-                fontStyle: "italic",
-                color: colors.textSecondary,
-                marginTop: Spacing.xs / 2,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: Spacing.sm,
+                flexWrap: "wrap",
               }}
             >
-              {LEARNED_CUSTOM_FOOD_REUSE_CUE}
+              <Text
+                style={{ fontSize: 15, fontWeight: "600", color: colors.text }}
+                numberOfLines={1}
+              >
+                {row.name}
+              </Text>
+              {isCustom ? (
+                <Badge variant="custom">Custom</Badge>
+              ) : (
+                <SearchResultConfidenceChip tier={chipTier} sourceLabel={sourceLabel} />
+              )}
+            </View>
+            <Text
+              style={{
+                ...Type.captionSmall,
+                color: colors.textSecondary,
+                // Mirrors the Past-logged rows' 2px baseline offset (half the
+                // xs step — derived from the token, not an ad-hoc literal).
+                marginTop: Spacing.xs / 2,
+                fontVariant: ["tabular-nums"],
+              }}
+              numberOfLines={1}
+            >
+              {subline ?? "Tap for nutrition info"}
             </Text>
-          ) : null}
-        </View>
-        {isLoading ? (
-          <ActivityIndicator size="small" color={accent.primary} />
-        ) : (
-          <Text
-            style={{ fontSize: 13, color: colors.textTertiary, marginLeft: Spacing.sm }}
+            {customFood && isLearnedCustomFoodSource(customFood.source) ? (
+              <Text
+                testID="learned-custom-food-cue"
+                style={{
+                  fontSize: 11,
+                  fontStyle: "italic",
+                  color: colors.textSecondary,
+                  marginTop: Spacing.xs / 2,
+                }}
+              >
+                {LEARNED_CUSTOM_FOOD_REUSE_CUE}
+              </Text>
+            ) : null}
+          </View>
+          {isLoading ? (
+            <ActivityIndicator size="small" color={accent.primary} />
+          ) : (
+            <Text
+              style={{ fontSize: 13, color: colors.textTertiary, marginLeft: Spacing.sm }}
+            >
+              ›
+            </Text>
+          )}
+        </Pressable>
+        {!isCustom && !isLoading ? (
+          <PressableScale
+            onPress={() => onQuickLog(row)}
+            haptic="confirm"
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={`Quick log ${row.name} at default serving`}
+            testID={`food-search-quick-log-${row.key}`}
+            style={{ padding: Spacing.xs, marginLeft: Spacing.sm }}
           >
-            ›
-          </Text>
-        )}
-      </Pressable>
+            <Plus size={18} color={accent.primarySolid} strokeWidth={2.5} />
+          </PressableScale>
+        ) : null}
+      </View>
     );
   }
 
@@ -252,96 +268,118 @@ export function FoodSearchFeedItem({
         item.isFirst ? cardElevation.shadowStyle : undefined,
       ]}
     >
-      <Pressable
-        key={row.key}
-        onPress={() => onPickResult(row)}
-        onLongPress={
-          isCustom && customFood ? () => onLongPressCustom(customFood) : undefined
-        }
-        disabled={isLoading}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-        style={({ pressed }) => ({
+      <View
+        style={{
           flexDirection: "row",
           alignItems: "center",
-          gap: Spacing.md,
-          paddingHorizontal: Spacing.md,
-          paddingVertical: Spacing.md,
           borderTopWidth: item.isFirst ? 0 : StyleSheet.hairlineWidth,
           borderTopColor: colors.cardBorder,
-          backgroundColor: pressed ? colors.background : "transparent",
-        })}
+        }}
       >
-        <View style={{ flex: 1 }}>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: Spacing.sm,
-              flexWrap: "wrap",
-            }}
-          >
-            {isCustom && <Badge variant="custom">Custom</Badge>}
-            <SearchResultConfidenceChip tier={chipTier} sourceLabel={sourceLabel} />
-            <Text style={styles.resultName} numberOfLines={2}>
-              {row.name}
-            </Text>
-          </View>
-          {headline.mode === "per-serving" ? (
-            <>
-              <View style={styles.macroPreview}>
-                <Text style={[styles.macroPreviewText, { color: mc.protein }]}>P {headline.macros.protein}g</Text>
-                <Text style={[styles.macroPreviewText, { color: mc.carbs }]}>C {headline.macros.carbs}g</Text>
-                <Text style={[styles.macroPreviewText, { color: mc.fat }]}>F {headline.macros.fat}g</Text>
-              </View>
-              <Text style={styles.perLabel}>{FOOD_SEARCH_PER_SERVING_BADGE}</Text>
-              <Text style={styles.per100g}>
-                {headline.servingLabel}
-                {headline.per100gReference ? ` · ${headline.per100gReference}` : ""}
-              </Text>
-            </>
-          ) : headline.mode === "per-100g" && headline.macros ? (
-            <>
-              <View style={styles.macroPreview}>
-                <Text style={[styles.macroPreviewText, { color: mc.protein }]}>P {headline.macros.protein}g</Text>
-                <Text style={[styles.macroPreviewText, { color: mc.carbs }]}>C {headline.macros.carbs}g</Text>
-                <Text style={[styles.macroPreviewText, { color: mc.fat }]}>F {headline.macros.fat}g</Text>
-              </View>
-              <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
-            </>
-          ) : headline.mode === "per-100g" ? (
-            <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
-          ) : (
-            <Text style={styles.per100g}>Tap for nutrition info</Text>
-          )}
-          {customFood && isLearnedCustomFoodSource(customFood.source) ? (
-            <Text
-              testID="learned-custom-food-cue"
+        <Pressable
+          key={row.key}
+          onPress={() => onPickResult(row)}
+          onLongPress={
+            isCustom && customFood ? () => onLongPressCustom(customFood) : undefined
+          }
+          disabled={isLoading}
+          accessibilityRole="button"
+          accessibilityLabel={accessibilityLabel}
+          style={({ pressed }) => ({
+            flex: 1,
+            minWidth: 0,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.md,
+            paddingHorizontal: Spacing.md,
+            paddingVertical: Spacing.md,
+            backgroundColor: pressed ? colors.background : "transparent",
+          })}
+        >
+          <View style={{ flex: 1 }}>
+            <View
               style={{
-                fontSize: 11,
-                fontStyle: "italic",
-                color: colors.textSecondary,
-                marginTop: Spacing.xs / 2,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: Spacing.sm,
+                flexWrap: "wrap",
               }}
             >
-              {LEARNED_CUSTOM_FOOD_REUSE_CUE}
-            </Text>
-          ) : null}
-        </View>
-        {headline.mode !== "placeholder" && !isLoading ? (
-          <View style={{ alignItems: "flex-end" }}>
-            <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] }}>
-              {headline.headlineKcal}
-            </Text>
-            <Text style={{ fontSize: 10, fontWeight: "700", color: colors.textTertiary, letterSpacing: 0.4 }}>KCAL</Text>
+              {isCustom && <Badge variant="custom">Custom</Badge>}
+              <SearchResultConfidenceChip tier={chipTier} sourceLabel={sourceLabel} />
+              <Text style={styles.resultName} numberOfLines={2}>
+                {row.name}
+              </Text>
+            </View>
+            {headline.mode === "per-serving" ? (
+              <>
+                <View style={styles.macroPreview}>
+                  <Text style={[styles.macroPreviewText, { color: mc.protein }]}>P {headline.macros.protein}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: mc.carbs }]}>C {headline.macros.carbs}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: mc.fat }]}>F {headline.macros.fat}g</Text>
+                </View>
+                <Text style={styles.perLabel}>{FOOD_SEARCH_PER_SERVING_BADGE}</Text>
+                <Text style={styles.per100g}>
+                  {headline.servingLabel}
+                  {headline.per100gReference ? ` · ${headline.per100gReference}` : ""}
+                </Text>
+              </>
+            ) : headline.mode === "per-100g" && headline.macros ? (
+              <>
+                <View style={styles.macroPreview}>
+                  <Text style={[styles.macroPreviewText, { color: mc.protein }]}>P {headline.macros.protein}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: mc.carbs }]}>C {headline.macros.carbs}g</Text>
+                  <Text style={[styles.macroPreviewText, { color: mc.fat }]}>F {headline.macros.fat}g</Text>
+                </View>
+                <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
+              </>
+            ) : headline.mode === "per-100g" ? (
+              <Text style={styles.per100g}>{FOOD_SEARCH_PER_100G_BADGE}</Text>
+            ) : (
+              <Text style={styles.per100g}>Tap for nutrition info</Text>
+            )}
+            {customFood && isLearnedCustomFoodSource(customFood.source) ? (
+              <Text
+                testID="learned-custom-food-cue"
+                style={{
+                  fontSize: 11,
+                  fontStyle: "italic",
+                  color: colors.textSecondary,
+                  marginTop: Spacing.xs / 2,
+                }}
+              >
+                {LEARNED_CUSTOM_FOOD_REUSE_CUE}
+              </Text>
+            ) : null}
           </View>
+          {headline.mode !== "placeholder" && !isLoading ? (
+            <View style={{ alignItems: "flex-end" }}>
+              <Text style={{ fontSize: 18, fontWeight: "800", color: colors.text, fontVariant: ["tabular-nums"] }}>
+                {headline.headlineKcal}
+              </Text>
+              <Text style={{ fontSize: 10, fontWeight: "700", color: colors.textTertiary, letterSpacing: 0.4 }}>KCAL</Text>
+            </View>
+          ) : null}
+          {isLoading ? (
+            <ActivityIndicator size="small" color={accent.primary} />
+          ) : (
+            <ChevronRight size={16} color={colors.textTertiary} />
+          )}
+        </Pressable>
+        {!isCustom && !isLoading ? (
+          <PressableScale
+            onPress={() => onQuickLog(row)}
+            haptic="confirm"
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={`Quick log ${row.name} at default serving`}
+            testID={`food-search-quick-log-${row.key}`}
+            style={{ padding: Spacing.xs, marginRight: Spacing.md }}
+          >
+            <Plus size={18} color={accent.primarySolid} strokeWidth={2.5} />
+          </PressableScale>
         ) : null}
-        {isLoading ? (
-          <ActivityIndicator size="small" color={accent.primary} />
-        ) : (
-          <ChevronRight size={16} color={colors.textTertiary} />
-        )}
-      </Pressable>
+      </View>
     </View>
   );
 }

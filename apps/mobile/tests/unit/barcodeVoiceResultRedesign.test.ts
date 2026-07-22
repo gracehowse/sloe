@@ -2,12 +2,14 @@
  * Barcode + voice result sheets — search-results redesign language
  * (ENG-817, 2026-05-31).
  *
- * After the food-search redesign lands, the barcode-scan result
- * (`app/(tabs)/barcode.tsx`) and the voice-log result
- * (`AiLogReviewItem.tsx`, used by `VoiceLogSheet`) must adopt the same
+ * The barcode-scan result (`app/(tabs)/barcode.tsx`) and the voice-log
+ * result (`AiLogReviewItem.tsx`, used by `VoiceLogSheet`) share the same
  * design language — a legible Verified/Estimated confidence chip and a blue
- * commit CTA — gated behind `redesign_search_results`, with the old path
- * alive in the else.
+ * commit CTA. This shipped behind `redesign_search_results`, which
+ * collapsed permanently-on (ENG-1651, 2026-07-22): the flag was ON via
+ * REDESIGN_DEFAULT_ON in every build since ENG-814/815 (2026-05-31/06-01),
+ * so the gate was removed from source and the ON-path styling now applies
+ * unconditionally. There is no old path left to pin.
  *
  * Why structural pins: the barcode screen and the AI review row are large
  * RN surfaces (camera overlay / Modal-hosted) that vitest/jsdom can't fully
@@ -30,11 +32,11 @@ const REVIEW_ITEM = readFileSync(
 );
 
 describe("barcode result — redesign gate", () => {
-  it("reads the redesign_search_results flag", () => {
-    expect(BARCODE).toMatch(/isFeatureEnabled\(["']redesign_search_results["']\)/);
+  it("no longer reads the redesign_search_results flag (collapsed permanently-on, ENG-1651)", () => {
+    expect(BARCODE).not.toMatch(/isFeatureEnabled\(["']redesign_search_results["']\)/);
   });
 
-  it("renders the shared SearchResultConfidenceChip under the flag", () => {
+  it("renders the shared SearchResultConfidenceChip unconditionally", () => {
     expect(BARCODE).toMatch(/import\s+\{\s*SearchResultConfidenceChip\s*\}/);
     expect(BARCODE).toMatch(/<SearchResultConfidenceChip/);
     expect(BARCODE).toMatch(/testID="barcode-confidence-chip"/);
@@ -44,32 +46,22 @@ describe("barcode result — redesign gate", () => {
     expect(BARCODE).toMatch(/tier=\{barcodeConfidenceTier\(product\)\}/);
   });
 
-  it("keeps the old binary tick path alive behind the else", () => {
-    // The pre-redesign tick + source line must survive for the flag-off path.
-    expect(BARCODE).toMatch(/product\.verified \?/);
-    expect(BARCODE).toMatch(/<Check size=\{11\}/);
-  });
-
-  it("paints the commit CTA with the secondary accent under the flag", () => {
-    // The default StyleSheet logBtn stays green (flag-off path); the call
-    // site overrides to the secondary accent when searchRedesign is on.
+  it("paints the commit CTA with the secondary accent unconditionally", () => {
     // ENG-997: that read goes through `accent.primary` (from `useAccent()`),
     // which is now the unconditional clay (the Frost secondary-colour
     // exploration was retired 2026-06-08), rather than the static
     // `Accent.primary`. The hook indirection is kept; it just always returns clay.
+    // ENG-1651: the old `searchRedesign &&` gate on this override is gone —
+    // the accent applies unconditionally now.
     expect(BARCODE).toMatch(
-      /searchRedesign\s*&&\s*\{\s*backgroundColor:\s*accent\.primary\s*\}/,
+      /\{\s*backgroundColor:\s*accent\.primary\s*\}/,
     );
-  });
-
-  it("does NOT recolour the default logBtn StyleSheet (else path stays green)", () => {
-    expect(BARCODE).toMatch(/logBtn:\s*\{[\s\S]*?backgroundColor:\s*Accent\.success/);
   });
 });
 
 describe("voice-log result — redesign gate", () => {
-  it("reads the redesign_search_results flag in the review row", () => {
-    expect(REVIEW_ITEM).toMatch(
+  it("no longer reads the redesign_search_results flag in the review row (collapsed permanently-on, ENG-1651)", () => {
+    expect(REVIEW_ITEM).not.toMatch(
       /isFeatureEnabled\(["']redesign_search_results["']\)/,
     );
   });
@@ -82,16 +74,20 @@ describe("voice-log result — redesign gate", () => {
     expect(REVIEW_ITEM).toMatch(/testID="voice-confidence-chip"/);
   });
 
-  it("only renders the redesign chip when the flag is on", () => {
+  it("renders the redesign chip unconditionally", () => {
+    // ENG-1651: the old `searchRedesign && (...)` gate around the chip is
+    // gone — it renders unconditionally now.
+    expect(REVIEW_ITEM).not.toMatch(/searchRedesign/);
     expect(REVIEW_ITEM).toMatch(
-      /searchRedesign\s*&&\s*\(\s*\n?\s*<SearchResultConfidenceChip/,
+      /<SearchResultConfidenceChip\s+tier="estimated"\s+testID="voice-confidence-chip"\s*\/>/,
     );
   });
 
   it("keeps the low-confidence amber border as a load-bearing trust signal", () => {
     // Elevation is only applied to non-low rows; low rows always keep the
-    // amber border even under the redesign flag.
-    expect(REVIEW_ITEM).toMatch(/searchRedesign\s*&&\s*!low/);
+    // amber border. ENG-1651: this is no longer paired with a redesign flag
+    // check — the `!low` branch is unconditional now.
+    expect(REVIEW_ITEM).toMatch(/!low\s*\n?\s*\?\s*\{/);
     // ENG-1521 — the amber border reads the named SoftStrong token.
     expect(REVIEW_ITEM).toMatch(/Accent\.warningSoftStrong/);
   });

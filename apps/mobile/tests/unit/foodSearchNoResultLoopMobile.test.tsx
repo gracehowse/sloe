@@ -73,6 +73,10 @@ vi.mock("@/lib/verifyRecipe", () => ({
   getFoodMacros: vi.fn(async () => null),
   getFatSecretFood: vi.fn(async () => null),
   scaleMacrosByGrams: (m: unknown) => m,
+  // `redesign_search_results` collapsed permanently-on (ENG-1651) — the panel
+  // now unconditionally calls this to build the Best/More sections, even on
+  // the empty-state path this test exercises.
+  splitFoodSearchResults: vi.fn(() => ({ best: [], more: [] })),
 }));
 
 // FatSecret autocomplete (Premier-tier) — stub to empty so the
