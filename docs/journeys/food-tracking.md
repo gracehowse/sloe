@@ -581,14 +581,16 @@ changes it.
   (`src/app/components/suppr/meal-nutrition-dialog.tsx`) for that item.
 - **Web — whole slot:** the "View slot nutrition" ghost icon-button described
   above opens the same dialog in aggregate mode.
-- Both web affordances are gated behind `web_meal_nutrition_detail`, now
-  **default-ON** (`REDESIGN_DEFAULT_ON` in `src/lib/analytics/track.ts`,
-  since 2026-06-22) — see the
+- Both web affordances were gated behind `web_meal_nutrition_detail`
+  (default-ON since 2026-06-22); the flag was **collapsed (ENG-1651,
+  2026-07-22)** — it was permanently ON via `REDESIGN_DEFAULT_ON` with no
+  live kill switch, so `NutritionTracker.tsx` now wires both affordances
+  unconditionally. See the
   [web parity decision](../decisions/2026-05-31-web-meal-nutrition-detail-parity.md)
   for the shipping history and the slot-aggregate follow-up work. Mobile's
-  screen predates this flag and isn't gated by it at all — `onPressMeal` /
-  `onPressSlotSummary` are wired unconditionally in `TodayScreen.tsx`; the
-  flag exists purely to close web's side of the parity gap.
+  screen predates this flag and was never gated by it — `onPressMeal` /
+  `onPressSlotSummary` are wired unconditionally in `TodayScreen.tsx`. Both
+  platforms are now symmetric: unconditional on both sides.
 
 **Single-item view** (mobile `apps/mobile/app/meal-nutrition.tsx`; web
 `MealNutritionDialog`):

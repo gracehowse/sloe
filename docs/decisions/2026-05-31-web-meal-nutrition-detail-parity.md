@@ -1,8 +1,8 @@
 # Web per-meal nutrition-detail surface (web↔mobile parity gap #15)
 
-- **Date:** 2026-05-31 (per-meal); **updated 2026-06-19** (slot-aggregate, ENG-837)
+- **Date:** 2026-05-31 (per-meal); **updated 2026-06-19** (slot-aggregate, ENG-837); **updated 2026-07-22** (flag collapsed, ENG-1651)
 - **Area:** Today tab / nutrition detail (web)
-- **Status:** Resolved (shipped behind a default-OFF flag). **Slot-aggregate parity now closed (2026-06-19, ENG-837)** — web reaches full mobile parity (per-meal AND per-slot) behind the same `web_meal_nutrition_detail` flag.
+- **Status:** Resolved (shipped behind a default-OFF flag, ramped default-ON 2026-06-22). **Slot-aggregate parity closed 2026-06-19 (ENG-837)** — web reached full mobile parity (per-meal AND per-slot) behind the same `web_meal_nutrition_detail` flag. **Flag collapsed entirely 2026-07-22 (ENG-1651)** — it had been permanently ON via `REDESIGN_DEFAULT_ON` with no live PostHog kill switch, so `NutritionTracker.tsx` now mounts both dialogs and wires both opener props unconditionally. The flag no longer exists anywhere in the codebase.
 - **Parity gap:** P5 parity audit gap **#15** — `docs/planning/2026-05-31-p5-parity-audit-worklist.md`
 
 ## Problem
@@ -165,3 +165,24 @@ aggregate. Not a parity gap.
   source-check that the host gates both the affordance prop and the aggregate
   dialog mount behind `web_meal_nutrition_detail`
 - mobile/shared: the largest-remainder edge cases now pin the single shared impl
+
+## Flag collapse (2026-07-22, ENG-1651)
+
+`web_meal_nutrition_detail` was added to `REDESIGN_DEFAULT_ON` 2026-06-22 (the
+sloe-v3 flag-collapse sweep) and held permanently ON with no live PostHog kill
+switch for a full month. Per the feature-flag policy's collapse step, the four
+`isFeatureEnabled("web_meal_nutrition_detail")` call sites in
+`NutritionTracker.tsx` were removed and the ON branch now ships
+unconditionally: `onOpenMealNutrition` / `onOpenSlotNutrition` are always
+passed to `TodayMealsSection`, and both `MealNutritionDialog` mounts (per-meal
+and slot-aggregate) render unconditionally. `TodayMealsSection`'s own
+`onOpenMealNutrition?` / `onOpenSlotNutrition?` props stay optional (the
+component's own contract), but the host wires them every time now — the
+"flag-OFF vs flag-ON kebab wiring" and "gates both the affordance prop and the
+aggregate dialog mount behind `web_meal_nutrition_detail`" test coverage
+listed above was updated accordingly in
+`tests/unit/mealNutritionDialogWeb.test.tsx`: the source-check now pins the
+flag's ABSENCE + the unconditional shape. `web_meal_nutrition_detail` no
+longer exists in `REDESIGN_DEFAULT_ON`, `tests/e2e/redesign-flag-registry.json`,
+or `tests/unit/redesignDefaultOnParity.test.ts`'s `WEB_ONLY` set. Web and
+mobile are now symmetric: unconditional on both platforms.
