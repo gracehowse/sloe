@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { PressableScale } from "@/components/ui/PressableScale";
 // App-resolved scheme (NOT the raw OS scheme) — see hooks/use-color-scheme.
@@ -17,7 +17,7 @@ import { Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { SupprCard } from "@/components/ui/SupprCard";
 import { isFeatureEnabled } from "@/lib/analytics";
-import { MACRO_RING_TOGGLE } from "@suppr/shared/copy/today";
+import { MACRO_RING_TOGGLE, RING_VIEW_TOGGLE } from "@suppr/shared/copy/today";
 
 /**
  * TodayHeroRing — ring hero variant.
@@ -166,6 +166,18 @@ function TodayHeroRingImpl({
   // sits at the bare cluster gap under the strip.
   const clusterHero = isFeatureEnabled("today_hero_cluster_v3");
   const coachAtFoot = decard && clusterHero;
+  // ENG-1653 (Grace, sim review): the macros toggle below the hero had been
+  // DEAD since the ENG-1225 jewel-dial swap — the dial ignores `expanded` and
+  // the macro section never read it, so `onToggleExpanded` flipped state
+  // nothing consumed. On the cluster hero it becomes the v3 prototype's
+  // dial-view switch (Remaining ⇆ Consumed), local state like the
+  // prototype's `calView` — NOT the retired host-owned `displayMode` prop
+  // pair (deprecated 2026-06-10), which stays ignored for call-site
+  // stability. The dial tap (prototype ring-tap) drives the same switch.
+  // Legacy (flag-off) path keeps the existing control untouched.
+  const [dialMode, setDialMode] = useState<"remaining" | "consumed">("remaining");
+  const toggleDialMode = () =>
+    setDialMode((m) => (m === "remaining" ? "consumed" : "remaining"));
 
   const heroInner = (
     <>
@@ -211,8 +223,12 @@ function TodayHeroRingImpl({
           carbsPct={carbsPct}
           fatPct={fatPct}
           expanded={expanded}
-          onToggleExpanded={onToggleExpanded}
+          // ENG-1653 cluster hero: the dial tap flips the Remaining ⇆
+          // Consumed view (prototype ring-tap); legacy path keeps the
+          // (dead) macro toggle wiring untouched.
+          onToggleExpanded={clusterHero ? toggleDialMode : onToggleExpanded}
           numeralLarge={decard}
+          dialDisplayMode={clusterHero ? dialMode : undefined}
         />
         <LogConfirmCheck bump={logConfirmBump} />
       </View>
@@ -246,11 +262,19 @@ function TodayHeroRingImpl({
           the `MACRO_RING_TOGGLE` copy so the two surfaces can't drift. Fires
           the same `onToggleExpanded` the long-press does. */}
       <PressableScale
-        testID="today-macro-rings-toggle"
+        testID={clusterHero ? "today-ring-view-toggle" : "today-macro-rings-toggle"}
         haptic="selection"
-        onPress={onToggleExpanded}
+        onPress={clusterHero ? toggleDialMode : onToggleExpanded}
         accessibilityRole="button"
-        accessibilityLabel={expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
+        accessibilityLabel={
+          clusterHero
+            ? dialMode === "remaining"
+              ? RING_VIEW_TOGGLE.a11yToConsumed
+              : RING_VIEW_TOGGLE.a11yToRemaining
+            : expanded
+              ? MACRO_RING_TOGGLE.hide
+              : MACRO_RING_TOGGLE.show
+        }
         hitSlop={8}
         style={{ marginTop: Spacing.xs }}
       >
@@ -260,16 +284,22 @@ function TodayHeroRingImpl({
             fontSize: 11,
             fontWeight: "600",
             color: isDark ? accent.primarySolidDark : accent.primarySolid,
-            // ENG-1093 (Grace): "Hide macros" / "Show macros" are the same width
-            // so the centred control never wobbles between states. A fixed
-            // minWidth + centred text pins both labels to one footprint (the
-            // two strings are equal length but "Show"/"Hide" differ in glyph
-            // width). Mirrors web `min-w-[84px] text-center`.
-            minWidth: 84,
+            // ENG-1093 (Grace): both labels of a state pair share one width so
+            // the centred control never wobbles between states. A fixed
+            // minWidth + centred text pins them to one footprint. Mirrors web
+            // `min-w-[84px] text-center`; the cluster hero's longer
+            // "Remaining/Consumed · tap to switch" pair pins at 180.
+            minWidth: clusterHero ? 180 : 84,
             textAlign: "center",
           }}
         >
-          {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
+          {clusterHero
+            ? dialMode === "remaining"
+              ? RING_VIEW_TOGGLE.remaining
+              : RING_VIEW_TOGGLE.consumed
+            : expanded
+              ? MACRO_RING_TOGGLE.hide
+              : MACRO_RING_TOGGLE.show}
         </Text>
       </PressableScale>
       {/* ENG-1653 — the de-orphaned Coach entry at the hero foot (the

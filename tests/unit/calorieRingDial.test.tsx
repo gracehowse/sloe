@@ -86,6 +86,31 @@ describe("CalorieRingDial — jewel watch dial", () => {
     );
     expect(empty.querySelector('[id^="cr-dial-empty"]')).not.toBeNull();
   });
+
+  // ENG-1653 — dial-view switch (Grace sim review): "consumed" shows the
+  // eaten total + "kcal eaten"; the arc keeps the budget verdict (an
+  // over-budget dial stays amber in both views).
+  it("displayMode=consumed shows the eaten caption; remaining stays the default arithmetic", () => {
+    const { getByText: consumedView } = render(
+      <CalorieRingDial consumed={1901} target={1856} displayMode="consumed" />,
+    );
+    expect(consumedView("kcal eaten")).toBeTruthy();
+    const { getByText: defaultView } = render(
+      <CalorieRingDial consumed={1901} target={1856} />,
+    );
+    expect(defaultView("kcal over")).toBeTruthy();
+    const { getByText: underView } = render(
+      <CalorieRingDial consumed={1200} target={2000} />,
+    );
+    expect(underView("kcal left")).toBeTruthy();
+  });
+
+  it("consumed view keeps the over-budget amber arc (verdict lives in the arc + status line)", () => {
+    const { container } = render(
+      <CalorieRingDial consumed={2300} target={2000} displayMode="consumed" />,
+    );
+    expect(container.querySelector('[id^="cr-dial-over"]')).not.toBeNull();
+  });
 });
 
 // ENG-1571 (ruling 2026-07-17) — flat dial material, ALL states, both themes:

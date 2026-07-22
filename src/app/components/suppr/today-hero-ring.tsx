@@ -6,7 +6,7 @@ import type { CalorieRingDisplayMode } from "./daily-ring";
 import { CalorieRingDial } from "./calorie-ring-dial";
 import { LogConfirmCheck } from "./log-confirm-check";
 import { TodayFreshDayLogPill } from "./today-fresh-day-log-pill";
-import { MACRO_RING_TOGGLE, todayStatusChip } from "../../../lib/copy/today";
+import { MACRO_RING_TOGGLE, RING_VIEW_TOGGLE, todayStatusChip } from "../../../lib/copy/today";
 import { useCalorieRingGeometry } from "../../../lib/hooks/useCalorieRingGeometry";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { SupprCard } from "../ui/suppr-card.tsx";
@@ -252,6 +252,16 @@ export function TodayHeroRing({
   // `TodayHeroRing.tsx` (mobile).
   const clusterHero = isFeatureEnabled("today_hero_cluster_v3");
   const coachAtFoot = decard && clusterHero;
+  // ENG-1653 (Grace, sim review): the macros toggle below the hero had been
+  // DEAD since the jewel-dial swap (the dial ignores `expanded`; nothing else
+  // read the state). On the cluster hero it becomes the v3 prototype's
+  // dial-view switch (Remaining ⇆ Consumed) — local state like the
+  // prototype's `calView`. The dial click drives the same switch. Legacy
+  // (flag-off) path keeps the existing control untouched. Mobile twin:
+  // `TodayHeroRing.tsx`.
+  const [dialMode, setDialMode] = React.useState<"remaining" | "consumed">("remaining");
+  const toggleDialMode = () =>
+    setDialMode((m) => (m === "remaining" ? "consumed" : "remaining"));
 
   const heroInner = (
     <>
@@ -281,8 +291,10 @@ export function TodayHeroRing({
           numeralLarge={decard}
           // ENG-1465 — restore the legacy `DailyRing` wiring the v3 swap
           // dropped: click-to-toggle + the win/commit pulses the host already
-          // feeds this component.
-          onToggle={onToggleExpanded}
+          // feeds this component. ENG-1653 cluster hero: the click flips the
+          // Remaining ⇆ Consumed view instead (prototype ring-tap).
+          onToggle={clusterHero ? toggleDialMode : onToggleExpanded}
+          displayMode={clusterHero ? dialMode : undefined}
           pulse={pulse}
           commitPulse={commitPulse}
         />
@@ -335,15 +347,28 @@ export function TodayHeroRing({
       {coachLine}
       <button
         type="button"
-        data-testid="today-macro-rings-toggle"
-        onClick={onToggleExpanded}
-        // ENG-1093 (Grace): "Hide macros" / "Show macros" share one width so the
-        // centred control never wobbles between states (the two strings are equal
-        // length but "Show"/"Hide" differ in glyph width). `min-w` + centred text
-        // pins both labels to one footprint. Mirrors mobile `minWidth: 84`.
-        className="inline-block min-w-[84px] text-center text-[11px] font-semibold text-primary-solid hover:opacity-80 transition-opacity"
+        data-testid={clusterHero ? "today-ring-view-toggle" : "today-macro-rings-toggle"}
+        onClick={clusterHero ? toggleDialMode : onToggleExpanded}
+        aria-label={
+          clusterHero
+            ? dialMode === "remaining"
+              ? RING_VIEW_TOGGLE.a11yToConsumed
+              : RING_VIEW_TOGGLE.a11yToRemaining
+            : undefined
+        }
+        // ENG-1093 (Grace): both labels of a state pair share one width so the
+        // centred control never wobbles between states. `min-w` + centred text
+        // pins them to one footprint. Mirrors mobile `minWidth: 84`; the
+        // cluster hero's longer pair pins at 180.
+        className={`inline-block ${clusterHero ? "min-w-[180px]" : "min-w-[84px]"} text-center text-[11px] font-semibold text-primary-solid hover:opacity-80 transition-opacity`}
       >
-        {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
+        {clusterHero
+          ? dialMode === "remaining"
+            ? RING_VIEW_TOGGLE.remaining
+            : RING_VIEW_TOGGLE.consumed
+          : expanded
+            ? MACRO_RING_TOGGLE.hide
+            : MACRO_RING_TOGGLE.show}
       </button>
       {/* ENG-1653 — the de-orphaned Coach entry at the hero foot (the
           prototype's guide-line slot); see the `coachAtFoot` note above. */}

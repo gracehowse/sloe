@@ -94,8 +94,15 @@ export interface CalorieRingDialProps {
    *  restoring the legacy `CalorieRing` gesture the v3 swap dropped (there:
    *  `Pressable onPress={onToggle} onLongPress={onToggle}` — long-press stays
    *  the power-user shortcut, the labelled "Show macros" button below the hero
-   *  stays the accessible-name path). Web twin: `calorie-ring-dial.tsx`. */
+   *  stays the accessible-name path). Web twin: `calorie-ring-dial.tsx`.
+   *  On the ENG-1653 cluster hero the host wires this to the dial-view
+   *  switch instead (the macro state had been dead since this swap). */
   onToggle?: () => void;
+  /** ENG-1653 — dial-view switch (prototype ring-tap): "remaining" shows the
+   *  budget arithmetic (KCAL LEFT / KCAL OVER); "consumed" shows what's been
+   *  eaten (KCAL EATEN). Calibrating (no target) ignores this — LOGGED is
+   *  already the consumed number. Default "remaining" (today's behaviour). */
+  displayMode?: "remaining" | "consumed";
 }
 
 export function CalorieRingDial({
@@ -105,6 +112,7 @@ export function CalorieRingDial({
   hideCenter = false,
   numeralLarge = false,
   onToggle,
+  displayMode = "remaining",
 }: CalorieRingDialProps) {
   const colors = useThemeColors();
   const reduce = useReduceMotion();
@@ -135,13 +143,24 @@ export function CalorieRingDial({
 
   // Cold start (goal<=0): no budget/verdict yet, so show what's LOGGED (real
   // numbers always — Grace 2026-06-10), never "OVER" or a misleading "0 left".
+  // ENG-1653: consumed view shows the eaten total; the arc + the status line
+  // below the ring still carry the over/under verdict.
+  const showConsumed = !isCalibrating && displayMode === "consumed";
   const centerValue = isCalibrating
     ? Math.round(consumed)
-    : isOver
-      ? Math.round(consumed - target)
-      : Math.max(0, Math.round(target - consumed));
+    : showConsumed
+      ? Math.round(consumed)
+      : isOver
+        ? Math.round(consumed - target)
+        : Math.max(0, Math.round(target - consumed));
   const animated = useCountUp(centerValue, reduce);
-  const label = isCalibrating ? "LOGGED" : isOver ? "KCAL OVER" : "KCAL LEFT";
+  const label = isCalibrating
+    ? "LOGGED"
+    : showConsumed
+      ? "KCAL EATEN"
+      : isOver
+        ? "KCAL OVER"
+        : "KCAL LEFT";
 
   const track: React.ReactNode[] = [];
   const lit: React.ReactNode[] = [];

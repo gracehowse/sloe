@@ -183,6 +183,21 @@ export const MACRO_RING_TOGGLE = {
   hide: "Hide macros",
 } as const;
 
+/** ENG-1653 (Grace, 2026-07-21 sim review): on the cluster hero the macros
+ *  toggle is replaced by the v3 prototype's dial-view switch — the macro
+ *  toggle had been DEAD since the ENG-1225 jewel-dial swap (the dial ignores
+ *  `expanded` and the macro section never read it), so the control flipped
+ *  state nothing consumed. The switch flips the dial centre between
+ *  Remaining ("KCAL LEFT") and Consumed ("KCAL EATEN") — prototype
+ *  `.ring-switch-hint` copy ("{current} · tap to switch"). Shared so web +
+ *  mobile can't drift. */
+export const RING_VIEW_TOGGLE = {
+  remaining: "Remaining · tap to switch",
+  consumed: "Consumed · tap to switch",
+  a11yToConsumed: "Showing remaining calories — switch to consumed",
+  a11yToRemaining: "Showing consumed calories — switch to remaining",
+} as const;
+
 /** Detail line for the `Net` stat — describes which side of maintenance
  *  the user is on in plain deficit/surplus terms. "Deficit" is the
  *  canonical word across product (matches mobile `Net deficit / Net

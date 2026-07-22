@@ -80,4 +80,31 @@ describe("TodayHeroRing cluster branch (today_hero_cluster_v3)", () => {
     expect(src).toMatch(/paddingTop: clusterHero \? 0 : Spacing\.sm/);
     expect(src).toMatch(/paddingBottom: Spacing\.sm/);
   });
+
+  it("replaces the DEAD macros toggle with the Remaining ⇆ Consumed dial-view switch (Grace sim review)", () => {
+    // The macros toggle had flipped state nothing consumed since the ENG-1225
+    // jewel-dial swap. On the cluster hero the same control (and the dial
+    // tap) drives the prototype's dial-view switch instead; the legacy
+    // (flag-off) path keeps the existing control untouched.
+    expect(src).toMatch(/const \[dialMode, setDialMode\] = useState<"remaining" \| "consumed">\("remaining"\)/);
+    expect(src).toMatch(/testID=\{clusterHero \? "today-ring-view-toggle" : "today-macro-rings-toggle"\}/);
+    expect(src).toMatch(/onPress=\{clusterHero \? toggleDialMode : onToggleExpanded\}/);
+    expect(src).toMatch(/onToggleExpanded=\{clusterHero \? toggleDialMode : onToggleExpanded\}/); // dial tap
+    expect(src).toMatch(/dialDisplayMode=\{clusterHero \? dialMode : undefined\}/);
+    expect(src).toMatch(/RING_VIEW_TOGGLE\.remaining/);
+    expect(src).toMatch(/RING_VIEW_TOGGLE\.consumed/);
+  });
+});
+
+describe("CalorieRingDial dial-view switch (ENG-1653)", () => {
+  const dial = read("components/charts/CalorieRingDial.tsx");
+
+  it("consumed view shows the eaten total with the KCAL EATEN caption; calibrating keeps LOGGED", () => {
+    expect(dial).toMatch(/const showConsumed = !isCalibrating && displayMode === "consumed"/);
+    expect(dial).toMatch(/"KCAL EATEN"/);
+    // remaining view unchanged: over/left arithmetic intact
+    expect(dial).toMatch(/"KCAL OVER"/);
+    expect(dial).toMatch(/"KCAL LEFT"/);
+    expect(dial).toMatch(/"LOGGED"/);
+  });
 });

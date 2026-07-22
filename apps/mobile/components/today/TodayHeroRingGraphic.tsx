@@ -29,6 +29,8 @@ export interface TodayHeroRingGraphicProps {
   onToggleExpanded: () => void;
   /** De-carded v3 hero (ENG-1247): 56px serif-medium centre numeral. */
   numeralLarge?: boolean;
+  /** ENG-1653 — dial-view switch (Remaining ⇆ Consumed), cluster hero only. */
+  dialDisplayMode?: "remaining" | "consumed";
 }
 
 export function TodayHeroRingGraphic({
@@ -36,6 +38,7 @@ export function TodayHeroRingGraphic({
   goal,
   onToggleExpanded,
   numeralLarge = false,
+  dialDisplayMode,
 }: TodayHeroRingGraphicProps) {
   // The jewel watch-dial does NOT use the legacy empty-state 0.72 shrink (it
   // read too small — Grace 2026-06-22); it sits at a bumped full size so the
@@ -46,9 +49,12 @@ export function TodayHeroRingGraphic({
       target={goal}
       size={Math.round(ringGeometry(false).SIZE * 1.15)}
       numeralLarge={numeralLarge}
-      // ENG-1465 — tap/long-press macro toggle, restoring the legacy
+      // ENG-1465 — tap/long-press toggle, restoring the legacy
       // `CalorieRing onToggle={onToggleExpanded}` wiring the v3 swap dropped.
+      // On the ENG-1653 cluster hero the host passes the dial-view switch
+      // through this same callback (prototype ring-tap).
       onToggle={onToggleExpanded}
+      displayMode={dialDisplayMode}
     />
   );
 }
