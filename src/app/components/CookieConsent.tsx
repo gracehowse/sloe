@@ -111,14 +111,21 @@ export function CookieConsent() {
 
   // ENG-1639/isVisible-race fallout, 2026-07-21 — `.lp-nav` (landing.css) is
   // `position: sticky; top: 0; z-index: 50`, and this banner is `fixed
-  // top-0 z-40` on marketing routes: identical position, nav wins the
+  // top-0 z-40` on marketing routes: identical position, nav won the
   // stacking fight, so its "Get started" link intercepted every click meant
   // for "Accept all"/"Essential only" (real bug, not just a test artifact —
   // confirmed via the chromatic landing capture once dismissVisualOverlays
-  // stopped racing hydration and actually attempted the click). Publish the
-  // banner's live-measured height so `.lp-nav` can push its sticky offset
-  // below it instead. Measured (not a hardcoded constant) so it never drifts
-  // if the banner's copy/padding changes.
+  // stopped racing hydration and actually attempted the click).
+  //
+  // An earlier pass at this fix (superseded, do not reintroduce) raised the
+  // banner to z-[60] so it painted over the nav instead — that resolves the
+  // click-interception but trades it for a worse one: the banner then
+  // visually covers the top ~52px of the 72px nav, including the nav's own
+  // "Get started" CTA, for as long as the banner is up. Root-fixed here
+  // instead: publish the banner's live-measured height so `.lp-nav` can push
+  // its sticky offset below it, so the two never occupy the same pixels and
+  // neither needs to win a stacking fight. Measured (not a hardcoded
+  // constant) so it never drifts if the banner's copy/padding changes.
   useEffect(() => {
     if (!hydrated || !topAnchored) {
       document.documentElement.style.setProperty(COOKIE_CONSENT_TOP_INSET_VAR, "0px");
@@ -178,25 +185,26 @@ export function CookieConsent() {
   // sit under each marketing page's own sticky header, which is not the
   // z-50 "nav" the ENG-1386 rule above was written for, and has no "wins
   // taps" rationale — the consent banner is the thing that must be
-  // interactable there. z-40 there let the landing page's own sticky
-  // `.lp-nav` (landing.css, z-50) render on top of and fully obscure the
-  // banner's buttons, making cookie consent uninteractive on `/` for real
-  // visitors — a compliance-relevant bug caught 2026-07-21 once
-  // dismissVisualOverlays' broken isVisible-as-a-wait no-op (fixed
-  // alongside PR #1010) stopped silently skipping the click in tests. Use
-  // z-[60] (matching the "always on top" tier already used by
-  // upgrade-paywall-dialog.tsx / NotificationsBell.tsx) for topAnchored
-  // only, so the bottom-docked mobile-product case above is untouched.
+  // interactable there. At the same z-40 as everywhere else, the landing
+  // page's own sticky `.lp-nav` (landing.css, z-50) rendered on top of and
+  // fully obscured the banner's buttons, making cookie consent uninteractive
+  // on `/` for real visitors — a compliance-relevant bug caught 2026-07-21
+  // once dismissVisualOverlays' broken isVisible-as-a-wait no-op (fixed
+  // alongside PR #1010) stopped silently skipping the click in tests. Fixed
+  // by relocating `.lp-nav` below the banner (see the ResizeObserver effect
+  // above) instead of racing it for the same z-40 pixels — stays z-40 here,
+  // same as the other two cases, since nothing needs to out-rank anything
+  // once they don't overlap.
   return (
     <div
       ref={bannerRef}
       data-testid="cookie-consent-banner"
-      className={`fixed inset-x-0 bg-card/95 backdrop-blur border-border shadow-[var(--elev-sheet)] ${
+      className={`fixed inset-x-0 z-40 bg-card/95 backdrop-blur border-border shadow-[var(--elev-sheet)] ${
         topAnchored
-          ? "z-[60] top-0 border-b pt-[env(safe-area-inset-top)]"
+          ? "top-0 border-b pt-[env(safe-area-inset-top)]"
           : liftAboveMobileChrome
-            ? `z-40 ${MOBILE_WEB_CONSENT_DOCK_BOTTOM} border-t`
-            : "z-40 bottom-0 border-t pb-[env(safe-area-inset-bottom)]"
+            ? `${MOBILE_WEB_CONSENT_DOCK_BOTTOM} border-t`
+            : "bottom-0 border-t pb-[env(safe-area-inset-bottom)]"
       }`}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2 flex flex-row items-center gap-3">

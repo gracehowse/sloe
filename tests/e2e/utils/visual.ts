@@ -86,11 +86,13 @@ export async function seedConsent(page: Page): Promise<void> {
  *  which is what the topAnchored banner collides with on `/`. There was no
  *  actual design intent for the landing page's own nav to beat the consent
  *  banner — verified live (screenshot + click) that real visitors could not
- *  interact with the banner at all on the landing page. Fixed at the root in
- *  CookieConsent.tsx (topAnchored now renders at z-[60], above the landing
- *  nav; the liftAboveMobileChrome/bottom-docked case is untouched, z-40 as
- *  ENG-1386 intended). The bounded+caught click here stays regardless, as
- *  general defensive practice for a best-effort dismiss. */
+ *  interact with the banner at all on the landing page. Fixed at the root:
+ *  CookieConsent.tsx now measures its own height and relocates `.lp-nav`
+ *  below it (`--cookie-consent-top-inset`, landing.css) instead of raising
+ *  either element's z-index — both stay z-40 as ENG-1386 intended, since
+ *  neither needs to win a stacking fight once they don't share pixels. The
+ *  bounded+caught click here stays regardless, as general defensive
+ *  practice for a best-effort dismiss. */
 export async function dismissVisualOverlays(page: Page): Promise<void> {
   const acceptBtn = page
     .locator('[data-testid="cookie-consent-banner"]')
