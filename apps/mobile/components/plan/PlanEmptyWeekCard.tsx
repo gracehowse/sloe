@@ -1,8 +1,9 @@
 import { Sparkles } from "lucide-react-native";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
 import { SupprButton } from "@/components/ui/SupprButton";
-import { Radius, Spacing, Type } from "@/constants/theme";
+import { SupprNotice } from "@/components/ui/SupprNotice";
+import { Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
@@ -40,9 +41,11 @@ export function PlanEmptyWeekCard({ onGenerate, onAddMealsAsYouGo }: PlanEmptyWe
   const colors = useThemeColors();
   const accent = useAccent();
   return (
-    <View
+    <SupprNotice
+      tone="primary"
+      variant="block"
       testID="plan-empty-week-card"
-      style={[styles.card, { backgroundColor: accent.primarySoft }]}
+      style={{ alignItems: "center" }}
     >
       <Sparkles size={22} color={colors.navPrimary} strokeWidth={1.75} />
       <Text style={[styles.headline, { color: colors.text }]}>Nothing planned yet</Text>
@@ -67,19 +70,11 @@ export function PlanEmptyWeekCard({ onGenerate, onAddMealsAsYouGo }: PlanEmptyWe
           or add meals as you go
         </Text>
       </SupprButton>
-    </View>
+    </SupprNotice>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: Radius.card,
-    paddingVertical: Spacing.xl,
-    paddingHorizontal: Spacing.lg,
-    alignItems: "center",
-    gap: Spacing.xs,
-    marginTop: Spacing.sm,
-  },
   headline: { ...Type.headline, marginTop: Spacing.xs, textAlign: "center" },
   body: { ...Type.caption, textAlign: "center", paddingHorizontal: Spacing.sm },
 });

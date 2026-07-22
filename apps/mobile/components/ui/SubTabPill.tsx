@@ -1,8 +1,9 @@
 import React from "react";
 import { ScrollView, Text, View } from "react-native";
 
-import { Accent, Radius, Spacing, Type } from "@/constants/theme";
+import { Spacing, Type } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { CountBadge } from "@/components/ui/CountBadge";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 
 /**
@@ -94,27 +95,7 @@ export function SubTabPill<TId extends string>({
               {item.label}
             </Text>
             {item.badge !== undefined && item.badge > 0 ? (
-              <View
-                style={{
-                  minWidth: 20,
-                  height: 18,
-                  paddingHorizontal: Spacing.xs,
-                  borderRadius: Radius.full, // tags census 2026-06-10 (was literal 9)
-                  backgroundColor: active ? colors.text : colors.border,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 10,
-                    fontWeight: "700",
-                    color: active ? colors.primaryForeground : colors.textSecondary,
-                  }}
-                >
-                  {item.badge > 999 ? "999+" : item.badge}
-                </Text>
-              </View>
+              <CountBadge count={item.badge} active={active} />
             ) : null}
           </PressableScale>
         );

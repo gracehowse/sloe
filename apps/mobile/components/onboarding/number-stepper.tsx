@@ -1,7 +1,8 @@
 import * as React from "react";
-import { Pressable, StyleProp, Text, View, ViewStyle } from "react-native";
+import { StyleProp, Text, View, ViewStyle } from "react-native";
 import { FontFamily, Radius, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { StepperCircleButton } from "@/components/ui/StepperCircleButton";
 
 /**
  * Mobile NumberStepper — used by the Age step. Mirrors the web
@@ -34,7 +35,7 @@ export function MobileNumberStepper({
   const colors = useThemeColors();
   const dec = () => onChange(Math.max(min, value - step));
   const inc = () => onChange(Math.min(max, value + step));
-  const btnSize = big ? 48 : 40;
+  const btnSizeKey = big ? "lg" : "md";
   const numSize = big ? 56 : 36;
 
   return (
@@ -54,19 +55,11 @@ export function MobileNumberStepper({
         style,
       ]}
     >
-      <Pressable
+      <StepperCircleButton
         onPress={dec}
         disabled={value <= min}
         accessibilityLabel={`Decrement ${ariaLabel.toLowerCase()}`}
-        style={({ pressed }) => ({
-          width: btnSize,
-          height: btnSize,
-          borderRadius: btnSize / 2,
-          backgroundColor: colors.inputBg,
-          alignItems: "center",
-          justifyContent: "center",
-          opacity: value <= min ? 0.4 : pressed ? 0.7 : 1,
-        })}
+        size={btnSizeKey}
       >
         <Text
           style={{
@@ -77,7 +70,7 @@ export function MobileNumberStepper({
         >
           −
         </Text>
-      </Pressable>
+      </StepperCircleButton>
 
       <View style={{ alignItems: "center", minWidth: big ? 140 : 100 }}>
         <Text
@@ -115,19 +108,11 @@ export function MobileNumberStepper({
         ) : null}
       </View>
 
-      <Pressable
+      <StepperCircleButton
         onPress={inc}
         disabled={value >= max}
         accessibilityLabel={`Increment ${ariaLabel.toLowerCase()}`}
-        style={({ pressed }) => ({
-          width: btnSize,
-          height: btnSize,
-          borderRadius: btnSize / 2,
-          backgroundColor: colors.inputBg,
-          alignItems: "center",
-          justifyContent: "center",
-          opacity: value >= max ? 0.4 : pressed ? 0.7 : 1,
-        })}
+        size={btnSizeKey}
       >
         <Text
           style={{
@@ -138,7 +123,7 @@ export function MobileNumberStepper({
         >
           +
         </Text>
-      </Pressable>
+      </StepperCircleButton>
     </View>
   );
 }

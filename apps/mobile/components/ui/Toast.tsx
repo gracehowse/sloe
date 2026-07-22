@@ -3,9 +3,10 @@ import * as React from "react";
 import { Text, View } from "react-native";
 import { AlertCircle, Check, Info, type LucideIcon } from "lucide-react-native";
 
-import { Accent, Radius, ShadowColor, Spacing, Type } from "@/constants/theme";
+import { Accent, Elevation, IconButtonSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import type { ToastAction } from "@/hooks/useToast";
 
 /**
@@ -97,23 +98,19 @@ function ToastImpl({
           gap: Spacing.sm,
           paddingVertical: Spacing.sm,
           paddingHorizontal: Spacing.md,
-          borderRadius: Radius.md,
+          borderRadius: CARD_RADIUS,
           backgroundColor: colors.card,
           borderWidth: 1,
           borderColor: accent.border,
-          shadowColor: ShadowColor.cast,
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.12,
-          shadowRadius: 6,
-          elevation: 4,
+          ...Elevation.float,
         },
         anchor,
       ]}
     >
       <View
         style={{
-          width: 28,
-          height: 28,
+          width: IconButtonSize.sm,
+          height: IconButtonSize.sm,
           borderRadius: Radius.full,
           alignItems: "center",
           justifyContent: "center",
