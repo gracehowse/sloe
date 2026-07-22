@@ -143,3 +143,30 @@ export function sanitizeCopyTargets(
   }
   return out;
 }
+
+/**
+ * Slot-aware sibling of `sanitizeCopyTargets` (ENG-786 rebuild —
+ * "Copy to another day" replaces the old instant same-slot-same-day
+ * "Log again"). A copy is only a true no-op when BOTH the day AND the
+ * slot are unchanged — copying "Lunch" to "today, Dinner" is a legal,
+ * common target even though the day key matches the source. Everywhere
+ * else (multi-day quick-ranges, a genuinely different day) behaves
+ * exactly like `sanitizeCopyTargets`.
+ */
+export function sanitizeCopySlotTargets(
+  sourceDayKey: string,
+  sourceSlot: string,
+  targetSlot: string,
+  targetDayKeys: readonly string[],
+): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const k of targetDayKeys) {
+    if (!isValidDateKey(k)) continue;
+    if (k === sourceDayKey && targetSlot === sourceSlot) continue;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(k);
+  }
+  return out;
+}

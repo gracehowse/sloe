@@ -375,10 +375,21 @@ interface AppDataContextValue {
   removeLoggedMeal: (mealId: string) => void;
   /** ENG-1122 — optimistic update + Supabase persist for edited journal rows. */
   updateLoggedMeal: (dayKey: string, updated: LoggedMeal) => Promise<boolean>;
-  /** Copy one logged meal to another day (batch 1.4 — copy meal / duplicate day). */
-  copyMealToDate: (sourceDayKey: string, mealId: string, targetDayKey: string) => Promise<void>;
+  /** Copy one logged meal to another day (batch 1.4 — copy meal / duplicate day).
+   *  Optional `targetSlot` renames the clone's slot when it differs from the source. */
+  copyMealToDate: (sourceDayKey: string, mealId: string, targetDayKey: string, targetSlot?: string) => Promise<void>;
   /** Copy one logged meal to every day in the deduped, source-excluded target list. */
-  copyMealToDateRange: (sourceDayKey: string, mealId: string, targetDayKeys: string[]) => Promise<void>;
+  copyMealToDateRange: (sourceDayKey: string, mealId: string, targetDayKeys: string[], targetSlot?: string) => Promise<void>;
+  /** ENG-786 rebuild — "Copy to another day": copy every entry in `sourceSlot`
+   *  on `sourceDayKey` to `targetSlot` on each of `targetDayKeys`. */
+  copySlotToDateRange: (
+    sourceDayKey: string,
+    sourceSlot: string,
+    targetSlot: string,
+    targetDayKeys: string[],
+  ) => Promise<{ itemCount: number; createdIdsByDay: Record<string, string[]> }>;
+  /** Undo for `copySlotToDateRange` — removes exactly the rows it created. */
+  undoCopyToSlot: (createdIdsByDay: Record<string, string[]>) => void;
   /** Duplicate every meal from the source day into a single target day. */
   duplicateDay: (sourceDayKey: string, targetDayKey: string) => Promise<void>;
   /** Duplicate every meal from the source day into every day in the deduped target list. */
@@ -699,6 +710,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     mealsForSelectedDate,
     copyMealToDate,
     copyMealToDateRange,
+    copySlotToDateRange,
+    undoCopyToSlot,
     duplicateDay,
     duplicateDayToDateRange,
   } = useNutritionJournalState({
@@ -2742,6 +2755,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       updateLoggedMeal,
       copyMealToDate,
       copyMealToDateRange,
+      copySlotToDateRange,
+      undoCopyToSlot,
       duplicateDay,
       duplicateDayToDateRange,
       mealPlan,
@@ -2850,6 +2865,8 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       updateLoggedMeal,
       copyMealToDate,
       copyMealToDateRange,
+      copySlotToDateRange,
+      undoCopyToSlot,
       duplicateDay,
       duplicateDayToDateRange,
       mealPlan,

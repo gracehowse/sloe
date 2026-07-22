@@ -5,6 +5,8 @@ import { AlertCircle, Check, Info, type LucideIcon } from "lucide-react-native";
 
 import { Accent, Radius, ShadowColor, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { PressableScale } from "@/components/ui/PressableScale";
+import type { ToastAction } from "@/hooks/useToast";
 
 /**
  * Toast — shared calm, auto-fading card overlay (ENG-1344 first slice).
@@ -48,6 +50,15 @@ export interface ToastProps {
   position?: "top" | "bottom";
   /** Inset from the anchored edge — pass a safe-area inset + spacing. */
   inset?: number;
+  /** ENG-786 rebuild — an optional tappable action (e.g. "Undo"). Presence
+   *  flips `pointerEvents` from "none" to "box-none" so only the action
+   *  pill itself becomes tappable; a toast with no action stays fully
+   *  passive, unchanged from before this prop existed. */
+  action?: ToastAction;
+  /** Called after `action.onPress()` fires, so the host can dismiss
+   *  immediately rather than waiting out the auto-dismiss timer. Only
+   *  meaningful when `action` is set. */
+  onDismiss?: () => void;
   testID?: string;
 }
 
@@ -58,6 +69,8 @@ function ToastImpl({
   icon,
   position = "top",
   inset = Spacing.lg,
+  action,
+  onDismiss,
   testID = "toast",
 }: ToastProps) {
   const colors = useThemeColors();
@@ -72,7 +85,7 @@ function ToastImpl({
       testID={testID}
       accessibilityRole="alert"
       accessibilityLabel={message}
-      pointerEvents="none"
+      pointerEvents={action ? "box-none" : "none"}
       style={[
         {
           position: "absolute",
@@ -110,6 +123,23 @@ function ToastImpl({
         <Icon size={14} color={accent.fg} strokeWidth={2.25} />
       </View>
       <Text style={{ ...Type.body, color: colors.text, flex: 1 }}>{message}</Text>
+      {action ? (
+        <PressableScale
+          onPress={() => {
+            action.onPress();
+            onDismiss?.();
+          }}
+          haptic="selection"
+          accessibilityRole="button"
+          accessibilityLabel={action.label}
+          hitSlop={8}
+          style={{ paddingVertical: Spacing.xs, paddingHorizontal: Spacing.sm }}
+        >
+          <Text style={{ ...Type.captionStrong, color: accent.fg }}>
+            {action.label}
+          </Text>
+        </PressableScale>
+      ) : null}
     </View>
   );
 }

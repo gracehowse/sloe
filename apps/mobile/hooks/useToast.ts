@@ -16,12 +16,23 @@ import type { ToastVariant } from "@/components/ui/Toast";
  */
 const DEFAULT_AUTO_DISMISS_MS = 3000;
 
+/** A single tappable action rendered inside the toast (e.g. "Undo").
+ *  Optional and additive — a toast with no `action` renders exactly as
+ *  before (passive, `pointerEvents="none"`, no tap target). */
+export interface ToastAction {
+  label: string;
+  onPress: () => void;
+}
+
 export interface ShowToastOptions {
   variant?: ToastVariant;
   /** Overrides the variant's default glyph. */
   icon?: LucideIcon;
   /** Per-call auto-dismiss override. Defaults to the hook's `autoDismissMs`. */
   durationMs?: number;
+  /** ENG-786 rebuild — an optional tappable action (e.g. "Undo" on a
+   *  "Copy to another day" success toast). Dismisses the toast on press. */
+  action?: ToastAction;
 }
 
 interface ToastState {
@@ -29,6 +40,7 @@ interface ToastState {
   message: string | null;
   variant: ToastVariant;
   icon: LucideIcon | undefined;
+  action: ToastAction | undefined;
 }
 
 export interface UseToastResult extends ToastState {
@@ -41,6 +53,7 @@ const INITIAL_STATE: ToastState = {
   message: null,
   variant: "info",
   icon: undefined,
+  action: undefined,
 };
 
 export function useToast(options?: { autoDismissMs?: number }): UseToastResult {
@@ -68,6 +81,7 @@ export function useToast(options?: { autoDismissMs?: number }): UseToastResult {
         message,
         variant: opts?.variant ?? "info",
         icon: opts?.icon,
+        action: opts?.action,
       });
       timerRef.current = setTimeout(() => {
         timerRef.current = null;

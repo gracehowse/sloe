@@ -148,13 +148,13 @@ export interface TodayMealsSectionProps {
    */
   onRequestPortion?: (meal: SavedMeal, slot: string) => void;
   /**
-   * ENG-786 — when set (flag `today_log_again` on), a "Log this/these
-   * again" row renders under each populated slot. Tapping it re-inserts
-   * that slot's current entries as fresh entries on the viewed day, with
-   * the same baked macros. Undefined (flag off) → no row, layout
-   * byte-identical to pre-ENG-786.
+   * ENG-786 rebuild (2026-07-21) — when set (flag `today_log_again` on,
+   * key unchanged) a "Copy to another day" row renders under each
+   * populated slot, opening a destination sheet instead of instantly
+   * cloning in place (the old "Log again" doubled calories with no
+   * confirm/undo). Undefined (flag off) → no row.
    */
-  onLogAgain?: (slot: string) => void;
+  onCopySlot?: (slot: string) => void;
   /** Ship M1 — whether the first-run hint is allowed to render in `slot`. */
   hintVisibleForSlot: (slot: string) => boolean;
   /** Ship M1 — user tapped "Not now" on the hint for `slot`. */
@@ -601,7 +601,7 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
     savedMeals,
     onLogSavedMeal,
     onRequestPortion,
-    onLogAgain,
+    onCopySlot,
     hintVisibleForSlot,
     onDismissUsualMealHint,
     onAcceptUsualMealHint,
@@ -1250,20 +1250,17 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                 </View>
               )}
 
-              {/* ENG-786 — full-width "Log this/these again" row. Re-logs
-                  the slot's current entries as fresh entries on the viewed
-                  day (baked macros preserved). Sits above the Save-as-usual
-                  row: repeat-now is the action Grace asked for; saving a
-                  durable template is the quieter secondary. Flag
-                  `today_log_again` gates the prop at the host. */}
-              {hasMeals && isOpen && onLogAgain && (
+              {/* ENG-786 rebuild — full-width "Copy to another day" row:
+                  opens a destination sheet (day + slot) instead of the old
+                  instant same-slot clone (doubled calories, no confirm/
+                  undo). Sits above Save-as-usual; flag `today_log_again`
+                  gates it (key unchanged). */}
+              {hasMeals && isOpen && onCopySlot && (
                 <Pressable
-                  testID={`today-log-again-${slot}`}
-                  onPress={() => onLogAgain(slot)}
+                  testID={`today-copy-slot-${slot}`}
+                  onPress={() => onCopySlot(slot)}
                   accessibilityRole="button"
-                  accessibilityLabel={`Log ${slot} again — re-add ${
-                    meals.length > 1 ? "these items" : "this item"
-                  } to the day`}
+                  accessibilityLabel={`Copy ${slot} to another day`}
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
@@ -1276,9 +1273,9 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                     borderTopColor: cardBorderColor + "30",
                   }}
                 >
-                  <RefreshCw size={14} color={col} />
+                  <Copy size={14} color={col} />
                   <Text style={{ ...Type.body, color: textColor }}>
-                    {meals.length > 1 ? "Log these again" : "Log this again"}
+                    Copy to another day
                   </Text>
                 </Pressable>
               )}

@@ -2,26 +2,33 @@
  * Copy-meal bottom sheet (batch 1.4).
  *
  * Mirrors the web `CopyMealDialog` — date picker + "also copy to next N
- * days" quick chips. Shares the same `sanitizeCopyTargets` / `addDays`
+ * days" quick chips. Shares the same `sanitizeCopySlotTargets` / `addDays`
  * helpers from `src/lib/nutrition/copyMeals.ts` so the two platforms
  * cannot drift on target-list dedup or date arithmetic.
+ *
+ * ENG-786 rebuild (2026-07-21) — this sheet is used two ways: copying a
+ * SINGLE item (`copyMealTargetId` in `TodayScreen.tsx`) and copying a
+ * WHOLE SLOT's items ("Copy to another day", `copySlotTarget`). Both now
+ * choose a target meal slot as well as a target day — the per-item
+ * entry's long-press action already said "Copy to another meal or day";
+ * before this rebuild that was aspirational copy with no slot picker
+ * behind it.
  */
 import { useEffect, useMemo, useState } from "react";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { Modal, Pressable, Text, View, ScrollView } from "react-native";
-import { ChevronLeft, ChevronRight } from "lucide-react-native";
 
 import { Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { isFeatureEnabled } from "@/lib/analytics";
-import { clampJournalDate, journalRangeBounds } from "@/lib/journalNavigation";
-import { dateKeyFromDate } from "@/lib/nutritionJournal";
+import { journalRangeBounds } from "@/lib/journalNavigation";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 import {
   addDays,
-  sanitizeCopyTargets,
+  sanitizeCopySlotTargets,
 } from "@suppr/nutrition-core/copyMeals";
+import CopyMealCalendar from "@/components/today/CopyMealCalendar";
 
 type Theme = {
   text: string;
@@ -53,20 +60,6 @@ function stripMidnight(d: Date): Date {
   return x;
 }
 
-function monthMatrix(viewMonth: Date): (Date | null)[] {
-  const y = viewMonth.getFullYear();
-  const m = viewMonth.getMonth();
-  const first = new Date(y, m, 1);
-  const startDow = first.getDay();
-  const daysInMonth = new Date(y, m + 1, 0).getDate();
-  const cells: (Date | null)[] = [];
-  for (let i = 0; i < startDow; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(y, m, d));
-  while (cells.length % 7 !== 0) cells.push(null);
-  while (cells.length < 42) cells.push(null);
-  return cells;
-}
-
 type Props = {
   visible: boolean;
   onClose: () => void;
@@ -74,8 +67,29 @@ type Props = {
   sourceDayKey: string;
   /** Shown in the header. */
   mealLabel: string;
-  /** Called with the deduped, source-excluded target keys + human summary. */
-  onConfirm: (targetDayKeys: string[], summary: string) => void;
+  /**
+   * ENG-786 rebuild — the meal slot the source entry/entries currently
+   * live in. Also the slot selector's default (reset on every open) and
+   * the input to `sanitizeCopySlotTargets`'s same-day/same-slot no-op
+   * check.
+   */
+  sourceSlot: string;
+  /**
+   * ENG-786 rebuild — the enabled meal slots offered by the selector
+   * (e.g. the host's `enabledMealSlotLabels(...)` / `MEAL_SLOTS`).
+   */
+  slots: readonly string[];
+  /**
+   * ENG-786 rebuild — overrides the default initial target day
+   * (`addDays(sourceDayKey, 1)`, i.e. "tomorrow"). Callers viewing a PAST
+   * day pass today's date key here instead, per the Fable default-target
+   * ruling — "tomorrow" is a confusing default when the source day is
+   * already in the past. Omit to keep the tomorrow default.
+   */
+  initialTargetDayKey?: string;
+  /** Called with the deduped, source-excluded target keys, the chosen
+   *  target slot, and a human summary. */
+  onConfirm: (targetDayKeys: string[], targetSlot: string, summary: string) => void;
   colors: Theme;
 };
 
@@ -84,6 +98,9 @@ export default function CopyMealSheet({
   onClose,
   sourceDayKey,
   mealLabel,
+  sourceSlot,
+  slots,
+  initialTargetDayKey,
   onConfirm,
   colors,
 }: Props) {
@@ -92,9 +109,13 @@ export default function CopyMealSheet({
   const accent = useAccent();
   // ENG-1002/type_scale_v1 — whole-app font-family + size consistency gate.
   const typeScaleV1 = isFeatureEnabled("type_scale_v1");
-  const defaultTarget = useMemo(() => addDays(sourceDayKey, 1), [sourceDayKey]);
+  const defaultTarget = useMemo(
+    () => initialTargetDayKey ?? addDays(sourceDayKey, 1),
+    [sourceDayKey, initialTargetDayKey],
+  );
   const [targetKey, setTargetKey] = useState(defaultTarget);
   const [quickRange, setQuickRange] = useState<QuickRange>("none");
+  const [targetSlot, setTargetSlot] = useState(sourceSlot);
   const [viewMonth, setViewMonth] = useState(() => stripMidnight(new Date()));
   const { min, max } = useMemo(() => journalRangeBounds(), []);
 
@@ -102,12 +123,11 @@ export default function CopyMealSheet({
     if (visible) {
       setTargetKey(defaultTarget);
       setQuickRange("none");
+      setTargetSlot(sourceSlot);
       const [y, m, d] = defaultTarget.split("-").map(Number);
       setViewMonth(new Date(y, (m ?? 1) - 1, d ?? 1));
     }
-  }, [visible, defaultTarget]);
-
-  const matrix = useMemo(() => monthMatrix(viewMonth), [viewMonth]);
+  }, [visible, defaultTarget, sourceSlot]);
 
   const targetDayKeys = useMemo(() => {
     const base = [targetKey];
@@ -117,18 +137,23 @@ export default function CopyMealSheet({
         for (let i = 1; i < range.days; i += 1) base.push(addDays(targetKey, i));
       }
     }
-    return sanitizeCopyTargets(sourceDayKey, base);
-  }, [targetKey, quickRange, sourceDayKey]);
+    return sanitizeCopySlotTargets(sourceDayKey, sourceSlot, targetSlot, base);
+  }, [targetKey, quickRange, sourceDayKey, sourceSlot, targetSlot]);
 
+  // ENG-786 rebuild — day-only phrasing is untouched when the slot is
+  // unchanged (minimal blast radius on the pre-existing single-item copy
+  // flow's summary); a changed slot appends " · <Slot>" onto whichever
+  // day phrasing already applies.
   const summary = useMemo(() => {
     if (targetDayKeys.length === 0) return "Nothing to copy";
-    if (targetDayKeys.length === 1) return `Copied to ${formatHumanDate(targetDayKeys[0]!)}`;
-    return `Copied to ${targetDayKeys.length} days`;
-  }, [targetDayKeys]);
+    const base =
+      targetDayKeys.length === 1
+        ? `Copied to ${formatHumanDate(targetDayKeys[0]!)}`
+        : `Copied to ${targetDayKeys.length} days`;
+    return targetSlot !== sourceSlot ? `${base} · ${targetSlot}` : base;
+  }, [targetDayKeys, targetSlot, sourceSlot]);
 
   const canConfirm = targetDayKeys.length > 0;
-
-  const monthLabel = viewMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -157,90 +182,62 @@ export default function CopyMealSheet({
           </Text>
 
           <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
-            {/* Month header */}
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <PressableScale
-                onPress={() => setViewMonth((v) => new Date(v.getFullYear(), v.getMonth() - 1, 1))}
-                haptic="selection"
-                hitSlop={12}
-                accessibilityRole="button"
-                accessibilityLabel="Previous month"
-              >
-                <ChevronLeft size={20} color={colors.text} />
-              </PressableScale>
-              <Text style={{ fontSize: 15, fontWeight: "700", color: colors.text }}>{monthLabel}</Text>
-              <PressableScale
-                onPress={() => setViewMonth((v) => new Date(v.getFullYear(), v.getMonth() + 1, 1))}
-                haptic="selection"
-                hitSlop={12}
-                accessibilityRole="button"
-                accessibilityLabel="Next month"
-              >
-                <ChevronRight size={20} color={colors.text} />
-              </PressableScale>
-            </View>
-            <View style={{ flexDirection: "row", marginBottom: 4 }}>
-              {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
-                <Text
-                  key={`${d}-${i}`}
-                  style={{ flex: 1, textAlign: "center", fontSize: 11, fontWeight: "600", color: colors.textTertiary }}
+            <CopyMealCalendar
+              viewMonth={viewMonth}
+              onChangeMonth={setViewMonth}
+              targetKey={targetKey}
+              onPick={setTargetKey}
+              sourceDayKey={sourceDayKey}
+              sourceSlot={sourceSlot}
+              targetSlot={targetSlot}
+              min={min}
+              max={max}
+              colors={{ text: colors.text, textTertiary: colors.textTertiary, primaryForeground: colors.primaryForeground }}
+            />
+          </ScrollView>
+
+          {/* ENG-786 rebuild — meal-slot selector. Same pill shape/sizing/
+              selected-state treatment as the "Also copy to" quick-range
+              chips below (same element, same treatment) — no new visual
+              language invented for it. */}
+          <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textSecondary, marginTop: Spacing.md, marginBottom: Spacing.xs }}>
+            Copy into
+          </Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {slots.map((slot) => {
+              const isActive = targetSlot === slot;
+              return (
+                <PressableScale
+                  key={slot}
+                  onPress={() => setTargetSlot(slot)}
+                  haptic="selection"
+                  accessibilityRole="button"
+                  accessibilityLabel={slot}
+                  accessibilityState={{ selected: isActive }}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: Radius.full,
+                    borderWidth: 1,
+                    borderColor: isActive ? accent.primary : colors.cardBorder,
+                    backgroundColor: isActive ? accent.primary : "transparent",
+                  }}
                 >
-                  {d}
-                </Text>
-              ))}
-            </View>
-            <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
-              {matrix.map((cell, idx) => {
-                if (!cell) {
-                  return <View key={`pad-${idx}`} style={{ width: `${100 / 7}%`, aspectRatio: 1, maxWidth: 48 }} />;
-                }
-                const ck = dateKeyFromDate(cell);
-                const disabled = cell.getTime() < min.getTime() || cell.getTime() > max.getTime() || ck === sourceDayKey;
-                const isSel = ck === targetKey;
-                return (
-                  <PressableScale
-                    key={`${ck}-${idx}`}
-                    disabled={disabled}
-                    onPress={() => setTargetKey(dateKeyFromDate(clampJournalDate(cell)))}
-                    haptic="selection"
-                    accessibilityRole="button"
-                    accessibilityLabel={`Pick ${formatHumanDate(ck)}`}
-                    accessibilityState={{ selected: isSel, disabled }}
+                  <Text
                     style={{
-                      width: `${100 / 7}%`,
-                      aspectRatio: 1,
-                      maxWidth: 48,
-                      alignItems: "center",
-                      justifyContent: "center",
+                      fontFamily: Type.captionSmall.fontFamily,
+                      fontSize: Type.captionSmall.fontSize,
+                      lineHeight: Type.captionSmall.lineHeight,
+                      fontWeight: "600",
+                      color: isActive ? colors.primaryForeground : colors.text,
                     }}
                   >
-                    <View
-                      style={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: Radius.full,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: isSel ? accent.primary : "transparent",
-                        opacity: disabled ? 0.28 : 1,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontSize: 14,
-                          fontWeight: isSel ? "800" : "600",
-                          color: isSel ? colors.primaryForeground : colors.text,
-                          fontVariant: ["tabular-nums"],
-                        }}
-                      >
-                        {cell.getDate()}
-                      </Text>
-                    </View>
-                  </PressableScale>
-                );
-              })}
-            </View>
-          </ScrollView>
+                    {slot}
+                  </Text>
+                </PressableScale>
+              );
+            })}
+          </View>
 
           {/* Quick range chips */}
           <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textSecondary, marginTop: Spacing.md, marginBottom: 6 }}>
@@ -283,15 +280,22 @@ export default function CopyMealSheet({
             })}
           </View>
 
-          {/* Factual summary */}
+          {/* Factual summary — day-only phrasing untouched when the slot is
+              unchanged; a changed slot appends " · <Slot>" before the
+              trailing period (mirrors `summary` above). */}
           <Text style={{ ...Type.captionSmall, color: colors.textTertiary, marginTop: Spacing.md }}>
             {targetDayKeys.length === 0
               ? "Nothing to copy — pick a day other than the source."
-              : targetDayKeys.length === 1
-                ? `Will copy to ${formatHumanDate(targetDayKeys[0]!)}.`
-                : `Will copy to ${targetDayKeys.length} days (${formatHumanDate(targetDayKeys[0]!)} – ${formatHumanDate(
-                    targetDayKeys[targetDayKeys.length - 1]!,
-                  )}).`}
+              : (() => {
+                  const core =
+                    targetDayKeys.length === 1
+                      ? `Will copy to ${formatHumanDate(targetDayKeys[0]!)}`
+                      : `Will copy to ${targetDayKeys.length} days (${formatHumanDate(
+                          targetDayKeys[0]!,
+                        )} – ${formatHumanDate(targetDayKeys[targetDayKeys.length - 1]!)})`;
+                  const suffix = targetSlot !== sourceSlot ? ` · ${targetSlot}` : "";
+                  return `${core}${suffix}.`;
+                })()}
           </Text>
 
           {/* Action row */}
@@ -315,11 +319,11 @@ export default function CopyMealSheet({
             <PressableScale
               onPress={() => {
                 if (!canConfirm) {
-                  onConfirm([], "Nothing to copy");
+                  onConfirm([], targetSlot, "Nothing to copy");
                   onClose();
                   return;
                 }
-                onConfirm(targetDayKeys, summary);
+                onConfirm(targetDayKeys, targetSlot, summary);
                 onClose();
               }}
               haptic="confirm"
