@@ -147,9 +147,12 @@ banner. `sync-enforcer` should not flag this as drift.
 
 ## Follow-ups
 
-- [ ] Create `sentry-pre-consent-capture` flag in PostHog dashboard
+- [x] Create `sentry-pre-consent-capture` flag in PostHog dashboard
       (owner: Grace).
-- [ ] After one week at 100%, spot-check 10 pre-consent events in the
+- [x] After one week at 100%, spot-check 10 pre-consent events in the
       Sentry UI for any PII leak.
-- [ ] After two weeks no-regression at 100%, file a cleanup PR to
-      remove the flag gate (per CLAUDE.md feature-flag-removal rule).
+- [x] **Flag collapsed (ENG-1651, 2026-07-22):** the flag had been
+      permanently ON via PostHog with no live kill switch since
+      2026-05-15 (~9 weeks) — `instrumentation-client.ts` now runs the
+      redacted-core pre-consent path unconditionally; the flag read
+      and its `preConsentCaptureEnabled()` helper no longer exist.

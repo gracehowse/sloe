@@ -20,44 +20,23 @@ import { resolveSentryEnvironment } from "./src/lib/observability/sentryEnvironm
  *   • Post-consent → full event, run through `redactPII` as defence-in-
  *     depth (cookies, auth headers, token-shaped keys stripped even
  *     though the SDK shouldn't surface them).
- *   • Pre-consent (flag on) → redacted core only (event_id, level,
- *     exception type+value truncated to 200 chars, fingerprint,
- *     release, environment, allow-listed tags `route` + `feature` +
+ *   • Pre-consent → redacted core only (event_id, level, exception
+ *     type+value truncated to 200 chars, fingerprint, release,
+ *     environment, allow-listed tags `route` + `feature` +
  *     `consent_state`). Stacktrace frame vars are dropped. User /
  *     request / breadcrumbs-with-PII are dropped.
- *   • Pre-consent (flag off) → today's behaviour: drop the event.
  *
- * The kill switch is the `sentry-pre-consent-capture` PostHog feature
- * flag — if a privacy review later objects, flip the flag off in the
- * dashboard and the SDK reverts to the prior null-on-pre-consent
- * behaviour without a deploy.
+ * This was originally gated behind the `sentry-pre-consent-capture`
+ * PostHog kill switch; permanently ON in production with no
+ * regression, so the flag collapsed out (ENG-1651) — pre-consent
+ * capture is now unconditional.
  */
 const CONSENT_KEY = "suppr_cookie_consent";
-const PRE_CONSENT_FLAG = "sentry-pre-consent-capture";
 
 function hasConsent(): boolean {
   if (typeof window === "undefined") return false;
   try {
     return window.localStorage.getItem(CONSENT_KEY) === "accepted";
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Synchronous flag read: we can't await PostHog's flag-load round-trip
- * inside `beforeSend`, so we read whatever the SDK already has cached.
- * Returns false when PostHog hasn't initialised or the flag is unloaded
- * — i.e. pre-consent capture is OFF by default, matching the standing
- * "no capture without explicit signal" posture.
- */
-function preConsentCaptureEnabled(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    const ph = (window as unknown as Record<string, unknown>).posthog as
-      | { isFeatureEnabled?: (flag: string) => boolean | undefined }
-      | undefined;
-    return ph?.isFeatureEnabled?.(PRE_CONSENT_FLAG) === true;
   } catch {
     return false;
   }
@@ -104,7 +83,6 @@ Sentry.init({
       granted.tags = { ...existingTags, consent_state: "granted" };
       return granted as unknown as typeof event;
     }
-    if (!preConsentCaptureEnabled()) return null;
     const core = stripToCore(eventRecord) as Record<string, unknown>;
     const existingCoreTags = (core.tags as Record<string, unknown> | undefined) ?? {};
     core.tags = { ...existingCoreTags, consent_state: "pre_consent" };
