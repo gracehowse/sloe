@@ -393,6 +393,16 @@ export function reset(): void {
  *  `isFeatureDisabled`. Keep in sync with the same set in
  *  `src/lib/analytics/track.ts` (web). */
 const REDESIGN_DEFAULT_ON = new Set<string>([
+  // ENG-1642 — the real shareable meal-link create/accept flow. DEFAULT-ON
+  // per Grace's ship-on-for-sim-validation practice (2026-07-21): the flag
+  // gates link CREATION only, so on = Today's "Share meal" mints a
+  // `suppr:///meal-shared?token=…` link she can validate in TestFlight; off
+  // (kill switch) = legacy text-only share. Redemption (the /meal-shared
+  // accept screen) is un-gated regardless. The anon `get_meal_share` surface
+  // is live post-migration independent of this flag, and was
+  // security-reviewed + live-verified (ENG-1650) before the flip. Keep in
+  // sync with src/lib/analytics/track.ts.
+  "meal_share_links_v1",
   // ENG-1464 — trust chips/dots show the source name ("USDA") instead of the
   // "USDA verified" over-promise. Default-ON (N=1 tester); flag-off keeps the
   // legacy "USDA verified" copy (kill switch). Keep in sync with web.
@@ -836,10 +846,13 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   previously-shared token still resolves via the anon-executable
  *   `get_meal_share` RPC regardless of the flag; a true kill of
  *   redemption requires a follow-up migration that revokes the anon
- *   grant on `get_meal_share`. DEFAULT-OFF: net new server + client
- *   surface, not yet sim-validated — the pre-ramp gate is ENG-1650
- *   (migration apply → Playwright e2e + sim verification → ramp). Keep
- *   in sync with `src/lib/analytics/track.ts`. Web + mobile.
+ *   grant on `get_meal_share`. **MOVED to `REDESIGN_DEFAULT_ON`
+ *   2026-07-22** (Grace's ship-on-for-sim-validation practice): the anon
+ *   surface was security-reviewed + live-verified under ENG-1650 (RPC
+ *   17/17 + web e2e + iOS-sim accept-screen render) before the flip, so
+ *   the flag ships ON as a kill switch, not a dark 0% gate. Bullet kept
+ *   here as the moved-flag record. Keep in sync with
+ *   `src/lib/analytics/track.ts`. Web + mobile.
  *
  * Moved to `REDESIGN_DEFAULT_ON` (default-ON) — see their entries there:
  * `expenditure_trend_card` (ENG-953); the "always flag on" batch (ENG-1279,
@@ -870,7 +883,6 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "ingredient_text_rows_v1", // ENG-1611 — foods/ingredients render as TEXT (no glyph/monogram/photo tiles) on log-sheet rows + recipe-detail ingredients; off = legacy tiles (kill switch). Web + mobile.
   "recipe_estimated_cost_v1", // ENG-1274 — per-serving grocery cost estimate (Pro) on recipe-detail hero meta; off = hidden (kill switch). Web + mobile.
   "web_gutter_convergence_v1", // ENG-1629 — converges web Targets.tsx/RecipeDetail.tsx page gutters onto .product-shell. WEB-ONLY: mobile has no Tailwind product-shell equivalent; registered here only for the web ↔ mobile KNOWN_DEFAULT_OFF_FLAGS discoverability parity.
-  "meal_share_links_v1", // ENG-1642 — durable meal share links (create_meal_share + /meal-shared accept screen); off = legacy text-only "Share meal" (kill switch). Web + mobile.
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when
