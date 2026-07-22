@@ -176,6 +176,16 @@ export const AnalyticsEvents = {
   /** ENG-972 — user committed inline NL describe items from LogSheet.
    *  Payload: `{ platform, itemCount, avgConfidence }`. */
   log_sheet_nl_text_committed: "log_sheet_nl_text_committed",
+  /** ENG-1643 — user undid a committed item from the log-session tray (the
+   *  existing removal path runs). Payload: `{ kcal }`. Same name web + mobile. */
+  log_session_tray_undo: "log_session_tray_undo",
+  /** ENG-1643 — user tapped Done to close the sheet from the log-session
+   *  tray. Payload: `{ items, kcal }`. Same name web + mobile. */
+  log_session_tray_done: "log_session_tray_done",
+  /** ENG-1643 — user opened Save-as-usual-meal from the log-session tray
+   *  (prefilled with the tray's items). Payload: `{ items }`. Same name web +
+   *  mobile. */
+  log_session_tray_save_meal_opened: "log_session_tray_save_meal_opened",
   /** Coach engine ("what to eat next") — fires when the Today suggestion
    *  surface shows a coach-ranked suggestion. `source` distinguishes the
    *  AI re-rank from the deterministic fallback so we can watch the AI

@@ -865,6 +865,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "recipe_estimated_cost_v1", // ENG-1274 — per-serving grocery cost estimate (Pro) on recipe-detail hero meta; off = hidden (kill switch). Web + mobile.
   "web_gutter_convergence_v1", // ENG-1629 — converges web Targets.tsx/RecipeDetail.tsx page gutters onto .product-shell. WEB-ONLY: mobile has no Tailwind product-shell equivalent; registered here only for the web ↔ mobile KNOWN_DEFAULT_OFF_FLAGS discoverability parity.
   "meal_share_links_v1", // ENG-1642 — durable meal share links (create_meal_share + /meal-shared accept screen); off = legacy text-only "Share meal" (kill switch). Web + mobile.
+  "log_session_tray_v1", // ENG-1643 — LogSheet stays open after each immediate-commit add + a session tray receipt (count/kcal/per-item Undo/Save-as-usual-meal/Done); off = S13 confirmation closes the sheet (kill switch). Web + mobile. Keep in sync with src/lib/analytics/track.ts.
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

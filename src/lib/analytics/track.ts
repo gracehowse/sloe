@@ -709,6 +709,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "recipe_estimated_cost_v1", // ENG-1274 — per-serving grocery cost estimate (Pro) on recipe-detail hero meta; off = hidden (kill switch). Web + mobile.
   "web_gutter_convergence_v1", // ENG-1629 — converge Targets.tsx (px-pm-5) + RecipeDetail.tsx (px-6/max-w-4xl) onto .product-shell's gutter; off = exact pre-ENG-1629 gutters (kill switch). WEB-ONLY.
   "meal_share_links_v1", // ENG-1642 — real shareable meal-link create/accept flow; off = legacy text-only share/copy path, no link callback wired, no deep link consumed (kill switch).
+  "log_session_tray_v1", // ENG-1643 — LogSheet stays open after each immediate-commit add + a session tray receipt (count/kcal/per-item Undo/Save-as-usual-meal/Done); off = S13 confirmation closes the sheet (kill switch). Web + mobile. Keep in sync with apps/mobile/lib/analytics.ts.
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {
