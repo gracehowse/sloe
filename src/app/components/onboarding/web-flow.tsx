@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { ArrowRight, ChevronLeft } from "lucide-react";
-import { useFeatureFlagEnabled } from "posthog-js/react";
 import { Button } from "@/app/components/ui/button";
 import { SupprWordmark } from "@/app/components/ui/suppr-mark";
 import { AnalyticsEvents } from "@/lib/analytics/events";
@@ -561,12 +560,9 @@ export function WebFlow() {
 }
 
 /**
- * Caps the onboarding body at 1280px and centres it when the flag is
- * ON. When OFF: pass-through, body spans full viewport width.
+ * Caps the onboarding body at 1280px and centres it.
  */
 function BodyContainer({ children }: { children: React.ReactNode }) {
-  const capOn = useFeatureFlagEnabled("premium-sweep-v2-p0-t25");
-  if (!capOn) return <>{children}</>;
   return (
     <div className="flex-1 mx-auto w-full md:max-w-[1280px] overflow-hidden flex flex-col">
       {children}
