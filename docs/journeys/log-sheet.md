@@ -449,13 +449,15 @@ hover + `:focus-visible` ring + `active:scale` on web.
 `docs/specs/2026-07-21-log-session-tray.md`. **Decision:**
 `docs/decisions/2026-07-21-log-session-tray-immediate-commit.md`.
 
-Behind `log_session_tray_v1` (default OFF — registered in
-`KNOWN_DEFAULT_OFF_FLAGS` on both `src/lib/analytics/track.ts` and
-`apps/mobile/lib/analytics.ts`), every add from the LogSheet **still commits
-immediately** through the existing one-commit path (ENG-1462), but the sheet
-**stays open** instead of ending the flow: the search clears/refocuses and a
-**session tray** pinned to the sheet's bottom edge accumulates a *receipt* of
-the items committed this sheet-session.
+Behind `log_session_tray_v1` (default ON — registered in `REDESIGN_DEFAULT_ON`
+on both `src/lib/analytics/track.ts` and `apps/mobile/lib/analytics.ts` as of
+2026-07-22, per Grace's standing "we always ship flags on" convention; PostHog
+is the emergency kill switch, not a staged ramp — corrects the initial merge,
+which shipped it in `KNOWN_DEFAULT_OFF_FLAGS`), every add from the LogSheet
+**still commits immediately** through the existing one-commit path (ENG-1462),
+but the sheet **stays open** instead of ending the flow: the search
+clears/refocuses and a **session tray** pinned to the sheet's bottom edge
+accumulates a *receipt* of the items committed this sheet-session.
 
 **Behaviour (flag ON):**
 - **Participating add paths:** the search portion-preview "Use this" commit and
@@ -488,11 +490,13 @@ the items committed this sheet-session.
   with the tray's items via `sessionTrayToSavedMealItems` — a small change, no
   gap. Saving does not close the sheet or clear the tray.
 
-**Gating:** flag OFF ⇒ no tray prop is threaded ⇒ the sheet renders + behaves
-byte-identically to pre-ENG-1643 (S13 card, Done closes the sheet). The
-`else` path stays fully alive. Removal condition: 100% for two weeks, no
-regression → a cleanup PR removes only the in-sheet S13 branch (S13 stays for
-voice / photo / manual / other hosts).
+**Gating:** default ON (2026-07-22 correction — registered in
+`REDESIGN_DEFAULT_ON`, PostHog is the emergency kill switch, not a staged
+ramp). Flag OFF (via the PostHog kill switch) ⇒ no tray prop is threaded ⇒ the
+sheet renders + behaves byte-identically to pre-ENG-1643 (S13 card, Done
+closes the sheet). The `else` path stays fully alive. Removal condition: once
+no rollback need has surfaced, a cleanup PR removes the flag check + the
+in-sheet S13 branch (S13 stays for voice / photo / manual / other hosts).
 
 **Wiring:** all new logic is in new files (screen-budget ratchet). Pure shared
 module `src/lib/nutrition/logSessionTray.ts` (`LogSessionTrayItem`,

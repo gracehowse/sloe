@@ -14,7 +14,8 @@ marked "(guidance)".
 
 ## 1. One-paragraph summary
 
-Behind the `log_session_tray_v1` flag (default OFF), every add from the LogSheet
+Behind the `log_session_tray_v1` flag (default ON per the beta-window "always
+flag on" policy — 2026-07-22 update, see §3), every add from the LogSheet
 continues to **commit immediately** through the existing one-commit paths — but the
 sheet **stays open** instead of ending the flow: the search clears and refocuses,
 and a **session tray** pinned to the sheet's bottom edge accumulates a *receipt*
@@ -22,8 +23,8 @@ of the items committed this sheet-session, with a running count + kcal total,
 persistent per-item Undo (deletes the committed row — the existing undo machinery),
 "Save as usual meal" when 2+ items, and a primary **Done** that closes the sheet.
 The tray is a receipt, never a stage: there is no pending state anywhere, so
-closing the sheet in any state at any moment loses nothing. Flag OFF, behavior is
-byte-identical to today (S13 card, Done closes the sheet).
+closing the sheet in any state at any moment loses nothing. Flag OFF (PostHog
+kill switch), behavior is byte-identical to today (S13 card, Done closes the sheet).
 
 ## 2. Why (evidence, condensed — full verdict on the ENG-757 thread)
 
@@ -47,15 +48,24 @@ byte-identical to today (S13 card, Done closes the sheet).
 
 - Name: **`log_session_tray_v1`** (snake_case, matching the most recent precedent
   `loghub_quick_actions_v1`).
-- Registered in `KNOWN_DEFAULT_OFF_FLAGS` in BOTH `src/lib/analytics/track.ts`
-  and `apps/mobile/lib/analytics.ts`. Default OFF. Ramp via PostHog.
+- **2026-07-22 correction:** registered in `REDESIGN_DEFAULT_ON` in BOTH
+  `src/lib/analytics/track.ts` and `apps/mobile/lib/analytics.ts` — **default
+  ON**, per Grace's standing "we always ship flags on" convention (the
+  beta-window "always flag on" policy, N=1 tester; PostHog is the emergency
+  kill switch, not a staged ramp). The original merge (PR #1019) shipped this
+  registered in `KNOWN_DEFAULT_OFF_FLAGS` (default OFF) — that was wrong,
+  written against the generic staged-ramp language in the root CLAUDE.md
+  feature-flag section rather than the actual prevailing convention already
+  encoded in the file being edited. Corrected in a follow-up PR.
 - Gate location: **the hosts** (`TodayScreen.tsx` / `NutritionTracker.tsx`), same
   as `loghub_quick_actions_v1`. The LogSheet and FoodSearchPanel stay flag-free —
   they render what the host threads in.
-- Flag OFF ⇒ no tray prop is threaded ⇒ the sheet renders and behaves exactly as
-  today. This is the `else` path required by the 2026-05-13 flag rule.
-- Removal condition: 100% for two weeks, no regression → cleanup PR removes the
-  in-sheet S13 branch only (S13 stays for voice/photo/manual/other hosts).
+- Flag OFF (PostHog kill switch only) ⇒ no tray prop is threaded ⇒ the sheet
+  renders and behaves exactly as pre-ENG-1643. This is the `else` path required
+  by the 2026-05-13 flag rule.
+- Removal condition: once no rollback need has surfaced, a cleanup PR removes
+  the flag check + the in-sheet S13 branch (S13 stays for voice/photo/manual/
+  other hosts).
 
 ## 4. Product behavior (normative)
 
