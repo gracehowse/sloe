@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { userEvent } from "storybook/test";
+import { userEvent, within } from "storybook/test";
 
 import { LogSheet, type LogSheetProps } from "./log-sheet";
 
@@ -191,9 +191,24 @@ export const SessionTrayExpanded: Story = {
     ...SessionTrayMultiItem.parameters,
     a11y: { context: '[data-testid="log-session-tray"]' },
   },
-  play: async ({ canvas }) => {
-    const bar = await canvas.findByTestId("log-session-tray-bar");
-    await userEvent.click(bar);
+  play: async () => {
+    // The sheet renders through vaul's <DrawerPrimitive.Portal>, which
+    // mounts to document.body regardless of the `desktop` prop — outside
+    // canvasElement's subtree. `canvas.findByTestId` (scoped to
+    // canvasElement) can never find portalled content; query the portal
+    // target directly. 10s timeout: generous slack for a loaded CI runner
+    // mounting the full LogSheet, not a masked failure.
+    //
+    // `log-session-tray-bar` is the row CONTAINER (toggle + Done button);
+    // the click handler lives on the nested `log-session-tray-toggle`
+    // button (spec §8 deliberately names these separately) — click that,
+    // not the container, or nothing toggles.
+    const toggle = await within(document.body).findByTestId(
+      "log-session-tray-toggle",
+      {},
+      { timeout: 10000 },
+    );
+    await userEvent.click(toggle);
   },
 };
 
