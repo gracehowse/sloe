@@ -91,6 +91,32 @@ function turboModuleShim(): Plugin {
   };
 }
 
+/**
+ * Bulk-generated stories often reference `noop` without defining it.
+ * ESM does not fall back to globals, so inject a local binding when missing.
+ */
+function storyNoopShim(): Plugin {
+  return {
+    name: "suppr-story-noop-shim",
+    enforce: "pre",
+    transform(code, id) {
+      if (!/\.stories\.[cm]?[jt]sx?$/.test(id)) return null;
+      if (!/\bnoop\b/.test(code)) return null;
+      if (
+        /(?:^|\n)\s*(?:import\s+\{[^}]*\bnoop\b|const\s+noop\b|function\s+noop\b|let\s+noop\b)/.test(
+          code,
+        )
+      ) {
+        return null;
+      }
+      return {
+        code: `const noop = (..._args: unknown[]) => undefined;\n${code}`,
+        map: null,
+      };
+    },
+  };
+}
+
 /** Vite config merged into the root Storybook build for RN-web mobile stories. */
 export function mergeMobileStorybookVite(config: UserConfig): UserConfig {
   return mergeConfig(config, {
@@ -153,6 +179,7 @@ export function mergeMobileStorybookVite(config: UserConfig): UserConfig {
         },
       },
       turboModuleShim(),
+      storyNoopShim(),
       rnw({
         jsxRuntime: "automatic",
         babel: {
