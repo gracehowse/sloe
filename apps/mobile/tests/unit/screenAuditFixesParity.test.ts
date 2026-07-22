@@ -63,12 +63,21 @@ describe("F-80 — meal-card header survives `Log usual` chip", () => {
     expect(SRC.mealsSection).toMatch(/flex:\s*1,\s*minWidth:\s*0/);
   });
 
-  it("trailing controls row sets flexShrink: 0", () => {
-    expect(SRC.mealsSection).toMatch(/flexDirection:\s*"row"[^}]*flexShrink:\s*0/s);
-  });
-
-  it("Log-usual chip caps maxWidth and is itself flexShrink: 1", () => {
-    expect(SRC.mealsSection).toMatch(/maxWidth:\s*180[^}]*flexShrink:\s*1/s);
+  // ENG-1651 (2026-07-22) — the two assertions this block used to carry
+  // ("trailing controls row sets flexShrink: 0", "Log-usual chip caps
+  // maxWidth and is itself flexShrink: 1") pinned the *in-header* variant
+  // of the Log-usual pill (`today-log-usual-pill-in-header-{slot}`,
+  // wrapped in a `flexDirection: "row", flexShrink: 0` container competing
+  // for space with the title/thumbnail) — the exact layout F-80 was
+  // originally written to fix. `today_log_usual_row_v2` collapsed
+  // permanently on: that whole `!usualRowV2 && (...)` branch, its wrapper
+  // View, and the pill inside it are deleted entirely, not just
+  // renamed — there is no more in-header space contention to protect
+  // against. Coverage for the surviving dedicated-row pill (maxWidth:
+  // "100%", flexShrink: 1) lives in
+  // apps/mobile/tests/unit/todayLogUsualRowV2.test.tsx.
+  it("the in-header Log-usual pill variant this pin covered no longer exists (superseded by the always-on dedicated row)", () => {
+    expect(SRC.mealsSection).not.toMatch(/today-log-usual-pill-in-header-/);
   });
 });
 

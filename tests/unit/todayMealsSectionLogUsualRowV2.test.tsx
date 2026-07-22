@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
 /**
- * TodayMealsSection (web) — flag-gated `Log usual` row + testID
- * contract (2026-05-15 crowder task + Maestro reliability pass).
+ * TodayMealsSection (web) — dedicated `Log usual` row + testID contract
+ * (2026-05-15 crowder task + Maestro reliability pass).
  *
- * Pairs with apps/mobile/tests/unit/todayLogUsualRowV2.test.tsx. Same
- * matrix on the web side so the contract — testID names + flag-on /
- * flag-off behaviour — cannot drift between platforms.
+ * ENG-1651 (round 2, slice 3, 2026-07-22): the `today_log_usual_row_v2`
+ * flag gate was collapsed — the dedicated-row layout is now permanent and
+ * the legacy in-header pill is gone. Pairs with
+ * apps/mobile/tests/unit/todayLogUsualRowV2.test.tsx. Same matrix on the
+ * web side so the contract — testID names + rendered behaviour — cannot
+ * drift between platforms.
  */
 import * as React from "react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
@@ -97,27 +100,25 @@ describe("TodayMealsSection (web) — empty day (ENG-635)", () => {
         })}
       />,
     );
-    expect(screen.queryByTestId("today-log-usual-pill-in-header-Snacks")).toBeNull();
     expect(screen.queryByTestId("today-log-usual-row-Snacks")).toBeNull();
   });
 });
 
-describe("TodayMealsSection (web) — today_log_usual_row_v2 flag", () => {
+describe("TodayMealsSection (web) — Log usual row (ENG-1651: today_log_usual_row_v2 permanently ON)", () => {
   beforeEach(() => {
     flagFn.mockImplementation(() => false);
   });
 
-  it("flag OFF: in-header pill renders, v2 row does not", () => {
-    flagFn.mockImplementation(() => false);
+  it("renders the dedicated Log-usual row + pill; the legacy in-header pill never renders", () => {
     render(<TodayMealsSection {...baseProps()} />);
+    expect(screen.getByTestId("today-log-usual-row-Snacks")).toBeTruthy();
+    expect(screen.getByTestId("today-log-usual-pill-Snacks")).toBeTruthy();
     expect(
-      screen.getByTestId("today-log-usual-pill-in-header-Snacks"),
-    ).toBeTruthy();
-    expect(screen.queryByTestId("today-log-usual-row-Snacks")).toBeNull();
-    expect(screen.queryByTestId("today-log-usual-pill-Snacks")).toBeNull();
+      screen.queryByTestId("today-log-usual-pill-in-header-Snacks"),
+    ).toBeNull();
   });
 
-  it("flag ON: v2 row + pill render, in-header pill does not", () => {
+  it("gate removed: rendering is unaffected by what an isFeatureEnabled mock returns for the retired flag", () => {
     flagFn.mockImplementation(
       (flag: string) => flag === "today_log_usual_row_v2",
     );
@@ -129,10 +130,7 @@ describe("TodayMealsSection (web) — today_log_usual_row_v2 flag", () => {
     ).toBeNull();
   });
 
-  it("flag ON: tapping the pill calls onLogSavedMeal(savedMeal, slot)", () => {
-    flagFn.mockImplementation(
-      (flag: string) => flag === "today_log_usual_row_v2",
-    );
+  it("tapping the pill calls onLogSavedMeal(savedMeal, slot)", () => {
     const onLogSavedMeal = vi.fn();
     render(<TodayMealsSection {...baseProps({ onLogSavedMeal })} />);
     fireEvent.click(screen.getByTestId("today-log-usual-pill-Snacks"));
@@ -143,10 +141,7 @@ describe("TodayMealsSection (web) — today_log_usual_row_v2 flag", () => {
     );
   });
 
-  it("flag ON: v2 row stays in the DOM when the slot is collapsed", () => {
-    flagFn.mockImplementation(
-      (flag: string) => flag === "today_log_usual_row_v2",
-    );
+  it("the row stays in the DOM when the slot is collapsed", () => {
     render(
       <TodayMealsSection
         {...baseProps({ collapsedSlots: new Set(["Snacks"]) })}
@@ -157,7 +152,6 @@ describe("TodayMealsSection (web) — today_log_usual_row_v2 flag", () => {
   });
 
   it("testID contract: slot + header + chevron also resolve when populated", () => {
-    flagFn.mockImplementation(() => false);
     render(<TodayMealsSection {...baseProps()} />);
     expect(screen.getByTestId("today-slot-Snacks")).toBeTruthy();
     expect(screen.getByTestId("today-slot-header-Snacks")).toBeTruthy();

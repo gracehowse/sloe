@@ -665,15 +665,6 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
     return map;
   }, [slots, mealGroups]);
 
-  // 2026-05-15 (crowder task) — flag-gated header relayout. When ON, the
-  // `Log usual: <name>` chip moves out of the section-header trailing
-  // cluster into a dedicated row directly under the header. The header
-  // was overflowing on narrow widths with a long saved-meal name
-  // (`Snacks` truncated to `S`, item-count digit overlapping the
-  // chevron). See `docs/decisions/2026-05-15-today-log-usual-row-v2.md`.
-  // Off-branch preserves the prior in-header chip verbatim.
-  const usualRowV2 = isFeatureEnabled("today_log_usual_row_v2");
-
   // ENG-799 (Redesign — Design Direction 2026, 2026-05-31) — the meal
   // long-press gesture. Flag ON → open the branded `MealActionSheet`
   // (cream surface, grabber, thumbnail + macro header, blue accent rows,
@@ -998,95 +989,25 @@ function TodayMealsSectionImpl(props: TodayMealsSectionProps) {
                     )}
                   </Pressable>
                 ) : null}
-                {hasMeals ? (
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm, flexShrink: 0 }}>
-                    {/* 2026-05-22 evening (Grace): "+" pill removed
-                        from populated slot headers. TD4 (2026-06-03)
-                        restored an in-card "+ Add food" action in the
-                        card body below the rows; the kcal + macro grams
-                        live in the `SlotMacroChips` row under the meal
-                        name. The empty-state Plus (the `: (` branch
-                        below) stays since empty cards have no body. */}
-                    {/* Ship M1 — `Log usual: {name}` pill. 2+ matches open
-                        the picker modal; 1 match logs on tap.
-                        2026-05-15 (crowder task) — when `usualRowV2` is
-                        ON, the chip moves to a dedicated row below the
-                        header (rendered after this header View). */}
-                    {!usualRowV2 && mealsTodayCount > 0 && hasSaved && primarySaved && !dismissedUsualFor.has(slot) && (
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: Spacing.xs,
-                          paddingHorizontal: Spacing.dense,
-                          paddingVertical: 4,
-                          borderRadius: Radius.full,
-                          backgroundColor: colors.fillQuiet,
-                          maxWidth: 180,
-                          flexShrink: 1,
-                        }}
-                      >
-                        <TodayLogUsualPressable
-                          testID={`today-log-usual-pill-in-header-${slot}`}
-                          onPress={(e) => {
-                            e.stopPropagation?.();
-                            if (slotSaved.length >= 2) {
-                              setUsualPicker({ slot, options: slotSaved });
-                            } else {
-                              // ENG-783 — flag on: tap opens portion editor.
-                              (onRequestPortion ?? onLogSavedMeal)(primarySaved, slot);
-                            }
-                          }}
-                          hitSlop={6}
-                          accessibilityRole="button"
-                          accessibilityLabel={
-                            slotSaved.length >= 2
-                              ? `Log a usual ${slot} — choose from ${slotSaved.length} saved meals`
-                              : `Log usual ${slot}: ${primarySaved.name}`
-                          }
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: Spacing.xs,
-                            flexShrink: 1,
-                          }}
-                        >
-                          <RefreshCw size={11} color={textSecondaryColor} />
-                          <Text
-                            style={{ ...Type.caption, color: textSecondaryColor, maxWidth: 120 }}
-                            numberOfLines={1}
-                          >
-                            {extraSavedCount > 0 ? "Log usual…" : `Log usual: ${primarySaved.name}`}
-                          </Text>
-                        </TodayLogUsualPressable>
-                        {/* Dismiss X — per-session hide. Grace 2026-05-22. */}
-                        <Pressable
-                          testID={`today-log-usual-dismiss-in-header-${slot}`}
-                          onPress={(e) => {
-                            e.stopPropagation?.();
-                            dismissUsualFor(slot);
-                          }}
-                          hitSlop={8}
-                          accessibilityRole="button"
-                          accessibilityLabel={`Dismiss Log usual suggestion for ${slot}`}
-                          style={{ paddingHorizontal: 2 }}
-                        >
-                          <X size={11} color={textSecondaryColor} strokeWidth={2.25} />
-                        </Pressable>
-                      </View>
-                    )}
-                  </View>
-                ) : (
-                  <Plus size={14} color={textTertiaryColor} />
-                )}
+                {/* 2026-05-22 evening (Grace): "+" pill removed from
+                    populated slot headers. TD4 (2026-06-03) restored an
+                    in-card "+ Add food" action in the card body below
+                    the rows; the kcal + macro grams live in the
+                    `SlotMacroChips` row under the meal name. The
+                    empty-state Plus below stays since empty cards have
+                    no body. The `Log usual: {name}` affordance now
+                    lives exclusively in the dedicated row rendered
+                    after this header View — see below. */}
+                {!hasMeals && <Plus size={14} color={textTertiaryColor} />}
               </View>
-              {/* 2026-05-15 (crowder task) — flag-gated dedicated row for
-                  the `Log usual: <name>` pill. Lives between the header
-                  and the food items so the header stays compact even
-                  when the saved-meal name is long. Renders regardless
-                  of `isOpen` so the affordance is reachable from
-                  collapsed slots too. */}
-              {usualRowV2 && mealsTodayCount > 0 && hasSaved && primarySaved && !dismissedUsualFor.has(slot) && (
+              {/* 2026-05-15 (crowder task, ENG-1651 permanent 2026-07-22) —
+                  dedicated row for the `Log usual: <name>` pill. Lives
+                  between the header and the food items so the header
+                  stays compact even when the saved-meal name is long.
+                  Renders regardless of `isOpen` so the affordance is
+                  reachable from collapsed slots too. See
+                  `docs/decisions/2026-05-15-today-log-usual-row-v2.md`. */}
+              {mealsTodayCount > 0 && hasSaved && primarySaved && !dismissedUsualFor.has(slot) && (
                 <View
                   testID={`today-log-usual-row-${slot}`}
                   style={{

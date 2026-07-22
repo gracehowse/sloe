@@ -276,7 +276,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // ENG-771 (Gate 1) — MFP-refugee logging loop (mirror mobile).
   "today_log_again",
   "log-sheet-slot-selector",
-  "today_log_usual_row_v2",
   // ENG-978/979 — shareable import-success card + creator credit in share text.
   // Default-on; off → legacy title+URL share only.
   "recipe_share_card_v1",

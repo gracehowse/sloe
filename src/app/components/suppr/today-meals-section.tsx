@@ -345,13 +345,6 @@ export function TodayMealsSection({
     { slot: string; options: SavedMeal[] } | null
   >(null);
 
-  // 2026-05-15 (crowder task) — flag-gated header relayout. When ON,
-  // the `Log usual: <name>` button moves out of the section-header
-  // trailing cluster into a dedicated row directly under the header.
-  // Mirrors the mobile change. See
-  // `docs/decisions/2026-05-15-today-log-usual-row-v2.md`.
-  const usualRowV2 = isFeatureEnabled("today_log_usual_row_v2");
-
   // ENG-797 / P5 parity (#6, #7, #27) — branded meal-management chrome.
   // When ON, the kebab dropdown gains a quiet SupprMark + thumbnail/title/
   // macro header (mirroring mobile's MealActionSheet), and the usual-meal
@@ -586,40 +579,10 @@ export function TodayMealsSection({
                     ≥1 saved meal matching this slot. 2+ matches open the
                     picker sheet. Replaces the old 10px "Save combo"
                     metadata pill — that action now lives in the
-                    full-width row below the last item.
-                    2026-05-15 (crowder task) — when `usualRowV2` is ON,
-                    this chip moves to a dedicated row below the header
-                    so the header stays compact on narrow widths. */}
-                {!usualRowV2 && mealsForSelectedDate.length > 0 && hasSaved && primarySaved && (
-                  <button
-                    type="button"
-                    data-testid={`today-log-usual-pill-in-header-${sectionName}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (slotSavedMeals.length >= 2) {
-                        setUsualPicker({ slot: sectionName, options: slotSavedMeals });
-                      } else {
-                        onLogSavedMeal(primarySaved, sectionName);
-                      }
-                    }}
-                    className={`mr-1 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${slotPillClassName(sectionName)}`}
-                    aria-label={
-                      slotSavedMeals.length >= 2
-                        ? `Log a usual ${sectionName} — choose from ${slotSavedMeals.length} saved meals`
-                        : `Log usual ${sectionName}: ${primarySaved.name}`
-                    }
-                    title={
-                      slotSavedMeals.length >= 2
-                        ? `Choose from ${slotSavedMeals.length} saved meals`
-                        : `Log ${primarySaved.name}`
-                    }
-                  >
-                    <Icons.refresh className="w-3 h-3" aria-hidden />
-                    <span className="max-w-[140px] truncate">
-                      Log usual{extraSavedCount > 0 ? "…" : `: ${primarySaved.name}`}
-                    </span>
-                  </button>
-                )}
+                    full-width row below the last item. The pill itself
+                    lives in the dedicated row below the header (see
+                    `today-log-usual-row-${sectionName}` further down),
+                    not inline here — kept compact on narrow widths. */}
                 {/* ENG-837 — quiet "View slot nutrition" affordance. Populated
                     slots only (an empty slot has nothing to aggregate). Tertiary
                     ghost icon-button (NOT a filled CTA — one filled CTA per
@@ -663,13 +626,14 @@ export function TodayMealsSection({
                 )}
               </div>
 
-              {/* 2026-05-15 (crowder task) — flag-gated dedicated row for
-                  the `Log usual: <name>` button. Lives between the header
-                  and the food items so the header stays compact even
-                  when the saved-meal name is long. Renders regardless
-                  of collapse state so the affordance is reachable from
-                  collapsed slots too. */}
-              {usualRowV2 && mealsForSelectedDate.length > 0 && hasSaved && primarySaved && (
+              {/* 2026-05-15 (crowder task, ENG-1651 permanent 2026-07-22) —
+                  dedicated row for the `Log usual: <name>` button. Lives
+                  between the header and the food items so the header
+                  stays compact even when the saved-meal name is long.
+                  Renders regardless of collapse state so the affordance
+                  is reachable from collapsed slots too. Mirrors mobile.
+                  See `docs/decisions/2026-05-15-today-log-usual-row-v2.md`. */}
+              {mealsForSelectedDate.length > 0 && hasSaved && primarySaved && (
                 <div
                   data-testid={`today-log-usual-row-${sectionName}`}
                   className="flex items-center px-3.5 py-2 border-b border-border/10"

@@ -60,9 +60,11 @@ Reachability is wired at every saved-meal tap site via a single fallback
 shape — `(onRequestPortion ?? onLogSavedMeal)(meal, slot)` — where the
 host passes `onRequestPortion` only when the flag is on:
 
-- **Surface (a) — `TodayMealsSection`** (3 tap sites):
-  - the in-header "Log usual" pill (`today_log_usual_row_v2` OFF),
-  - the dedicated-row "Log usual" pill (`today_log_usual_row_v2` ON),
+- **Surface (a) — `TodayMealsSection`** (2 tap sites; was 3 while
+  `today_log_usual_row_v2` still gated a legacy in-header pill — that flag
+  was collapsed permanently ON under ENG-1651 2026-07-22, so only the
+  dedicated-row pill remains):
+  - the dedicated-row "Log usual" pill,
   - the usual-picker Modal rows (when a slot has ≥2 saved meals). The
     picker closes **before** the portion sheet opens (capture slot →
     `setUsualPicker(null)` → open) to avoid modal-over-modal stacking on

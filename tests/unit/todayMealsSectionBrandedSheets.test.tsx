@@ -191,7 +191,7 @@ describe("TodayMealsSection (web) — usual-picker brand mark (#6/#27) + motion 
     );
     // 2+ saved meals open the picker rather than logging directly.
     fireEvent.click(
-      screen.getByTestId("today-log-usual-pill-in-header-Dinner"),
+      screen.getByTestId("today-log-usual-pill-Dinner"),
     );
     expect(screen.getByTestId("usual-picker-branded-mark")).toBeTruthy();
   });
@@ -203,7 +203,7 @@ describe("TodayMealsSection (web) — usual-picker brand mark (#6/#27) + motion 
       />,
     );
     fireEvent.click(
-      screen.getByTestId("today-log-usual-pill-in-header-Dinner"),
+      screen.getByTestId("today-log-usual-pill-Dinner"),
     );
     expect(screen.queryByTestId("usual-picker-branded-mark")).toBeNull();
   });

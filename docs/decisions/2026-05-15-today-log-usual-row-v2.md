@@ -2,7 +2,9 @@
 
 **Date:** 2026-05-15
 **Area:** Today screen / meal logging
-**Status:** Resolved (shipped behind PostHog flag `today_log_usual_row_v2`)
+**Status:** Resolved — flag collapsed permanently ON 2026-07-22 (ENG-1651,
+see "Update" below). Originally shipped behind PostHog flag
+`today_log_usual_row_v2`.
 
 ## Symptom
 
@@ -110,3 +112,26 @@ its fixture has `savedMeals: []` and the test shim defaults
 - `src/app/components/suppr/today-meals-section.tsx`
 - `apps/mobile/tests/unit/todayLogUsualRowV2.test.tsx` (new)
 - `docs/decisions/2026-05-15-today-log-usual-row-v2.md` (this file)
+
+## Update — 2026-07-22 (ENG-1651, flag-collapse sweep round 2)
+
+The flag held at 100% far longer than the planned two-week ramp (confirmed
+default-on with no `isFeatureDisabled` kill-switch dependency) and a
+2026-07-22 stale-flag audit flagged it for collapse per this doc's own
+"Rollout" section above. Collapsed to the ON branch permanently on both
+platforms:
+
+- The dedicated-row layout (chip below the section header) is now the only
+  code path; the legacy in-header chip `else` branch was deleted.
+- `const usualRowV2 = isFeatureEnabled("today_log_usual_row_v2")` and the
+  flag string were removed from both call sites, `REDESIGN_DEFAULT_ON`
+  (both platforms), the `GATE_15_SHARED` list in
+  `tests/unit/redesignDefaultOnParity.test.ts`, the mobile dev
+  flag-override picker, and `tests/e2e/redesign-flag-registry.json`.
+- `apps/mobile/tests/unit/todayLogUsualRowV2.test.tsx` and
+  `tests/unit/todayMealsSectionLogUsualRowV2.test.tsx` were updated to
+  drop the flag-OFF matrix (that code path no longer exists) and keep
+  coverage of the dedicated row's rendering, tap handling, and
+  collapsed-slot reachability.
+- The PostHog flag row itself (id 678945) was already archived in the
+  2026-07-22 stale-flag audit that fed this ticket.
