@@ -1,7 +1,6 @@
 import * as React from "react";
 import {
   Modal,
-  Pressable,
   StyleSheet,
   View,
   type StyleProp,
@@ -11,6 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Radius, SheetGrabber, Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { SHEET_RADIUS } from "@/components/ui/SupprCard";
 import { MODAL_OVERLAY_SCRIM } from "@suppr/shared/theme/modalOverlay";
 
@@ -74,14 +74,20 @@ export function SheetShell({
       animationType={animationType}
       onRequestClose={onClose}
     >
-      <Pressable
+      <PressableScale
         style={styles.scrim}
         onPress={dismissOnScrimPress ? onClose : undefined}
+        // Full-bleed scrim — haptic only, no scale transform.
+        scaleTo={1}
+        haptic="selection"
+        accessibilityRole="button"
         accessibilityLabel="Close sheet"
       >
-        <Pressable
-          onPress={(e) => e.stopPropagation?.()}
+        {/* Sheet body is a View so taps inside don't dismiss; avoid a nested
+            raw <Pressable> (ENG-1519 pressable-feedback ratchet). */}
+        <View
           testID={testID}
+          onStartShouldSetResponder={() => true}
           style={[
             styles.sheet,
             {
@@ -93,8 +99,8 @@ export function SheetShell({
         >
           <SheetGrabberBar />
           {children}
-        </Pressable>
-      </Pressable>
+        </View>
+      </PressableScale>
     </Modal>
   );
 }
