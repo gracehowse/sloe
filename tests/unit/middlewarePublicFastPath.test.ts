@@ -41,3 +41,24 @@ describe("ENG-1642 — /m/<token> meal-share landing is public", () => {
     expect(SRC).not.toMatch(/PUBLIC_ROUTES = new Set\(\[[^\]]*"\/m\//);
   });
 });
+
+describe("ENG-1645 — /g/<code> referral-invite landing is public", () => {
+  it("checks pathname.startsWith(\"/g/\") inside isPublic, ahead of getUser", () => {
+    const referralCheck = SRC.indexOf('pathname.startsWith("/g/")');
+    const getUser = SRC.indexOf("supabase.auth.getUser()");
+    expect(referralCheck).toBeGreaterThan(-1);
+    expect(getUser).toBeGreaterThan(referralCheck);
+  });
+
+  it("returns true for the /g/ prefix (source-level, not just present)", () => {
+    expect(SRC).toContain('if (pathname.startsWith("/g/")) return true;');
+  });
+
+  it("does not require /g/<code> to be a fixed literal in PUBLIC_ROUTES (any code must match)", () => {
+    // A Set.has() lookup would only ever match one literal path — the
+    // anon landing must work for every referral code, so the
+    // implementation MUST use a startsWith prefix check rather than
+    // adding codes to PUBLIC_ROUTES one at a time.
+    expect(SRC).not.toMatch(/PUBLIC_ROUTES = new Set\(\[[^\]]*"\/g\//);
+  });
+});

@@ -78,6 +78,14 @@ function isPublic(pathname: string): boolean {
   // recipient hasn't signed in yet, so gating it would 307 every share-link
   // click to /login before they've even seen what was shared with them.
   if (pathname.startsWith("/m/")) return true;
+  // ENG-1645 — `/g/<code>` is the anon referral-invite landing page
+  // (`app/g/[code]/page.tsx` / `ReferralLandingClient.tsx`). It must be
+  // public: the invitee hasn't signed in yet, so gating it would 307 every
+  // referral-link click to /login before capture-then-signup can run.
+  // Currently dormant (`referral_invite_loop_v1` is flag-off, blocked on the
+  // paid rail per `docs/decisions/2026-07-12-launch-blocked-on-paid-rail.md`)
+  // but must be correct before that flag ramps.
+  if (pathname.startsWith("/g/")) return true;
   if (isDevPreview(pathname)) return true;
   return false;
 }
