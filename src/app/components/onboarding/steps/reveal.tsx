@@ -462,27 +462,17 @@ function MacroTile({
   color: string;
   pct: number;
 }) {
-  // 2026-05-13 (premium-bar audit Reveal #4 — pair macro % with g
-  // inline): web parity mirror of the mobile flag-gated layout.
-  // Same flag name + gating posture so both platforms flip
-  // simultaneously when Grace enables `reveal-macro-tile-paired-pct`
-  // in PostHog. Default OFF — original layout unchanged for real
-  // users until the flag is flipped.
-  const pairedLayout = isFeatureEnabled("reveal-macro-tile-paired-pct");
+  // 2026-05-13 (premium-bar audit Reveal #4 — pair macro % with g inline):
+  // web parity mirror of the mobile layout. Was gated behind
+  // `reveal-macro-tile-paired-pct`; collapsed to this permanently-on layout
+  // 2026-07-22 (ENG-1651) after PostHog confirmed the flag had been at a
+  // genuine, untouched 100% rollout since 2026-05-16.
   return (
     <div className="bg-card border border-border rounded-xl p-3.5">
       <div className="flex justify-between items-center mb-2.5">
         <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
           {name}
         </span>
-        {!pairedLayout ? (
-          <span
-            className="text-[10px] font-bold tabular-nums"
-            style={{ color }}
-          >
-            {pct}%
-          </span>
-        ) : null}
       </div>
       {/* SLOE Phase 0: the macro-target hero numeral reads in the Newsreader
           serif display face (matching the calorie ring + mobile reveal); the
@@ -495,14 +485,12 @@ function MacroTile({
         <span className="font-sans text-xs text-muted-foreground font-medium ml-0.5">
           g
         </span>
-        {pairedLayout ? (
-          <span
-            className="text-xs font-bold tabular-nums ml-1.5"
-            style={{ color }}
-          >
-            · {pct}%
-          </span>
-        ) : null}
+        <span
+          className="text-xs font-bold tabular-nums ml-1.5"
+          style={{ color }}
+        >
+          · {pct}%
+        </span>
       </div>
       <div
         className="mt-2.5 h-[3px] rounded-sm"

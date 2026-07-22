@@ -33,7 +33,8 @@ void React;
 const trackMock = vi.fn();
 vi.mock("@/lib/analytics/track", () => ({
   track: (...args: unknown[]) => trackMock(...args),
-  // Flag reads in the reveal step (jargon gloss / paired-pct) resolve OFF.
+  // Flag reads in the reveal step (jargon gloss, progressive text, etc.)
+  // resolve OFF.
   isFeatureEnabled: () => false,
 }));
 

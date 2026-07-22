@@ -256,7 +256,7 @@ daily-use > detail). Memory pin: `feedback_premium_audit_subtractive_first.md`.
 - [x] "What happens next" 3-step card
 - [x] Re-title to "Your plan is ready."
 - [x] Show the maths (expandable BMR + Activity + Goal) — RevealShowTheMaths
-- [p] Pair macro % with g inline — flag-gated `reveal-macro-tile-paired-pct` on both platforms (commits 5b891f8 + 51552be); Grace flips when ready
+- [x] Pair macro % with g inline — shipped on both platforms (commits 5b891f8 + 51552be); flag `reveal-macro-tile-paired-pct` held 100% since 2026-05-16 and was collapsed to permanently-on 2026-07-22 (ENG-1651)
 - [x] Add "compared to" anchor — goalBlurb already names TDEE comparison
 - [x] Promote methodology footer to "How we calculate" chip-expander — MobileMethodologyNote
 - [x] Rebuild weight-skipped branch as soft-illustration moment — `apps/mobile/components/onboarding/steps/reveal.tsx` — weight==null branch: Scale icon + soft-reassurance copy (2026-05-14)
