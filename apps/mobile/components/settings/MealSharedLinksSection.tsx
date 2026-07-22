@@ -156,7 +156,7 @@ export function MealSharedLinksSection() {
                 {canRevoke ? (
                   <PressableScale
                     testID={`meal-share-revoke-${row.id}`}
-                    haptic="light"
+                    haptic="warn"
                     disabled={revokingId === row.id}
                     onPress={() => onRevoke(row)}
                     accessibilityRole="button"
