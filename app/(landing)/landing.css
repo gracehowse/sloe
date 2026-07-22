@@ -254,7 +254,10 @@
 /* Header */
 .lp-nav {
   position: sticky;
-  top: 0;
+  /* ENG-1639 fallout, 2026-07-21 — sits below the top-anchored cookie-consent
+     banner (CookieConsent.tsx) instead of underneath it at the same `top: 0`;
+     see COOKIE_CONSENT_TOP_INSET_VAR for why this exists. */
+  top: var(--cookie-consent-top-inset, 0px);
   z-index: 50;
   background: color-mix(in oklab, var(--lp-bg) 85%, transparent);
   backdrop-filter: saturate(1.2) blur(14px);
