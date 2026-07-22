@@ -23,34 +23,39 @@ cd docs/ux/redesign/v4-today && python3 -m http.server 8098
 Controls: day-state switcher (Fresh morning / Mid-day / Evening · over),
 light/dark, and the dial (or the hint under it) flips Remaining ⇆ Consumed.
 
-## The one composition (rev 2 — Mobbin-benchmarked)
+## The one composition (rev 3 — "the editorial ledger")
 
-Rebuilt per Grace ("we can do better — use mobbin for inspo; the big log
-dinner button needs removing, people know where to log") against the Mobbin
-pulls in `docs/ux/reviews/2026-07-05-ui-critique-mobbin-benchmark.md` §Today.
+rev 3 commission (Grace, 2026-07-21): "I don't know if I like the days; the
+purple overage is a bit aggressive. completely reimagine the page. forget
+what you already know. look at it with pure critical eyes."
 
-wordmark → greeting (+8) → week strip (+20) → **hero** (+4), reading
-**verdict → interpretation → ledger**:
+Cold-eyes findings that drove the reset: the date was stated four times
+across ~200pt of pre-content chrome; the permanent week strip is
+time-travel navigation taxing every open (its solid plum pill was the
+heaviest ink block on the canvas — plum doing brand + selection + accent +
+macro duty); the centered dial + centered stacks is the category-default
+composition, while Sloe's ownable asset (July-5 identity verdict) is the
+serif voice — spent on a greeting.
 
-1. jewel dial on a state-keyed **ambient wash** (sage under / amber over /
-   frost empty — the Lifesum grammar: mood, not a spreadsheet cell)
-2. verdict line + view hint (`Remaining · tap to switch`, MacroFactor's
-   reframe — tap the dial or the hint)
-3. **narrative guide-line directly under the verdict** (the Oura grammar:
-   the number never speaks for itself) — ONE always-present coach entry
-   absorbing the deficit line and the ENG-1293 Coach chip; fades in after
-   the dial sweep
-4. **the board** — one aligned 3-column ledger: GOAL / EATEN / BONUS
-   (bonus always renders, 0 on empty) over thin macro tracks at
-   deliberately lower weight (MacroFactor); tap a macro → detail. The
-   standalone macro section below the hero is **retired**
-5. **no log pill** — Cal AI's filled-pill-in-the-ring pattern rejected;
-   the FAB is the log affordance (supersedes ENG-1372 law 2 and the
-   July-5 review's "invitation inside the hero" rule — Grace, 2026-07-21)
+rev 3 inverts the hierarchy — **the number IS the typography**:
 
-then **Eat next** recipe card with real embedded photography (+24; hides
-when over budget — the guide-line carries the landing copy), Quick add,
-Today's meals.
+1. **One masthead row** (wordmark · bell · avatar) + **one quiet day-line**
+   (`‹ TUESDAY 21 JULY ——— 📅` — chevron pages back, calendar for far
+   dates). The only date statement on the page. No strip, no filled pill.
+2. **Type-led hero, left-aligned on one rail**: state overline (dot +
+   UNDER/OVER BUDGET / A FRESH PLATE) → **76px Newsreader numeral** + unit
+   (tap flips Remaining ⇆ Consumed) → the ring reduced to a **4px hairline
+   gauge** with a goal notch (amber only past the notch) → one narrative
+   line (Oura: the number never speaks for itself) → inline
+   Goal · Eaten · Bonus ledger (bonus always renders) → three thin macro
+   rows (values right-aligned, 3px tracks).
+3. **Plum rationed** to wordmark, FAB, links, and small marks — state
+   colour (sage/amber) carries meaning; ink carries hierarchy.
+4. **No log pill** (supersedes ENG-1372 law 2 — Grace: people know where
+   to log; the FAB is the affordance).
+
+then **Eat next** with real embedded photography (hides when over budget —
+the narrative carries the landing copy), Quick add, Today's meals.
 
 ## Already shipped from this direction
 
@@ -61,9 +66,11 @@ remaining slices (absorbing ENG-1656) — ticketed after ratification.
 
 ## Open questions for ratification
 
-1. Guide-line absorbing the Coach chip (ENG-1293 entry preserved, restyled).
-2. The board **replacing** the standalone macro section vs coexisting.
-3. Eat-next hiding when over budget.
-4. The ambient hero wash (a deliberate departure from the flat ENG-1571
-   dial-material ruling — wash sits BEHIND the dial on the page ground,
-   the dial itself stays flat; needs an explicit OK).
+1. **Retiring the jewel dial from Today** — the boldest call in rev 3: the
+   dial (ENG-1225's signature instrument) leaves this screen for a hairline
+   gauge; the dial identity would live on Progress/onboarding. Needs an
+   explicit yes.
+2. Retiring the permanent week strip (day-nav = chevron + calendar + swipe).
+3. Narrative absorbing the deficit line + ENG-1293 Coach chip.
+4. The macro rows replacing the standalone macro section.
+5. Eat-next hiding when over budget.
