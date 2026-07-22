@@ -68,6 +68,9 @@ import { SupprButton } from "./suppr-button";
 import { type SourceDotSource } from "../ui/source-dot";
 import { BrowseRow, LibraryRow } from "./log-sheet-rows.tsx";
 import { LoggedConfirmation } from "./log-sheet-confirmation";
+import { LogSessionTray } from "./log-session-tray";
+import { SkeletonList } from "./log-sheet-skeleton-list";
+import type { LogSessionTrayProps } from "../../../lib/nutrition/logSessionTray.ts";
 import { FatSecretBadge } from "../ui/FatSecretBadge";
 import { TrustChip } from "../ui/trust-chip";
 import { Input } from "../ui/input";
@@ -400,6 +403,9 @@ export interface LogSheetProps {
      *  undefined. */
     onUndo?: () => void;
   } | null;
+  /** ENG-1643 — the session-tray receipt (immediate-commit multi-add). Present
+   *  only when `log_session_tray_v1` is on; absent = pre-ENG-1643 behaviour. */
+  sessionTray?: LogSessionTrayProps;
 }
 
 type BrowseTab = "gotos" | "recent" | "library" | "saved";
@@ -422,6 +428,7 @@ export function LogSheet({
   quickActions,
   slot,
   confirmation,
+  sessionTray,
   goTos,
   showBarcodeFreePromise = false,
   describe,
@@ -446,7 +453,11 @@ export function LogSheet({
   // (ENG-1497). `design_system_elevation` collapsed (ENG-1651) — this was
   // permanently ON via REDESIGN_DEFAULT_ON.
   // ENG-1303 — v3 sheet header copy. OFF → the legacy "Log a meal" (kill switch).
-  const sheetTitle = isFeatureEnabled("sloe_v3_log") ? "Add to today" : "Log a meal";
+  // ENG-1643 — the session-tray count stays visible in EVERY sheet state
+  // (the ENG-1449 "visible in every state" lesson, applied to the receipt).
+  const trayCount = sessionTray?.items.length ?? 0;
+  const baseTitle = isFeatureEnabled("sloe_v3_log") ? "Add to today" : "Log a meal";
+  const sheetTitle = trayCount >= 1 ? `${baseTitle} · ${trayCount} added` : baseTitle;
   const sheetShadowCls = "shadow-[var(--elev-sheet)]";
 
   // ENG-812 parity gap #21 — the redesign_motion element→sheet open morph. The
@@ -615,6 +626,11 @@ export function LogSheet({
               slotName={slot?.current ?? null}
             />
           )}
+
+          {/* ENG-1643 — session-tray receipt, pinned as the sheet's bottom-most
+              persistent bar. Renders nothing until ≥ 1 item is committed this
+              session. Mirror of mobile `LogSheet`. */}
+          {sessionTray ? <LogSessionTray {...sessionTray} /> : null}
         </DrawerPrimitive.Content>
       </DrawerPrimitive.Portal>
     </DrawerPrimitive.Root>
@@ -1267,23 +1283,6 @@ function LibraryList({ library, slotName }: { library: NonNullable<LogSheetProps
 }
 
 /* -------------------------- Skeleton -------------------------- */
-function SkeletonList() {
-  const textRows = isFeatureEnabled("ingredient_text_rows_v1"); // ENG-1611 — text rows load as text
-  return (
-    <div role="status" aria-label="Loading">
-      {[0, 1, 2, 3].map((i) => (
-        <div key={i} className="flex items-center py-2">
-          {textRows ? null : <div className="size-9 rounded-md bg-muted" aria-hidden />}
-          <div className={textRows ? "flex-1 space-y-1.5" : "ml-2 flex-1 space-y-1.5"}>
-            <div className="h-2.5 w-2/3 rounded bg-muted" aria-hidden />
-            <div className="h-2 w-1/3 rounded bg-muted" aria-hidden />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /* -------------------------- Barcode manual entry -------------------------- */
 
 function BarcodeManualEntry({
