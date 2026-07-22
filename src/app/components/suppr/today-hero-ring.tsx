@@ -244,6 +244,14 @@ export function TodayHeroRing({
   // separation, so the audit-gap-6 "slab" concern doesn't manifest in the v3
   // layout. Flag OFF keeps the carded hero below.
   const decard = isFeatureEnabled("today_hero_decard_v3");
+  // ENG-1653 tight hero cluster (mobile parity): on the de-carded hero the
+  // top chip row was an empty left slot + one right-aligned Coach chip
+  // floating in the strip→dial band. With the cluster flag on, the row is
+  // dropped and the Coach entry renders at the hero FOOT instead —
+  // ENG-1293's every-state guarantee holds in both layouts. Mirrors
+  // `TodayHeroRing.tsx` (mobile).
+  const clusterHero = isFeatureEnabled("today_hero_cluster_v3");
+  const coachAtFoot = decard && clusterHero;
 
   const heroInner = (
     <>
@@ -251,8 +259,9 @@ export function TodayHeroRing({
           replaced by a centered RingStatusLine BELOW the ring (prototype). The
           Remaining/Consumed toggle stays retired (web ring parity 2026-06-10).
           The Coach chip (ENG-1293) takes the row's right slot in BOTH layouts
-          so the entry survives every hero state. */}
-      {!decard || onPressCoach ? (
+          so the entry survives every hero state (with the ENG-1653 cluster
+          flag on, it renders at the hero foot instead of this row). */}
+      {(!decard || onPressCoach) && !coachAtFoot ? (
         <div className="flex w-full items-center justify-between gap-2">
           {!decard ? (
             <HeroStatusChip state={chipState} onPress={onPressStatusChip} />
@@ -336,6 +345,9 @@ export function TodayHeroRing({
       >
         {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
       </button>
+      {/* ENG-1653 — the de-orphaned Coach entry at the hero foot (the
+          prototype's guide-line slot); see the `coachAtFoot` note above. */}
+      {coachAtFoot && onPressCoach ? <HeroCoachChip onPress={onPressCoach} /> : null}
     </>
   );
 

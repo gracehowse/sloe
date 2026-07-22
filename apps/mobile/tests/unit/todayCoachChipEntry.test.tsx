@@ -82,11 +82,15 @@ describe("TodayHeroRing source — decard branch keeps the Coach chip row (ENG-1
     "utf8",
   );
 
-  it("chip row renders when decard is on and onPressCoach is present", () => {
-    // The row condition must be `!decard || onPressCoach` — a plain `!decard`
-    // would drop the always-present entry from the v3 de-carded hero.
-    expect(src).toMatch(/\{!decard \|\| onPressCoach \?/);
+  it("chip row renders when decard is on and onPressCoach is present (foot slot on the ENG-1653 cluster hero)", () => {
+    // The row condition must keep `!decard || onPressCoach` — a plain
+    // `!decard` would drop the always-present entry from the v3 de-carded
+    // hero. ENG-1653 adds `!coachAtFoot`: on the tight-cluster hero the top
+    // row is dropped and the SAME chip renders at the hero foot instead, so
+    // the entry still exists in every hero state in both layouts.
+    expect(src).toMatch(/\(!decard \|\| onPressCoach\) && !coachAtFoot \?/);
     expect(src).toMatch(/<TodayCoachChip onPress=\{onPressCoach\} \/>/);
+    expect(src).toMatch(/\{coachAtFoot && onPressCoach \? <TodayCoachChip onPress=\{onPressCoach\} \/> : null\}/);
   });
 
   it("host gate is documented as coach_screen_v1 (same flag as the screen)", () => {

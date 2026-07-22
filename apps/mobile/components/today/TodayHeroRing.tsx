@@ -157,6 +157,15 @@ function TodayHeroRingImpl({
   // separation, so the audit-gap-6 "slab" concern doesn't manifest in the v3
   // layout. Flag OFF keeps the carded hero (soft lift / tier-v1 flat) below.
   const decard = isFeatureEnabled("today_hero_decard_v3");
+  // ENG-1653 tight hero cluster: on the de-carded hero the top chip row was
+  // a `<View />` + one right-aligned Coach chip floating in the strip→dial
+  // band — the exact dead air Grace flagged. With the cluster flag on, that
+  // row is dropped, the Coach entry moves to the hero FOOT (the prototype's
+  // guide-line slot, still rendered in every hero state — ENG-1293's
+  // guarantee holds), and the decard block's top padding goes so the dial
+  // sits at the bare cluster gap under the strip.
+  const clusterHero = isFeatureEnabled("today_hero_cluster_v3");
+  const coachAtFoot = decard && clusterHero;
 
   const heroInner = (
     <>
@@ -164,8 +173,9 @@ function TodayHeroRingImpl({
           replaced by a centered RingStatusLine BELOW the ring (prototype). The
           Coach chip (ENG-1293) takes the row's right slot in BOTH layouts so
           the entry survives every hero state — on decard the row renders with
-          only the Coach chip. */}
-      {!decard || onPressCoach ? (
+          only the Coach chip (and with the ENG-1653 cluster flag on, the row
+          is dropped entirely — the Coach entry renders at the hero foot). */}
+      {(!decard || onPressCoach) && !coachAtFoot ? (
         <View
           style={{
             width: "100%",
@@ -262,19 +272,26 @@ function TodayHeroRingImpl({
           {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
         </Text>
       </PressableScale>
+      {/* ENG-1653 — the de-orphaned Coach entry at the hero foot (the
+          prototype's guide-line slot); see the `coachAtFoot` note above. */}
+      {coachAtFoot && onPressCoach ? <TodayCoachChip onPress={onPressCoach} /> : null}
     </>
   );
 
   if (decard) {
     // Bare centered hero — no card chrome; the page provides the horizontal
     // padding, so the ring + stats span the full content width (prototype).
+    // ENG-1653: with the cluster flag on the top padding drops — the dial
+    // hangs at the bare cluster gap under the week strip (prototype
+    // `.ring-hero` padding 2 0 8).
     return (
       <View
         style={{
           width: "100%",
           alignItems: "center",
           gap: Layout.todayScrollGap,
-          paddingVertical: Spacing.sm,
+          paddingTop: clusterHero ? 0 : Spacing.sm,
+          paddingBottom: Spacing.sm,
         }}
       >
         {heroInner}
