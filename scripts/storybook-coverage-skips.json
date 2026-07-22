@@ -1,0 +1,532 @@
+{
+  "version": 1,
+  "updated": "2026-07-22",
+  "skips": {
+    "web-suppr": [
+      {
+        "file": "src/app/components/suppr/coach-screen-client.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "src/app/components/suppr/goal-pace-editor-dialog.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/suppr/north-star-block-host.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "src/app/components/suppr/quick-add-panel.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/suppr/shared-meal-accept-host.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "src/app/components/suppr/today-household-glance-bar.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/suppr/today-meals-section.tsx",
+        "reason": "orchestrator"
+      }
+    ],
+    "web-hosts": [
+      {
+        "file": "src/app/components/AnalyticsProvider.tsx",
+        "reason": "non-visual"
+      },
+      {
+        "file": "src/app/components/DiscoverFeed.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/FastingTimer.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "src/app/components/FirstRunChecklist.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/HouseholdBar.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/HouseholdPanel.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/HouseholdSettingsPage.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/Library.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "src/app/components/MealPlanner.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "src/app/components/NotificationsBell.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/NutritionTracker.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "src/app/components/PageViewTracker.tsx",
+        "reason": "non-visual"
+      },
+      {
+        "file": "src/app/components/Profile.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "src/app/components/ProgressDashboard.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "src/app/components/ProgressMetricDetail.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "src/app/components/RecipeDetail.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "src/app/components/RecipeUpload.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/ServiceWorkerRegistration.tsx",
+        "reason": "non-visual"
+      },
+      {
+        "file": "src/app/components/Settings.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "src/app/components/ShoppingList.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "src/app/components/Targets.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "src/app/components/TodayDesktopFrame.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "src/app/components/cookbook-import/ImportCookbookPdfEntry.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/creator/CreatorFollowButton.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/food-search/FoodSearchPanel.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/household/HouseholdInviteDialog.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/household/ReceivedInvitesBanner.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/imports/MfpCsvImportCard.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/library/AddToCollectionMenu.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/onboarding/context.tsx",
+        "reason": "non-visual"
+      },
+      {
+        "file": "src/app/components/onboarding/narrative.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "src/app/components/onboarding/web-flow.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "src/app/components/ops/DrOutageBanner.tsx",
+        "reason": "flag-gated null"
+      },
+      {
+        "file": "src/app/components/paywall/TrialEndReminderUpgradeBlock.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/progress/WeightPlateauInsight.tsx",
+        "reason": "auth/supabase host"
+      }
+    ],
+    "mobile": [
+      {
+        "file": "apps/mobile/components/AddIngredientSheet.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/AiPaywallSheet.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/BarcodeCameraView.tsx",
+        "reason": "camera"
+      },
+      {
+        "file": "apps/mobile/components/BarcodeScannerModal.tsx",
+        "reason": "camera"
+      },
+      {
+        "file": "apps/mobile/components/CopyMealSheet.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/CreateCustomFoodSheet.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/DuplicateDaySheet.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/FirstRunChecklist.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/FontGate.tsx",
+        "reason": "non-visual"
+      },
+      {
+        "file": "apps/mobile/components/FoodSearchModal.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/HouseholdBar.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/HouseholdCard.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/HouseholdSummaryRow.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/JournalDatePickerModal.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/KeyboardSafeView.tsx",
+        "reason": "tiny wrapper"
+      },
+      {
+        "file": "apps/mobile/components/LabelLogSheet.tsx",
+        "reason": "camera"
+      },
+      {
+        "file": "apps/mobile/components/MoveMealSheet.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/OverrideIngredientSheet.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/PhotoLogSheet.tsx",
+        "reason": "camera"
+      },
+      {
+        "file": "apps/mobile/components/PlanTemplatesSheet.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/QuickAddPanel.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/RefineByDescribing.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/SaveMealSheet.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/SwapMealSheet.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/VoiceLogSheet.tsx",
+        "reason": "camera"
+      },
+      {
+        "file": "apps/mobile/components/barcode/BarcodeShareOptIn.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/charts/CalorieRing.tsx",
+        "reason": "Skia-only"
+      },
+      {
+        "file": "apps/mobile/components/charts/SkiaRingArcs.tsx",
+        "reason": "Skia-only"
+      },
+      {
+        "file": "apps/mobile/components/charts/SkiaRingErrorBoundary.tsx",
+        "reason": "Skia-only"
+      },
+      {
+        "file": "apps/mobile/components/consent/AnalyticsConsentPrompt.tsx",
+        "reason": "non-visual"
+      },
+      {
+        "file": "apps/mobile/components/cook/CookStepSwipeSurface.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/cook/CookTimerPanel.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/discover/DiscoverClusterCarousels.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/discover/FollowingFeed.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/external-link.tsx",
+        "reason": "tiny wrapper"
+      },
+      {
+        "file": "apps/mobile/components/food-search/FoodSearchFeedItem.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/food-search/FoodSearchPanel.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/haptic-tab.tsx",
+        "reason": "tiny wrapper"
+      },
+      {
+        "file": "apps/mobile/components/household/HouseholdInviteSheet.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/household/ReceivedInvitesBanner.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/import/ImportProgressDrawer.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/import/UnifiedImportSheet.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/imports/MfpCsvImportCard.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/login/loginStyles.tsx",
+        "reason": "non-visual"
+      },
+      {
+        "file": "apps/mobile/components/meal/MacroTotalGrid.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/onboarding/OnboardingRecipeImportCard.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/onboarding/context.tsx",
+        "reason": "non-visual"
+      },
+      {
+        "file": "apps/mobile/components/onboarding/mobile-flow.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/onboarding/steps/data-bridges.tsx",
+        "reason": "non-visual"
+      },
+      {
+        "file": "apps/mobile/components/onboarding/steps/permissions.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/onboarding/steps/signup.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/onboarding/steps/upgrade.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/paywall/PaywallTrajectoryChart.tsx",
+        "reason": "Skia-only"
+      },
+      {
+        "file": "apps/mobile/components/paywall/TrialEndReminderPaywallBlock.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/plan/PlanV3Surface.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/planner/PlanSmartSuggestionsCard.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/profile/ProfileShowcaseReadView.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/progress/AppleHealthCardHost.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/progress/BodyCompositionTrendCard.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/recap/GoalPaceEditorSheet.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/recap/GoalPaceRetuneSheet.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/recap/WeeklyRecapShareButton.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/recap/WeeklyRecapStreakGrace.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/recipe/AddToShoppingListButton.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/recipe/CreateRecipeActionSheet.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/recipe/CreateRecipeWizard.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/recipe/ReportRecipeSheet.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/settings/AnalyticsConsentRow.tsx",
+        "reason": "non-visual"
+      },
+      {
+        "file": "apps/mobile/components/settings/BarcodeContributionsSection.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/settings/DevFlagOverrides.tsx",
+        "reason": "flag-gated null"
+      },
+      {
+        "file": "apps/mobile/components/settings/SettingsBundleContent.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/settings/TrendOnlyWeightRow.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/settings/WeeklyRecapPushPicker.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/settings/WeighInReminderRow.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/shopping/ShoppingUpdateFromPlanBanner.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/tabs/RecipesSubTabHeader.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/tabs/RecipesTabChrome.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/tabs/SupprTabBar.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/tabs/YouSubTabHeader.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/themed-text.tsx",
+        "reason": "tiny wrapper"
+      },
+      {
+        "file": "apps/mobile/components/themed-view.tsx",
+        "reason": "tiny wrapper"
+      },
+      {
+        "file": "apps/mobile/components/today/CopySlotSheetHost.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/today/LogSheet.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/today/LogSheetDescribeFlow.tsx",
+        "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/today/NorthStarBlockHost.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/today/TodayHeaderBar.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/today/TodayMealsSection.tsx",
+        "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/today/onboarding-nudges/OnboardingNudgeBanner.tsx",
+        "reason": "auth/supabase host"
+      }
+    ]
+  }
+}

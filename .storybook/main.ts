@@ -5,7 +5,9 @@ const config: StorybookConfig = {
   stories: [
     "../src/**/*.mdx",
     "../src/**/*.stories.@(js|jsx|mjs|ts|tsx)",
+    // Role catalog (ENG-1664 sheet-pressable) + colocated component stories (coverage gate).
     "../apps/mobile/stories/**/*.stories.@(js|jsx|mjs|ts|tsx)",
+    "../apps/mobile/components/**/*.stories.@(js|jsx|mjs|ts|tsx)",
   ],
   addons: [
     "@storybook/addon-docs",

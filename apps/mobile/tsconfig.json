@@ -28,6 +28,11 @@
     "expo-env.d.ts"
   ],
   "exclude": [
-    "stories/**"
+    "stories/**",
+    "**/*.stories.tsx",
+    "components/_mobileStoryDecorators.tsx",
+    "components/**/_storyShell.tsx",
+    "components/**/_storyFixtures.ts",
+    "components/**/_storyFixtures.tsx"
   ]
 }
