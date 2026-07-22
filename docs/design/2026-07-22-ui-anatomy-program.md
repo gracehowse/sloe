@@ -38,8 +38,14 @@ product roles** (provenance vs TDEE vs search-result tier) but share geometry vi
 radio → `SupprRadio`; `PlanEmptyWeekCard` → `SupprNotice`; `ServingStepper` /
 `PortionStepper` / `MobileNumberStepper` ± circles → `StepperCircleButton`.
 
-**Remaining sweep (follow-up):** migrate remaining hand-rolled sheet grabbers
-(~20 mobile surfaces) and icon-button literals to `SheetShell` / `IconButton`.
+**ENG-1665 Plan-first slice (this wave):** `planner.tsx` chip-sheet grabbers →
+`SheetGrabberBar` (ENG-1662 owner). Remaining Plan hand-rolled sheets should
+migrate onto full `SheetShell` in follow-up PRs; shrink `check:anatomy` pins as
+each surface recomposes.
+
+**Remaining sweep:** migrate remaining hand-rolled sheet grabbers
+(~17 mobile surfaces after Plan slice) and icon-button literals to `SheetShell` /
+`IconButton`. Screens → Today → web parity after Plan.
 
 ## Rule
 

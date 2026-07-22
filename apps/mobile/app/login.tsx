@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Redirect, useRouter } from "expo-router";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { sha256 } from "js-sha256";
@@ -91,7 +91,13 @@ export default function LoginScreen() {
   // Sloe auth chooser (Figma `296:2`, 2026-06-08): opens on a calm chooser;
   // the email/password form is PROGRESSIVELY DISCLOSED — `view` toggles
   // chooser ↔ email locally (no new route; auth stop-zone respected).
-  const [view, setView] = useState<"chooser" | "email">("chooser");
+  // ENG-1563: `?email=1` from onboarding signup opens the form directly.
+  const params = useLocalSearchParams<{ email?: string | string[] }>();
+  const openEmail =
+    (Array.isArray(params.email) ? params.email[0] : params.email) === "1";
+  const [view, setView] = useState<"chooser" | "email">(
+    openEmail ? "email" : "chooser",
+  );
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
   // Positive assent to Terms + Privacy required at account creation
   // (browsewrap is unenforceable — Nguyen v. Barnes & Noble). Defaults

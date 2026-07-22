@@ -15,6 +15,7 @@ import { CircleAlert, CircleCheck, Sparkles } from "lucide-react";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { calorieRingGeometryFromSize } from "../../../lib/nutrition/calorieRingGeometry";
 import { SupprCard } from "../ui/suppr-card.tsx";
+import { TodayHeroMacroLegend } from "./today-hero-macro-legend";
 
 /**
  * TodayHeroStats — Today-screen hero block with the calorie ring +
@@ -78,6 +79,9 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     proteinPct,
     carbsPct,
     fatPct,
+    proteinGrams,
+    carbsGrams,
+    fatGrams,
     expanded,
     onToggleExpanded,
     onPressWhy,
@@ -100,6 +104,9 @@ function extractRingProps(props: TodayHeroStatsProps): TodayHeroRingProps {
     proteinPct,
     carbsPct,
     fatPct,
+    proteinGrams,
+    carbsGrams,
+    fatGrams,
     expanded,
     onToggleExpanded,
     onPressWhy,
@@ -124,6 +131,9 @@ function DesktopHeroStats({
   proteinPct,
   carbsPct,
   fatPct,
+  proteinGrams,
+  carbsGrams,
+  fatGrams,
   expanded,
   onToggleExpanded,
   isOnTrack,
@@ -240,6 +250,14 @@ function DesktopHeroStats({
               />
             )}
           </div>
+        ) : null}
+
+        {proteinGrams && carbsGrams && fatGrams ? (
+          <TodayHeroMacroLegend
+            protein={proteinGrams}
+            carbs={carbsGrams}
+            fat={fatGrams}
+          />
         ) : null}
 
         {/* ENG-753 — "On track" pill below the stat grid (prototype

@@ -6,7 +6,7 @@
     "apps/mobile/app/(tabs)/discover.tsx": 11,
     "apps/mobile/app/(tabs)/library.tsx": 11,
     "apps/mobile/app/(tabs)/notifications.tsx": 4,
-    "apps/mobile/app/(tabs)/planner.tsx": 22,
+    "apps/mobile/app/(tabs)/planner.tsx": 19,
     "apps/mobile/app/(tabs)/progress.tsx": 36,
     "apps/mobile/app/+not-found.tsx": 1,
     "apps/mobile/app/burn-detail.tsx": 4,

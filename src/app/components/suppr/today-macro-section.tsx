@@ -8,6 +8,7 @@ import {
 } from "./today-dashboard-macro-tiles";
 import { TodayDashboardMacroBars } from "./today-dashboard-macro-bars";
 import { TodayDashboardMacroRings } from "./today-dashboard-macro-rings";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
 
 /**
  * TodayMacroSection — the Sloe v3 Tiles / Bars / Rings switcher.
@@ -27,10 +28,14 @@ export function TodayMacroSection({
   macroDisplayStyle,
   ...props
 }: TodayMacroSectionProps) {
-  if (macroDisplayStyle === "bars") {
+  // ENG-1656 — canonical bars band; honour user pref only when flag is off.
+  const style = isFeatureEnabled("today_hero_macro_legend_v1")
+    ? "bars"
+    : macroDisplayStyle;
+  if (style === "bars") {
     return <TodayDashboardMacroBars {...props} />;
   }
-  if (macroDisplayStyle === "rings") {
+  if (style === "rings") {
     return (
       <TodayDashboardMacroRings
         proteinCurrent={props.proteinCurrent}

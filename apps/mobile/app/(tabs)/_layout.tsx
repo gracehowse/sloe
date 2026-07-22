@@ -15,9 +15,9 @@ import { useAuth } from '@/context/auth';
 import { useAccent } from '@/context/theme';
 import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useOnboardingGate } from '@/hooks/useOnboardingGate';
-import { isFeatureEnabled } from '@/lib/analytics';
 import { useHasSignedInBefore } from '@/lib/hasSignedInBefore';
 import { takePendingMealShare } from '@/lib/mealShare';
+import { usePreauthRevealLatched } from '@/lib/preauthRevealLatch';
 
 /**
  * Phase 2 / B1.1 — tab structure collapses 6 → 4 (2026-04-27 strategic
@@ -108,7 +108,9 @@ export default function TabLayout() {
   // gated signup step. Default-OFF flag; a returning (signed-out) device still
   // lands on /login. `useHasSignedInBefore` distinguishes the two (marker from
   // ENG-1514, survives sign-out).
-  const preauthRevealOn = isFeatureEnabled('mobile_preauth_reveal_v1');
+  // ENG-1563 — latch the flag once PostHog resolves true so a cold relaunch
+  // mid-reveal does not bounce to /login while PostHog hydrates.
+  const preauthRevealOn = usePreauthRevealLatched();
   const signedInBefore = useHasSignedInBefore();
 
   if (loading) {
@@ -116,15 +118,12 @@ export default function TabLayout() {
   }
 
   if (!session) {
-    if (preauthRevealOn) {
-      // Wait for the one-shot marker read so we never flash /login before
-      // routing a fresh install into the reveal.
-      if (signedInBefore === null) {
-        return <AppLaunchScreen message="Checking your account…" />;
-      }
-      if (!signedInBefore) {
-        return <Redirect href="/onboarding" />;
-      }
+    // Wait for latch + marker reads so we never flash /login before routing.
+    if (preauthRevealOn === null || (preauthRevealOn && signedInBefore === null)) {
+      return <AppLaunchScreen message="Checking your account…" />;
+    }
+    if (preauthRevealOn && !signedInBefore) {
+      return <Redirect href="/onboarding" />;
     }
     return <Redirect href="/login" />;
   }

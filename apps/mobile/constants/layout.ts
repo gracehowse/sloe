@@ -18,13 +18,13 @@ export const Layout = {
    *  `Spacing.sm` (8) — already on the 4pt scale; tokenised (was a bare 8) so
    *  every Today gap reads from a `Spacing` token (audit gap 7). */
   todayScrollGap: Spacing.sm,
-  /** Larger break before meals / insight / lower fold (ENG-871).
-   *  With `todayScrollGap` (8) yields 40px — matches Stitch `mb-10`. */
-  todaySectionBreak: Spacing.xxl,
-  /** Figma TD1/TD2 — `mb-5` between section header and first card. */
-  todaySectionHeaderGap: Spacing.lg,
-  /** Figma TD1/TD2 — `mb-5` between sibling cards inside a section. */
-  todaySectionCardGap: Spacing.lg,
+  /** Between-section break (ENG-1655 two-tier rhythm). Within-group stays
+   *  `todayScrollGap` (8–12); ONE between-section size app-wide: 24. */
+  todaySectionBreak: Spacing.xl,
+  /** Section header → first card (ENG-1655): tight 8, not the old 20. */
+  todaySectionHeaderGap: Spacing.sm,
+  /** Sibling cards inside a section — dense 12 (ENG-1655 within-group). */
+  todaySectionCardGap: Spacing.dense,
   todayScreenPaddingX: Spacing.lg,
   /** Between-tile gap in the 2×2 macro grid. 12px — Sloe re-skin matches
    *  Claude Design prototype density (`gap: 10–14`); picked as the midpoint

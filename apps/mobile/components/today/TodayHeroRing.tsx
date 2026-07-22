@@ -10,6 +10,7 @@ import {
   TodayCoachChip,
 } from "@/components/today/TodayHeroChips";
 import { TodayHeroStats } from "@/components/today/TodayHeroStats";
+import { TodayHeroMacroLegend } from "@/components/today/TodayHeroMacroLegend";
 import { TodayFreshDayLogPill } from "@/components/today/TodayFreshDayLogPill";
 import { LogConfirmCheck } from "@/components/today/LogConfirmCheck";
 import { Layout } from "@/constants/layout";
@@ -60,6 +61,11 @@ export interface TodayHeroRingProps {
   proteinPct: number;
   carbsPct: number;
   fatPct: number;
+
+  /** ENG-1656 — absolute macros for the hero foot legend (flag-gated). */
+  proteinGrams?: { current: number; target: number };
+  carbsGrams?: { current: number; target: number };
+  fatGrams?: { current: number; target: number };
 
   // Interaction — host-owned. The long-press fires BOTH callbacks
   // (display-mode AND expand) so the gesture toggles both pieces of
@@ -117,6 +123,9 @@ function TodayHeroRingImpl({
   proteinPct,
   carbsPct,
   fatPct,
+  proteinGrams,
+  carbsGrams,
+  fatGrams,
   expanded,
   onToggleExpanded,
   // textTertiaryColor retained in the prop API (call-site stability) but no
@@ -165,6 +174,7 @@ function TodayHeroRingImpl({
   // guarantee holds), and the decard block's top padding goes so the dial
   // sits at the bare cluster gap under the strip.
   const clusterHero = isFeatureEnabled("today_hero_cluster_v3");
+  const macroLegendOn = isFeatureEnabled("today_hero_macro_legend_v1");
   const coachAtFoot = decard && clusterHero;
   // ENG-1653 (Grace, sim review): the macros toggle below the hero had been
   // DEAD since the ENG-1225 jewel-dial swap — the dial ignores `expanded` and
@@ -258,6 +268,13 @@ function TodayHeroRingImpl({
         // Legacy (flag-off) keeps the ENG-1372 suppression.
         suppressZeroBonus={emptyStateGrammarOn && isFreshDay && !clusterHero}
       />
+      {macroLegendOn && proteinGrams && carbsGrams && fatGrams ? (
+        <TodayHeroMacroLegend
+          protein={proteinGrams}
+          carbs={carbsGrams}
+          fat={fatGrams}
+        />
+      ) : null}
       {coachLine}
       {/* Macro-rings toggle (audit gap 5) — a tap-accessible counterpart to
           the ring's long-press macro-rings gesture. The design system (§13)

@@ -1,5 +1,5 @@
 /**
- * Today mobile layout rhythm — pinned to v49 / Claude Design density.
+ * Today mobile layout rhythm — ENG-1655 two-tier grammar.
  */
 import { describe, expect, it } from "vitest";
 import { Layout } from "../../constants/layout";
@@ -11,8 +11,15 @@ describe("Today layout tokens", () => {
     expect(Layout.macroTileGridGap).toBe(12);
   });
 
-  it("section break + scroll gap matches Stitch mb-10 (40px)", () => {
-    expect(Layout.todayScrollGap + Layout.todaySectionBreak).toBe(40);
+  it("section break is 24 (ENG-1655 between-section tier)", () => {
+    expect(Layout.todaySectionBreak).toBe(Spacing.xl);
+    expect(Layout.todaySectionBreak).toBe(24);
+    expect(Layout.todayScrollGap + Layout.todaySectionBreak).toBe(32);
+  });
+
+  it("section header/card gaps snap to within-group tier (8 / 12)", () => {
+    expect(Layout.todaySectionHeaderGap).toBe(Spacing.sm);
+    expect(Layout.todaySectionCardGap).toBe(Spacing.dense);
   });
 
   it("uses 20px horizontal padding (prototype phone gutter)", () => {
