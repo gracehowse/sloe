@@ -68,7 +68,7 @@ Deep link: progress-metric?metric=weight → redirects to Progress tab (no-op sc
 | W4 | The scrubber tooltip is functional but unstyled — it does not match the editorial serif-numeral direction. | Low |
 | W5 | The log sheet opens with a numeric keyboard but no "current weight" reassurance subline, making it feel cold and transactional. | Medium |
 | W6 | `AllWeightDataSheet` rows show no source provenance (manual vs Apple Health). Users cannot tell which rows came from HealthKit and cannot understand why deleting a row sometimes re-syncs back. | High |
-| W7 | The win-moment overlay flag (`redesign_winmoment`) is off by default. The new-low celebration is the most emotionally resonant moment in the app and is effectively invisible. | Medium |
+| W7 | **RESOLVED (ENG-1651) — no longer a risk.** Was: the win-moment overlay flag (`redesign_winmoment`) is off by default, making the new-low celebration effectively invisible. The flag has since been removed from source entirely — collapsed permanently-on (it was ON in every build since 2026-06-01, i.e. already true when this doc was written 2026-06-02) — so the celebration now fires unconditionally on every new all-time-low. | Resolved |
 | W8 | The trajectory card is a single projected-weight number. Bevel-grade multi-period change analysis (3/7/14/30/90d) would provide far more analytical signal at this surface. | Medium |
 | W9 | The Journey card milestone markers (25/50/75/100%) are rendered as dots on a progress bar. No badge or typography differentiation distinguishes "reached this milestone" from "ahead of this milestone." | Low |
 | W10 | The weight trend header uses Inter for the signed delta numeral. This is the single most important number on the card and deserves a serif-display treatment. | Low |
@@ -574,7 +574,7 @@ Modal sheet (centred, 340px wide, white, radius 20)
 
 **Current purpose:** quiet celebration when weight hits a new all-time low after the first weigh-in.
 
-**Flag state:** `redesign_winmoment` is off by default. The redesign assumes flag-on is the intended target.
+**Flag state:** removed. `redesign_winmoment` collapsed permanently-on (ENG-1651) — the flag was ON in every build since 2026-06-01, and the flag check has since been deleted from source. The redesign's flag-on target below is now simply the unconditional behaviour.
 
 **Benchmark:** Zero milestone seal styling (adjacent reference — no weight-specific win-moment found in Mobbin).
 
@@ -594,7 +594,7 @@ Centred card (300px wide, #FFFFFF, radius 20)
 
 **No confetti, no animation other than a single fade-in (200ms).** The understatement is intentional — it is a calm confirmation, not a celebration-jolt.
 
-**Preserve:** `weightWinMoment.ts` `isNewWeightLow` exactly — strictly below prior minimum by ≥ `NEW_LOW_EPSILON_KG` (0.05 kg); first weigh-in never counts; flag gate `redesign_winmoment`.
+**Preserve:** `weightWinMoment.ts` `isNewWeightLow` exactly — strictly below prior minimum by ≥ `NEW_LOW_EPSILON_KG` (0.05 kg); first weigh-in never counts. No flag gate remains — `redesign_winmoment` collapsed permanently-on (ENG-1651).
 
 ---
 
@@ -786,7 +786,7 @@ Every feature, data point, chart, insight, and gating from the audit must surviv
 - [x] `milestone30Day.ts` — 30 distinct logged days, avg kcal (food days only), top-3 foods (skips HealthKit titles), longest streak, weight delta (null if < 2 weigh-ins) — preserved
 - [x] `milestone_30_shown_at` fires-once guard — preserved
 - [x] `weightWinMoment.ts` — strictly below minimum by ≥ 0.05 kg, first weigh-in never counts — preserved
-- [x] `redesign_winmoment` flag gate — preserved
+- [x] Win-moment celebration behaviour — preserved; the `redesign_winmoment` flag itself is **removed (ENG-1651)** — collapsed permanently-on, so this is no longer a gate
 
 ### Interactions
 - [x] Optimistic update + restore-on-error + Alert on failure — preserved

@@ -390,7 +390,7 @@ Suppr's charts must preserve MacroFactor-grade accuracy, trend lines, forecastin
 - Over-target day: bar overflow in amber `#C9892C` above the hairline.
 - Under-target day: no colour change (being under is not a problem for the cutting-bias algorithm).
 - Fat segment: amber at 60% opacity to avoid false alarm reading (fat being below target is not a warning).
-- Staggered entrance animation behind `redesign_winmoment` flag: 40ms stagger per bar, 280ms total.
+- Staggered entrance animation — unconditional (`redesign_winmoment` collapsed permanently-on, ENG-1651): 40ms stagger per bar, 280ms total.
 
 ### 7.8 Plan adherence charts (Progress)
 
@@ -437,9 +437,9 @@ Every animation must have a `prefers-reduced-motion` fallback. The fallback rule
 | North-star card skip | slide-left out + fade-in next | 200ms ease-decel / 150ms fade | always-on |
 | Cook step transition | page slide horizontal | 250ms ease-decel | always-on |
 | Log button confirm (ordinary log) | light haptic | <100ms | `redesign_motion` |
-| Win-moment overlay | fade-in | 200ms ease-decel | `redesign_winmoment` |
-| Plan bar strip reveal (post-generate) | staggered fade+scale per bar | 40ms stagger, 280ms total | `redesign_winmoment` |
-| 7/7 weekday dots pulse | scale 1.0→1.2→1.0 | 200ms spring | `redesign_winmoment` |
+| Win-moment overlay | fade-in | 200ms ease-decel | always-on (was `redesign_winmoment`, collapsed permanently-on ENG-1651) |
+| Plan bar strip reveal (post-generate) | staggered fade+scale per bar | 40ms stagger, 280ms total | always-on (was `redesign_winmoment`, collapsed permanently-on ENG-1651) |
+| 7/7 weekday dots pulse | scale 1.0→1.2→1.0 | 200ms spring | always-on (was `redesign_winmoment`, collapsed permanently-on ENG-1651) |
 | Timer pill pulse (cook mode) | border ring pulse | 1.5s loop | always-on |
 | Sheet entry (bottom sheet) | spring up from bottom | 350ms ease-spring-soft | always-on |
 | Bookmark save pop | scale 1.0→1.2→1.0 | 300ms spring | always-on |
@@ -456,7 +456,7 @@ iOS only. No custom haptics on web.
 | Haptic | Intensity | Trigger |
 |---|---|---|
 | Ordinary log confirmation | Light impact | `confirmLog()` — behind `redesign_motion` flag |
-| Win-moment beat | Heavy (notification SUCCESS) | Win-moment Lottie keyframe — behind `redesign_winmoment` flag |
+| Win-moment beat | Heavy (notification SUCCESS) | Win-moment Lottie keyframe — unconditional (`redesign_winmoment` collapsed permanently-on, ENG-1651) |
 | Slot selection (log sheet) | Light impact | Tap slot pill |
 | Move-meal settle | Light impact | `moveMealInPlan` success |
 | Portion applied | Selection | Portion modal apply |
@@ -727,13 +727,14 @@ See `docs/.claude/agents/_project-context.md` §Cross-platform parity rules for 
 All visual or structural changes described in this design system ship behind a feature flag. See `CLAUDE.md` feature-flags section for the non-negotiable rule.
 
 Relevant existing flags:
-- `redesign_winmoment` — win-moment overlay, weekly check-in as inline card, plan bar reveal, 7/7 dot pulse.
 - `redesign_motion` — ordinary log confirm haptic.
 - `today-status-pills` (ENG-753) — hero status pills.
 - `progress_redesign_v2` — Progress tab visual/structural changes.
 - `habits_redesign_v2` — streak pip, missed-yesterday, check-in hero card, digest headline hierarchy.
 - `weight_surface_redesign` — weight chart Trend/Scale toggle, multi-period table, source chips.
 - Surface-specific flags: `paywall-card-v2`, `paywall-hero-v1`, `paywall-timeline-v2`, `paywall-matrix-v1`, `settings-membership-v2`, `recipe-import-redesign`, `progress_share_card`, `progress_tdee_windows`.
+
+**Removed:** `redesign_winmoment` (was: win-moment overlay, weekly check-in as inline card, plan bar reveal, 7/7 dot pulse) — collapsed permanently-on (ENG-1651; the flag was ON in every build since 2026-06-01) and deleted from source. It no longer exists to ramp, kill-switch, or reference — every surface it used to gate now ships that behaviour unconditionally.
 
 New surface-level redesign flags follow the pattern `{surface}-redesign-v{N}`. The old path stays alive in the `else` branch until the flag holds 100% for two weeks with no regression.
 

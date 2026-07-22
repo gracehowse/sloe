@@ -9,7 +9,6 @@ export const REDESIGN_VISUAL_FLAGS = [
   "redesign_branded_sheets",
   "redesign_motion",
   "redesign_search_results",
-  "redesign_winmoment",
   "web-meal-nutrition-detail",
   // ENG-1629 — default-OFF gutter convergence (Targets.tsx + RecipeDetail.tsx
   // onto `.product-shell`). Force it ON here so the committed cohesion-gate

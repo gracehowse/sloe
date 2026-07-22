@@ -171,7 +171,6 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
     const core = [
       "design_system_colours",
       "design_system_icons",
-      "redesign_winmoment",
       "redesign_motion",
       "redesign_branded_sheets",
       "redesign_search_results",
@@ -201,4 +200,10 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
   // ON-branch (MealNutritionDialog, per-meal + slot-aggregate) now mounts
   // unconditionally in NutritionTracker.tsx, so it no longer belongs in the
   // WEB_ONLY carve-out above.)
+
+  // (ENG-1651 — `redesign_winmoment` collapsed permanently-on: removed from
+  // REDESIGN_DEFAULT_ON on both platforms and from every call site (win-tone
+  // headline/pulse logic, weight-save haptics, weekly-checkin card mode all
+  // now unconditional), so it's no longer parsed out of either source file
+  // and no longer belongs in the "core design-system flags" list above.)
 });

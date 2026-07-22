@@ -231,7 +231,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
 
   "design_system_colours",
   "design_system_icons",
-  "redesign_winmoment",
   "redesign_motion",
   "redesign_branded_sheets",
   "redesign_search_results",

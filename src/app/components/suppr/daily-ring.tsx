@@ -129,8 +129,7 @@ interface DailyRingProps extends React.ComponentProps<"div"> {
    * settling onto the final number, this is the web peak. The
    * `useWebWinMoment` hook already suppresses the pulse under
    * `prefers-reduced-motion`, so no extra reduced-motion guard is needed
-   * here. Inert (no-op) when the `redesign_winmoment` flag is off because
-   * the hook only ever emits `pulse=true` behind that gate.
+   * here.
    */
   pulse?: boolean;
   /**
@@ -257,14 +256,10 @@ function DailyRing({
   });
   const animatedCenterValue = motionEnabled ? animatedOdometer : animatedLegacy;
 
-  // ENG-798 — gold celebration treatment is gated explicitly behind
-  // `redesign_winmoment` (the same flag the `pulse` source lives behind, read
-  // here too so the ring never lights gold while the win-moment is off). A
-  // target-hit is by definition the at/under-budget green state, so the
-  // celebration only ever lights an otherwise-green arc — never over-budget
-  // red or the empty track.
-  const winEnabled = isFeatureEnabled("redesign_winmoment");
-  const celebrating = pulse && winEnabled && !isEmpty && !isOverBudget;
+  // ENG-798 — gold celebration treatment. A target-hit is by definition the
+  // at/under-budget green state, so the celebration only ever lights an
+  // otherwise-green arc — never over-budget red or the empty track.
+  const celebrating = pulse && !isEmpty && !isOverBudget;
 
   // 2026-05-12 (premium-bar DC1, web parity with mobile CalorieRing):
   // macro arc stroke 5 → 7. The web ring is bigger than mobile

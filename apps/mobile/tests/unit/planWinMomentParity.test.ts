@@ -3,16 +3,19 @@
  * design-director review) — web/mobile parity for the state-aware
  * "Hits your targets N of 7" headline + Plan commit haptics.
  *
- * The Plan win layer is gated behind `redesign_winmoment` on BOTH platforms
- * with the OLD behaviour preserved in the flag-off arm (flat headline, silent
- * commits). The headline tone is computed by the SHARED
+ * `redesign_winmoment` collapsed permanently-on (ENG-1651): it was permanently
+ * ON via REDESIGN_DEFAULT_ON on both platforms since 2026-06-01, so the gate
+ * was removed from source entirely and the win layer (state-aware headline +
+ * commit haptics) now ships unconditionally — there is no flag-off arm left
+ * to preserve. The headline tone is still computed by the SHARED
  * `planWeekHeadlineTone` classifier so the two platforms can never disagree on
  * which weeks read as win vs progress vs calm.
  *
  * These are source-text assertions (same convention as
- * `plannerMicrocopyDc12.test.ts`) — they break if either platform drops the
- * flag gate, the shared classifier, the tone→colour mapping, or the haptics.
- * The pure tone logic itself is unit-tested in `tests/unit/planWeekSummary.test.ts`.
+ * `plannerMicrocopyDc12.test.ts`) — they break if either platform re-adds a
+ * flag gate, drops the shared classifier, the tone→colour mapping, or the
+ * haptics. The pure tone logic itself is unit-tested in
+ * `tests/unit/planWeekSummary.test.ts`.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -28,9 +31,9 @@ const WEB_SRC = readFileSync(
 );
 
 describe("Plan win-moment parity (ENG-820)", () => {
-  it("both platforms gate the win layer behind the same `redesign_winmoment` flag", () => {
-    expect(MOBILE_SRC).toContain('isFeatureEnabled("redesign_winmoment")');
-    expect(WEB_SRC).toContain('isFeatureEnabled("redesign_winmoment")');
+  it("both platforms collapsed the `redesign_winmoment` gate permanently-on (ENG-1651)", () => {
+    expect(MOBILE_SRC).not.toContain('isFeatureEnabled("redesign_winmoment")');
+    expect(WEB_SRC).not.toContain('isFeatureEnabled("redesign_winmoment")');
   });
 
   it("both platforms derive the headline tone from the shared classifier", () => {
@@ -38,15 +41,14 @@ describe("Plan win-moment parity (ENG-820)", () => {
     expect(WEB_SRC).toContain("planWeekHeadlineTone");
   });
 
-  it("mobile maps win→Accent.win, progress→Accent.warning, calm→muted, flag-off→colors.text", () => {
+  it("mobile maps win→Accent.win, progress→Accent.warning, calm→muted (flag collapsed, no flag-off arm)", () => {
     // The mapping lives in the `summaryTitleColor` memo. Pin each arm so a
-    // refactor can't silently collapse a tone or break the flag-off fallback.
-    expect(MOBILE_SRC).toContain("if (!winMomentsEnabled) return colors.text;");
+    // refactor can't silently collapse a tone.
     expect(MOBILE_SRC).toContain('if (summaryTone === "win") return Accent.win;');
     expect(MOBILE_SRC).toContain('if (summaryTone === "progress") return Accent.warning;');
   });
 
-  it("web maps win→--accent-win, progress→--warning, calm→muted, flag-off→undefined", () => {
+  it("web maps win→--accent-win, progress→--warning, calm→muted", () => {
     expect(WEB_SRC).toContain('"var(--accent-win)"');
     expect(WEB_SRC).toContain('"var(--warning)"');
     expect(WEB_SRC).toContain('"var(--muted-foreground)"');
@@ -59,16 +61,13 @@ describe("Plan win-moment parity (ENG-820)", () => {
     expect(MOBILE_SRC).toContain('summaryTone === "win" && prev !== null && prev !== "win"');
   });
 
-  it("mobile fires a settle haptic on plan-generate and on move-meal commit (flag-gated)", () => {
+  it("mobile fires a settle haptic on plan-generate and on move-meal commit (unconditional, flag collapsed)", () => {
     // Both commits use a Medium impact (settle) via useHaptics().confirm(),
-    // reserving the loud success notification for the 7/7 landmark.
+    // reserving the loud success notification for the 7/7 landmark. Both
+    // fire unconditionally now — no flag wrapper left to gate them off.
     const settleHaptics = MOBILE_SRC.match(/haptics\.confirm\(\)/g);
     expect(settleHaptics).not.toBeNull();
     expect((settleHaptics ?? []).length).toBeGreaterThanOrEqual(2);
-    // Both must be behind the win flag (no haptic when the flag is off).
-    expect(MOBILE_SRC).toContain(
-      "if (winMomentsEnabled) {\n        haptics.confirm();",
-    );
   });
 
   it("the mobile headline carries a testID so the rendered tone is pinnable", () => {
@@ -77,6 +76,6 @@ describe("Plan win-moment parity (ENG-820)", () => {
 
   it("the web headline carries a testid + data-tone so the rendered tone is pinnable", () => {
     expect(WEB_SRC).toContain('data-testid="planner-week-summary-headline"');
-    expect(WEB_SRC).toContain("data-tone={winMomentsEnabled ? summaryTone");
+    expect(WEB_SRC).toContain("data-tone={summaryTone}");
   });
 });

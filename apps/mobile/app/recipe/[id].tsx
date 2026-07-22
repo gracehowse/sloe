@@ -278,9 +278,6 @@ export default function RecipeDetailScreen() {
   // cream page with the soft ambient shadow (`variant: "soft"`); the default
   // `flat` variant left them indistinguishable on the inverted page↔card.
   const cardElevation = useCardElevation({ variant: "soft" });
-  // ENG-819 — quiet confirm haptic on the recipe-detail commit CTAs, behind
-  // `redesign_winmoment` (haptic-only; the frame layout is the one prod path).
-  const winMomentFeedback = isFeatureEnabled("redesign_winmoment");
   // ENG-1247 — v3 recipe-detail prototype conformance (default-OFF). ON → hero
   // title OVERLAY, serif standfirst headnote, consolidated sticky CTA bar
   // (yield · Cook Mode · Log filled); legacy title-below + Log-in-pills +
@@ -2153,7 +2150,7 @@ export default function RecipeDetailScreen() {
                 ? () => setRecipeEditOpen(true)
                 : undefined
             }
-            haptic={winMomentFeedback ? "confirm" : "none"}
+            haptic="confirm"
             showLog={!recipeDetailV3}
           />
 
@@ -2508,7 +2505,7 @@ export default function RecipeDetailScreen() {
           onIncrease={() => handleViewServingsStep(1)}
           onCookMode={openCookMode}
           bottomInset={insets.bottom}
-          haptic={winMomentFeedback ? "confirm" : "none"}
+          haptic="confirm"
           onLog={recipeDetailV3 ? () => void addRecipeToTodayJournal() : undefined}
           logging={loggingJournal}
         />

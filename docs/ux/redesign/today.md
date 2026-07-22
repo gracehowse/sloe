@@ -295,9 +295,9 @@ Layout:
 
 ---
 
-### 3.7 Weekly check-in ritual (`WeeklyCheckinModal` / `WeeklyCheckinCard`)
+### 3.7 Weekly check-in ritual (`WeeklyCheckinBanner`)
 
-**Current purpose:** MacroFactor-grade adaptive coaching. Adaptive-vs-formula TDEE delta. Suggested new daily target. Confidence band. Accept / decline paths. Both flag paths (modal flag-off, inline card `redesign_winmoment` on). Weekly cadence gating.
+**Current purpose:** MacroFactor-grade adaptive coaching. Adaptive-vs-formula TDEE delta. Suggested new daily target. Confidence band. Accept / decline paths. Single path only: the inline `WeeklyCheckinBanner` card. `redesign_winmoment` collapsed permanently-on (ENG-1651 — the flag was ON in every build since 2026-06-01); the cold-open `WeeklyCheckinModal` flag-off path was removed from `TodayScreen.tsx`'s render tree and is no longer reachable. Weekly cadence gating unchanged.
 
 **Current weaknesses:**
 - The analytical content matches MacroFactor but the visual treatment is utilitarian.
@@ -323,7 +323,7 @@ Layout:
 - Accept CTA: full-width terracotta button — "Update my target."
 - Decline: `text-sm` sans link, sage — "Keep current target."
 
-**Flag paths preserved:** modal (flag-off) and inline card (`redesign_winmoment` on) both retain their rendering paths. The inline card uses the same visual tokens at a smaller size.
+**Flag removed (ENG-1651):** `redesign_winmoment` collapsed permanently-on — the modal (flag-off) path is gone from source; the inline card is the only rendering path, using the same visual tokens at a smaller size. (Note: the `WeeklyCheckinModal.tsx` component file itself is still present on disk but is now orphaned — unreferenced by any screen — a cleanup gap for a follow-up pass, not a documentation issue.)
 
 **WeeklyInsightCard** (`ENG-754`): keep as a separate, lighter card for the "Planning for you this week" summary. The check-in modal/card is the actionable ritual; the insight card is the ambient week-status read. `householdSize={1}` hardcoded note retained (ENG-758 for real household count).
 
@@ -392,7 +392,7 @@ Layout:
 - Oura: calm headline over imagery, never confetti, haptic is the reward. [Oura rest mode](https://mobbin.com/screens/e9b7815f-8a3e-4774-a777-f0b121901b21)
 - MacroFactor: habit-grid reframes streak as consistency — directly matches Suppr's freeze-ledger philosophy. [Nutrition habits grid](https://mobbin.com/screens/6da40b24-2de7-431e-8527-4c102a9330a6)
 
-**Proposed redesign (flag `redesign_winmoment`):**
+**Redesign (shipped, unconditional — `redesign_winmoment` collapsed permanently-on, ENG-1651; flag was ON in every build since 2026-06-01):**
 
 **Streak milestone win-moment:**
 - Full-screen overlay, `bg-white`, centre-aligned.
@@ -495,7 +495,7 @@ Layout:
 - Tiles on card background: no shadow, no border — the background token provides separation.
 - No elevation hierarchy beyond one level: cards float on the page background. No "card on card on card" layering.
 
-### Motion (flags `redesign_motion` and `redesign_winmoment`)
+### Motion (flag `redesign_motion`; `redesign_winmoment` collapsed permanently-on, ENG-1651 — no longer a flag, behaviour below is unconditional)
 
 - **Entrance animation** (`useEntranceAnimation`): preserve staggered slide+fade per section (hero → context → macros → meals). Timing unchanged — this is already best-in-class.
 - **Win-moment overlay**: fade-in 200ms ease-out. No spring physics on the confetti (there is no confetti). Haptic on appear.
@@ -583,7 +583,7 @@ All existing flag paths must be preserved. No redesign element may break the fla
 | `today-edit-entry-v2` | Edit-meal modal, saved-meal portion sheet, portion requests | Long-press → no-op; saved-meal portion sheet absent; portion request absent. |
 | `today_log_again` | "Log again" on meal rows | Row action absent. |
 | `log-sheet-slot-selector` (ENG-773) | Slot picker in Log sheet | Log sheet opens without slot selector. |
-| `redesign_winmoment` (ENG-798/805) | Win-moment overlay, weekly-checkin-as-card | Win-moment absent; check-in renders as modal. |
+| `redesign_winmoment` (ENG-798/805) — **REMOVED (ENG-1651)** | Win-moment overlay, weekly-checkin-as-card | No flag-off path exists anymore. Collapsed permanently-on — unconditional in every build since 2026-06-01; the cold-open modal alternative was deleted from `TodayScreen.tsx`. |
 | `redesign_motion` | Confirm haptic on ordinary logs | No haptic on ordinary log confirm. |
 
 ---
@@ -620,8 +620,8 @@ Every audited feature, data point, chart, insight, and gate confirmed present in
 - [x] JournalDatePickerModal
 - [x] QuickAddPanel (`showPrevious`)
 - [x] TodayCompleteDayModal
-- [x] WeeklyCheckinModal / WeeklyCheckinCard (both flag paths)
-- [x] WinMomentPlayer (flag `redesign_winmoment`)
+- [x] WeeklyCheckinBanner (`redesign_winmoment` collapsed permanently-on, ENG-1651 — the `WeeklyCheckinModal` flag-off path was removed from `TodayScreen.tsx`; the banner is the only render path now)
+- [x] WinMomentPlayer (`redesign_winmoment` collapsed permanently-on, ENG-1651 — unconditional, no flag left to gate it)
 - [x] Macro detail route, Meal nutrition route, Burn detail route, Health sync route, Fasting route, Weekly recap route
 
 ### Hero ring — all data points

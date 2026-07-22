@@ -35,9 +35,9 @@ export function useWeightCelebration() {
       milestoneCrossed: number | null;
     }) => {
       // A new all-time low is the single weight landmark worth the reserved
-      // LOUD celebration. The sheet already fired the success haptic (gated on
-      // `redesign_winmoment`); mount the full-bleed celebration + emit the shown
-      // event. `isNewLow` is only ever true when the flag is on.
+      // LOUD celebration (`redesign_winmoment` collapsed permanently-on,
+      // ENG-1651 — the sheet already fired the success haptic). Mount the
+      // full-bleed celebration + emit the shown event.
       if (isNewLow) {
         setWeightWinCelebration("goal-hit");
         try {

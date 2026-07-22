@@ -13,8 +13,10 @@
  *     raised this beat from Light → Medium: a durable log is a COMMIT, and the
  *     haptic vocabulary reserves Medium for taps that commit.
  *   - LOG WEIGHT         — a confirm (Medium) on save, with the loud
- *     SUCCESS notification reserved for the new-all-time-low landmark. Gated
- *     behind `redesign_winmoment`.
+ *     SUCCESS notification reserved for the new-all-time-low landmark.
+ *     Unconditional — `redesign_winmoment` collapsed permanently-on
+ *     (ENG-1651); only the quieter milestone tier stays gated behind
+ *     `progress_milestone_celebration_v1`.
  *   - SEGMENT CHANGE     — a SELECTION beat on the Progress range picker, only
  *     on an actual change (matches the canonical `MobileSegmented` control).
  *
@@ -120,14 +122,16 @@ describe("Daily-loop haptics — LOG WEIGHT", () => {
     expect(LOG_WEIGHT).toContain("haptics.confirm()");
   });
 
-  it("the weigh-in haptic stays gated so the flag-off path is silent", () => {
-    // ENG-952 added the quieter milestone tier, which also fires a (soft Light)
-    // haptic — so the gate now covers BOTH flags. The flag-off path (neither
-    // `redesign_winmoment` nor `progress_milestone_celebration_v1` on) is still
-    // silent: no haptic fires unless one of the two tiers is enabled.
-    expect(LOG_WEIGHT).toContain('isFeatureEnabled("redesign_winmoment")');
+  it("a haptic always fires on save now; only the milestone tier stays flag-gated (redesign_winmoment collapsed permanently-on, ENG-1651)", () => {
+    // The old top-level `if (winMomentEnabled || milestoneEnabled)` wrapper
+    // around all three haptics is gone — `redesign_winmoment` no longer gates
+    // anything, so a haptic (success / select / confirm) fires unconditionally
+    // on every save. `progress_milestone_celebration_v1` still exists, but its
+    // job now is only to decide whether the quieter milestone tier is
+    // reachable at all, not whether any haptic fires.
     expect(LOG_WEIGHT).toContain('isFeatureEnabled("progress_milestone_celebration_v1")');
-    expect(LOG_WEIGHT).toContain("if (winMomentEnabled || milestoneEnabled) {");
+    expect(LOG_WEIGHT).not.toContain('isFeatureEnabled("redesign_winmoment")');
+    expect(LOG_WEIGHT).not.toContain("if (winMomentEnabled || milestoneEnabled) {");
   });
 });
 

@@ -119,8 +119,7 @@ export default function HealthSyncScreen() {
   // gone and the treatment can't drift from the other surfaces.
   const cardElevation = useCardElevation({ variant: "soft" });
   // ENG-824 — quiet win-moment (success haptic + win-colour wash on the Apple
-  // Health card) the first time a connect succeeds. Gated behind
-  // `redesign_winmoment`; inert when off.
+  // Health card) the first time a connect succeeds.
   const winMoment = useSettingsWinMoment();
 
   const [connected, setConnected] = useState(false);

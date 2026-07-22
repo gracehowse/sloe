@@ -11,18 +11,20 @@
  *    `useAnimatedNumber` lineage (incl. the premium-motion variant) and the
  *    prior 22px / font-bold treatment byte-for-byte.
  *
- *  - `redesign_winmoment`: a goal-hit lights the ring with the BRAND-SPECTRUM
- *    celebration gradient (`--accent-win-gradient`, ported to the inline
- *    `#winSpectrum` SVG `<linearGradient>`) + a brand-purple glow
- *    (`--accent-win`) + the extra stroke width — the web colour/motion analog
- *    of mobile's success haptic. The steady ring (idle grey track / plum-always
- *    arc, capped at full when over — web ring parity 2026-06-10) is unchanged:
- *    the spectrum only paints while `celebrating`.
+ *  - the goal-hit celebration (formerly gated behind `redesign_winmoment`,
+ *    collapsed permanently-on ENG-1651 — the flag was ON in every build since
+ *    2026-06-01) lights the ring with the BRAND-SPECTRUM celebration gradient
+ *    (`--accent-win-gradient`, ported to the inline `#winSpectrum` SVG
+ *    `<linearGradient>`) + a brand-purple glow (`--accent-win`) + the extra
+ *    stroke width — the web colour/motion analog of mobile's success haptic.
+ *    The steady ring (idle grey track / plum-always arc, capped at full when
+ *    over — web ring parity 2026-06-10) is unchanged: the spectrum only paints
+ *    while `celebrating`.
  *
  * Source-text assertions — the established convention for this heavily
  * context-dependent component (mirrors `mealPlannerElevationAndWinPulse.test.ts`
- * and `calorieRingSolidGreenAtTarget.test.ts`). They break if either gate is
- * dropped, the flag-off fallback is lost, or the celebration crosses the
+ * and `calorieRingSolidGreenAtTarget.test.ts`). They break if the `redesign_motion`
+ * gate or its flag-off fallback is lost, or the celebration crosses the
  * three-role colour law (the win spectrum only on a goal-hit, never steady).
  * The pure odometer math itself is unit-tested in `motion.test.ts`.
  */
@@ -69,12 +71,15 @@ describe("DailyRing counting-hero odometer (redesign_motion)", () => {
   });
 });
 
-describe("DailyRing brand-spectrum goal-hit celebration (redesign_winmoment)", () => {
-  it("reads the redesign_winmoment flag and only celebrates a green (at/under) goal-hit", () => {
-    expect(SRC).toContain('const winEnabled = isFeatureEnabled("redesign_winmoment")');
-    // The win spectrum never paints an over-budget or empty ring (three-role law).
+describe("DailyRing brand-spectrum goal-hit celebration (redesign_winmoment collapsed permanently-on, ENG-1651)", () => {
+  it("only celebrates a green (at/under) goal-hit — unconditional, no flag read", () => {
+    // redesign_winmoment collapsed (ENG-1651): the flag was ON in every build
+    // since 2026-06-01, so the read is gone and celebration is unconditional
+    // on the win-hit itself. The win spectrum still never paints an
+    // over-budget or empty ring (three-role law).
+    expect(SRC).not.toContain('isFeatureEnabled("redesign_winmoment")');
     expect(SRC).toContain(
-      "const celebrating = pulse && winEnabled && !isEmpty && !isOverBudget",
+      "const celebrating = pulse && !isEmpty && !isOverBudget",
     );
   });
 

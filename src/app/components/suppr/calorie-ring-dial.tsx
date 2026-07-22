@@ -2,8 +2,6 @@
 
 import * as React from "react";
 
-import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
-
 /**
  * CalorieRingDial — Sloe v3 "jewel dial" calorie ring (web SVG).
  *
@@ -78,8 +76,8 @@ export interface CalorieRingDialProps {
    *  Mirrors the mobile dial's `onToggle` (there: tap AND long-press). */
   onToggle?: () => void;
   /** ENG-1465 / ENG-798 — win-moment ring pulse. True for ~200ms after a Today
-   *  landmark fires; lights a brief gold glow on the dial (gated behind
-   *  `redesign_winmoment`, same as the legacy ring). */
+   *  landmark fires; lights a brief gold glow on the dial (same as the
+   *  legacy ring). */
   pulse?: boolean;
   /** ENG-1465 / ENG-1016 — per-COMMIT pulse: true for ~160ms after an ordinary
    *  log lands. Brief scale-up + soft plum glow — the web analog of mobile's
@@ -133,11 +131,10 @@ export function CalorieRingDial({
   const ca = `var(--ring-${stateKey}-a)`;
   const cb = `var(--ring-${stateKey}-b)`;
 
-  // ENG-1465 — win celebration gated behind `redesign_winmoment` exactly like
-  // the legacy `DailyRing`: a target-hit is by definition the at/under-budget
-  // state, so the gold glow only ever lights an under-budget dial.
-  const celebrating =
-    pulse && isFeatureEnabled("redesign_winmoment") && !isEmpty && !isOver;
+  // ENG-1465 — win celebration: a target-hit is by definition the
+  // at/under-budget state, so the gold glow only ever lights an under-budget
+  // dial.
+  const celebrating = pulse && !isEmpty && !isOver;
 
   const centerValue = isOver
     ? Math.round(consumed - target)

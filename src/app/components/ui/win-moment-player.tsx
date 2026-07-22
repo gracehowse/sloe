@@ -32,8 +32,9 @@
  *
  * ## Gating contract (unchanged)
  *   - **Caller owns the gate.** Zero visual footprint until mounted; does NOT
- *     read `redesign_winmoment` itself. Callers gate the mount behind the flag
- *     + the once-per-day / once-per-milestone logic.
+ *     read any flag itself. Callers gate the mount behind the once-per-day /
+ *     once-per-milestone logic (`redesign_winmoment` collapsed
+ *     permanently-on, ENG-1651 — no longer a flag check there).
  *   - **Plays once.** Single run on mount (no loop); calls `onComplete` at the
  *     end of the celebration window.
  *   - **Reduce-motion.** When the system flag is on, skips the

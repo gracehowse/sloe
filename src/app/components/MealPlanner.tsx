@@ -501,16 +501,13 @@ export const MealPlanner = memo(function MealPlanner({
   const { showEmptyWeekGhostGrid, weekAimLegendSlots } = // ENG-1372, see hook doc
     usePlanEmptyWeekGhostGrid(showSummaryCard, planHasRealMeals, daySlots, canonicalSlotAim);
 
-  // ENG-820 (Plan win-moment) — behind `redesign_winmoment` the "Hits your
-  // targets N of 7" headline colours by tone (mobile parity): win → `--accent-win`
-  // (gold), progress → `--warning` (amber, never red), calm → `--muted-foreground`.
-  // Flag OFF keeps `text-foreground`. No haptic analog on web — colour + subtitle
-  // carry the payoff.
-  const winMomentsEnabled = isFeatureEnabled("redesign_winmoment");
+  // ENG-820 (Plan win-moment) — the "Hits your targets N of 7" headline
+  // colours by tone (mobile parity): win → `--accent-win` (gold), progress →
+  // `--warning` (amber, never red), calm → `--muted-foreground`. No haptic
+  // analog on web — colour + subtitle carry the payoff.
   const summaryTone = planWeekHeadlineTone(summary);
-  const summaryHeadlineColor = !winMomentsEnabled
-    ? undefined
-    : summaryTone === "win"
+  const summaryHeadlineColor =
+    summaryTone === "win"
       ? "var(--accent-win)"
       : summaryTone === "progress"
         ? "var(--warning)"
@@ -528,14 +525,12 @@ export const MealPlanner = memo(function MealPlanner({
   // crosses into a 7/7 win, mirroring the mobile one-shot spring at
   // `apps/mobile/app/(tabs)/planner.tsx` (`summaryPulse` + `prevSummaryToneRef`).
   // Web has no haptic, so the payoff is the brief scale pulse on the headline
-  // (plus the steady-state colour shift already wired above). Gated behind
-  // `redesign_winmoment`; the static-colour path is the flag-off else.
+  // (plus the steady-state colour shift already wired above).
   const prevSummaryToneRef = useRef<PlanWeekHeadlineTone | null>(null);
   const [winPulse, setWinPulse] = useState(false);
   useEffect(() => {
     const prev = prevSummaryToneRef.current;
     prevSummaryToneRef.current = summaryTone;
-    if (!winMomentsEnabled) return;
     // Only celebrate the rising edge INTO win (prev was a real non-win tone),
     // so re-mounting an already-7/7 plan never replays the pulse — matching the
     // mobile rising-edge guard exactly.
@@ -547,7 +542,7 @@ export const MealPlanner = memo(function MealPlanner({
       const t = setTimeout(() => setWinPulse(false), 320);
       return () => clearTimeout(t);
     }
-  }, [winMomentsEnabled, summaryTone]);
+  }, [summaryTone]);
 
   /** F2-H (2026-04-28) — toggle a slot in the enabled set. Disallows
    *  empty selection: at least one slot must remain enabled, since
@@ -1270,30 +1265,29 @@ export const MealPlanner = memo(function MealPlanner({
               >
                 {weekRangeEyebrow}
               </p>
-              {/* ENG-820 — state-aware headline. Inline `color` (when the win
-                  flag is on) wins over `text-foreground`; flag-off leaves the
-                  class colour. `data-tone` + testid let the parity test pin the
-                  tone without reading a computed colour. The colour-only change
-                  animates via `transition-colors` so a regenerate that flips
-                  the tone eases rather than snaps. The `planner-win-pulse` class
-                  is applied only on the rising edge into a 7/7 win (the web
-                  analog of the mobile scale spring + success haptic). */}
+              {/* ENG-820 — state-aware headline. Inline `color` wins over
+                  `text-foreground-brand`. `data-tone` + testid let the parity
+                  test pin the tone without reading a computed colour. The
+                  colour-only change animates via `transition-colors` so a
+                  regenerate that flips the tone eases rather than snaps. The
+                  `planner-win-pulse` class is applied only on the rising edge
+                  into a 7/7 win (the web analog of the mobile scale spring +
+                  success haptic). */}
               {/* Sloe DS (523:2) — the win-moment headline is a card-title
-                  landmark, so it reads in Newsreader serif. Flag-OFF resolves
-                  to plum (`text-foreground-brand`, the card-title ink);
-                  flag-ON the ENG-820 state-aware `summaryHeadlineColor`
-                  (win gold / progress amber / calm muted) still wins via the
-                  inline `color`, and the rising-edge pulse is untouched. */}
+                  landmark, so it reads in Newsreader serif. The ENG-820
+                  state-aware `summaryHeadlineColor` (win gold / progress amber
+                  / calm muted) wins via the inline `color`, and the
+                  rising-edge pulse is untouched. */}
               <p
                 data-testid="planner-week-summary-headline"
-                data-tone={winMomentsEnabled ? summaryTone : "off"}
-                data-pulse={winMomentsEnabled && winPulse ? "win" : undefined}
+                data-tone={summaryTone}
+                data-pulse={winPulse ? "win" : undefined}
                 className={`font-[family-name:var(--font-headline)] font-medium tracking-tight text-foreground-brand transition-colors${
-                  winMomentsEnabled && winPulse ? " planner-win-pulse" : ""
+                  winPulse ? " planner-win-pulse" : ""
                 }`}
                 style={{
                   fontSize: 17,
-                  ...(summaryHeadlineColor ? { color: summaryHeadlineColor } : {}),
+                  color: summaryHeadlineColor,
                 }}
               >
                 {planHasRealMeals

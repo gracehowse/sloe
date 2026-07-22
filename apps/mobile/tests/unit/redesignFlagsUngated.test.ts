@@ -14,9 +14,10 @@
  *  - an explicit dev force OFF still wins (so pre-redesign captures work);
  *  - non-redesign flags are unaffected (still follow PostHog).
  *
- * `design_system_elevation` collapsed out of REDESIGN_DEFAULT_ON (ENG-1651):
- * the flag was removed entirely and the code now ships its ON-branch styling
- * unconditionally, so it no longer appears in this suite's flag lists.
+ * `design_system_elevation` and `redesign_winmoment` collapsed out of
+ * REDESIGN_DEFAULT_ON (ENG-1651): both flags were removed entirely and the
+ * code now ships their ON-branch behaviour unconditionally, so neither
+ * appears in this suite's flag lists.
  *
  * `design_system_brandmark` likewise collapsed out of REDESIGN_DEFAULT_ON
  * (ENG-1651, lighter-touch slice): it already had zero live isFeatureEnabled
@@ -63,7 +64,6 @@ beforeAll(async () => {
 const REDESIGN_FLAGS = [
   "design_system_colours",
   "design_system_icons",
-  "redesign_winmoment",
   "redesign_motion",
   "redesign_branded_sheets",
   "redesign_search_results",

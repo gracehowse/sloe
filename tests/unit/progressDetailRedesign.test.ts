@@ -10,8 +10,9 @@
  *   - silently routes a `metric=weight` deep-link to the calories chart
  *     instead of the weight surface (mobile param bug; web coerces to null)
  *     (ENG-822),
- *   - drops the `redesign_winmoment` gate or the shared new-low detector on
- *     the weight win-moment (ENG-824).
+ *   - drops the shared new-low detector, the unconditional win-moment firing
+ *     (`redesign_winmoment` collapsed permanently-on, ENG-1651), or the
+ *     reserved WinMomentPlayer wiring on the weight win-moment (ENG-824).
  *
  * The pure logic is unit-tested separately (`weightWinMoment.test.ts`); this
  * pins the cross-platform WIRING so the two surfaces can never silently drift.
@@ -119,9 +120,15 @@ describe("ENG-822 — metric=weight deep-link no longer renders the calories cha
 });
 
 describe("ENG-824 — weight win-moment parity (both platforms)", () => {
-  it("both platforms gate the weight win-moment behind redesign_winmoment", () => {
-    expect(MOBILE_SHEET).toContain('isFeatureEnabled("redesign_winmoment")');
-    expect(WEB_PROGRESS).toContain('isFeatureEnabled("redesign_winmoment")');
+  it("both platforms fire the weight win-moment unconditionally (redesign_winmoment collapsed permanently-on, ENG-1651)", () => {
+    // ENG-1651 — redesign_winmoment was permanently ON via
+    // REDESIGN_DEFAULT_ON, so the gate was collapsed: the flag call is gone
+    // from source and `winMomentEnabled` is now a hardcoded `true` passed
+    // straight to the shared resolver on both platforms.
+    expect(MOBILE_SHEET).not.toContain('isFeatureEnabled("redesign_winmoment")');
+    expect(WEB_PROGRESS).not.toContain('isFeatureEnabled("redesign_winmoment")');
+    expect(MOBILE_SHEET).toContain("winMomentEnabled: true");
+    expect(WEB_PROGRESS).toContain("winMomentEnabled: true");
   });
 
   it("both platforms detect the landmark via the shared isNewWeightLow", () => {

@@ -226,7 +226,7 @@ Brand accents from `Accent` (also exported as named macro colours in `MacroColor
 | `Accent.magenta` | `#DF5EBC` | Fat |
 | `Accent.cyan` | `#06b6d4` | Water, freeze indicators |
 | `Accent.orange` | `#f97316` | Sodium |
-| `Accent.win` | `#F2A93B` | **Landmark celebration ONLY** — reserved win-moment (`redesign_winmoment`). Distinct from `success`: see below. Web mirror: `--accent-win` / `--accent-win-soft` |
+| `Accent.win` | `#F2A93B` | **Landmark celebration ONLY** — reserved win-moment, unconditional (`redesign_winmoment` collapsed permanently-on, ENG-1651). Distinct from `success`: see below. Web mirror: `--accent-win` / `--accent-win-soft` |
 
 **`Accent.win` vs `Accent.success` (the reservation rule).** `success` is the
 static "on track / confirmed / calorie-ring-under-budget" state. `win` is the
@@ -236,10 +236,11 @@ hits 7/7). Never use `win` for ordinary confirmation. (ENG-796/820.)
 
 **Plan headline tone (ENG-820).** The Plan tab's "Hits your targets N of 7"
 headline colours by `planWeekHeadlineTone(score)` (shared,
-`src/lib/planning/planWeekSummary.ts`) behind `redesign_winmoment`:
+`src/lib/planning/planWeekSummary.ts`) — unconditional (`redesign_winmoment`
+collapsed permanently-on, ENG-1651; no flag-off path remains):
 `win` (7/7) → `Accent.win` / `var(--accent-win)`; `progress` (some days) →
 `Accent.warning` / `var(--warning)` (amber, never red); `calm` (0/7) →
-muted secondary. Flag OFF → flat foreground.
+muted secondary.
 
 Dark mode background: `#0a0a0f` (intentional OLED-friendly elevation; not pure `#000000`). Cards: `#16161e`. The 2026-04-26 audit confirmed this is correct — pure `#000` would lose card-vs-bg separation.
 
