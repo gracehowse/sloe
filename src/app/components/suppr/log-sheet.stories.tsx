@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { userEvent } from "storybook/test";
 
 import { LogSheet, type LogSheetProps } from "./log-sheet";
 
@@ -190,9 +191,7 @@ export const SessionTrayExpanded: Story = {
     ...SessionTrayMultiItem.parameters,
     a11y: { context: '[data-testid="log-session-tray"]' },
   },
-  play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import("@storybook/test");
-    const canvas = within(canvasElement);
+  play: async ({ canvas }) => {
     const bar = await canvas.findByTestId("log-session-tray-bar");
     await userEvent.click(bar);
   },
