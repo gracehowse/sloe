@@ -329,10 +329,19 @@ mounted in `src/app/App.tsx`), `src/app/components/suppr/shared-meal-accept-dial
 `get_meal_share` call on that token returns `status:"revoked"` instead of
 `"ok"`. This ships in v1.
 
-**What does not exist yet:** a "my shared links" management surface (a list
-of links a user has sent, with a revoke button per row) on either platform.
-This is tracked as **ENG-1648** — not a silent gap. Today, revocation is
-only reachable by a direct RPC call; there is no UI path to it.
+**Shipped (ENG-1648):** the "my shared links" management surface — a list of
+links a user has sent, with a revoke button per active row. Web: Settings →
+Privacy → "Shared meals" opens `MySharedLinksDialog`
+(`src/app/components/suppr/my-shared-links-dialog.tsx`, mounted via the
+`MySharedLinksRow` row component). Mobile: Settings → People → "Shared
+meals" pushes `apps/mobile/app/my-shared-meals.tsx`. Both read the caller's
+own rows via a direct RLS-scoped `.select()` (`listMealShares` — no RPC
+needed for a self-read) and call `revoke_meal_share` through the existing
+`revokeMealShare` wrapper. Revoking never removes a row — `revokedAt` flips
+locally, the badge changes to "Revoked", and the Revoke button disappears —
+so the list stays a full history of what was shared, not just what's still
+live. Fires `shared_links_list_viewed` (on open) and `shared_link_revoked`
+(on a successful revoke).
 
 ## Edge cases
 
@@ -399,7 +408,7 @@ only reachable by a direct RPC call; there is no UI path to it.
 | Accept UI (day/slot picker) | Same shape (slot chips + day picker + item list + totals), platform-idiomatic day-picker widget: web uses an open date input + Today/Tomorrow quick chips, mobile uses a fixed Today/Tomorrow/+2-days 3-chip row (no open date picker) |
 | Accept write path | Both write brand-new `nutrition_entries` rows via each platform's own build-row helper; both fire the same three post-write side effects (adaptive TDEE refresh, daily-target snapshot, HealthKit write — HealthKit obviously mobile-only in effect, but the call convention mirrors the manual-log path on both) |
 | Analytics | Identical event names + payload shapes on both platforms (`meal_share_link_created`, `meal_share_link_opened`, `shared_meal_logged`, `shared_meal_signup_started` — the last is web-only in practice since it's a signup-CTA event and mobile has no equivalent landing-page signup CTA) |
-| Revocation | RPC exists identically for both; **no UI on either platform** — tracked as **ENG-1648** (Step 4) |
+| Revocation | Same RPC both platforms; UI now exists on both (ENG-1648) — web `MySharedLinksDialog`, mobile `my-shared-meals.tsx`. Identical outcome: row stays, badge flips to "Revoked" |
 
 ## Analytics
 
@@ -416,6 +425,15 @@ meal_share_link_created    { surface: string, itemCount: number }
 meal_share_link_opened     { status: MealShareStatus, authed: boolean }
 shared_meal_logged         { surface: string, itemCount: number, slot: "Breakfast" | "Lunch" | "Dinner" | "Snacks" }
 shared_meal_signup_started { surface: string }
+```
+
+Plus two ENG-1648 events for the "My shared links" management surface
+(Step 4) — neither is flag-scoped, since the management surface itself
+isn't gated by `meal_share_links_v1` (only link *creation* is):
+
+```
+shared_links_list_viewed { surface: "web_settings_privacy" | "mobile_settings_people", shareCount: number }
+shared_link_revoked      { surface: "web_settings_privacy" | "mobile_settings_people" }
 ```
 
 `MealShareStatus` is `"ok" | "invalid" | "expired" | "revoked"`.
@@ -458,9 +476,9 @@ whereas the web `/m/<token>` landing is the more plausible entry point for a
 genuinely new user (no app required to view it). Tracked as the decision
 ticket **ENG-1649**.
 
-**Should the "my shared links" management UI (list + revoke) ship in v1.1,
-or wait for signal that anyone wants to revoke a link?** The RPC exists;
-the UI doesn't. Tracked as **ENG-1648** rather than scope-crept into v1.
+~~**Should the "my shared links" management UI (list + revoke) ship in
+v1.1, or wait for signal that anyone wants to revoke a link?**~~ Resolved —
+shipped in **ENG-1648** rather than waiting for a usage signal (see Step 4).
 
 **Is a rate-limited or migration-not-applied share worth a visible error to
 the sharer**, rather than the current silent degrade to text-only? The

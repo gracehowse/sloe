@@ -284,3 +284,40 @@ export function buildMealShareUrl(token: string, origin: string): string {
   const base = origin.replace(/\/$/, "");
   return `${base}/m/${encodeURIComponent(token)}`;
 }
+
+/**
+ * ENG-1648 — "My shared links" management surface (the promised revoke UI).
+ *
+ * One row from the OWNER's own `meal_shares` table read (RLS: `created_by =
+ * auth.uid()`, `meal_shares_select_own` policy — no RPC needed, a direct
+ * `.select()` is the owner's own data). Deliberately excludes `items` (the
+ * ticket's field list is title/slot/created/expires/state only — no item
+ * count — so the list query never fetches the snapshot payload) and `token`
+ * (the list view never re-displays the shareable link, only meta about it;
+ * the token stays exposed only at the moment of sharing).
+ */
+export type MealShareListRow = {
+  id: string;
+  title: string;
+  mealSlot: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+};
+
+export type MealShareRowState = "active" | "expired" | "revoked";
+
+/**
+ * Pure state derivation so both platforms render the exact same badge for
+ * the exact same row — `revoked_at` wins over expiry (a share revoked
+ * before it would have expired is still "revoked", not "expired"), and
+ * `now` is threaded in (not read internally) so this stays testable without
+ * fake-timers.
+ */
+export function deriveMealShareRowState(
+  row: Pick<MealShareListRow, "expiresAt" | "revokedAt">,
+  now: Date,
+): MealShareRowState {
+  if (row.revokedAt) return "revoked";
+  return new Date(row.expiresAt).getTime() <= now.getTime() ? "expired" : "active";
+}

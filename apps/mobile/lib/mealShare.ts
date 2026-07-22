@@ -18,6 +18,7 @@ import {
   mealToShareItem,
   normaliseMealShareToken,
   parseMealShareLookup,
+  type MealShareListRow,
   type MealShareLookup,
 } from "@suppr/shared/share/mealShareLink";
 
@@ -92,6 +93,63 @@ export async function getMealShare(rawToken: string): Promise<MealShareLookup> {
   const { data, error } = await supabase.rpc("get_meal_share", { p_token: token });
   if (error) return { status: "invalid" };
   return parseMealShareLookup(data);
+}
+
+/**
+ * ENG-1648 — "My shared links" list read. Direct `.select()` on the
+ * owner's own `meal_shares` rows (RLS `meal_shares_select_own`:
+ * `created_by = auth.uid()`) — no RPC needed, this is the owner reading
+ * their own data. Deliberately excludes `items`/`token` — see the
+ * `MealShareListRow` doc in `@suppr/shared/share/mealShareLink` for why.
+ * `limit(200)` is a bounded-read guard, not a pagination feature.
+ */
+export async function listMealShares(
+  userId: string,
+): Promise<{ status: "ok"; rows: MealShareListRow[] } | { status: "error" }> {
+  const supabase = await getSupabase();
+  const { data, error } = await supabase
+    .from("meal_shares")
+    .select("id, title, meal_slot, created_at, expires_at, revoked_at")
+    .eq("created_by", userId)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error || !Array.isArray(data)) return { status: "error" };
+  const rows: MealShareListRow[] = data.map((r: Record<string, unknown>) => ({
+    id: String(r.id),
+    title: String(r.title),
+    mealSlot: String(r.meal_slot),
+    createdAt: String(r.created_at),
+    expiresAt: String(r.expires_at),
+    revokedAt: r.revoked_at == null ? null : String(r.revoked_at),
+  }));
+  return { status: "ok", rows };
+}
+
+/**
+ * ENG-1648 — revoke one of the caller's own share links. Thin RPC wrapper
+ * around `revoke_meal_share`, which enforces ownership server-side —
+ * mirrors the status shape returned by web's
+ * `src/lib/share/mealShareClient.ts` `revokeMealShare`.
+ */
+export async function revokeMealShare(
+  shareId: string,
+): Promise<{ status: "revoked" | "not_found" | "not_authenticated" | "error" }> {
+  const supabase = await getSupabase();
+  const { data, error } = await supabase.rpc("revoke_meal_share", {
+    p_share_id: shareId,
+  });
+  if (error || data == null || typeof data !== "object") {
+    return { status: "error" };
+  }
+  const status = (data as Record<string, unknown>).status;
+  if (
+    status === "revoked" ||
+    status === "not_found" ||
+    status === "not_authenticated"
+  ) {
+    return { status };
+  }
+  return { status: "error" };
 }
 
 /**

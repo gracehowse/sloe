@@ -53,6 +53,7 @@ import { WeeklyRecapToggle } from "./settings/WeeklyRecapToggle";
 import { SettingsTwoPaneShell, type SettingsPaneSection } from "./settings/SettingsTwoPaneShell";
 import { SettingsPageChrome } from "./settings/SettingsPageChrome";
 import { SupprButton } from "./suppr/suppr-button";
+import { MySharedLinksRow } from "./suppr/my-shared-links-row";
 import {
   ACTIVITY_SHORT_LABELS,
   type ActivityLevel,
@@ -1867,11 +1868,9 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             <p className="text-xs mt-0.5">Yours forever. Take your data anywhere — recipes, meal log, weights, plans. Downloads as a JSON file.</p>
           </button>
           <BarcodeContributionsSection />
-          {/* 2026-05-02 — MFP CSV bulk-import card. Closes the
-              MFP-refugee history-bridge gap (P1 customer-lens). Mirrors
-              the same card on mobile Settings (App section) and on
-              the onboarding data-bridges step. See
-              `docs/decisions/2026-05-02-mfp-csv-import.md`. */}
+          <MySharedLinksRow userId={authedUserId ?? ""} />
+          {/* MFP-refugee history-bridge card (also on mobile Settings +
+              onboarding data-bridges); see docs/decisions/2026-05-02-mfp-csv-import.md. */}
           <MfpCsvImportCard surface="settings" />
           <Link
             href="/privacy"

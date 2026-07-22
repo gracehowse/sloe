@@ -490,6 +490,17 @@ export const AnalyticsEvents = {
    *  meal-share accept surface (the pending-share resume handoff via
    *  `MEAL_SHARE_STORAGE_KEY`). Payload: `{ surface: string }`. */
   shared_meal_signup_started: "shared_meal_signup_started",
+  /** ENG-1648 — the "My shared links" management list (Settings →
+   *  Privacy on web, Settings → People on mobile) was opened. Payload:
+   *  `{ surface: "web_settings_privacy" | "mobile_settings_people",
+   *  shareCount: number }` — `shareCount` is the count of rows
+   *  returned, with `0` meaning the empty state was shown. */
+  shared_links_list_viewed: "shared_links_list_viewed",
+  /** ENG-1648 — the sharer revoked one of their own `meal_shares` rows
+   *  via the "My shared links" list (the `revoke_meal_share` RPC
+   *  returned status `revoked`). Payload: `{ surface:
+   *  "web_settings_privacy" | "mobile_settings_people" }`. */
+  shared_link_revoked: "shared_link_revoked",
   /**
    * Analytics health sentinel (2026-05-11). Fires once per app boot
    * (mobile) + once per session (web) so PostHog ingestion can be

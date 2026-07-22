@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   buildMealShareUrl,
+  deriveMealShareRowState,
   mealShareTotals,
   mealToShareItem,
   normaliseMealShareToken,
   parseMealShareLookup,
   shareItemToLoggableMeal,
   type MealShareItem,
+  type MealShareListRow,
   type ShareableLoggedMeal,
 } from "@/lib/share/mealShareLink";
 
@@ -389,5 +391,51 @@ describe("buildMealShareUrl", () => {
     expect(buildMealShareUrl("a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4", "https://getsloe.com/")).toBe(
       "https://getsloe.com/m/a1b2c3d4a1b2c3d4a1b2c3d4a1b2c3d4",
     );
+  });
+});
+
+describe("deriveMealShareRowState (ENG-1648)", () => {
+  const NOW = new Date("2026-07-22T12:00:00Z");
+
+  function row(overrides: Partial<Pick<MealShareListRow, "expiresAt" | "revokedAt">> = {}) {
+    return {
+      expiresAt: "2026-08-01T00:00:00Z", // future relative to NOW by default
+      revokedAt: null as string | null,
+      ...overrides,
+    };
+  }
+
+  it("is 'active' when not revoked and expiry is in the future", () => {
+    expect(deriveMealShareRowState(row(), NOW)).toBe("active");
+  });
+
+  it("is 'expired' when not revoked and expiry is in the past", () => {
+    expect(deriveMealShareRowState(row({ expiresAt: "2026-07-01T00:00:00Z" }), NOW)).toBe(
+      "expired",
+    );
+  });
+
+  it("treats expiry exactly equal to now as expired (inclusive boundary)", () => {
+    expect(
+      deriveMealShareRowState(row({ expiresAt: "2026-07-22T12:00:00Z" }), NOW),
+    ).toBe("expired");
+  });
+
+  it("is 'revoked' when revokedAt is set, regardless of expiry", () => {
+    expect(
+      deriveMealShareRowState(
+        row({ expiresAt: "2026-08-01T00:00:00Z", revokedAt: "2026-07-20T00:00:00Z" }),
+        NOW,
+      ),
+    ).toBe("revoked");
+  });
+
+  it("revoked wins over expired when both are true", () => {
+    expect(
+      deriveMealShareRowState(
+        row({ expiresAt: "2026-07-01T00:00:00Z", revokedAt: "2026-07-05T00:00:00Z" }),
+        NOW,
+      ),
+    ).toBe("revoked");
   });
 });

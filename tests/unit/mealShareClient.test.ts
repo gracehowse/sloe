@@ -3,10 +3,12 @@ import { MEAL_SHARE_STORAGE_KEY } from "@/lib/share/mealShareLink";
 import {
   createMealShare,
   getMealShare,
+  listMealShares,
   revokeMealShare,
   storePendingMealShare,
   takePendingMealShare,
   type SupabaseRpcLike,
+  type SupabaseSelectLike,
 } from "@/lib/share/mealShareClient";
 
 function stubRpc(result: {
@@ -14,6 +16,43 @@ function stubRpc(result: {
   error: { message: string } | null;
 }): SupabaseRpcLike & { rpc: ReturnType<typeof vi.fn> } {
   return { rpc: vi.fn(async () => result) };
+}
+
+/**
+ * Minimal chainable stub for the ONE query shape `listMealShares` issues —
+ * `.from("meal_shares").select(cols).eq("created_by", id).order(...).limit(n)`.
+ * Mirrors `tests/unit/savedMealsClient.test.ts`'s chain-builder convention
+ * (record calls, resolve via a terminal awaitable), scoped down since this
+ * client never branches on table name.
+ */
+function stubSelect(result: { data: unknown; error: { message: string } | null }) {
+  const filters: Record<string, unknown> = {};
+  let selectedCols = "";
+  const self: any = {
+    select(cols: string) {
+      selectedCols = cols;
+      return self;
+    },
+    eq(col: string, val: unknown) {
+      filters[`eq:${col}`] = val;
+      return self;
+    },
+    order(col: string, opts?: unknown) {
+      filters[`order:${col}`] = opts ?? true;
+      return self;
+    },
+    limit(n: number) {
+      filters["limit"] = n;
+      return self;
+    },
+    then(resolve: (r: typeof result) => void) {
+      resolve(result);
+    },
+  };
+  const supabase: SupabaseSelectLike & { from: ReturnType<typeof vi.fn> } = {
+    from: vi.fn(() => self),
+  };
+  return { supabase, filters, selectedCols: () => selectedCols };
 }
 
 afterEach(() => {
@@ -146,6 +185,82 @@ describe("revokeMealShare", () => {
     const supabase = stubRpc({ data: null, error: { message: "boom" } });
     const result = await revokeMealShare(supabase, "share-1");
     expect(result).toEqual({ status: "error" });
+  });
+});
+
+describe("listMealShares (ENG-1648)", () => {
+  it("maps snake_case rows to camelCase MealShareListRow, newest-first order preserved", async () => {
+    const { supabase, filters } = stubSelect({
+      data: [
+        {
+          id: "share-1",
+          title: "Dinner",
+          meal_slot: "Dinner",
+          created_at: "2026-07-20T00:00:00Z",
+          expires_at: "2026-08-19T00:00:00Z",
+          revoked_at: null,
+        },
+        {
+          id: "share-2",
+          title: "Lunch",
+          meal_slot: "Lunch",
+          created_at: "2026-07-15T00:00:00Z",
+          expires_at: "2026-08-14T00:00:00Z",
+          revoked_at: "2026-07-18T00:00:00Z",
+        },
+      ],
+      error: null,
+    });
+
+    const result = await listMealShares(supabase, "user-1");
+
+    expect(result).toEqual({
+      status: "ok",
+      rows: [
+        {
+          id: "share-1",
+          title: "Dinner",
+          mealSlot: "Dinner",
+          createdAt: "2026-07-20T00:00:00Z",
+          expiresAt: "2026-08-19T00:00:00Z",
+          revokedAt: null,
+        },
+        {
+          id: "share-2",
+          title: "Lunch",
+          mealSlot: "Lunch",
+          createdAt: "2026-07-15T00:00:00Z",
+          expiresAt: "2026-08-14T00:00:00Z",
+          revokedAt: "2026-07-18T00:00:00Z",
+        },
+      ],
+    });
+    // Order is whatever the query returns — the client trusts the DB's
+    // `order("created_at", {ascending:false})`, it doesn't re-sort.
+    expect(result.status === "ok" && result.rows[0].id).toBe("share-1");
+    expect(filters["eq:created_by"]).toBe("user-1");
+    expect(filters["limit"]).toBe(200);
+  });
+
+  it("never selects items or token — only the management-list field set", async () => {
+    const { supabase, selectedCols } = stubSelect({ data: [], error: null });
+    await listMealShares(supabase, "user-1");
+    expect(selectedCols()).not.toMatch(/\bitems\b/);
+    expect(selectedCols()).not.toMatch(/\btoken\b/);
+    expect(selectedCols()).toContain("meal_slot");
+  });
+
+  it("collapses a Supabase error to status 'error'", async () => {
+    const { supabase } = stubSelect({ data: null, error: { message: "boom" } });
+    const result = await listMealShares(supabase, "user-1");
+    expect(result).toEqual({ status: "error" });
+  });
+
+  it("returns status 'error' for a blank userId without querying", async () => {
+    const { supabase } = stubSelect({ data: [], error: null });
+    const result = await listMealShares(supabase, "   ");
+    expect(result).toEqual({ status: "error" });
+    expect(supabase.from).not.toHaveBeenCalled();
   });
 });
 

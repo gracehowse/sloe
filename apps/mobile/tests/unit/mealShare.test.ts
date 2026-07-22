@@ -16,7 +16,7 @@ vi.mock("react-native", () => ({
 }));
 
 vi.mock("@/lib/supabase", () => ({
-  supabase: { rpc: vi.fn() },
+  supabase: { rpc: vi.fn(), from: vi.fn() },
 }));
 
 vi.mock("@/lib/analytics", () => ({
@@ -31,8 +31,45 @@ vi.mock("expo-constants", () => ({
 import { Share } from "react-native";
 import { supabase } from "@/lib/supabase";
 import { track, isFeatureEnabled } from "@/lib/analytics";
-import { buildMobileMealShareUrl, journalMealToShareInput, shareJournalMeal } from "../../lib/mealShare";
+import {
+  buildMobileMealShareUrl,
+  journalMealToShareInput,
+  listMealShares,
+  revokeMealShare,
+  shareJournalMeal,
+} from "../../lib/mealShare";
 import type { JournalMeal } from "../../lib/nutritionJournal";
+
+/**
+ * Minimal chainable stub for the ONE query shape `listMealShares` issues —
+ * `.from("meal_shares").select(cols).eq("created_by", id).order(...).limit(n)`.
+ * Mirrors the web-side stub in `tests/unit/mealShareClient.test.ts`.
+ */
+function stubSelect(result: { data: unknown; error: { message: string } | null }) {
+  const filters: Record<string, unknown> = {};
+  const self: any = {
+    select(_cols?: string) {
+      return self;
+    },
+    eq(col: string, val: unknown) {
+      filters[`eq:${col}`] = val;
+      return self;
+    },
+    order(col: string, opts?: unknown) {
+      filters[`order:${col}`] = opts ?? true;
+      return self;
+    },
+    limit(n: number) {
+      filters["limit"] = n;
+      return self;
+    },
+    then(resolve: (r: typeof result) => void) {
+      resolve(result);
+    },
+  };
+  vi.mocked(supabase.from).mockReturnValue(self);
+  return { filters };
+}
 
 function makeMeal(overrides: Partial<JournalMeal> = {}): JournalMeal {
   return {
@@ -224,5 +261,101 @@ describe("shareJournalMeal — link vs text orchestration", () => {
       outcome: "error",
       mode: "link",
     });
+  });
+});
+
+describe("listMealShares (ENG-1648)", () => {
+  it("maps snake_case rows to camelCase MealShareListRow", async () => {
+    const { filters } = stubSelect({
+      data: [
+        {
+          id: "share-1",
+          title: "Dinner",
+          meal_slot: "Dinner",
+          created_at: "2026-07-20T00:00:00Z",
+          expires_at: "2026-08-19T00:00:00Z",
+          revoked_at: null,
+        },
+      ],
+      error: null,
+    });
+
+    const result = await listMealShares("user-1");
+
+    expect(result).toEqual({
+      status: "ok",
+      rows: [
+        {
+          id: "share-1",
+          title: "Dinner",
+          mealSlot: "Dinner",
+          createdAt: "2026-07-20T00:00:00Z",
+          expiresAt: "2026-08-19T00:00:00Z",
+          revokedAt: null,
+        },
+      ],
+    });
+    expect(filters["eq:created_by"]).toBe("user-1");
+    expect(filters["limit"]).toBe(200);
+  });
+
+  it("preserves a real revoked_at value (not coerced to null)", async () => {
+    stubSelect({
+      data: [
+        {
+          id: "share-2",
+          title: "Lunch",
+          meal_slot: "Lunch",
+          created_at: "2026-07-15T00:00:00Z",
+          expires_at: "2026-08-14T00:00:00Z",
+          revoked_at: "2026-07-18T00:00:00Z",
+        },
+      ],
+      error: null,
+    });
+    const result = await listMealShares("user-1");
+    expect(result.status === "ok" && result.rows[0].revokedAt).toBe("2026-07-18T00:00:00Z");
+  });
+
+  it("collapses a Supabase error to status 'error'", async () => {
+    stubSelect({ data: null, error: { message: "boom" } });
+    expect(await listMealShares("user-1")).toEqual({ status: "error" });
+  });
+});
+
+describe("revokeMealShare (ENG-1648)", () => {
+  beforeEach(() => {
+    vi.mocked(supabase.rpc).mockReset();
+  });
+
+  it.each(["revoked", "not_found", "not_authenticated"] as const)(
+    "passes through status '%s' from the RPC",
+    async (status) => {
+      vi.mocked(supabase.rpc).mockResolvedValue({
+        data: { status },
+        error: null,
+      } as Awaited<ReturnType<typeof supabase.rpc>>);
+
+      const result = await revokeMealShare("share-1");
+
+      expect(result).toEqual({ status });
+      expect(supabase.rpc).toHaveBeenCalledWith("revoke_meal_share", { p_share_id: "share-1" });
+    },
+  );
+
+  it("collapses an RPC error to status 'error'", async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({
+      data: null,
+      error: { message: "boom" },
+    } as Awaited<ReturnType<typeof supabase.rpc>>);
+    expect(await revokeMealShare("share-1")).toEqual({ status: "error" });
+  });
+
+  it("collapses an unrecognised status to 'error' rather than passing it through", async () => {
+    vi.mocked(supabase.rpc).mockResolvedValue({
+      data: { status: "something_new" },
+      error: null,
+    } as Awaited<ReturnType<typeof supabase.rpc>>);
+    expect(await revokeMealShare("share-1")).toEqual({ status: "error" });
   });
 });

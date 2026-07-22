@@ -203,6 +203,15 @@ describe("ENG-1642 — meal share link events", () => {
   });
 });
 
+describe("ENG-1648 — My shared links management events", () => {
+  it("registers the list-viewed and revoke events with canonical snake_case values", () => {
+    // The revoke UI ENG-1642 promised but never shipped a surface for. A
+    // rename to either breaks the ENG-1648 usage-signal dashboards.
+    expect(AnalyticsEvents.shared_links_list_viewed).toBe("shared_links_list_viewed");
+    expect(AnalyticsEvents.shared_link_revoked).toBe("shared_link_revoked");
+  });
+});
+
 /**
  * Post-ship #1 (2026-04-18) — event-name rename cycle.
  *

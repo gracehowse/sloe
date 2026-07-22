@@ -14,6 +14,7 @@ import {
   normaliseMealShareToken,
   parseMealShareLookup,
   type MealShareLookup,
+  type MealShareListRow,
 } from "./mealShareLink.ts";
 
 export type SupabaseRpcLike = {
@@ -90,6 +91,51 @@ export async function revokeMealShare(
   });
   if (error) return { status: "error" };
   return { status: String(asRecord(data).status ?? "error") };
+}
+
+/**
+ * Supabase-js-compatible shape for a plain table `.select()` — mirrors
+ * `SupabaseLike` in `src/lib/nutrition/savedMeals.ts`. Typed as `any` on
+ * `.from()`'s return on purpose, same reason as that file: no import from
+ * either workspace's generated types.
+ */
+export type SupabaseSelectLike = {
+  from: (table: string) => any;
+};
+
+/**
+ * ENG-1648 — "My shared links" list. Reads the caller's OWN `meal_shares`
+ * rows straight off the table (RLS `meal_shares_select_own`: `created_by =
+ * auth.uid()`) — a self-read needs no RPC. Never selects `items` (the list
+ * surface's field set is title/slot/created/expires/state only) or `token`
+ * (the link stays exposed only at share time, not in the management list).
+ * Bounded to 200 rows, newest first — a defensive-read guard, not
+ * pagination. Collapses any Supabase error to `{ status: "error" }`.
+ */
+export async function listMealShares(
+  supabase: SupabaseSelectLike,
+  userId: string,
+): Promise<{ status: "ok"; rows: MealShareListRow[] } | { status: "error" }> {
+  const cleanId = userId.trim();
+  if (!cleanId) return { status: "error" };
+
+  const { data, error } = await supabase
+    .from("meal_shares")
+    .select("id, title, meal_slot, created_at, expires_at, revoked_at")
+    .eq("created_by", cleanId)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  if (error || !Array.isArray(data)) return { status: "error" };
+
+  const rows: MealShareListRow[] = data.map((r: any) => ({
+    id: String(r.id),
+    title: String(r.title ?? ""),
+    mealSlot: String(r.meal_slot ?? ""),
+    createdAt: String(r.created_at ?? ""),
+    expiresAt: String(r.expires_at ?? ""),
+    revokedAt: r.revoked_at ? String(r.revoked_at) : null,
+  }));
+  return { status: "ok", rows };
 }
 
 /**

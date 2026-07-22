@@ -54,6 +54,7 @@ import {
   PlusCircle,
   RefreshCw,
   Smartphone,
+  Share2,
   Sparkles,
   Square,
   Sun,
@@ -1709,28 +1710,27 @@ export function SettingsBundleContent({ context }: { context: Context }) {
         ) : null}
       </SettingsCard>
 
-      {/* Household — hides when the user isn't in a household */}
-      {householdSummary ? (
-        <>
-          {/* 2026-05-02 — section was "Everything else" until a single
-              Household row made the catch-all label feel arbitrary
-              (user feedback). Renamed to "People" to describe the row
-              that lives here today. Web mirror in
-              `src/app/components/Profile.tsx`. */}
-          <SectionHeading title="People" />
-          <SettingsCard testID="settings-card-people">
-            <SettingsRow
-              testID={HOUSEHOLD_ROW_TEST_ID}
-              isFirst
-              icon={Users}
-              iconColor={t.accent}
-              label="Household"
-              sub={householdSummary.subtitle}
-              onPress={() => router.push("/household-settings" as any)}
-            />
-          </SettingsCard>
-        </>
-      ) : null}
+      {/* "People" (renamed from "Everything else" 2026-05-02; web mirror Profile.tsx). Household row hides without a household; Shared meals (ENG-1648) is always reachable regardless. */}
+      <SectionHeading title="People" />
+      <SettingsCard testID="settings-card-people">
+        {householdSummary ? (
+          <SettingsRow
+            testID={HOUSEHOLD_ROW_TEST_ID}
+            isFirst
+            icon={Users} iconColor={t.accent}
+            label="Household"
+            sub={householdSummary.subtitle}
+            onPress={() => router.push("/household-settings" as any)}
+          />
+        ) : null}
+        <SettingsRow
+          testID="settings-bundle-shared-meals-row"
+          isFirst={!householdSummary}
+          icon={Share2} iconColor={t.accent}
+          label="Shared meals"
+          onPress={() => router.push("/my-shared-meals" as any)}
+        />
+      </SettingsCard>
 
       {/* Goals & targets */}
       <SectionHeading title="Goals & targets" />
