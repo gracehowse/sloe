@@ -28,6 +28,9 @@ function read(rel: string): string {
 
 const HERO_RING = read("src/app/components/suppr/today-hero-ring.tsx");
 const HERO_STATS = read("src/app/components/suppr/today-hero-stats.tsx");
+const HERO_STATS_DESKTOP = read(
+  "src/app/components/suppr/today-hero-stats-desktop.tsx",
+);
 const MACRO_BARS = read("src/app/components/suppr/today-dashboard-macro-bars.tsx");
 const MEALS = read("src/app/components/suppr/today-meals-section.tsx");
 const NORTH_STAR = read("src/app/components/suppr/north-star-block.tsx");
@@ -59,14 +62,17 @@ describe("Today card-elevation sweep — hero ring card", () => {
 
 describe("Today card-elevation sweep — desktop hero card", () => {
   it("imports + uses SupprCard and preserves the testid", () => {
-    expect(HERO_STATS).toContain(IMPORT);
-    expect(HERO_STATS).toContain("<SupprCard");
+    expect(HERO_STATS).toContain(
+      'from "./today-hero-stats-desktop"',
+    );
+    expect(HERO_STATS_DESKTOP).toContain(IMPORT);
+    expect(HERO_STATS_DESKTOP).toContain("<SupprCard");
     // One-treatment (Grace 2026-06-09): page-ground hero lifts soft.
-    expect(HERO_STATS).toContain(CARD_ELEVATION);
-    expect(HERO_STATS).toContain('data-testid="today-hero-desktop"');
+    expect(HERO_STATS_DESKTOP).toContain(CARD_ELEVATION);
+    expect(HERO_STATS_DESKTOP).toContain('data-testid="today-hero-desktop"');
   });
   it("no longer hand-rolls the flat desktop hero card div", () => {
-    expect(HERO_STATS).not.toContain(
+    expect(HERO_STATS_DESKTOP).not.toContain(
       "hidden md:block mb-3 rounded-card border border-border bg-card px-4 py-4",
     );
   });

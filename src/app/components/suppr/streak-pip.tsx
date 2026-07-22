@@ -72,12 +72,7 @@ export function StreakPip({
   const active = safeDays >= 2;
   const isLg = size === "lg";
 
-  // No streak yet: suppress the pip entirely -- the empty-state "Start
-  // your streak" copy reads as growth-shouty pressure and violates calm
-  // voice. (premium-sweep-v2-p0-t26, collapsed permanently-on 2026-07-21.)
-  if (safeDays === 0 && !freezeProtected) {
-    return null;
-  }
+  // ENG-1657 — match mobile: always show the pip (including 0-day), calm-streak posture.
 
   const streakLabel = (d: number): string => {
     if (d === 0) return "Start your streak";

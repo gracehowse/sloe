@@ -43,7 +43,11 @@ describe("TodayScreen hero cluster (today_hero_cluster_v3)", () => {
   });
 
   it("keeps the OFF cluster wrapper layout-neutral (gap mirrors the scroll gap)", () => {
-    expect(src).toMatch(/heroClusterOff: \{ gap: Spacing\.xl \}/);
+    // ENG-1655: OFF mirrors the same flag-gated scroll gap expression so the
+    // wrapper stays layout-neutral whether rhythm is flat-24 or tight-8.
+    expect(src).toMatch(
+      /heroClusterOff: \{\s*gap: isFeatureEnabled\("today_section_rhythm_v1"\)\s*\?\s*Layout\.todayScrollGap\s*:\s*Spacing\.xl,?\s*\}/,
+    );
     expect(src).toMatch(/heroClusterTight: \{ gap: Spacing\.xs \}/);
     expect(src).toMatch(/heroClusterGreeting: \{ marginTop: Spacing\.xs \}/);
     expect(src).toMatch(/heroClusterStrip: \{ marginTop: Spacing\.md \}/);

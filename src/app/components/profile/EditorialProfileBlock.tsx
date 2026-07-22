@@ -4,6 +4,7 @@ import { memo } from "react";
 import { Check, ChevronRight, Circle, Flame, Shield } from "lucide-react";
 import { AvatarDisc } from "../ui/avatar-disc";
 import { RecipeHeroFallback } from "../suppr/RecipeHeroFallback";
+import { SupprButton } from "../suppr/suppr-button";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
 import { useFallbackScheme } from "../../../lib/theme/useFallbackScheme";
@@ -11,6 +12,10 @@ import {
   type EditorialProfileBlockModel,
   type StreakDotState,
 } from "../../../lib/profile/editorialProfileBlock";
+import {
+  PROFILE_UPGRADE_BANNER_TDEE_GLOSS,
+  PROFILE_UPGRADE_BANNER_TDEE_PLAIN,
+} from "../../../lib/onboarding/figmaCopy.ts";
 
 /** Minimal recipe shape the grid needs — a subset of RecipeCard so the
  *  component doesn't drag the full type into the profile surface. */
@@ -36,6 +41,8 @@ export interface EditorialProfileBlockProps {
   onOpenRecipe: (recipeId: string) => void;
   /** "See all" → the recipe library. */
   onSeeAllRecipes: () => void;
+  /** ENG-1641 — single primary Upgrade CTA for non-Pro (footer). */
+  onUpgrade?: () => void;
 }
 
 /** Max recipes rendered in the preview grid — one tidy 2×3 wall. */
@@ -71,6 +78,7 @@ function EditorialProfileBlockImpl({
   recipeCount,
   onOpenRecipe,
   onSeeAllRecipes,
+  onUpgrade,
 }: EditorialProfileBlockProps) {
   const gridRecipes = recipes.slice(0, RECIPE_GRID_LIMIT);
   const fallbackScheme = useFallbackScheme(); // ENG-1528 — dark ramp underlay on dark cards
@@ -78,6 +86,7 @@ function EditorialProfileBlockImpl({
   // ENG-1593 — Rule 7 (DESIGN-CONSTITUTION.md): serif initial + frost-ring,
   // default-OFF (see src/lib/analytics/track.ts flag note).
   const avatarFrostRingV1 = isFeatureEnabled("avatar_monogram_frost_ring_v1");
+  const glossOn = isFeatureEnabled("onboarding_jargon_gloss_v1");
 
   return (
     <div className="flex flex-col gap-4" data-testid="editorial-profile-block">
@@ -235,6 +244,24 @@ function EditorialProfileBlockImpl({
           </div>
         )}
       </div>
+
+      {/* ENG-1641 — one primary Upgrade CTA in the editorial footer for non-Pro. */}
+      {!isPro && onUpgrade ? (
+        <div className="flex flex-col gap-2">
+          <SupprButton
+            variant="primary"
+            onClick={onUpgrade}
+            aria-label="Upgrade to Pro"
+            className="w-full"
+            data-testid="editorial-profile-upgrade"
+          >
+            Upgrade to Pro
+          </SupprButton>
+          <p className="text-center text-xs text-muted-foreground">
+            {glossOn ? PROFILE_UPGRADE_BANNER_TDEE_GLOSS : PROFILE_UPGRADE_BANNER_TDEE_PLAIN}
+          </p>
+        </div>
+      ) : null}
     </div>
   );
 }

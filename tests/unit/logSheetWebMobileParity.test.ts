@@ -521,9 +521,12 @@ describe("ENG-1643 — session tray web ↔ mobile parity", () => {
     }
   });
 
-  it("both LogSheets mount <LogSessionTray {...sessionTray}> conditionally", () => {
+  it("both LogSheets mount <LogSessionTray> unless portion preview is active (ENG-1652)", () => {
     for (const src of [web, mobile]) {
-      expect(src).toMatch(/sessionTray \? <LogSessionTray \{\.\.\.sessionTray\} \/> : null/);
+      expect(src).toMatch(
+        /sessionTray && !portionPreviewActive \? <LogSessionTray \{\.\.\.sessionTray\} \/> : null/,
+      );
+      expect(src).toMatch(/onPreviewActiveChange/);
     }
   });
 

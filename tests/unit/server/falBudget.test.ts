@@ -4,10 +4,12 @@ import {
   _falBudgetKeysForTest,
   _readFalBudgetCounterForTest,
   _resetFalBudgetForTest,
+  _setFalBudgetRedisForTest,
   falImageCostPence,
   releaseFalImageBudget,
   reserveFalImageBudget,
 } from "../../../src/lib/server/falBudget";
+import type { Redis } from "@upstash/redis";
 
 function clearEnv() {
   delete process.env.FAL_BUDGET_DAILY_GBP;
@@ -78,5 +80,30 @@ describe("reserveFalImageBudget", () => {
     );
     await releaseFalImageBudget(grant.grantId);
     expect(_readFalBudgetCounterForTest(_falBudgetKeysForTest.spend("daily", "2026-06-19"))).toBe(0);
+  });
+
+  it("ENG-1411 — after Redis fail-open window, enforcement denies with upstash_unavailable", async () => {
+    process.env.UPSTASH_REDIS_REST_URL = "https://example.upstash.io";
+    process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+    process.env.FAL_BUDGET_ENFORCEMENT_ENABLED = "true";
+
+    _setFalBudgetRedisForTest({
+      incrby: async () => {
+        throw new Error("redis down");
+      },
+      expire: async () => 1,
+      set: async () => "OK",
+    } as unknown as Redis);
+
+    // First failure opens the 5-minute fail-OPEN window.
+    const open = await reserveFalImageBudget({ modelId: "fal-ai/nano-banana-pro", imageClass: "hero" });
+    expect(open.ok).toBe(true);
+
+    // Past the window → fail-CLOSED.
+    vi.setSystemTime(new Date("2026-06-19T12:06:00.000Z"));
+    const closed = await reserveFalImageBudget({ modelId: "fal-ai/nano-banana-pro", imageClass: "hero" });
+    expect(closed.ok).toBe(false);
+    if (closed.ok) throw new Error("unreachable");
+    expect(closed.reason).toBe("upstash_unavailable");
   });
 });

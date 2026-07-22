@@ -319,6 +319,11 @@ export type FoodSearchPanelProps = {
   /** Keys of favourite toggles currently in flight (disabled + dimmed star —
    *  no double-submit). Optional; host owns the pending set. */
   favoritePendingKeys?: Set<string>;
+  /**
+   * ENG-1652 — notify the host when the portion-preview card is open so
+   * it can hide the session tray (one filled CTA at a time).
+   */
+  onPreviewActiveChange?: (active: boolean) => void;
 };
 
 // 2026-05-15 (ENG-550): inline `resolveInitialPortion` extracted to
@@ -352,6 +357,7 @@ export default function FoodSearchPanel({
   favoriteFoods,
   onToggleFavorite,
   favoritePendingKeys,
+  onPreviewActiveChange,
 }: FoodSearchPanelProps) {
   const colors = useThemeColors(), mc = useResolvedScheme() === "dark" ? MacroColorsDark : MacroColors;
   // Secondary accent (Frost flag → damson, else clay) for this panel's CTAs,
@@ -459,6 +465,15 @@ export default function FoodSearchPanel({
       localTimeInputValueFromIso(defaultEatenAtForNewLog(logDateKey)),
     );
   }, [previewSessionKey, logDateKey, previewEatenAtEnabled]);
+
+  // ENG-1652 — host hides session tray while portion preview is open.
+  useEffect(() => {
+    onPreviewActiveChange?.(preview != null);
+    return () => {
+      onPreviewActiveChange?.(false);
+    };
+  }, [preview, onPreviewActiveChange]);
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backfillRef = useRef(0);
   // No-result loop (audit move-blocker #2, 2026-05-02 — replaces

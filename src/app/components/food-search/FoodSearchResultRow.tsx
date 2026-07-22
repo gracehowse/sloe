@@ -28,6 +28,7 @@ import { isFeatureEnabled } from "../../../lib/analytics/track";
 import {
   resolveFoodSearchHeadline,
   FOOD_SEARCH_PER_100G_BADGE,
+  FOOD_SEARCH_PER_SERVING_BADGE,
 } from "../../../lib/nutrition/foodSearchHeadline";
 import { formatFoodSearchRowSubline } from "../../../lib/nutrition/foodSearchRowSubline";
 import { foodSearchSourceLabel } from "../../../lib/nutrition/foodSearchMerge";
@@ -215,6 +216,12 @@ export function FoodSearchResultRow({
                 <span className="text-[var(--macro-carbs)]">C {headline.macros.carbs}g</span>
                 <span className="text-[var(--macro-fat)]">F {headline.macros.fat}g</span>
               </div>
+              {/* ENG-1660 — parity with mobile `FoodSearchFeedItem` per-serving
+                  badge. Use secondary foreground + type-ramp uppercase (not
+                  deleted `text-success`). */}
+              <span className="mt-1 block text-[10px] font-semibold uppercase tracking-wider text-foreground-secondary">
+                {FOOD_SEARCH_PER_SERVING_BADGE}
+              </span>
               <span className="block mt-0.5 text-[11px] text-muted-foreground/80">
                 {headline.servingLabel}
                 {headline.per100gReference ? ` · ${headline.per100gReference}` : ""} · {sourceLabel}

@@ -87,5 +87,16 @@ export const EmptyFreeAccount: Story = {
     model: emptyModel,
     recipes: [],
     recipeCount: 0,
+    onUpgrade: () => {},
+  },
+};
+
+/** ENG-1641 — non-Pro footer shows the single primary Upgrade CTA. */
+export const FreeWithUpgradeCta: Story = {
+  args: {
+    ...EmptyFreeAccount.args,
+    displayName: "Grace",
+    monogramInitial: "G",
+    onUpgrade: () => {},
   },
 };

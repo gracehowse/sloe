@@ -36,7 +36,10 @@ const STYLES_SRC = readFileSync(
 
 describe("mobile login chooser — Figma 296:2", () => {
   it("opens on the chooser view by default (no inline form first)", () => {
-    expect(SRC).toMatch(/useState<"chooser" \| "email">\("chooser"\)/);
+    // Default remains chooser; ENG-1563 allows `?email=1` to open the form.
+    expect(SRC).toMatch(
+      /useState<"chooser" \| "email">\(openEmail \? "email" : "chooser"\)/,
+    );
     expect(SRC).toMatch(/view === "chooser" \?/);
   });
 

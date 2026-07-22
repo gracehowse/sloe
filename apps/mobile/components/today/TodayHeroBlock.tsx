@@ -123,6 +123,9 @@ function TodayHeroBlockImpl(props: TodayHeroBlockProps) {
         proteinPct={effectiveMacroTargets.protein > 0 ? Math.min(totals.protein / effectiveMacroTargets.protein, 1) : 0}
         carbsPct={effectiveMacroTargets.carbs > 0 ? Math.min(totals.carbs / effectiveMacroTargets.carbs, 1) : 0}
         fatPct={effectiveMacroTargets.fat > 0 ? Math.min(totals.fat / effectiveMacroTargets.fat, 1) : 0}
+        proteinGrams={{ current: totals.protein, target: effectiveMacroTargets.protein }}
+        carbsGrams={{ current: totals.carbs, target: effectiveMacroTargets.carbs }}
+        fatGrams={{ current: totals.fat, target: effectiveMacroTargets.fat }}
         expanded={ringExpanded}
         onToggleExpanded={onToggleExpanded}
         isOnTrack={

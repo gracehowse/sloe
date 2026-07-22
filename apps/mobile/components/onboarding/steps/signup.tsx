@@ -2,6 +2,7 @@ import * as React from "react";
 import { ActivityIndicator, Platform, Pressable, Text, TextInput, View } from "react-native";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { sha256 } from "js-sha256";
+import { useRouter } from "expo-router";
 // ENG-120: lucide has no brand glyph — Ionicons retained for logo-* only
 import { Ionicons } from "@expo/vector-icons";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
@@ -40,6 +41,9 @@ import { MobileStepBody, MobileStepHeader, useStepOverline } from "../scaffold";
  *      path. `name` is still captured (optional) so Apple's
  *      first-sign-in fullName isn't the only source for
  *      `display_name`.
+ * ENG-1563: discoverable email escape — "Continue with email" routes to
+ * `/login` email entry (same as welcome's account escape) so Apple-less
+ * devices can still create/sign-in before `mobile_preauth_reveal_v1` ramps.
  */
 function createAppleRawNonce(): string {
   const c = globalThis.crypto;
@@ -56,6 +60,7 @@ function createAppleRawNonce(): string {
 export function MobileSignupStep() {
   const { state, set } = useOnboarding();
   const colors = useThemeColors();
+  const router = useRouter();
   const overline = useStepOverline();
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -167,6 +172,63 @@ export function MobileSignupStep() {
           )}
         </Pressable>
       ) : null}
+
+      {/* ENG-1563 — discoverable email escape when Apple is unavailable or
+          the user prefers email (routes to login email entry). */}
+      <Pressable
+        testID="signup-continue-email"
+        onPress={() =>
+          router.push({ pathname: "/login", params: { intent: "signup", email: "1" } })
+        }
+        disabled={busy}
+        accessibilityRole="button"
+        accessibilityLabel="Continue with email"
+        style={({ pressed }) => ({
+          height: 48,
+          borderWidth: 1,
+          borderColor: colors.border,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: Spacing.sm,
+          opacity: busy ? 0.6 : pressed ? 0.85 : 1,
+        })}
+      >
+        <Text
+          style={{
+            color: colors.text,
+            ...(typeScaleV1Enabled ? Type.button : { fontSize: 15, fontWeight: "700" }),
+          }}
+        >
+          Continue with email
+        </Text>
+      </Pressable>
+
+      <Pressable
+        testID="signup-already-have-account"
+        onPress={() =>
+          router.push({ pathname: "/login", params: { intent: "signin" } })
+        }
+        disabled={busy}
+        accessibilityRole="button"
+        accessibilityLabel="I already have an account"
+        hitSlop={12}
+        style={({ pressed }) => ({
+          paddingVertical: Spacing.sm,
+          marginBottom: Spacing.dense,
+          opacity: busy ? 0.6 : pressed ? 0.55 : 1,
+        })}
+      >
+        <Text
+          style={{
+            textAlign: "center",
+            color: colors.textSecondary,
+            ...(typeScaleV1Enabled ? Type.caption : { fontSize: 14, fontWeight: "500" }),
+          }}
+        >
+          I already have an account
+        </Text>
+      </Pressable>
 
       {error ? (
         <View

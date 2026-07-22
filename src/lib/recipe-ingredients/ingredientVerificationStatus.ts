@@ -17,11 +17,15 @@
  *     FatSecret / OFF / Edamam / manual) → "verified". Belt-and-braces
  *     for legacy rows where `is_verified` was not flipped despite the
  *     row coming from a verified source.
- *   - Else fall back to confidence buckets:
- *       confidence >= 0.75 → "verified"
+ *   - Else fall back to confidence buckets (untrusted sources only):
  *       confidence >= 0.55 → "partial"  (amber dot + Verify CTA)
  *       confidence > 0      → "estimated" (amber dot + Verify CTA)
  *       confidence null     → "unverified"
+ *
+ * ENG-1425 (2026-07-22): untrusted-source rows at confidence ≥ 0.75 used
+ * to land on "verified" (green, no Verify CTA). Cap them at "partial" so
+ * the Verify CTA stays visible — high AI confidence is not a trusted
+ * source. Trusted `source` / `is_verified` still → "verified".
  *
  * ENG-1431 (2026-07-06 trust-vocabulary pass): the partial floor moved
  * 0.50 → 0.55 to align with `MIN_ACCEPT_CONFIDENCE`
@@ -82,7 +86,7 @@ export function deriveIngredientVerificationTier(input: {
       ? input.confidence
       : null;
   if (c == null) return "unverified";
-  if (c >= 0.75) return "verified";
+  // ENG-1425 — untrusted high-confidence stays partial so Verify CTA shows.
   if (c >= 0.55) return "partial";
   if (c > 0) return "estimated";
   return "unverified";

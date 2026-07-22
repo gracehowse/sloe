@@ -2717,14 +2717,22 @@ export default function TrackerScreen() {
         scroll: {
           paddingHorizontal: Layout.todayScreenPaddingX,
           paddingBottom: Layout.screenPaddingBottom,
-          gap: Spacing.xl,
+          // ENG-1655 — flag-on restores two-tier rhythm (tight within-group
+          // scroll gap); flag-off keeps the flat Spacing.xl post-collapse look.
+          gap: isFeatureEnabled("today_section_rhythm_v1")
+            ? Layout.todayScrollGap
+            : Spacing.xl,
           paddingTop: Spacing.sm,
         },
         // ENG-1653 hero cluster. OFF mirrors the scroll gap exactly (so the
         // wrapper is layout-neutral); ON is the v3 prototype rhythm — gap 4
         // + greeting 4 (=8 under the wordmark) + strip 16 (=20 under the
         // greeting) + dial at the bare 4.
-        heroClusterOff: { gap: Spacing.xl },
+        heroClusterOff: {
+          gap: isFeatureEnabled("today_section_rhythm_v1")
+            ? Layout.todayScrollGap
+            : Spacing.xl,
+        },
         heroClusterTight: { gap: Spacing.xs },
         heroClusterGreeting: { marginTop: Spacing.xs },
         heroClusterStrip: { marginTop: Spacing.md },

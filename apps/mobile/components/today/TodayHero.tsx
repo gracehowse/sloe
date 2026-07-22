@@ -46,6 +46,11 @@ export interface TodayHeroProps {
   carbsPct: number;
   fatPct: number;
 
+  /** ENG-1656 — absolute macros for hero foot legend. */
+  proteinGrams?: { current: number; target: number };
+  carbsGrams?: { current: number; target: number };
+  fatGrams?: { current: number; target: number };
+
   // Expand-macros state (host-owned)
   expanded: boolean;
   onToggleExpanded: () => void;
@@ -103,6 +108,9 @@ function TodayHeroImpl(props: TodayHeroProps) {
     proteinPct,
     carbsPct,
     fatPct,
+    proteinGrams,
+    carbsGrams,
+    fatGrams,
     expanded,
     onToggleExpanded,
     displayMode,
@@ -153,6 +161,9 @@ function TodayHeroImpl(props: TodayHeroProps) {
         proteinPct={proteinPct}
         carbsPct={carbsPct}
         fatPct={fatPct}
+        proteinGrams={proteinGrams}
+        carbsGrams={carbsGrams}
+        fatGrams={fatGrams}
         expanded={expanded}
         onToggleExpanded={onToggleExpanded}
         displayMode={displayMode}

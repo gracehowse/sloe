@@ -739,7 +739,10 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "library_single_filter_row_v1", // ENG-1607 — Cookbook single provenance chip row (v3); off = legacy two-row stack (kill switch). Web + mobile.
   "recipe_estimated_cost_v1", // ENG-1274 — per-serving grocery cost estimate (Pro) on recipe-detail hero meta; off = hidden (kill switch). Web + mobile.
   "web_gutter_convergence_v1", // ENG-1629 — converge Targets.tsx (px-pm-5) + RecipeDetail.tsx (px-6/max-w-4xl) onto .product-shell's gutter; off = exact pre-ENG-1629 gutters (kill switch). WEB-ONLY.
+  "onboarding_terminal_paywall_v1", // ENG-1459 — terminal onboarding is the full paywall (no stacked trial ask); off = legacy trial page + dialog/route (kill switch). Web + mobile.
   "today_hero_cluster_v3", // ENG-1653 — tight v3 hero cluster (8/20/4 wordmark→greeting→strip→dial rhythm), Coach chip de-orphaned to the hero foot, north-star "eat next" directly under the hero (prototype order); off = legacy flat-24 composition (kill switch). Web + mobile.
+  "today_section_rhythm_v1", // ENG-1655 — two-tier section rhythm (within 8–12, between-section 24); off = flat Spacing.xl scroll gap (kill switch). Web + mobile.
+  "today_hero_macro_legend_v1", // ENG-1656 — macro legend in hero foot + force bars detail band; off = legacy Tiles/Bars/Rings pref (kill switch). Web + mobile.
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

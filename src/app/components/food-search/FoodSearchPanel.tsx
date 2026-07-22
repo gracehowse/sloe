@@ -323,6 +323,11 @@ export type FoodSearchPanelProps = {
   }) => void;
   /** Keys of favourite toggles in flight (disabled + dimmed star). */
   favoritePendingKeys?: Set<string>;
+  /**
+   * ENG-1652 — notify the host when the portion-preview card is open so
+   * it can hide the session tray (one filled CTA at a time).
+   */
+  onPreviewActiveChange?: (active: boolean) => void;
 };
 
 // ── Helpers (carried over verbatim from FoodSearch.tsx) ─────────────
@@ -817,6 +822,7 @@ export function FoodSearchPanel({
   favoriteFoods,
   onToggleFavorite,
   favoritePendingKeys,
+  onPreviewActiveChange,
 }: FoodSearchPanelProps) {
   // 2026-05-31 design-direction (LANE: commit-colour CTAs): blue is the
   // single commit-action colour. The "Use this" log commit CTA below uses
@@ -912,6 +918,14 @@ export function FoodSearchPanel({
       localTimeInputValueFromIso(defaultEatenAtForNewLog(logDateKey)),
     );
   }, [previewSessionKey, logDateKey, previewEatenAtEnabled]);
+
+  // ENG-1652 — host hides session tray while portion preview is open.
+  useEffect(() => {
+    onPreviewActiveChange?.(preview != null);
+    return () => {
+      onPreviewActiveChange?.(false);
+    };
+  }, [preview, onPreviewActiveChange]);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backfillRef = useRef(0);

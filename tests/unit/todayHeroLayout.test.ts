@@ -10,6 +10,10 @@ const WEB_STATS = readFileSync(
   resolve(ROOT, "src/app/components/suppr/today-hero-stats.tsx"),
   "utf8",
 );
+const WEB_STATS_DESKTOP = readFileSync(
+  resolve(ROOT, "src/app/components/suppr/today-hero-stats-desktop.tsx"),
+  "utf8",
+);
 const WEB_RING = readFileSync(
   resolve(ROOT, "src/app/components/suppr/today-hero-ring.tsx"),
   "utf8",
@@ -31,14 +35,15 @@ describe("Today hero layout parity", () => {
   });
 
   it("desktop hero uses one vertical stack (no ring+2x2 side-by-side grid)", () => {
-    expect(WEB_STATS).toMatch(/data-testid="today-hero-desktop"/);
-    expect(WEB_STATS).toMatch(/flex flex-col items-center/);
-    expect(WEB_STATS).toMatch(/data-testid="today-hero-stat-row"/);
+    expect(WEB_STATS).toMatch(/DesktopHeroStats/);
+    expect(WEB_STATS_DESKTOP).toMatch(/data-testid="today-hero-desktop"/);
+    expect(WEB_STATS_DESKTOP).toMatch(/flex flex-col items-center/);
+    expect(WEB_STATS_DESKTOP).toMatch(/data-testid="today-hero-stat-row"/);
     // Sloe redesign (`654:2`): the stat row is the 3-up Goal / Eaten / Bonus
     // legend (was a 4-up Logged/Target/Burned/Net grid pre-Sloe). The frame
     // shows exactly three stats under the ring.
-    expect(WEB_STATS).toMatch(/grid-cols-3/);
-    expect(WEB_STATS).not.toMatch(/grid-cols-\[auto_1fr\]/);
+    expect(WEB_STATS_DESKTOP).toMatch(/grid-cols-3/);
+    expect(WEB_STATS_DESKTOP).not.toMatch(/grid-cols-\[auto_1fr\]/);
   });
 
   it("macro rings have an explicit toggle button (the guaranteed affordance)", () => {
@@ -50,8 +55,8 @@ describe("Today hero layout parity", () => {
     // code, not live behaviour. `CalorieRingDial` (web) and its mobile
     // equivalent both lack a tap-to-toggle handler today — tracked as
     // ENG-1465, out of scope here.
-    expect(WEB_STATS).toMatch(/today-macro-rings-toggle/);
-    expect(WEB_STATS).toMatch(/MACRO_RING_TOGGLE/);
+    expect(WEB_STATS_DESKTOP).toMatch(/today-macro-rings-toggle/);
+    expect(WEB_STATS_DESKTOP).toMatch(/MACRO_RING_TOGGLE/);
     expect(WEB_RING).toMatch(/today-macro-rings-toggle/);
   });
 

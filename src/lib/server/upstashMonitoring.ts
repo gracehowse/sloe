@@ -3,7 +3,7 @@ import * as Sentry from "@sentry/nextjs";
 import { AnalyticsEvents } from "@/lib/analytics/events";
 import { serverTrack } from "@/lib/analytics/serverTrack";
 
-export type UpstashSubsystem = "rate_limit" | "vendor_cache" | "vendor_quota" | "ai_budget" | "fatsecret_token";
+export type UpstashSubsystem = "rate_limit" | "vendor_cache" | "vendor_quota" | "ai_budget" | "fal_budget" | "fatsecret_token";
 export type UpstashFailureMode = "call_threw" | "env_missing" | "read_failed" | "write_failed" | "quota_consume_failed";
 
 export type UpstashFailureMetric = {

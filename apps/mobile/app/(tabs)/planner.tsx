@@ -211,6 +211,7 @@ import {
 } from "@suppr/shared/planning/planAdjustConstraints";
 import { MoveMealSheet } from "@/components/MoveMealSheet";
 import { CARD_RADIUS, SHEET_RADIUS } from "@/components/ui/SupprCard";
+import { SheetGrabberBar } from "@/components/ui/SheetShell";
 import { SwapMealSheet, type SwapCandidate } from "@/components/SwapMealSheet";
 import { PlanTemplatesSheet } from "@/components/PlanTemplatesSheet";
 import { useMealPlanSlots } from "@/hooks/use-meal-plan-slots";
@@ -4059,7 +4060,8 @@ export default function PlannerScreen() {
               paddingHorizontal: Spacing.xl,
             }}
           >
-            <View style={{ width: 36, height: 4, backgroundColor: colors.border, borderRadius: Radius.full, alignSelf: "center", marginBottom: Spacing.md }} />
+            <SheetGrabberBar />
+            <View style={{ height: Spacing.md }} />
             <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
               {planSourceSelector ? "Plan setup" : "Plan length & start"}
             </Text>
@@ -4174,7 +4176,8 @@ export default function PlannerScreen() {
               paddingHorizontal: Spacing.xl,
             }}
           >
-            <View style={{ width: 36, height: 4, backgroundColor: colors.border, borderRadius: Radius.full, alignSelf: "center", marginBottom: Spacing.md }} />
+            <SheetGrabberBar />
+            <View style={{ height: Spacing.md }} />
             <Text style={{ fontSize: 18, fontWeight: "700", color: colors.text, marginBottom: 4 }}>
               Which meals?
             </Text>
@@ -4492,7 +4495,8 @@ export default function PlannerScreen() {
                   paddingBottom: insets.bottom + Spacing.sm,
                 }}
               >
-                <View style={{ width: 36, height: 4, backgroundColor: colors.border, borderRadius: Radius.full, alignSelf: "center", marginBottom: Spacing.md }} />
+                <SheetGrabberBar />
+            <View style={{ height: Spacing.md }} />
                 <View style={{ paddingHorizontal: Spacing.xl, paddingBottom: Spacing.md }}>
                   <Text style={{ fontSize: 17, fontWeight: "700", color: colors.text }} numberOfLines={1}>
                     {hasRecipeOv ? meal.recipeTitle : meal.name}

@@ -16,6 +16,7 @@ import {
   RingStatCell,
   RingStatusLine,
 } from "./today-hero-ring-parts";
+import { TodayHeroMacroLegend } from "./today-hero-macro-legend";
 
 /**
  * TodayHeroRing — Today-screen calorie ring wrapper (mobile-web).
@@ -29,6 +30,10 @@ export interface TodayHeroRingProps {
   proteinPct: number;
   carbsPct: number;
   fatPct: number;
+  /** ENG-1656 — absolute macros for the hero foot legend. */
+  proteinGrams?: { current: number; target: number };
+  carbsGrams?: { current: number; target: number };
+  fatGrams?: { current: number; target: number };
   expanded: boolean;
   onToggleExpanded: () => void;
   /** @deprecated 2026-06-10 (web ring parity 2026-06-10) — the
@@ -77,6 +82,9 @@ export function TodayHeroRing({
   proteinPct,
   carbsPct,
   fatPct,
+  proteinGrams,
+  carbsGrams,
+  fatGrams,
   expanded,
   onToggleExpanded,
   // displayMode / onToggleDisplayMode retired (web ring parity 2026-06-10) —
@@ -214,6 +222,13 @@ export function TodayHeroRing({
             />
           )}
         </div>
+      ) : null}
+      {proteinGrams && carbsGrams && fatGrams ? (
+        <TodayHeroMacroLegend
+          protein={proteinGrams}
+          carbs={carbsGrams}
+          fat={fatGrams}
+        />
       ) : null}
       {coachLine}
       <button

@@ -1576,6 +1576,10 @@ export const NutritionTracker = memo(function NutritionTracker({
   // blocks are built ONCE and mounted in one of two flag-picked slots, so
   // OFF renders the exact legacy tree. Mirror of the mobile TodayScreen.
   const heroClusterOn = isFeatureEnabled("today_hero_cluster_v3");
+  // ENG-1655 — two-tier rhythm: within-group tight (space-y-2 = 8px), else
+  // legacy flat space-y-6 (24px everywhere).
+  const sectionRhythmOn = isFeatureEnabled("today_section_rhythm_v1");
+  const todayColumnGap = sectionRhythmOn ? "space-y-2" : "space-y-6";
   const heroBlockWeb =
     viewMode === "day" ? (
       <TodayHeroBlock
@@ -1698,17 +1702,17 @@ export const NutritionTracker = memo(function NutritionTracker({
         <div
           className={
             viewMode === "day"
-              ? "flex-1 min-w-0 lg:max-w-[480px] space-y-6"
-              : "flex-1 min-w-0 space-y-6"
+              ? `flex-1 min-w-0 lg:max-w-[480px] ${todayColumnGap}`
+              : `flex-1 min-w-0 ${todayColumnGap}`
           }
         >
       {/* ENG-1653 hero cluster (`today_hero_cluster_v3`): one wrapper owns
-          greeting → strip → hero. OFF mirrors the column's space-y-6 —
+          greeting → strip → hero. OFF mirrors the column's gap class —
           pixel-identical to the pre-cluster tree. ON compresses to the
           prototype rhythm: space-y-1 (4px), strip +20 (`!mt-5` beats the
           space-y sibling margin), hero at the bare 4. Mirror of the mobile
           TodayScreen hero cluster. */}
-      <div className={heroClusterOn ? "space-y-1" : "space-y-6"}>
+      <div className={heroClusterOn ? "space-y-1" : todayColumnGap}>
       {viewMode === "day" ? (
         // v3 serif date hero (ENG-1247, prototype `.t-greet`): eyebrow rule +
         // Newsreader day name + date subline (parity with mobile). The "DAY N"

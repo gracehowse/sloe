@@ -1,0 +1,323 @@
+"use client";
+
+import * as React from "react";
+import { CalorieRingDial } from "./calorie-ring-dial";
+import { LogConfirmCheck } from "./log-confirm-check";
+import { TodayFreshDayLogPill } from "./today-fresh-day-log-pill";
+import type { TodayHeroRingProps } from "./today-hero-ring";
+import {
+  MACRO_RING_TOGGLE,
+  RING_VIEW_TOGGLE,
+  TODAY_HERO_STAT_LABELS,
+  todayStatusChip,
+} from "../../../lib/copy/today";
+import { CircleAlert, CircleCheck, Sparkles } from "lucide-react";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
+import { calorieRingGeometryFromSize } from "../../../lib/nutrition/calorieRingGeometry";
+import { SupprCard } from "../ui/suppr-card.tsx";
+import { TodayHeroMacroLegend } from "./today-hero-macro-legend";
+
+/**
+ * Desktop (`>= md`) leg of `TodayHeroStats` — extracted so the parent stays
+ * under the 400-line screen budget after ENG-1656 macro-legend wiring.
+ */
+
+const HERO_RING_SIZE = 160;
+const DESKTOP_RING_GEOMETRY = calorieRingGeometryFromSize(HERO_RING_SIZE);
+
+export type TodayHeroStatsDesktopProps = TodayHeroRingProps & {
+  loggedKcal: number;
+  targetKcal: number;
+  burnedKcal: number;
+  isOnTrack?: boolean;
+  pulse?: boolean;
+  commitPulse?: boolean;
+};
+
+export function DesktopHeroStats({
+  loggedKcal,
+  targetKcal,
+  burnedKcal: _burnedKcal,
+  consumed,
+  target,
+  baseGoal,
+  proteinPct,
+  carbsPct,
+  fatPct,
+  proteinGrams,
+  carbsGrams,
+  fatGrams,
+  expanded,
+  onToggleExpanded,
+  isOnTrack,
+  // `tdeeLearnDays` is retained on the props interface for call-site stability
+  // but no longer rendered on Today — the Adaptive-TDEE line was removed to
+  // match Figma `654:2` (2026-06-08). The learning state lives on Progress.
+  // `displayMode` / `onToggleDisplayMode` retired (web ring parity 2026-06-10).
+  pulse,
+  commitPulse,
+  logConfirmVisible = false,
+  onPressStatusChip,
+  coachLine,
+  isFreshDay = false,
+  onLogFreshDaySlot,
+}: TodayHeroStatsDesktopProps) {
+  // Stat row now renders on EMPTY days too (web ring parity 2026-06-10) — the
+  // empty page mirrors a populated day with honest zeros. Gated on a real
+  // target (`target > 0`), mirroring mobile `TodayHeroRing`.
+  const showStatRow = target > 0;
+  const isEmpty = consumed === 0 || target <= 0;
+  const isOver = target > 0 && consumed > target;
+  const bonusKcal =
+    baseGoal && baseGoal < target ? Math.round(target - baseGoal) : 0;
+  const chipState: "empty" | "under" | "over" = isEmpty
+    ? "empty"
+    : isOver
+      ? "over"
+      : "under";
+  // ENG-1372 — same gating as mobile-web `TodayHeroRing`: only a true fresh
+  // day (host-confirmed zero logged entries) behind the flag qualifies.
+  const emptyStateGrammarOn = isFeatureEnabled("empty_state_grammar_v1");
+  // ENG-1653 — desktop leg of the dial-view switch (Remaining ⇆ Consumed);
+  // see `today-hero-ring.tsx` for the rationale (the macros toggle had been
+  // dead since the jewel-dial swap). Local state like the prototype's
+  // `calView`; legacy (flag-off) keeps the existing control untouched.
+  const clusterHero = isFeatureEnabled("today_hero_cluster_v3");
+  const [dialMode, setDialMode] = React.useState<"remaining" | "consumed">("remaining");
+  const toggleDialMode = () =>
+    setDialMode((m) => (m === "remaining" ? "consumed" : "remaining"));
+  const showFreshDayGrammar = emptyStateGrammarOn && isFreshDay;
+  // ENG-1653 (Grace, sim review): on the cluster hero BONUS always renders —
+  // 0 on an empty day — reversing the ENG-1372 law-3 fresh-day suppression
+  // for this layout. Legacy (flag-off) keeps the suppression.
+  const hideBonusCell = showFreshDayGrammar && bonusKcal <= 0 && !clusterHero;
+  return (
+    // Design Direction 2026 (ENG-795): canonical SupprCard so the desktop hero
+    // adopts soft elevation (and drops its border) via the `elevation="card"`
+    // prop. `padding="none"` keeps the exact `px-4 py-4` geometry;
+    // `hidden md:block` display utility and the `data-testid` are preserved.
+    <SupprCard
+      elevation="card"
+      radius="lg"
+      padding="none"
+      className="hidden md:block mb-3 px-4 py-4"
+      data-testid="today-hero-desktop"
+    >
+      <div className="flex flex-col items-center gap-3">
+        {/* Header row: status chip only. The Remaining/Consumed segmented
+            toggle is RETIRED (web ring parity 2026-06-10 — mobile ring wave):
+            it duplicated the Eaten stat below the ring. */}
+        <div className="flex w-full items-center justify-between gap-2">
+          <HeroStatusChip state={chipState} onPress={onPressStatusChip} />
+        </div>
+
+        {/* ENG-722 — `relative` so the log-confirm checkmark overlays whichever
+            ring variant renders. */}
+        <div className="relative flex items-center justify-center">
+          <CalorieRingDial
+            consumed={consumed}
+            target={target}
+            size={DESKTOP_RING_GEOMETRY.size}
+            // ENG-1465 — restore the legacy `DailyRing` wiring the v3 swap
+            // dropped: click-to-toggle + the win/commit pulses this host
+            // already receives on both breakpoints. ENG-1653 cluster hero:
+            // the click flips the Remaining ⇆ Consumed view instead.
+            onToggle={clusterHero ? toggleDialMode : onToggleExpanded}
+            displayMode={clusterHero ? dialMode : undefined}
+            pulse={pulse}
+            commitPulse={commitPulse}
+          />
+          <LogConfirmCheck visible={logConfirmVisible} />
+        </div>
+
+        {/* ENG-1372 (law 2) — the fresh-day hero's ONE filled invitation,
+            inside the hero (not floating beside a ghost of the data). */}
+        {showFreshDayGrammar && onLogFreshDaySlot ? (
+          <TodayFreshDayLogPill hour={new Date().getHours()} onPress={onLogFreshDaySlot} />
+        ) : null}
+
+        {showStatRow ? (
+          <div
+            className={`grid w-full max-w-lg gap-2 border-t border-border pt-3 ${hideBonusCell ? "grid-cols-2" : "grid-cols-3"}`}
+            data-testid="today-hero-stat-row"
+          >
+            <StatCell
+              label={TODAY_HERO_STAT_LABELS.goal}
+              value={targetKcal.toLocaleString()}
+            />
+            <StatCell
+              label={TODAY_HERO_STAT_LABELS.eaten}
+              value={loggedKcal.toLocaleString()}
+            />
+            {/* The right stat is ALWAYS Bonus (web ring parity 2026-06-10):
+                the over amount reads in the ring centre + the status chip, and
+                the old slot-switch hid the earned-burn number exactly when an
+                over-budget user most wants to see it. 0 when no bonus —
+                unless suppressed on a fresh day (ENG-1372), which also
+                collapses the grid to 2 columns above. */}
+            {hideBonusCell ? null : (
+              <StatCell
+                label={TODAY_HERO_STAT_LABELS.bonus}
+                value={bonusKcal > 0 ? `+${bonusKcal.toLocaleString()}` : "0"}
+                valueTone={bonusKcal > 0 ? "positive" : "neutral"}
+              />
+            )}
+          </div>
+        ) : null}
+
+        {proteinGrams && carbsGrams && fatGrams ? (
+          <TodayHeroMacroLegend
+            protein={proteinGrams}
+            carbs={carbsGrams}
+            fat={fatGrams}
+          />
+        ) : null}
+
+        {/* ENG-753 — "On track" pill below the stat grid (prototype
+            screens-web.jsx:173-177). Flag-gated; only render when the
+            day has been logged (showStatRow) and the user is on track.
+
+            Sloe redesign (2026-06-08): the "Adaptive TDEE learning · N of 7
+            days" pill was removed — the canonical Figma `654:2` Today hero
+            shows nothing between the Goal/Eaten/Bonus stats and the "Room for
+            dinner" coach line. The learning state lives on Progress; surfacing
+            it on Today added clutter. The underlying adaptive-TDEE logic is
+            unchanged — only this presentational line is gone. The
+            `tdeeLearnDays` prop is retained for call-site stability. */}
+        {/* Status pills gate on a real "has logged" signal (`consumed > 0`),
+            NOT `showStatRow` — the stat row now also renders on EMPTY days
+            (web ring parity 2026-06-10), so it no longer means "has eaten".
+            The On-track pill stays a logged-day-only signal. */}
+        {isFeatureEnabled("today-status-pills") && consumed > 0 && isOnTrack ? (
+          <div className="flex gap-2" data-testid="today-status-pills">
+            <span
+              data-testid="today-pill-on-track"
+              className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-[11px] font-semibold text-success"
+            >
+              <svg
+                className="h-3 w-3"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M16.704 5.29a1 1 0 0 1 .006 1.414l-7.5 7.6a1 1 0 0 1-1.42.006l-3.5-3.5a1 1 0 1 1 1.414-1.414l2.79 2.79 6.796-6.886a1 1 0 0 1 1.414-.006Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              On track
+            </span>
+          </div>
+        ) : null}
+
+        {coachLine}
+
+        <button
+          type="button"
+          data-testid={clusterHero ? "today-ring-view-toggle" : "today-macro-rings-toggle"}
+          onClick={clusterHero ? toggleDialMode : onToggleExpanded}
+          aria-label={
+            clusterHero
+              ? dialMode === "remaining"
+                ? RING_VIEW_TOGGLE.a11yToConsumed
+                : RING_VIEW_TOGGLE.a11yToRemaining
+              : undefined
+          }
+          className="text-[11px] font-semibold text-primary-solid hover:opacity-80 transition-opacity"
+        >
+          {clusterHero
+            ? dialMode === "remaining"
+              ? RING_VIEW_TOGGLE.remaining
+              : RING_VIEW_TOGGLE.consumed
+            : expanded
+              ? MACRO_RING_TOGGLE.hide
+              : MACRO_RING_TOGGLE.show}
+        </button>
+      </div>
+    </SupprCard>
+  );
+}
+
+function StatCell({
+  label,
+  value,
+  valueTone = "neutral",
+}: {
+  label: string;
+  value: string;
+  // The "over" tone is retired (web ring parity 2026-06-10): the right stat is
+  // always Bonus, so no stat cell ever paints the over-budget red. Tones are
+  // now just neutral (default) and positive (earned Bonus headroom = sage).
+  valueTone?: "neutral" | "positive";
+}) {
+  const valueColor =
+    valueTone === "positive" ? "text-success" : "text-foreground";
+  // type_scale_v1 (visible-resize): 18px → text-xl (22px); off = legacy
+  // fixed 18px (kill switch).
+  const statCellSizeClass = isFeatureEnabled("type_scale_v1") ? "text-xl" : "text-[18px]";
+  return (
+    <div className="min-w-0 text-center px-1">
+      <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground truncate">
+        {label}
+      </div>
+      <div
+        className={`mt-1 font-[family-name:var(--font-headline)] ${statCellSizeClass} font-normal tabular-nums leading-tight ${valueColor}`}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function HeroStatusChip({
+  state,
+  onPress,
+}: {
+  state: "empty" | "under" | "over";
+  onPress?: () => void;
+}) {
+  const config =
+    state === "over"
+      ? {
+          label: todayStatusChip("over"),
+          // ENG-1453: over-budget is AMBER in both flag branches
+          // (ENG-1296 — red retired product-wide). Semantic over-budget
+          // tokens alias the warning family — same pixels as the tierV1 pill.
+          className: "bg-over-budget-soft text-over-budget-fg",
+          Icon: CircleAlert,
+        }
+      : state === "empty"
+        ? {
+            label: todayStatusChip("empty"),
+            className: "text-foreground-brand",
+            Icon: Sparkles,
+          }
+        : {
+            label: todayStatusChip("under"),
+            className: "text-success",
+            Icon: CircleCheck,
+          };
+  const { label, className, Icon } = config;
+  const chipClassName = `inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${className}`;
+  if (!onPress) {
+    return (
+      <span data-testid="today-ring-status-chip" className={chipClassName}>
+        <Icon size={13} strokeWidth={2} aria-hidden />
+        {label}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      data-testid="today-ring-status-chip"
+      onClick={onPress}
+      aria-label={`${label}, see how your calorie target was set`}
+      className={`${chipClassName} cursor-pointer transition-opacity hover:opacity-90`}
+    >
+      <Icon size={13} strokeWidth={2} aria-hidden />
+      {label}
+    </button>
+  );
+}

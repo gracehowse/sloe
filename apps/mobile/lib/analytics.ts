@@ -891,7 +891,10 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "ingredient_text_rows_v1", // ENG-1611 — foods/ingredients render as TEXT (no glyph/monogram/photo tiles) on log-sheet rows + recipe-detail ingredients; off = legacy tiles (kill switch). Web + mobile.
   "recipe_estimated_cost_v1", // ENG-1274 — per-serving grocery cost estimate (Pro) on recipe-detail hero meta; off = hidden (kill switch). Web + mobile.
   "web_gutter_convergence_v1", // ENG-1629 — converges web Targets.tsx/RecipeDetail.tsx page gutters onto .product-shell. WEB-ONLY: mobile has no Tailwind product-shell equivalent; registered here only for the web ↔ mobile KNOWN_DEFAULT_OFF_FLAGS discoverability parity.
+  "onboarding_terminal_paywall_v1", // ENG-1459 — terminal onboarding is the full paywall (no stacked trial ask); off = legacy trial page + dialog/route (kill switch). Web + mobile.
   "today_hero_cluster_v3", // ENG-1653 — tight v3 hero cluster (8/20/4 wordmark→greeting→strip→dial rhythm), Coach chip de-orphaned to the hero foot, north-star "eat next" directly under the hero (prototype order); off = legacy flat-24 composition (kill switch). Web + mobile.
+  "today_section_rhythm_v1", // ENG-1655 — two-tier section rhythm (within 8–12, between-section 24); off = flat Spacing.xl scroll gap (kill switch). Web + mobile.
+  "today_hero_macro_legend_v1", // ENG-1656 — macro legend in hero foot + force bars detail band; off = legacy Tiles/Bars/Rings pref (kill switch). Web + mobile.
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when
