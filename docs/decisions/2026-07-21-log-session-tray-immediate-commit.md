@@ -95,3 +95,12 @@ synchronous commit result; "basket"/"cart" stay banned in all six pinned files
   same names both platforms; per-item `food_logged` unchanged (not batched).
 - Per-item Undo is now persistent for the whole sheet-session — the deliberate
   fix for the punished ~1-second undo toast.
+- **Known gap, flagged for a follow-up decision (2026-07-21 implementation
+  review):** the tray does not actually hide while the search portion-preview
+  footer is open, because `FoodSearchPanel.tsx` was ruled untouched for v1
+  (spec §7.2) and so has no way to tell the host preview is active. When the
+  tray holds ≥ 1 item and the user reaches the preview step again, both
+  filled CTAs ("Use this" + tray "Done") render at once — a one-filled-CTA
+  violation in that narrow window, non-functional, flag-gated OFF by
+  default. See spec §6 for the options; tracked as **ENG-1652**, not
+  resolved in this pass.

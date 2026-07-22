@@ -189,6 +189,27 @@ never "cart".
   CTA per visible view holds: the portion preview's "Use this" is the primary
   while the preview is open (the tray bar sits beneath/hidden); Done is the
   primary otherwise.
+  **Known gap (2026-07-21 implementation review):** "the tray bar sits
+  beneath/hidden" is not actually enforced — `FoodSearchPanel.tsx` is
+  explicitly untouched in v1 (§7.2), so it has no way to signal
+  preview-active state up to the host/`LogSheet`, and the tray is mounted
+  as an unconditional sibling. In the flex-column sheet layout (search
+  results `flex-1 min-h-0`, everything else fixed-height), when the tray
+  has ≥ 1 item AND the user re-opens search and reaches the portion
+  preview, the preview's filled "Use this" and the tray's filled "Done"
+  both render on screen simultaneously (the results area just shrinks to
+  make room) — a real one-filled-CTA-per-view violation, not merely a
+  hidden-but-present element. Non-functional (both buttons still do
+  exactly what they say; no data loss), flag-gated OFF by default. Needs
+  a product call before it can close: (a) ship as-is and accept the
+  narrow polish gap, (b) add a minimal `search.onPreviewActiveChange`
+  callback to `FoodSearchPanel` (both platforms) so the host can hide the
+  tray bar while preview is open — the smallest change that fulfils this
+  line's original intent, at the cost of the one `FoodSearchPanel` touch
+  §7.2 ruled out for v1, or (c) some other resolution Grace prefers. Not
+  actioned here — tracked as **ENG-1652** per the "no silent deferrals"
+  rule rather than left doc-only; resolve before ramping the flag, not
+  before merging.
 - Mobile pressables: `PressableScale` — rows/expand `haptic="selection"`, Done
   `haptic="confirm"`, Undo `haptic="warn"`. Web: hover + `:focus-visible` ring +
   `active:scale` per the LogHub precedent. Async Undo: disabled + progress.
