@@ -212,7 +212,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // off hides the count line (the tier cap itself is unflagged server logic).
   // Keep in sync with mobile.
   "plan_import_excluded_lines_v1",
-  "design_system_elevation",
   // ENG-1527 — the shopping-list "Update from plan" re-sync affordance
   // (mobile + web). Default-ON so the dead-end fix ships everywhere; the
   // PostHog gate is the kill switch for the non-destructive DB write path.

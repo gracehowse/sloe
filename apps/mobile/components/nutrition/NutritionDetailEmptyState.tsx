@@ -23,10 +23,11 @@ import { PressableScale } from "@/components/ui/PressableScale";
  * iconified card with a single commit-colour CTA.
  *
  * Flag behaviour (visual changes stay gated, OLD path alive in the else):
- *   - `design_system_elevation` ON  → the body wraps in an elevated card
- *     (`useCardElevation`) with the modern `Radius.xl` corner + an icon
- *     chip, so the empty state reads as a designed surface, not a dead end.
- *     OFF → the legacy flat, card-less centred layout (no surface chrome).
+ *   - The body wraps in an elevated card (`useCardElevation`) with the
+ *     modern `Radius.xl` corner + an icon chip, so the empty state reads as
+ *     a designed surface, not a dead end. `design_system_elevation`
+ *     collapsed (ENG-1651) — this was permanently ON via
+ *     REDESIGN_DEFAULT_ON; the legacy flat, card-less layout is removed.
  *   - `design_system_colours` ON  → the CTA fills BLUE (`accent.primary`,
  *     the single commit-action colour) via `PressableScale`. OFF → the
  *     caller's legacy `ctaColorLegacy` fill (e.g. the saturated macro hue
@@ -77,7 +78,6 @@ export function NutritionDetailEmptyState({
   const accent = useAccent();
   const colors = useThemeColors();
   const elevation = useCardElevation();
-  const softElevation = isFeatureEnabled("design_system_elevation");
   const redesignColours = isFeatureEnabled("design_system_colours");
 
   const ctaColor = redesignColours ? accent.primary : (ctaColorLegacy ?? accent.primary);
@@ -144,19 +144,6 @@ export function NutritionDetailEmptyState({
       ) : null}
     </View>
   );
-
-  // Flag ON → elevated card surface with the modern radius. Flag OFF → the
-  // legacy flat, card-less centred layout (unchanged structure).
-  if (!softElevation) {
-    return (
-      <View
-        testID={testID}
-        style={[{ alignItems: "center", paddingVertical: Spacing.xxl }, style]}
-      >
-        {body}
-      </View>
-    );
-  }
 
   return (
     <View

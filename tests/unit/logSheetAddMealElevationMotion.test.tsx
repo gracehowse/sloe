@@ -1,29 +1,35 @@
 /**
  * Redesign P5 parity — cluster C5 (gaps #19, #20, #21).
  *
- * Three web↔mobile parity fixes on the log-sheet + add-meal surfaces, each
- * gated behind a redesign flag with the OLD path alive in the `else` (CLAUDE.md
- * feature-flag non-negotiable):
+ * Originally three web↔mobile parity fixes on the log-sheet + add-meal
+ * surfaces, each gated behind a redesign flag with the OLD path alive in the
+ * `else` (CLAUDE.md feature-flag non-negotiable). `design_system_elevation`
+ * has since collapsed (ENG-1651 — it was permanently ON via
+ * `REDESIGN_DEFAULT_ON`, so the gate + OFF paths were deleted and the ON
+ * behaviour ships unconditionally):
  *
  *   #19  log-sheet.tsx — the sheet shadow was a hardcoded LIGHT-only literal
- *        (`0 -8px 32px rgba(0,0,0,0.12)`). Under `design_system_elevation` it
- *        reads the canonical `--elev-sheet` token (no-op in light, the deeper
- *        dark variant in dark) matching mobile `Elevation.sheet`. The hardcoded
- *        literal stays alive in the flag-OFF else.
+ *        (`0 -8px 32px rgba(0,0,0,0.12)`). It now unconditionally reads the
+ *        canonical `--elev-sheet` token (no-op in light, the deeper dark
+ *        variant in dark) matching mobile `Elevation.sheet`. No flag, no
+ *        hardcoded-literal fallback.
  *
  *   #20  today-add-meal-dialog.tsx — the only suppr dialog never swept onto
- *        `design_system_elevation`. Now mirrors the three sibling dialogs
- *        (recipe-edit / add-ingredient / override-ingredient): flag-ON moves
- *        to the warm `bg-background` surface + `--elev-card-soft` shadow with
- *        no border; flag-OFF keeps today's white `bg-card` + hairline.
+ *        `design_system_elevation`. Now unconditionally mirrors the three
+ *        sibling dialogs (recipe-edit / add-ingredient / override-ingredient):
+ *        the warm `bg-background` surface + `--elev-card-soft` shadow with no
+ *        border. No flag, no legacy white `bg-card` + hairline fallback.
  *
  *   #21  log-sheet.tsx — the `redesign_motion` element→sheet open morph via the
  *        shared `sheetTransition(open)` web analog, with the existing
- *        premiumMotion slide as the flag-OFF else.
+ *        premiumMotion slide as the flag-OFF else. `redesign_motion` is
+ *        untouched by the ENG-1651 collapse — still gated.
  *
  * The token/structural assertions read source (mirrors
- * `recipeEditDialogTokenSweep.test.ts` / `settingsElevationFlag.test.ts`); the
- * dialog flag-ON render is verified live so the gating can't silently regress.
+ * `recipeEditDialogTokenSweep.test.ts` / `settingsElevationFlag.test.ts`,
+ * which pin a collapsed flag's ABSENCE from source rather than its presence);
+ * the dialog's unconditional render is verified live so the styling can't
+ * silently regress.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -44,17 +50,12 @@ const THEME = "src/styles/theme.css";
 describe("C5 — log-sheet sheet shadow token (#19)", () => {
   const src = () => read(LOG_SHEET);
 
-  it("gates the sheet shadow on design_system_elevation", () => {
-    expect(src()).toMatch(/isFeatureEnabled\("design_system_elevation"\)/);
+  it("no longer gates the sheet shadow on design_system_elevation (ENG-1651 collapse)", () => {
+    expect(src()).not.toMatch(/isFeatureEnabled\("design_system_elevation"\)/);
   });
 
-  it("flag-ON reads the canonical --elev-sheet token (light+dark parity with mobile Elevation.sheet)", () => {
+  it("unconditionally reads the canonical --elev-sheet token (light+dark parity with mobile Elevation.sheet)", () => {
     expect(src()).toContain("shadow-[var(--elev-sheet)]");
-  });
-
-  it("flag-OFF keeps the original hardcoded light literal alive in the else", () => {
-    // The old always-on literal must survive ONLY as the flag-OFF fallback.
-    expect(src()).toContain("shadow-[0_-8px_32px_rgba(0,0,0,0.12)]");
   });
 
   it("the --elev-sheet token is declared (and branches) in theme.css", () => {
@@ -94,28 +95,21 @@ describe("C5 — log-sheet redesign_motion morph (#21)", () => {
 describe("C5 — today-add-meal-dialog elevation gating (#20)", () => {
   const src = () => read(ADD_MEAL);
 
-  it("gates the surface behind design_system_elevation (source)", () => {
-    expect(src()).toMatch(/isFeatureEnabled\("design_system_elevation"\)/);
+  it("no longer gates the surface behind design_system_elevation (ENG-1651 collapse, source)", () => {
+    expect(src()).not.toMatch(/isFeatureEnabled\("design_system_elevation"\)/);
   });
 
-  it("flag-ON surface uses warm bg-background + soft shadow, no border (source)", () => {
+  it("unconditionally uses the warm bg-background + soft shadow, no border (source)", () => {
     expect(src()).toMatch(/bg-background border-transparent shadow-\[var\(--elev-card-soft\)\]/);
-  });
-
-  it("flag-OFF surface preserves today's white bg-card + hairline border (source)", () => {
-    expect(src()).toContain("bg-card border-border");
   });
 });
 
 /* -------------------------------------------------------------------------- */
-/* Live render: the dialog actually applies the gated surface class.          */
+/* Live render: the dialog actually applies the unconditional surface class.  */
 /* -------------------------------------------------------------------------- */
 
-const flagState = { elevation: false };
-
 vi.mock("../../src/lib/analytics/track", () => ({
-  isFeatureEnabled: (flag: string) =>
-    flag === "design_system_elevation" ? flagState.elevation : false,
+  isFeatureEnabled: () => false,
   track: () => {},
 }));
 
@@ -167,16 +161,7 @@ describe("C5 — today-add-meal-dialog elevation gating (#20, live render)", () 
     vi.resetModules();
   });
 
-  it("flag-OFF renders the legacy white card + hairline border", async () => {
-    flagState.elevation = false;
-    const dialog = await renderAddMeal();
-    expect(dialog.className).toContain("bg-card");
-    expect(dialog.className).toContain("border-border");
-    expect(dialog.className).not.toContain("shadow-[var(--elev-card-soft)]");
-  });
-
-  it("flag-ON renders the warm bg-background surface + soft shadow, no border", async () => {
-    flagState.elevation = true;
+  it("unconditionally renders the warm bg-background surface + soft shadow, no border", async () => {
     const dialog = await renderAddMeal();
     expect(dialog.className).toContain("bg-background");
     expect(dialog.className).toContain("border-transparent");

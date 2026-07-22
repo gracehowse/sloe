@@ -267,34 +267,15 @@ describe("ENG-815 — FoodSearchPanel redesigned results (flag-gated)", () => {
     expect(chip.className).not.toMatch(/\bbg-warning\b/);
   });
 
-  // ── ENG P5 parity (gap #5) — soft elevation gated on design_system_elevation ──
-  it("structure ON + elevation OFF: grouped cards stay flat (hairline border, no soft shadow)", async () => {
-    enableFlags("redesign_search_results"); // elevation deliberately OFF
-    vi.stubGlobal("fetch", BOTH_SOURCES);
-    const { container } = renderPanel();
-    await drain();
-
-    const card = await screen.findByTestId("food-search-results-redesign");
-    const group = card.querySelector<HTMLElement>(".rounded-2xl");
-    expect(group).not.toBeNull();
-    // Flag-off depth path = flat hairline, no soft shadow.
-    expect(group?.style.boxShadow ?? "").toBe("");
-    expect(group?.className).toMatch(/\bborder-border\b/);
-    expect(group?.className).not.toMatch(/\bborder-0\b/);
-    // Inactive segmented-control pills also drop the shadow when elevation is off.
-    const inactivePill = container.querySelector<HTMLElement>(
-      '[data-testid="food-search-category-Custom"]',
-    );
-    expect(inactivePill?.style.boxShadow ?? "").toBe("");
-  });
-
   // Flat-card surfaces (2026-06-12, Withings grammar — decision:
-  // docs/decisions/2026-06-12-flat-card-surfaces.md): the elevation-ON path is
-  // now BORDERLESS-FLAT — the soft `--elev-card-soft` lift is retired; the
-  // grouped card drops its border (Withings quiet-fill grammar) but carries NO
-  // shadow. The inactive pills no longer carry any lift on either flag state.
-  it("structure ON + elevation ON: grouped cards are borderless-FLAT (no soft shadow, no border)", async () => {
-    enableFlags("redesign_search_results", "design_system_elevation");
+  // docs/decisions/2026-06-12-flat-card-surfaces.md): the grouped result card
+  // is unconditionally BORDERLESS-FLAT — the soft `--elev-card-soft` lift is
+  // retired; the card drops its border (Withings quiet-fill grammar) but
+  // carries NO shadow. `design_system_elevation` collapsed (ENG-1651) — this
+  // was permanently ON via REDESIGN_DEFAULT_ON, so there is no OFF path left
+  // to pin. The inactive pills carry no lift either.
+  it("structure ON: grouped cards are borderless-FLAT (no soft shadow, no border)", async () => {
+    enableFlags("redesign_search_results");
     vi.stubGlobal("fetch", BOTH_SOURCES);
     const { container } = renderPanel();
     await drain();

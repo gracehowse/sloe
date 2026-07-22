@@ -215,17 +215,16 @@ export function RecipeEditDialog({
   // ENG-821 (Redesign — Design Direction 2026): the design-director review read
   // the edit dialog as "imported from a different design system" — it sat on a
   // pure-white `bg-card` (#fff) surface with a hairline border standing in for
-  // depth, against the product's warm-cream canvas. Under
-  // `design_system_elevation` we move it onto the warm `bg-background` surface
-  // and let the real soft `--elev-card-soft` shadow carry separation (no
-  // border). The flag-OFF path keeps today's white/hairline dialog alive.
+  // depth, against the product's warm-cream canvas. Moved onto the warm
+  // `bg-background` surface, letting the real soft `--elev-card-soft` shadow
+  // carry separation (no border) — dialogs keep their float per the
+  // 2026-07-10 card-grammar ruling (ENG-1497). `design_system_elevation`
+  // collapsed (ENG-1651) — this was permanently ON via REDESIGN_DEFAULT_ON.
   // Form-field borders + the commit CTA already use semantic tokens
   // (`border-input` on Input/Textarea; `bg-primary-solid` on the default
   // Button), so no colour repaint is needed here.
-  const elevated = isFeatureEnabled("design_system_elevation");
-  const surfaceCls = elevated
-    ? "bg-background border-transparent shadow-[var(--elev-card-soft)] max-w-lg max-h-[88vh] overflow-y-auto"
-    : "bg-card border-border max-w-lg max-h-[88vh] overflow-y-auto";
+  const surfaceCls =
+    "bg-background border-transparent shadow-[var(--elev-card-soft)] max-w-lg max-h-[88vh] overflow-y-auto";
 
   return (
     <Dialog open={open} onOpenChange={(next) => !saving && onOpenChange(next)}>

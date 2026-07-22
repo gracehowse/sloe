@@ -2,7 +2,7 @@
 /**
  * Redesign 2026 flags are UN-GATED (mobile) — default ON in every build.
  *
- * Grace 2026-06-01: "turn everything on, never flag-gate again." The 8
+ * Grace 2026-06-01: "turn everything on, never flag-gate again." The 7
  * redesign flags resolve ON in `isFeatureEnabled` regardless of PostHog
  * rollout state or the (bundle-dead) env-force — see REDESIGN_DEFAULT_ON in
  * apps/mobile/lib/analytics.ts. This is the fix-by-elimination for ENG-840
@@ -13,6 +13,10 @@
  *    (the SDK is never consulted for them);
  *  - an explicit dev force OFF still wins (so pre-redesign captures work);
  *  - non-redesign flags are unaffected (still follow PostHog).
+ *
+ * `design_system_elevation` collapsed out of REDESIGN_DEFAULT_ON (ENG-1651):
+ * the flag was removed entirely and the code now ships its ON-branch styling
+ * unconditionally, so it no longer appears in this suite's flag lists.
  */
 
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from "vitest";
@@ -51,7 +55,6 @@ beforeAll(async () => {
 });
 
 const REDESIGN_FLAGS = [
-  "design_system_elevation",
   "design_system_colours",
   "design_system_brandmark",
   "design_system_icons",
@@ -97,7 +100,7 @@ describe("redesign flags are un-gated (mobile)", () => {
 
   it("returns true even when the flag is unloaded (undefined) or the SDK throws", () => {
     isEnabledMock.mockReturnValue(undefined);
-    expect(isFeatureEnabled("design_system_elevation")).toBe(true);
+    expect(isFeatureEnabled("design_system_colours")).toBe(true);
     isEnabledMock.mockImplementation(() => {
       throw new Error("posthog not ready");
     });
@@ -106,8 +109,8 @@ describe("redesign flags are un-gated (mobile)", () => {
 
   it("lets an explicit dev force OFF win (so pre-redesign captures still work)", () => {
     vi.stubGlobal("__DEV__", true);
-    vi.stubEnv("EXPO_PUBLIC_FLAG_FORCE_DESIGN_SYSTEM_ELEVATION", "false");
-    expect(isFeatureEnabled("design_system_elevation")).toBe(false);
+    vi.stubEnv("EXPO_PUBLIC_FLAG_FORCE_DESIGN_SYSTEM_COLOURS", "false");
+    expect(isFeatureEnabled("design_system_colours")).toBe(false);
   });
 
   it("does not affect non-redesign flags (they still follow PostHog)", () => {

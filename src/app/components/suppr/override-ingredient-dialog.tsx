@@ -25,7 +25,6 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import type { IngredientOverride } from "../../../types/recipe";
 import { sanitizeOverrideInput } from "../../../lib/nutrition/ingredientOverrides";
-import { isFeatureEnabled } from "../../../lib/analytics/track";
 
 export type OverrideIngredientDialogProps = {
   open: boolean;
@@ -109,14 +108,14 @@ export function OverrideIngredientDialog({
 
   // ENG-821 (Redesign — Design Direction 2026): align the ingredient nutrition
   // editor to the one design language — warm-cream `bg-background` surface +
-  // real soft `--elev-card-soft` shadow (no border-as-depth) under
-  // `design_system_elevation`, matching the recipe-edit dialog. Flag OFF keeps
-  // today's white/hairline dialog. Inputs already use `border-input`; the Save
-  // CTA already uses the blue `bg-primary-solid` default Button — no repaint.
-  const elevated = isFeatureEnabled("design_system_elevation");
-  const surfaceCls = elevated
-    ? "bg-background border-transparent shadow-[var(--elev-card-soft)] max-w-md"
-    : "bg-card border-border max-w-md";
+  // real soft `--elev-card-soft` shadow (no border-as-depth), matching the
+  // recipe-edit dialog. Dialogs keep their float per the 2026-07-10
+  // card-grammar ruling (ENG-1497). `design_system_elevation` collapsed
+  // (ENG-1651) — this was permanently ON via REDESIGN_DEFAULT_ON. Inputs
+  // already use `border-input`; the Save CTA already uses the blue
+  // `bg-primary-solid` default Button — no repaint.
+  const surfaceCls =
+    "bg-background border-transparent shadow-[var(--elev-card-soft)] max-w-md";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

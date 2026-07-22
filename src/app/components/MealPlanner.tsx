@@ -516,11 +516,11 @@ export const MealPlanner = memo(function MealPlanner({
         ? "var(--warning)"
         : "var(--muted-foreground)";
 
-  // ENG-822 (design_system_elevation, Redesign — Design Direction 2026) —
-  // Summary card, empty-state, and per-day kanban cards are now routed
-  // through the canonical SupprCard primitive, which owns the elevation
-  // flag-gate internally (flag ON → soft shadow, border dropped;
-  // flag OFF → prior flat `--elev-card` + hairline, byte-for-byte).
+  // ENG-822 (Redesign — Design Direction 2026) — Summary card, empty-state,
+  // and per-day kanban cards are now routed through the canonical SupprCard
+  // primitive, which owns the elevation internally via its `elevation` prop
+  // (soft shadow, border dropped). `design_system_elevation` collapsed
+  // (ENG-1651) — SupprCard never read the flag itself.
   // Today-column distinction: tone="primary" on SupprCard gives the tinted bg
   // + primary border accent in flag-off; flag-on drops the border, tint carries.
 

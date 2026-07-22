@@ -6,7 +6,6 @@ import { Icons } from "./ui/icons";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import { useAuthSession } from "../../context/AuthSessionContext.tsx";
-import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { normalizeMacroTargets } from "../../types/profile.ts";
 import { computeProtectedStreak, readFreezeLedger, type FreezeLedger } from "../../lib/nutrition/streakFreeze.ts";
 import { buildWeekStats, getStreakContributingDays } from "../../lib/nutrition/progressWeekReport.ts";
@@ -42,14 +41,11 @@ export function ProgressMetricDetail({ metric, weekStartDay, onClose }: Props) {
   // docs/decisions/2026-06-12-flat-card-surfaces.md). This metric-detail card
   // was a straggler riding the raw `--elev-card-soft` token directly (bypassing
   // the `.card-slab` primitive the CORE flattened), so it kept the retired soft
-  // lift. Flattened to match the primitive: the `design_system_elevation` ON
-  // path is now borderless + FLAT (no shadow) — separation comes from the card
-  // fill on the cream ground, mirroring the mobile `useCardElevation` flat
-  // result. The OFF path keeps the legacy flat hairline.
-  const elevated = isFeatureEnabled("design_system_elevation");
-  const cardCls = elevated
-    ? "border border-transparent"
-    : "border border-border";
+  // lift. Flattened to match the primitive: borderless + FLAT (no shadow) —
+  // separation comes from the card fill on the cream ground, mirroring the
+  // mobile `useCardElevation` flat result. `design_system_elevation` collapsed
+  // (ENG-1651) — this was permanently ON via REDESIGN_DEFAULT_ON.
+  const cardCls = "border border-transparent";
 
   // F-2 (2026-04-19) — snapshot targets for this week so past-day
   // "% of goal" values don't shift when the user later edits their

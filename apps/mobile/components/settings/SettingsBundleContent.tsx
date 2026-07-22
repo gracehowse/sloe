@@ -204,10 +204,10 @@ function SectionHeading({ title }: { title: string }) {
  * Every section card in the bundle was a hand-rolled `<View>` repeating the
  * same `bg-card + radius-14 + hairline border` recipe (~13 copies). The 5-spine
  * direction (one elevation model) wants every resting card on the SAME
- * soft-ambient-shadow / tonal-lift treatment via `useCardElevation`, gated
- * behind `design_system_elevation`. Consolidating into one wrapper:
- *   - applies the flag-aware shadow / border / tonal-lift in one place
- *     (flag OFF → today's flat hairline-bordered card, unchanged), and
+ * soft-ambient-shadow / tonal-lift treatment via `useCardElevation`.
+ * `design_system_elevation` collapsed (ENG-1651) — the hook was already
+ * ungated. Consolidating into one wrapper:
+ *   - applies the shadow / border / tonal-lift in one place, and
  *   - kills the 13x duplication so the next elevation change is a one-liner.
  *
  * `overflow: "hidden"` is the default because the bundle cards clip their row

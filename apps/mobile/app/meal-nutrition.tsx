@@ -335,11 +335,11 @@ export default function MealNutritionScreen() {
   const slotDateLabel = formatDateLabel(dateKey ?? dateFromParams ?? "");
   const sectionA = isFeatureEnabled("eng1247_section_a_v1");
 
-  // ENG-825 — resting-card treatment via the shared `useCardElevation`
-  // hook (replaces the two hand-rolled `borderWidth: 1` cards below).
-  // Flag OFF → flat + hairline (unchanged). `design_system_elevation` ON →
-  // soft ambient shadow (light) / tonal lift + hairline (dark). These cards
-  // don't `overflow: hidden`, so the shadow can sit directly on the card.
+  // ENG-825 — resting-card treatment via the shared `useCardElevation` hook
+  // (replaces the two hand-rolled `borderWidth: 1` cards below): soft ambient
+  // shadow (light) / tonal lift + hairline (dark); `design_system_elevation`
+  // collapsed (ENG-1651), hook was already ungated. These cards don't
+  // `overflow: hidden`, so the shadow can sit directly on the card.
   const cardSurfaceStyle: ViewStyle = {
     backgroundColor: cardElevation.liftBg ?? colors.card,
     borderWidth: cardElevation.useBorder ? 1 : 0,

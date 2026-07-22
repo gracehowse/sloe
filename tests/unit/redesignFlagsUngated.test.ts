@@ -3,10 +3,14 @@
  * Redesign 2026 flags are UN-GATED (web) — default ON in every build.
  *
  * Grace 2026-06-01: "turn everything on, never flag-gate again." Parity with
- * apps/mobile/lib/analytics.ts: `isFeatureEnabled` returns ON for the 8
+ * apps/mobile/lib/analytics.ts: `isFeatureEnabled` returns ON for the 7
  * redesign flags regardless of PostHog rollout, via REDESIGN_DEFAULT_ON in
  * src/lib/analytics/track.ts. An explicit dev/test force still wins so the
  * pre-redesign visual captures keep working.
+ *
+ * `design_system_elevation` collapsed out of REDESIGN_DEFAULT_ON (ENG-1651):
+ * the flag was removed entirely and the code now ships its ON-branch styling
+ * unconditionally, so it no longer appears in this suite's flag lists.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -23,7 +27,6 @@ vi.mock("posthog-js", () => ({
 import { isFeatureEnabled } from "@/lib/analytics/track";
 
 const REDESIGN_FLAGS = [
-  "design_system_elevation",
   "design_system_colours",
   "design_system_brandmark",
   "design_system_icons",
@@ -67,8 +70,8 @@ describe("redesign flags are un-gated (web)", () => {
 
   it("lets an explicit force OFF win (pre-redesign captures still work)", () => {
     (window as { __SUPPR_FORCE_FLAGS__?: Record<string, unknown> }).__SUPPR_FORCE_FLAGS__ =
-      { design_system_elevation: false };
-    expect(isFeatureEnabled("design_system_elevation")).toBe(false);
+      { design_system_colours: false };
+    expect(isFeatureEnabled("design_system_colours")).toBe(false);
   });
 
   it("does not affect non-redesign flags", () => {

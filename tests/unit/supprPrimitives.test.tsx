@@ -36,7 +36,6 @@ void React;
 // is covered by Storybook + Chromatic. (Reconciliation 2026-06-01: keep the
 // flat path under test.)
 const FLAT_FLAGS = {
-  design_system_elevation: false,
   design_system_colours: false,
   design_system_brandmark: false,
   design_system_icons: false,

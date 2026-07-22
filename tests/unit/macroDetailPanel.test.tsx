@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, cleanup } from "@testing-library/react";
 
-// Flag module mocked so we can flip `design_system_elevation` for the
-// gated empty-state structure (web mirror of the mobile macro/meal lane,
-// ENG-825) and `design_system_colours` for the blue commit-CTA recolour
-// (P5 parity gap #9).
+// Flag module mocked so we can flip `design_system_colours` for the blue
+// commit-CTA recolour (P5 parity gap #9). `design_system_elevation` collapsed
+// (ENG-1651) — the elevated empty-state card (ENG-825, web mirror of the
+// mobile macro/meal lane) now renders unconditionally, so it is no longer
+// toggled here.
 vi.mock("../../src/lib/analytics/track", () => ({
   track: vi.fn(),
   isFeatureEnabled: vi.fn(() => false),
@@ -179,7 +180,7 @@ describe("MacroDetailPanel — water breakdown (ENG-1213 web↔mobile parity)", 
   });
 });
 
-describe("MacroDetailPanel — empty state (ENG-825 design_system_elevation)", () => {
+describe("MacroDetailPanel — empty state (ENG-825, design_system_elevation collapsed ENG-1651)", () => {
   beforeEach(() => {
     flagFn.mockReset();
     flagFn.mockReturnValue(false);
@@ -187,18 +188,7 @@ describe("MacroDetailPanel — empty state (ENG-825 design_system_elevation)", (
   });
   afterEach(() => cleanup());
 
-  it("flag OFF → legacy one-line empty state", () => {
-    flagFn.mockReturnValue(false);
-    render(
-      <MacroDetailPanel macro="protein" meals={[]} open onClose={() => undefined} />,
-    );
-    const empty = screen.getByTestId("macro-detail-empty");
-    expect(empty.tagName.toLowerCase()).toBe("p");
-    expect(empty).toHaveTextContent("No meals logged for this day.");
-  });
-
-  it("flag ON → structured, iconified empty card with the modern radius", () => {
-    flagFn.mockImplementation((f: string) => f === "design_system_elevation");
+  it("renders the structured, iconified empty card with the modern radius unconditionally", () => {
     render(
       <MacroDetailPanel macro="protein" meals={[]} open onClose={() => undefined} />,
     );
@@ -216,7 +206,6 @@ describe("MacroDetailPanel — empty state (ENG-825 design_system_elevation)", (
   it("renders the 'Log a meal' commit CTA in the elevated empty card", () => {
     // P5 parity gap #9: the web empty state was a dead end (text only). It now
     // mirrors the mobile macro-detail empty state's commit CTA.
-    flagFn.mockImplementation((f: string) => f === "design_system_elevation");
     render(
       <MacroDetailPanel macro="protein" meals={[]} open onClose={() => undefined} />,
     );
@@ -226,7 +215,6 @@ describe("MacroDetailPanel — empty state (ENG-825 design_system_elevation)", (
   });
 
   it("CTA closes the dialog then routes to the Today log surface", () => {
-    flagFn.mockImplementation((f: string) => f === "design_system_elevation");
     const onClose = vi.fn();
     render(
       <MacroDetailPanel macro="protein" meals={[]} open onClose={onClose} />,
@@ -237,10 +225,7 @@ describe("MacroDetailPanel — empty state (ENG-825 design_system_elevation)", (
   });
 
   it("design_system_colours ON → CTA fills the blue commit colour (no macro-hue style)", () => {
-    flagFn.mockImplementation(
-      (f: string) =>
-        f === "design_system_elevation" || f === "design_system_colours",
-    );
+    flagFn.mockImplementation((f: string) => f === "design_system_colours");
     render(
       <MacroDetailPanel macro="carbs" meals={[]} open onClose={() => undefined} />,
     );
@@ -253,7 +238,7 @@ describe("MacroDetailPanel — empty state (ENG-825 design_system_elevation)", (
 
   it("design_system_colours OFF → CTA keeps the legacy saturated macro hue", () => {
     // Mirrors mobile's `ctaColorLegacy={config.color}` flag-OFF fill.
-    flagFn.mockImplementation((f: string) => f === "design_system_elevation");
+    // (beforeEach's `flagFn.mockReturnValue(false)` already covers this.)
     render(
       <MacroDetailPanel macro="carbs" meals={[]} open onClose={() => undefined} />,
     );
