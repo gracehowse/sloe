@@ -131,6 +131,22 @@ describe("Settings — Erase Everything confirm copy (P1-6, calm rewrite)", () =
   });
 });
 
+describe("Settings — meal shared links management (ENG-1648)", () => {
+  const MEAL_SHARED_LINKS_SECTION_SRC = readFileSync(
+    resolve(__dirname, "../../src/app/components/settings/MealSharedLinksSection.tsx"),
+    "utf8",
+  );
+  it("mounts the meal shared links section from Settings", () => {
+    expect(SRC).toContain("<MealSharedLinksSection");
+  });
+  it("lists and revokes via meal_shares SELECT + revoke_meal_share RPC", () => {
+    expect(MEAL_SHARED_LINKS_SECTION_SRC).toContain("settings-meal-shared-links-row");
+    expect(MEAL_SHARED_LINKS_SECTION_SRC).toContain("MEAL_SHARED_LINKS_SETTINGS_LABEL");
+    expect(MEAL_SHARED_LINKS_SECTION_SRC).toContain("listMealShares");
+    expect(MEAL_SHARED_LINKS_SECTION_SRC).toContain("revokeMealShare");
+  });
+});
+
 describe("Settings — barcode contribution withdrawal", () => {
   // The withdrawal UI was extracted into its own component (ENG-717 screen
   // budget); Settings mounts it, the component owns the fetch/delete logic.

@@ -164,6 +164,8 @@ export default function App() {
   const pathname = usePathname();
   const deepLinkRecipeId = searchParams.get("recipe");
   const viewParam = searchParams.get("view");
+  const settingsPaneParam = searchParams.get("pane");
+  const openMealSharedLinksParam = searchParams.get("mealSharedLinks");
   // 2026-05-12 (premium-bar audit refuse-to-pass #2 — real per-tab
   // web URLs): derive the canonical view from the pathname when the
   // user types or bookmarks `/today`, `/library`, `/plan`, etc.
@@ -618,6 +620,8 @@ export default function App() {
               scrollToPromoOnOpen={settingsScrollToPromo}
               onScrollToPromoConsumed={clearSettingsScrollToPromo}
               onBack={() => navigateToView("today")}
+              initialPaneId={settingsPaneParam ?? undefined}
+              openMealSharedLinksOnMount={openMealSharedLinksParam === "1"}
             />
           </>
         );

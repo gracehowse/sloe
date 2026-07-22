@@ -11,6 +11,12 @@
 import { toast } from "sonner";
 import { track } from "../analytics/track.ts";
 
+/** Navigate to Settings → Privacy with "My shared links" expanded. */
+export function openMealSharedLinksManager(): void {
+  if (typeof window === "undefined") return;
+  window.location.href = "/settings?pane=privacy&mealSharedLinks=1";
+}
+
 export async function shareMealTextOrLink(opts: {
   title: string;
   message: string;
@@ -30,6 +36,14 @@ export async function shareMealTextOrLink(opts: {
         shareUrl ? { title, text: message, url: shareUrl } : { title, text: message },
       );
       track("meal_share_invoked", { surface, outcome: "shared", mode });
+      if (shareUrl) {
+        toast.success("Share link created", {
+          action: {
+            label: "Manage",
+            onClick: openMealSharedLinksManager,
+          },
+        });
+      }
       return;
     } catch (err) {
       const errName = (err as Error)?.name;
@@ -53,7 +67,14 @@ export async function shareMealTextOrLink(opts: {
   const clipboardText = shareUrl ? `${message}\n${shareUrl}` : message;
   try {
     await navigator.clipboard.writeText(clipboardText);
-    toast.success(shareUrl ? "Share link copied" : "Meal copied to clipboard");
+    toast.success(shareUrl ? "Share link copied" : "Meal copied to clipboard", shareUrl
+      ? {
+          action: {
+            label: "Manage",
+            onClick: openMealSharedLinksManager,
+          },
+        }
+      : undefined);
     track("meal_share_invoked", { surface, outcome: "shared", mode });
   } catch {
     toast.error("Couldn't copy meal");

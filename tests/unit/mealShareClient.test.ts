@@ -3,10 +3,12 @@ import { MEAL_SHARE_STORAGE_KEY } from "@/lib/share/mealShareLink";
 import {
   createMealShare,
   getMealShare,
+  listMealShares,
   revokeMealShare,
   storePendingMealShare,
   takePendingMealShare,
   type SupabaseRpcLike,
+  type SupabaseFromLike,
 } from "@/lib/share/mealShareClient";
 
 function stubRpc(result: {
@@ -14,6 +16,17 @@ function stubRpc(result: {
   error: { message: string } | null;
 }): SupabaseRpcLike & { rpc: ReturnType<typeof vi.fn> } {
   return { rpc: vi.fn(async () => result) };
+}
+
+function stubFrom(rows: unknown[], error: { message: string } | null = null) {
+  const limit = vi.fn(async () => ({ data: rows, error }));
+  const order = vi.fn(() => ({ limit }));
+  const select = vi.fn(() => ({ order }));
+  const from = vi.fn(() => ({ select }));
+  return { from, select, order, limit } as SupabaseFromLike & {
+    from: ReturnType<typeof vi.fn>;
+    limit: ReturnType<typeof vi.fn>;
+  };
 }
 
 afterEach(() => {
@@ -146,6 +159,31 @@ describe("revokeMealShare", () => {
     const supabase = stubRpc({ data: null, error: { message: "boom" } });
     const result = await revokeMealShare(supabase, "share-1");
     expect(result).toEqual({ status: "error" });
+  });
+});
+
+describe("listMealShares", () => {
+  it("parses rows from meal_shares SELECT", async () => {
+    const supabase = stubFrom([
+      {
+        id: "share-1",
+        token: "a".repeat(32),
+        title: "Lunch",
+        meal_slot: "Lunch",
+        created_at: "2026-07-22T09:00:00Z",
+        expires_at: "2026-08-21T09:00:00Z",
+        revoked_at: null,
+      },
+    ]);
+    const rows = await listMealShares(supabase);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.title).toBe("Lunch");
+    expect(supabase.from).toHaveBeenCalledWith("meal_shares");
+  });
+
+  it("returns [] on query error", async () => {
+    const supabase = stubFrom([], { message: "relation does not exist" });
+    expect(await listMealShares(supabase)).toEqual([]);
   });
 });
 

@@ -189,6 +189,7 @@ describe("ENG-1642 — meal share link events", () => {
     // rename to any of these breaks the ENG-1642 funnel dashboards.
     expect(AnalyticsEvents.meal_share_link_created).toBe("meal_share_link_created");
     expect(AnalyticsEvents.meal_share_link_opened).toBe("meal_share_link_opened");
+    expect(AnalyticsEvents.meal_share_link_revoked).toBe("meal_share_link_revoked");
     expect(AnalyticsEvents.shared_meal_logged).toBe("shared_meal_logged");
     expect(AnalyticsEvents.shared_meal_signup_started).toBe(
       "shared_meal_signup_started",

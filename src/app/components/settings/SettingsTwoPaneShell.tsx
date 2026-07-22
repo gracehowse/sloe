@@ -57,12 +57,24 @@ export interface SettingsTwoPaneShellProps {
   onBack?: () => void;
   /** Section groups, in nav order. The first is selected on open. */
   sections: SettingsPaneSection[];
+  /** When set, selects this section id on mount if it exists in `sections`. */
+  initialSectionId?: string;
 }
 
-export function SettingsTwoPaneShell({ header, onBack, sections }: SettingsTwoPaneShellProps) {
+export function SettingsTwoPaneShell({
+  header,
+  onBack,
+  sections,
+  initialSectionId,
+}: SettingsTwoPaneShellProps) {
   // Defensive: an empty section list renders nothing but the header rather
   // than crashing on `sections[0]`.
-  const [activeId, setActiveId] = useState<string>(() => sections[0]?.id ?? "");
+  const [activeId, setActiveId] = useState<string>(() => {
+    if (initialSectionId && sections.some((s) => s.id === initialSectionId)) {
+      return initialSectionId;
+    }
+    return sections[0]?.id ?? "";
+  });
   const active = sections.find((s) => s.id === activeId) ?? sections[0] ?? null;
 
   return (

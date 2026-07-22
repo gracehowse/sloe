@@ -7,12 +7,15 @@
  * live in the shared module so mobile and web can't drift.
  */
 import Constants from "expo-constants";
-import { Share } from "react-native";
+import { Alert, Share } from "react-native";
+import { router } from "expo-router";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { normalizeJournalSlotName, type JournalMeal } from "@/lib/nutritionJournal";
+import { requestOpenMealSharedLinksManager } from "@/lib/mealSharedLinksManager";
+import { settingsRoute } from "@/lib/settingsRoute";
 import { buildMealShareText } from "@suppr/shared/share/buildMealShareText";
 import {
   MEAL_SHARE_FLAG,
@@ -166,6 +169,23 @@ async function shareJournalMealAsLink(meal: JournalMeal, surface: string): Promi
       outcome: shareResult.action === Share.dismissedAction ? "dismissed" : "shared",
       mode: "link",
     });
+    if (shareResult.action === Share.sharedAction) {
+      Alert.alert(
+        "Link shared",
+        "Recipients can add this meal from your link.",
+        [
+          { text: "Done", style: "cancel" },
+          {
+            text: "Manage links",
+            onPress: () => {
+              void requestOpenMealSharedLinksManager().then(() => {
+                router.push(settingsRoute());
+              });
+            },
+          },
+        ],
+      );
+    }
   } catch {
     track("meal_share_invoked", { surface, outcome: "error", mode: "link" });
   }

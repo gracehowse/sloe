@@ -13,6 +13,11 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 vi.mock("react-native", () => ({
   Share: { share: vi.fn(), dismissedAction: "dismissedAction", sharedAction: "sharedAction" },
+  Alert: { alert: vi.fn() },
+}));
+
+vi.mock("expo-router", () => ({
+  router: { push: vi.fn() },
 }));
 
 vi.mock("@/lib/supabase", () => ({
@@ -29,7 +34,8 @@ vi.mock("expo-constants", () => ({
 }));
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Share } from "react-native";
+import { Alert, Share } from "react-native";
+import { router } from "expo-router";
 import { supabase } from "@/lib/supabase";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import {
@@ -131,6 +137,8 @@ describe("shareJournalMeal — link vs text orchestration", () => {
     vi.mocked(supabase.rpc).mockReset();
     vi.mocked(track).mockReset();
     vi.mocked(isFeatureEnabled).mockReset().mockReturnValue(false);
+    vi.mocked(Alert.alert).mockReset();
+    vi.mocked(router.push).mockReset();
   });
 
   it("flag off: exactly one legacy text-only sheet — no url field, mode \"text\"", async () => {
@@ -206,6 +214,15 @@ describe("shareJournalMeal — link vs text orchestration", () => {
       outcome: "shared",
       mode: "link",
     });
+    expect(Alert.alert).toHaveBeenCalledWith(
+      "Link shared",
+      "Recipients can add this meal from your link.",
+      expect.arrayContaining([
+        expect.objectContaining({ text: "Done" }),
+        expect.objectContaining({ text: "Manage links" }),
+      ]),
+    );
+    expect(router.push).not.toHaveBeenCalled();
   });
 
   it("flag on, RPC created, native Share sheet throws: does NOT open a second (legacy) share sheet", async () => {

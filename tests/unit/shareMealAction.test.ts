@@ -158,7 +158,9 @@ describe("shareMealTextOrLink — linkAttempted + NotAllowedError clipboard resc
     expect(clipboardWrite).toHaveBeenCalledWith(
       `${baseOpts.message}\nhttps://getsloe.com/m/a1b2c3d4e5f60718293a4b5c6d7e8f90`,
     );
-    expect(toastSuccess).toHaveBeenCalledWith("Share link copied");
+    expect(toastSuccess).toHaveBeenCalledWith("Share link copied", {
+      action: expect.objectContaining({ label: "Manage" }),
+    });
     expect(toastError).not.toHaveBeenCalled();
     expect(trackCalls).toEqual([
       { event: "meal_share_invoked", payload: { surface: baseOpts.surface, outcome: "shared", mode: "link" } },
@@ -178,7 +180,7 @@ describe("shareMealTextOrLink — linkAttempted + NotAllowedError clipboard resc
 
     // No URL to append — shareUrl is null, so only the text is copied.
     expect(clipboardWrite).toHaveBeenCalledWith(baseOpts.message);
-    expect(toastSuccess).toHaveBeenCalledWith("Meal copied to clipboard");
+    expect(toastSuccess).toHaveBeenCalledWith("Meal copied to clipboard", undefined);
     expect(toastError).not.toHaveBeenCalled();
     expect(trackCalls).toEqual([
       { event: "meal_share_invoked", payload: { surface: baseOpts.surface, outcome: "shared", mode: "text" } },
@@ -218,7 +220,9 @@ describe("shareMealTextOrLink — clipboard-only environments (no navigator.shar
     expect(clipboardWrite).toHaveBeenCalledWith(
       `${baseOpts.message}\nhttps://getsloe.com/m/a1b2c3d4e5f60718293a4b5c6d7e8f90`,
     );
-    expect(toastSuccess).toHaveBeenCalledWith("Share link copied");
+    expect(toastSuccess).toHaveBeenCalledWith("Share link copied", {
+      action: expect.objectContaining({ label: "Manage" }),
+    });
     expect(trackCalls).toEqual([
       { event: "meal_share_invoked", payload: { surface: baseOpts.surface, outcome: "shared", mode: "link" } },
     ]);
@@ -232,7 +236,7 @@ describe("shareMealTextOrLink — clipboard-only environments (no navigator.shar
     await shareMealTextOrLink({ ...baseOpts, shareUrl: null, linkAttempted: false });
 
     expect(clipboardWrite).toHaveBeenCalledWith(baseOpts.message);
-    expect(toastSuccess).toHaveBeenCalledWith("Meal copied to clipboard");
+    expect(toastSuccess).toHaveBeenCalledWith("Meal copied to clipboard", undefined);
     expect(trackCalls).toEqual([
       { event: "meal_share_invoked", payload: { surface: baseOpts.surface, outcome: "shared", mode: "text" } },
     ]);

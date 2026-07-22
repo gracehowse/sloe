@@ -480,6 +480,10 @@ export const AnalyticsEvents = {
    *  authed: boolean }` — `authed` lets the funnel split the signed-in
    *  vs signed-out open rate for the accept flow. */
   meal_share_link_opened: "meal_share_link_opened",
+  /** ENG-1648 — sharer revoked an active meal-share link from the
+   *  "My shared links" management surface. Payload:
+   *  `{ surface: "settings_privacy" | "share_toast_manage" }`. */
+  meal_share_link_revoked: "meal_share_link_revoked",
   /** ENG-1642 — a recipient confirmed the accept dialog/screen and the
    *  shared meal's items were logged into their own journal for the
    *  chosen day + slot. Payload: `{ surface: "web_accept_dialog" |

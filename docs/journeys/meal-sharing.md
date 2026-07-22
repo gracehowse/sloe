@@ -332,12 +332,19 @@ mounted in `src/app/App.tsx`), `src/app/components/suppr/shared-meal-accept-dial
 **What exists today:** `revoke_meal_share(p_share_id)` — an RPC, scoped to
 `created_by = auth.uid()`, that sets `revoked_at` so any future
 `get_meal_share` call on that token returns `status:"revoked"` instead of
-`"ok"`. This ships in v1.
+`"ok"`. **ENG-1648** adds the management surface on both platforms:
 
-**What does not exist yet:** a "my shared links" management surface (a list
-of links a user has sent, with a revoke button per row) on either platform.
-This is tracked as **ENG-1648** — not a silent gap. Today, revocation is
-only reachable by a direct RPC call; there is no UI path to it.
+- **Settings → Privacy & data → "My shared links"** — expandable list of the
+  caller's shares (title, meal slot, created, expires, active/expired/revoked
+  state) with a per-row **Revoke** action on active links only.
+- **Post-share entry (web):** the "Share link copied" / "Share link created"
+  confirmation toast includes a **Manage** action that deep-links to Settings →
+  Privacy with the list expanded.
+- **Post-share entry (mobile):** after a successful native share, an alert
+  offers **Manage links**, which opens Settings with the list expanded.
+
+Listing reads `meal_shares` directly (RLS `meal_shares_select_own`); revocation
+still goes through the `revoke_meal_share` RPC.
 
 ## Edge cases
 
@@ -405,7 +412,7 @@ only reachable by a direct RPC call; there is no UI path to it.
 | Accept UI (day/slot picker) | Same shape (slot chips + day picker + item list + totals), platform-idiomatic day-picker widget: web uses an open date input + Today/Tomorrow quick chips, mobile uses a fixed Today/Tomorrow/+2-days 3-chip row (no open date picker) |
 | Accept write path | Both write brand-new `nutrition_entries` rows via each platform's own build-row helper; both fire the same three post-write side effects (adaptive TDEE refresh, daily-target snapshot, HealthKit write — HealthKit obviously mobile-only in effect, but the call convention mirrors the manual-log path on both) |
 | Analytics | Identical event names + payload shapes on both platforms (`meal_share_link_created`, `meal_share_link_opened`, `shared_meal_logged`, `shared_meal_signup_started` — the last is web-only in practice since it's a signup-CTA event and mobile has no equivalent landing-page signup CTA) |
-| Revocation | RPC exists identically for both; **no UI on either platform** — tracked as **ENG-1648** (Step 4) |
+| Revocation | RPC + **"My shared links" management UI** on both platforms (ENG-1648) — Settings → Privacy, plus post-share Manage entry |
 
 ## Analytics
 
@@ -465,8 +472,8 @@ genuinely new user (no app required to view it). Tracked as the decision
 ticket **ENG-1649**.
 
 **Should the "my shared links" management UI (list + revoke) ship in v1.1,
-or wait for signal that anyone wants to revoke a link?** The RPC exists;
-the UI doesn't. Tracked as **ENG-1648** rather than scope-crept into v1.
+or wait for signal that anyone wants to revoke a link?** Shipped in
+**ENG-1648** — the RPC existed from v1; this adds the user-facing surface.
 
 **Is a rate-limited or migration-not-applied share worth a visible error to
 the sharer**, rather than the current silent degrade to text-only? The

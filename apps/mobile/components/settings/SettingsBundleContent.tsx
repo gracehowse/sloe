@@ -133,7 +133,9 @@ import {
 } from "@suppr/shared/household/sharingGridStorage";
 import { IconBox, SettingsRow } from "./SettingsRow";
 import { BarcodeContributionsSection } from "./BarcodeContributionsSection";
+import { MealSharedLinksSection } from "./MealSharedLinksSection";
 import { AnalyticsConsentRow } from "./AnalyticsConsentRow";
+import { consumeOpenMealSharedLinksManager } from "@/lib/mealSharedLinksManager";
 
 /**
  * SettingsBundleContent — shared body of the legacy "More" tab.
@@ -382,6 +384,15 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   const statTileElevation = useCardElevation();
   const semanticStatRoles = isFeatureEnabled("semantic_stat_roles_v1");
   const userId = session?.user?.id ?? null;
+  const [openMealSharedLinksOnMount, setOpenMealSharedLinksOnMount] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      void consumeOpenMealSharedLinksManager().then((shouldOpen) => {
+        if (shouldOpen) setOpenMealSharedLinksOnMount(true);
+      });
+    }, []),
+  );
 
   const [profileData, setProfileData] = useState<{
     savedCount: number;
@@ -2284,6 +2295,10 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           }}
         />
         <BarcodeContributionsSection userId={userId} />
+        <MealSharedLinksSection
+          userId={userId}
+          initialOpen={openMealSharedLinksOnMount}
+        />
         <AnalyticsConsentRow />{/* ENG-1286 — usage analytics + replay consent */}
         <SettingsRow
           testID="settings-bundle-help-row"

@@ -101,6 +101,7 @@ import {
   sharingStorageKey,
 } from "../../lib/household/sharingGridStorage.ts";
 import { BarcodeContributionsSection } from "./settings/BarcodeContributionsSection.tsx";
+import { MealSharedLinksSection } from "./settings/MealSharedLinksSection.tsx";
 
 const THEME_OPTIONS = [
   { value: "system", label: "Auto" },
@@ -143,6 +144,10 @@ interface SettingsProps {
   onScrollToPromoConsumed?: () => void;
   /** Mobile-web pushed-screen back action; desktop keeps sidebar ownership. */
   onBack?: () => void;
+  /** Sloe v3 two-pane: open this section on mount (e.g. `privacy`). */
+  initialPaneId?: string;
+  /** Expand "My shared links" inside Privacy on mount (post-share Manage). */
+  openMealSharedLinksOnMount?: boolean;
 }
 
 const LOCAL_CLEAR_KEYS = [
@@ -152,7 +157,15 @@ const LOCAL_CLEAR_KEYS = [
   "suppr-recent-foods-v1",
 ];
 
-export const Settings = memo(function Settings({ userTier, authEmail, scrollToPromoOnOpen, onScrollToPromoConsumed, onBack }: SettingsProps) {
+export const Settings = memo(function Settings({
+  userTier,
+  authEmail,
+  scrollToPromoOnOpen,
+  onScrollToPromoConsumed,
+  onBack,
+  initialPaneId,
+  openMealSharedLinksOnMount,
+}: SettingsProps) {
   const {
     signOut,
     profileDisplayName,
@@ -1867,6 +1880,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             <p className="text-xs mt-0.5">Yours forever. Take your data anywhere — recipes, meal log, weights, plans. Downloads as a JSON file.</p>
           </button>
           <BarcodeContributionsSection />
+          <MealSharedLinksSection initialOpen={openMealSharedLinksOnMount} />
           {/* 2026-05-02 — MFP CSV bulk-import card. Closes the
               MFP-refugee history-bridge gap (P1 customer-lens). Mirrors
               the same card on mobile Settings (App section) and on
@@ -2097,6 +2111,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
       <>
         <SettingsTwoPaneShell
           onBack={onBack}
+          initialSectionId={initialPaneId}
           header={
             <>
               {profileHeaderCard}

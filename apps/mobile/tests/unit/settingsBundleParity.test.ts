@@ -180,6 +180,19 @@ describe("SettingsBundleContent — parity contract", () => {
     expect(deleteHook).toMatch(/Authorization:\s*`Bearer/);
   });
 
+  it("surfaces meal shared links management from Settings Account", () => {
+    expect(bundle).toContain("<MealSharedLinksSection");
+    const section = readFileSync(
+      resolve(__dirname, "../../components/settings/MealSharedLinksSection.tsx"),
+      "utf8",
+    );
+    expect(section).toContain("MEAL_SHARED_LINKS_SETTINGS_LABEL");
+    expect(section).toContain("settings-bundle-meal-shared-links-row");
+    expect(section).toContain("settings-bundle-meal-shared-links-list");
+    expect(section).toContain(".from(\"meal_shares\")");
+    expect(section).toContain("revoke_meal_share");
+  });
+
   it("surfaces barcode contribution withdrawal from Settings Account", () => {
     // The withdrawal UI was extracted into BarcodeContributionsSection
     // (ENG-717 screen budget); the bundle mounts it, the component owns the

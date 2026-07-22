@@ -15,12 +15,29 @@ import {
   parseMealShareLookup,
   type MealShareLookup,
 } from "./mealShareLink.ts";
+import { parseMealShareRow, type MealShareRow } from "./mealSharedLinks.ts";
 
 export type SupabaseRpcLike = {
   rpc: (
     fn: string,
     args?: Record<string, unknown>,
   ) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
+};
+
+export type SupabaseFromLike = {
+  from: (table: string) => {
+    select: (columns: string) => {
+      order: (
+        column: string,
+        opts: { ascending: boolean },
+      ) => {
+        limit: (n: number) => PromiseLike<{
+          data: unknown[] | null;
+          error: { message: string } | null;
+        }>;
+      };
+    };
+  };
 };
 
 function asRecord(data: unknown): Record<string, unknown> {
@@ -75,6 +92,26 @@ export async function getMealShare(
   const { data, error } = await supabase.rpc("get_meal_share", { p_token: token });
   if (error) return { status: "invalid" };
   return parseMealShareLookup(data);
+}
+
+/**
+ * Lists the caller's `meal_shares` rows (RLS-scoped). Returns `[]` on
+ * network/RLS/migration-missing failure — the management UI degrades to
+ * an empty state, not a crash.
+ */
+export async function listMealShares(
+  supabase: SupabaseFromLike,
+  limit = 50,
+): Promise<MealShareRow[]> {
+  const { data, error } = await supabase
+    .from("meal_shares")
+    .select("id, token, title, meal_slot, created_at, expires_at, revoked_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error || !data) return [];
+  return data
+    .map(parseMealShareRow)
+    .filter((row): row is MealShareRow => row !== null);
 }
 
 /** Calls `revoke_meal_share`. Network/RPC failure collapses to `"error"`. */
