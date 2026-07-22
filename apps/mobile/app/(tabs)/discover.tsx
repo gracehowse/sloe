@@ -111,7 +111,7 @@ function DiscoverHeroMedia({ item }: { item: RecipeCard }) {
           onError={() => setBroken(true)}
         />
       ) : (
-        <RecipeHeroFallback id={item.id} title={item.title} />
+        <RecipeHeroFallback id={item.id} title={item.title} variant="hero" />
       )}
       <SourceBadge source={item.source} />
     </View>

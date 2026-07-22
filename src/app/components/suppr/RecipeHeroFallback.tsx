@@ -24,6 +24,9 @@ import {
 import {
   getRecipeFallback,
   patternSvgContent,
+  RECIPE_PLACEHOLDER_IDENTITY_FLAG,
+  recipeHeroGlyphClampCss,
+  type RecipeHeroFallbackVariant,
   type RecipeHeroGlyph,
   type RecipeHeroInput,
 } from "../../../lib/recipe/recipeHeroFallback";
@@ -44,22 +47,32 @@ const GLYPHS: Record<RecipeHeroGlyph, LucideIcon> = {
 export interface RecipeHeroFallbackProps extends RecipeHeroInput {
   /** Icon size in px. Defaults to 32 per §2 of the brief. */
   iconSize?: number;
+  /** Hero slabs scale larger when `recipe_placeholder_identity_v1` is on. */
+  variant?: RecipeHeroFallbackVariant;
   /** Optional className on the wrapping `<div>` (positioning only). */
   className?: string;
   /** Passes through to testing. */
   testId?: string;
 }
 
-function RecipeHeroFallbackImpl({ iconSize = 32, className, testId, ...input }: RecipeHeroFallbackProps) {
+function RecipeHeroFallbackImpl({
+  iconSize = 32,
+  variant = "thumb",
+  className,
+  testId,
+  ...input
+}: RecipeHeroFallbackProps) {
   // ENG-1528 — dark cards get the dark ramp tile; light is byte-identical.
   const scheme = useFallbackScheme();
   const palette = isFeatureEnabled("recipe_sparse_media_v1")
     ? "plum-duotone"
     : "legacy-cuisine";
+  const identityV1 = isFeatureEnabled(RECIPE_PLACEHOLDER_IDENTITY_FLAG);
   const fb = getRecipeFallback(input, scheme, palette);
   const Glyph = GLYPHS[fb.glyph];
   const patternId = `hero-pattern-${fb.pattern}-${fb.bucket}-${input.id}`;
   const gradientId = `hero-gradient-${fb.bucket}-${input.id}`;
+  const glyphSize = recipeHeroGlyphClampCss(iconSize, variant, identityV1);
   return (
     <div
       className={className}
@@ -67,6 +80,7 @@ function RecipeHeroFallbackImpl({ iconSize = 32, className, testId, ...input }: 
       data-bucket={fb.bucket}
       data-pattern={fb.pattern}
       data-glyph={fb.glyph}
+      data-variant={variant}
       style={{
         position: "absolute",
         inset: 0,
@@ -74,7 +88,8 @@ function RecipeHeroFallbackImpl({ iconSize = 32, className, testId, ...input }: 
         height: "100%",
         // ENG-1552 — establish a size container so the glyph can scale with
         // the slab (a fixed 32/48px glyph was lost in a 1100×260 hero and read
-        // as a broken image).
+        // as a broken image). ENG-1667 raises the cap on hero slabs when the
+        // identity flag is on.
         containerType: "size",
       }}
     >
@@ -128,11 +143,8 @@ function RecipeHeroFallbackImpl({ iconSize = 32, className, testId, ...input }: 
         <Glyph
           style={{
             color: fb.glyphColor,
-            // ENG-1552 — scale with the container's smaller dimension
-            // (`cqmin`), floored at the caller's `iconSize` so small thumbs are
-            // unchanged and capped so a giant hero doesn't get a giant glyph.
-            width: `clamp(${iconSize}px, 30cqmin, 112px)`,
-            height: `clamp(${iconSize}px, 30cqmin, 112px)`,
+            width: glyphSize,
+            height: glyphSize,
           }}
           aria-hidden
         />

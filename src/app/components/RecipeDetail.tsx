@@ -338,7 +338,7 @@ function RecipeHeroImage({
   if (broken) {
     return (
       <div className="w-full aspect-video" style={style}>
-        <RecipeHeroFallback id={recipeId} title={recipeTitle} iconSize={48} />
+        <RecipeHeroFallback id={recipeId} title={recipeTitle} iconSize={48} variant="hero" />
       </div>
     );
   }
@@ -1927,7 +1927,7 @@ export function RecipeDetail({ recipe, userTier, onBack, onUpgrade, autoOpenCook
               />
             ) : (
               <div className="w-full h-full" style={{ viewTransitionName: `recipe-${recipe.id}-image` }} data-testid="recipe-detail-hero-fallback">
-                <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={56} />
+                <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={56} variant="hero" />
               </div>
             )}
             {isAiGeneratedHero || heroPreviewUrl ? (

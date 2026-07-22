@@ -159,7 +159,7 @@ export function RecipeDetailHero({
         // cream/plum placeholder + glyph; controls stay overlaid. NOT a
         // separate nav bar (Figma §1 explicit).
         <View style={{ width: "100%", height: "100%" }} testID="recipe-detail-hero-fallback">
-          <RecipeHeroFallback id={recipeId} title={title} tags={tags} iconSize={56} />
+          <RecipeHeroFallback id={recipeId} title={title} tags={tags} iconSize={56} variant="hero" />
         </View>
       )}
 

@@ -62,6 +62,28 @@ export type RecipeHeroPattern = "dots" | "grid" | "chevron" | "circles";
 export type FallbackScheme = "light" | "dark";
 export type RecipeFallbackPalette = "legacy-cuisine" | "plum-duotone";
 
+/**
+ * ENG-1667 / ENG-1374 layer 2 — larger category illustration on no-image
+ * heroes. Off = ENG-1552 caps (112 / 30cqmin). On + hero variant = stronger
+ * identity mark (144 / 38cqmin) while tint+pattern+glyph still come from
+ * `getRecipeFallback`.
+ */
+export const RECIPE_PLACEHOLDER_IDENTITY_FLAG = "recipe_placeholder_identity_v1" as const;
+
+/** Hero slabs vs compact thumbs — only heroes get the larger cap when identity v1 is on. */
+export type RecipeHeroFallbackVariant = "hero" | "thumb";
+
+/** Glyph scale caps for RecipeHeroFallback (web clamp + mobile measure). */
+export function recipePlaceholderGlyphScale(
+  identityFlagOn: boolean,
+  variant: RecipeHeroFallbackVariant = "thumb",
+): { maxPx: number; cqminFrac: number } {
+  if (identityFlagOn && variant === "hero") {
+    return { maxPx: 144, cqminFrac: 0.38 };
+  }
+  return { maxPx: 112, cqminFrac: 0.3 };
+}
+
 /** ENG-1575 — the one flag-gated no-image identity for recipe surfaces. */
 export const PLUM_DUOTONE = {
   light: { start: "#D8D0E6", end: "#F1F0F4", markRgb: "91, 59, 110" },
@@ -329,6 +351,12 @@ export function getRecipeFallback(
 }
 
 /**
+ * Alias for the frozen placeholder identity resolver (ENG-1667). Prefer this
+ * name in new call sites that mean "same recipe → same tile everywhere."
+ */
+export const resolveRecipePlaceholderIdentity = getRecipeFallback;
+
+/**
  * ENG-1374 PR 2 — the never-white structural underlay colour for a
  * recipe image WRAPPER. Every recipe image container paints this as an
  * opaque `backgroundColor` on the wrapper itself (not on the image or
@@ -349,6 +377,35 @@ export function recipeUnderlayColor(
   palette: RecipeFallbackPalette = "legacy-cuisine",
 ): string {
   return getRecipeFallback(input, scheme, palette).gradientStart;
+}
+
+/**
+ * ENG-1667 — shared glyph-size resolver for mobile. Mirrors the web
+ * `clamp(iconSize, cqminFrac*cqmin, maxPx)` using the measured slab.
+ */
+export function resolveRecipeHeroGlyphPx(opts: {
+  iconSize: number;
+  variant: RecipeHeroFallbackVariant;
+  identityV1: boolean;
+  containerMin?: number;
+}): number {
+  const { iconSize, variant, identityV1, containerMin } = opts;
+  const { maxPx, cqminFrac } = recipePlaceholderGlyphScale(identityV1, variant);
+  if (containerMin == null || containerMin <= 0) return iconSize;
+  return Math.max(iconSize, Math.min(maxPx, cqminFrac * containerMin));
+}
+
+/**
+ * Web CSS `width`/`height` for the centre glyph. Uses the shared scale caps.
+ */
+export function recipeHeroGlyphClampCss(
+  iconSize: number,
+  variant: RecipeHeroFallbackVariant,
+  identityV1: boolean,
+): string {
+  const { maxPx, cqminFrac } = recipePlaceholderGlyphScale(identityV1, variant);
+  const cqv = Math.round(cqminFrac * 100);
+  return `clamp(${iconSize}px, ${cqv}cqmin, ${maxPx}px)`;
 }
 
 /**

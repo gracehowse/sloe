@@ -105,6 +105,7 @@ export function NorthStarFigmaHero({
               id={suggestion.recipeId}
               title={suggestion.title}
               iconSize={48}
+              variant="hero"
             />
           )}
         </View>

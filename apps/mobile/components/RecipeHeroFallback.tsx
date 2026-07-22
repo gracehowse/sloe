@@ -36,6 +36,9 @@ import {
 import type { ComponentType } from "react";
 import {
   getRecipeFallback,
+  RECIPE_PLACEHOLDER_IDENTITY_FLAG,
+  resolveRecipeHeroGlyphPx,
+  type RecipeHeroFallbackVariant,
   type RecipeHeroGlyph,
   type RecipeHeroInput,
   type RecipeHeroPattern,
@@ -59,6 +62,8 @@ const GLYPHS: Record<RecipeHeroGlyph, LucideRnIcon> = {
 export interface RecipeHeroFallbackProps extends RecipeHeroInput {
   /** Icon size in px. Defaults to 32 per §2 of the brief. */
   iconSize?: number;
+  /** Hero slabs scale larger when `recipe_placeholder_identity_v1` is on. */
+  variant?: RecipeHeroFallbackVariant;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
@@ -90,24 +95,34 @@ function PatternShape({ pattern, stroke }: { pattern: RecipeHeroPattern; stroke:
   }
 }
 
-function RecipeHeroFallbackImpl({ iconSize = 32, style, testID, ...input }: RecipeHeroFallbackProps) {
+function RecipeHeroFallbackImpl({
+  iconSize = 32,
+  variant = "thumb",
+  style,
+  testID,
+  ...input
+}: RecipeHeroFallbackProps) {
   // ENG-1528 — dark cards get the dark ramp tile; light is byte-identical.
   const scheme = useResolvedScheme();
   const palette = isFeatureEnabled("recipe_sparse_media_v1")
     ? "plum-duotone"
     : "legacy-cuisine";
+  const identityV1 = isFeatureEnabled(RECIPE_PLACEHOLDER_IDENTITY_FLAG);
   const fb = getRecipeFallback(input, scheme, palette);
   const Glyph = GLYPHS[fb.glyph];
   const patternId = `hero-p-${fb.pattern}-${input.id}`;
   const gradientId = `hero-g-${fb.bucket}-${input.id}`;
-  // ENG-1552 — RN has no container queries, so measure the slab and scale the
-  // glyph with its smaller dimension (floored at `iconSize` so thumbs are
-  // unchanged, capped at 112). Mirrors the web `clamp(iconSize, 30cqmin, 112)`.
+  // ENG-1667 — RN has no container queries; measure the slab and scale the
+  // glyph with its smaller dimension (floored at `iconSize`). Mirrors the web
+  // `clamp(iconSize, cqminFrac*cqmin, maxPx)` via `recipePlaceholderGlyphScale`.
   const [box, setBox] = useState({ w: 0, h: 0 });
-  const glyphSize =
-    box.w > 0 && box.h > 0
-      ? Math.max(iconSize, Math.min(112, 0.3 * Math.min(box.w, box.h)))
-      : iconSize;
+  const containerMin = box.w > 0 && box.h > 0 ? Math.min(box.w, box.h) : undefined;
+  const glyphSize = resolveRecipeHeroGlyphPx({
+    iconSize,
+    variant,
+    identityV1,
+    containerMin,
+  });
   return (
     <View
       style={[{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }, style]}

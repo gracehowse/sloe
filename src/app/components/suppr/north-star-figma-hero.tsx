@@ -88,6 +88,7 @@ export function NorthStarFigmaHeroBlock({
               id={suggestion.recipeId}
               title={suggestion.title}
               iconSize={48}
+              variant="hero"
               className="h-full w-full"
             />
           )}
