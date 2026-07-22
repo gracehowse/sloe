@@ -206,7 +206,7 @@ import { useWinMoment } from "@/hooks/use-win-moment";
 import { WinMomentPlayer } from "@/components/ui/WinMomentPlayer";
 import { useLogConfirmCheck } from "@/hooks/useLogConfirmCheck";
 import { LogConfirmCheck } from "@/components/today/LogConfirmCheck";
-import { TodayHero } from "@/components/today/TodayHero";
+import { TodayHeroBlock } from "@/components/today/TodayHeroBlock";
 import { TodayGreetingHero } from "@/components/today/TodayGreetingHero";
 import { WhyThisNumberSheet } from "@/components/today/WhyThisNumberSheet";
 import { paceKgPerWeekFromPreset, whyThisNumberGoalFromDb } from "@suppr/nutrition-core/whyThisNumber";
@@ -275,7 +275,6 @@ import {
   sessionTrayToSavedMealItems,
   sessionTrayTotals,
 } from "@suppr/nutrition-core/logSessionTray";
-import { TodayDeficitInsight } from "@/components/today/TodayDeficitInsight";
 import { TodayPlannedMealsCard } from "@/components/today/TodayPlannedMealsCard";
 import { TodayCompleteDayButton } from "@/components/today/TodayCompleteDayButton";
 import { TodayAddFoodForm } from "@/components/today/TodayAddFoodForm";
@@ -2721,6 +2720,14 @@ export default function TrackerScreen() {
           gap: Spacing.xl,
           paddingTop: Spacing.sm,
         },
+        // ENG-1653 hero cluster. OFF mirrors the scroll gap exactly (so the
+        // wrapper is layout-neutral); ON is the v3 prototype rhythm — gap 4
+        // + greeting 4 (=8 under the wordmark) + strip 16 (=20 under the
+        // greeting) + dial at the bare 4.
+        heroClusterOff: { gap: Spacing.xl },
+        heroClusterTight: { gap: Spacing.xs },
+        heroClusterGreeting: { marginTop: Spacing.xs },
+        heroClusterStrip: { marginTop: Spacing.md },
 
 
         dateNav: {
@@ -3564,6 +3571,79 @@ export default function TrackerScreen() {
     );
   }
 
+  // ENG-1653 (Grace 2026-07-21, "we need a proper hero section / today
+  // page") — `today_hero_cluster_v3` compresses wordmark → greeting → strip
+  // → dial into the v3 prototype's tight hero cluster (`.t-greet` +8 /
+  // `.day-strip` +20 −2 / `.ring-hero` +2 — vs today's flat 24 scroll gap)
+  // and moves the north-star "eat next" module to directly under the hero
+  // (the prototype order; its below-macros slot came from the dead Figma
+  // `654:2`). Hero + north-star are built ONCE here and mounted in one of
+  // two slots per flag state, so OFF renders the exact legacy tree.
+  // Default OFF; Grace ramps in PostHog.
+  const heroClusterOn = isFeatureEnabled("today_hero_cluster_v3");
+  const heroBlock =
+    viewMode === "day" ? (
+      <TodayHeroBlock
+        entranceStyle={heroEntrance.style}
+        totals={totals}
+        effectiveMacroTargets={effectiveMacroTargets}
+        effectiveCalorieGoal={effectiveCalorieGoal}
+        baseGoal={todayActivityBudgetAddon > 0 ? targets.calories : undefined}
+        textColor={colors.text}
+        textSecondaryColor={colors.textSecondary}
+        textTertiaryColor={colors.textTertiary}
+        cardBackgroundColor={colors.card}
+        borderColor={colors.cardBorder}
+        trackColor={colors.ringTrack}
+        ringExpanded={ringExpanded}
+        onToggleExpanded={() => setRingExpanded((e) => !e)}
+        // ENG-758: real weigh-in count (distinct weigh-in days in the last
+        // 7) from weight_kg_by_day, not the old confidence proxy.
+        tdeeLearnDays={countWeighInDaysInWindow(profileWeightKgByDay, dateKeyFromDate(new Date()))}
+        onPressStatusChip={() => setWhySheetOpen(true)}
+        onOpenCoach={() => router.push("/coach" as never)}
+        hasActiveFast={activeFastStart != null}
+        isToday={isToday}
+        remaining={remaining}
+        selectedDate={selectedDate}
+        byDay={byDay}
+        logConfirmBump={logConfirmBump}
+        isFreshDay={isToday && mealsToday.length === 0}
+        onLogFreshDaySlot={() => {
+          setActiveMealSlot(slotForHour(new Date().getHours()));
+          setFabSheetOpen(true);
+        }}
+      />
+    ) : null;
+  const northStarBlock = showAboveMealsNorthStar ? (
+    <NorthStarBlockHost
+      viewMode={viewMode}
+      savedRecipesForLibrary={savedRecipesForLibrary}
+      remainingCalories={Math.max(0, remaining)}
+      remainingProtein={remainingProtein}
+      remainingCarbs={remainingCarbs}
+      remainingFat={remainingFat}
+      dailyCalorieTarget={effectiveCalorieGoal}
+      consumedCalories={totals.calories} localHour={new Date().getHours()} /* ENG-1454 */
+      onPrimaryCta={(recipeId) => {
+        router.push(`/recipe/${recipeId}` as any);
+      }}
+      // ENG-1301 — compact secondary Log: reuses the existing
+      // quick-log insert path (logHistoryItemToSlot), attributed
+      // `source: "north_star"`. Success feedback = the standard
+      // optimistic ring update + log-confirm check.
+      onLogSuggestion={({ item, slotName }) =>
+        logHistoryItemToSlot(item, slotName, "north_star")
+      }
+      onBrowseLibrary={() => {
+        router.push("/(tabs)/library" as any);
+      }}
+      selectedDateKey={dayKey}
+      userCreatedAt={session?.user?.created_at ?? null}
+      hasEverLoggedAnyMeal={hasAnyJournalHistory}
+    />
+  ) : null;
+
   return (
     <View
       testID="screen-today"
@@ -3630,6 +3710,14 @@ export default function TrackerScreen() {
             to the greeting/strip below. `marginTop: xs` stays: it pairs with
             the scroll `paddingTop: sm` as the top inset against the screen
             edge, not a margin+gap stack against another element. */}
+        {/* ENG-1653 hero cluster (`today_hero_cluster_v3`): ONE wrapper owns
+            wordmark → greeting → strip → dial. OFF keeps the scroll-gap 24
+            between each child — pixel-identical to the pre-cluster tree. ON
+            compresses to the prototype rhythm: cluster gap 4, greeting +4
+            (= 8 under the wordmark), strip +16 (= 20 under the greeting),
+            dial at the bare 4 (its decard top padding also drops, in
+            `TodayHeroRing`). */}
+        <View style={heroClusterOn ? styles.heroClusterTight : styles.heroClusterOff}>
         <TodayHeaderBar
           userId={session?.user?.id ?? null}
           avatarInitial={session?.user?.email?.[0]?.toUpperCase() ?? "U"}
@@ -3640,8 +3728,14 @@ export default function TrackerScreen() {
         {/* v3 serif date hero — extracted to <TodayGreetingHero> (ENG-1609,
             2026-07-20, boy-scout shrink alongside the strip→hero dead-band
             fix below); day-view only, see that component for the full
-            history/rationale comment. */}
-        <TodayGreetingHero viewMode={viewMode} isToday={isToday} selectedDate={selectedDate} />
+            history/rationale comment. The day-mode guard here (not just
+            inside the component) keeps the cluster free of an empty View
+            child in week mode, which would double-pay the cluster gap. */}
+        {viewMode === "day" ? (
+          <View style={heroClusterOn ? styles.heroClusterGreeting : undefined}>
+            <TodayGreetingHero viewMode={viewMode} isToday={isToday} selectedDate={selectedDate} />
+          </View>
+        ) : null}
 
         {/* Week strip (SLOE redesign 2026-06-03, `01 · Today` frame):
             the date header is now `stripOnly` — only the 7-day week
@@ -3655,22 +3749,12 @@ export default function TrackerScreen() {
             reachable only via the strip + calendar, which is intended.
             The header still owns the supportive streak-reset copy
             (rendered under the strip in `stripOnly` mode). */}
-        {/* ENG-1609 (2026-07-20, Grace annotated screenshot — "too much
-            space here"): this used to carry an extra `marginBottom: md
-            (16)` wrapper, added by the 2026-06-11 rhythm sweep (ENG-1032)
-            back when `styles.scroll`'s base gap was 8px — 16+8 landed the
-            strip→hero break at a deliberate 24pt, bigger than the 8pt
-            cluster rhythm above it. The ENG-1356 flag-collapse
-            (2026-07-06) later made the scroll gap unconditionally
-            `Spacing.xl` (24) EVERYWHERE — the same base gap Meals /
-            Activity / Hydration / Planned already lean on alone (see the
-            "one 24 Spacing.xl styles.scroll gap carries the rhythm" note
-            below). The 16px wrapper never got revisited, so this seam
-            silently doubled to 40px — a dead band, not a deliberate break.
-            Dropped: the strip→hero gap now matches every other section
-            seam on the page (and mirrors web, where `NutritionTracker.tsx`
-            never wrapped `<TodayDateHeader>` in an extra margin — its
-            `space-y-6` container already gave this exactly 24px). */}
+        {/* ENG-1609 (2026-07-20): the strip's old extra `marginBottom: md`
+            wrapper silently stacked into a 40px strip→hero dead band after
+            the ENG-1356 gap change — dropped, so the seam rides the scroll
+            gap alone (full history on the ticket). ENG-1653's cluster
+            wrapper below is flag-styled only and keeps that fix intact. */}
+        <View style={heroClusterOn ? styles.heroClusterStrip : undefined}>
         <TodayDateHeader
           stripOnly
           viewMode={viewMode}
@@ -3703,15 +3787,10 @@ export default function TrackerScreen() {
           // Two surfaces, one job each. DayStrip (the 7-dot row) stays
           // because day-nav is the core Today affordance.
           hideViewModeToggle
-          // Canonical 2026-05-22 C4: drop time-of-day greetings.
-          // Premium calendar/data tools (Cron, Things 3, Notion) don't
-          // greet — the page title alone is enough chrome. Greeting
-          // was "Good morning / afternoon / evening" — now always
-          // undefined so the date header skips the subtitle slot.
-          dayGreeting={
-            undefined
-          }
+          // Canonical 2026-05-22 C4: no time-of-day greeting — `dayGreeting`
+          // is deliberately not passed, so the header skips the subtitle slot.
         />
+        </View>
 
         {isOffline && (
           <View style={styles.offlineBanner} accessibilityRole="alert">
@@ -3750,6 +3829,16 @@ export default function TrackerScreen() {
             secondaryColor={colors.textSecondary}
           />
         )}
+
+        {/* ENG-1653: with the cluster flag on, the dial mounts INSIDE the
+            cluster (strip → dial at the bare cluster gap) and the north-star
+            "eat next" module follows it — the prototype's ring → eat-next →
+            macros order. Flag off → both render at their legacy slots
+            below. */}
+        {heroClusterOn ? heroBlock : null}
+        </View>
+
+        {heroClusterOn ? northStarBlock : null}
 
         {/* Streak badge — removed from here, shown after meals section in prototype style */}
 
@@ -3796,90 +3885,12 @@ export default function TrackerScreen() {
           />
         ) : (
           <>
-            {/* Phase 4 / Top-5 #2 (2026-04-28) — Today's above-meals
-                composition is capped at FOUR blocks (date header /
-                hero / one context block / macro tiles). The previous
-                layout stacked up to 13 blocks above the meals section
-                with multiple aspirational prompts competing for the
-                user's first 200 vertical pixels. Reference:
-                `docs/ux/teardown-2026-04-28-daily-loop.md` §F1 + Top-5
-                #2.
-
-                Hero — single ring. Phase 5 (2026-04-30): the inline
-                "Includes N AI-estimated meals" sentinel inside the
-                hero card was removed — customer-lens flagged it as a
-                defensive disclaimer that contradicted the 2026-04-27
-                strategic direction (macro-tracker-first, not AI-
-                first). The signal is now delivered once via
-                `AiFirstLogTooltip` on the user's first AI meal row in
-                `TodayMealsSection`, gated by AsyncStorage so it never
-                fires twice.
-
-                Feature 5 (2026-05-14, premium-bar audit) — wrapped in
-                an Animated.View driven by `heroFadeAnim`. First focus
-                after mount fades 0.85 → 1.0 over 200ms; subsequent
-                focuses are no-ops (latched via `hasMountedFocusRef`). */}
-            <ReAnimated.View style={heroEntrance.style}>
-              {(() => {
-                const coachScreenEnabled = isFeatureEnabled("coach_screen_v1");
-                const heroCoachLine =
-                  !activeFastStart && isToday && remaining > 0 ? (
-                    <TodayDeficitInsight
-                      remaining={remaining}
-                      selectedDate={selectedDate}
-                      byDay={byDay}
-                      onPress={coachScreenEnabled ? () => router.push("/coach" as never) : undefined}
-                    />
-                  ) : null;
-                return (
-              <TodayHero
-                consumed={totals.calories}
-                goal={effectiveCalorieGoal}
-                baseGoal={todayActivityBudgetAddon > 0 ? targets.calories : undefined}
-                textColor={colors.text}
-                textSecondaryColor={colors.textSecondary}
-                textTertiaryColor={colors.textTertiary}
-                cardBackgroundColor={colors.card}
-                borderColor={colors.cardBorder}
-                trackColor={colors.ringTrack}
-                proteinPct={effectiveMacroTargets.protein > 0 ? Math.min(totals.protein / effectiveMacroTargets.protein, 1) : 0}
-                carbsPct={effectiveMacroTargets.carbs > 0 ? Math.min(totals.carbs / effectiveMacroTargets.carbs, 1) : 0}
-                fatPct={effectiveMacroTargets.fat > 0 ? Math.min(totals.fat / effectiveMacroTargets.fat, 1) : 0}
-                expanded={ringExpanded}
-                onToggleExpanded={() => setRingExpanded((e) => !e)}
-                isOnTrack={
-                  totals.calories > 100 &&
-                  effectiveCalorieGoal > 0 &&
-                  Math.abs(totals.calories - effectiveCalorieGoal) / effectiveCalorieGoal <= 0.1
-                }
-                // ENG-758: real weigh-in count (distinct weigh-in days in the
-                // last 7) from weight_kg_by_day, not the old confidence proxy.
-                tdeeLearnDays={countWeighInDaysInWindow(
-                  profileWeightKgByDay,
-                  dateKeyFromDate(new Date()),
-                )}
-                onPressStatusChip={() => setWhySheetOpen(true)}
-                // ENG-1293 — always-present Coach entry (sweep decision #3):
-                // renders in every hero state; same `coach_screen_v1` gate as
-                // the screen. The contextual deficit-line deep-link stays.
-                onPressCoach={
-                  coachScreenEnabled ? () => router.push("/coach" as never) : undefined
-                }
-                coachLine={heroCoachLine ?? undefined}
-                logConfirmBump={logConfirmBump}
-                // ENG-1372 — fresh-day pill only on TODAY with zero logged
-                // entries (a past day with nothing logged is a gap, not a
-                // fresh start; reuses the existing slot-open mechanism the
-                // per-slot "+" rows already use, ENG-1450).
-                isFreshDay={isToday && mealsToday.length === 0}
-                onLogFreshDaySlot={() => {
-                  setActiveMealSlot(slotForHour(new Date().getHours()));
-                  setFabSheetOpen(true);
-                }}
-              />
-                );
-              })()}
-            </ReAnimated.View>
+            {/* Hero — single ring, hoisted to `heroBlock` / extracted to
+                `TodayHeroBlock` (ENG-1653; the Phase-4 four-block cap,
+                Phase-5 sentinel removal, and heroEntrance-fade history
+                moved to that component's doc). Cluster flag on → renders
+                inside the hero cluster above instead of here. */}
+            {heroClusterOn ? null : heroBlock}
 
             {/* Single context block — active fast only. Pre-Phase-4 this
                 rendered up to 4 separate stacked conditionals (sometimes
@@ -3889,15 +3900,20 @@ export default function TrackerScreen() {
                 unconditionally (ENG-1099, collapsed ENG-1356) — idle
                 "Start fast", eat-again, and north-star were removed/moved
                 separately (2026-05-19 / 2026-06-17). */}
-            <ReAnimated.View style={contextEntrance.style}>
-              {activeFastStart ? (
+            {/* ENG-1653 bug fix (unflagged): this wrapper used to mount
+                unconditionally, so on non-fasting days an EMPTY
+                ReAnimated.View sat between hero and macros and the scroll
+                `gap` paid out twice — a permanent phantom 24px seam. Mount
+                it only with content. */}
+            {activeFastStart ? (
+              <ReAnimated.View style={contextEntrance.style}>
                 <TodayFastingPill
                   startedAt={activeFastStart}
                   nowTick={fastingTick}
                   onPress={() => router.push("/fasting")}
                 />
-              ) : null}
-            </ReAnimated.View>
+              </ReAnimated.View>
+            ) : null}
 
             {/* Macro tiles — 2x2 grid. The standalone all-nutrients
                 link that previously floated as a centred row below
@@ -3963,35 +3979,11 @@ export default function TrackerScreen() {
             the unified context block above (Phase 4 / Top-5 #2). */}
 
         {/* Meal sections (day view only) — prototype style: single card, IconBox per slot */}
-        {/* Figma `654:2` — What to eat next sits above Today's Meals. */}
-        {showAboveMealsNorthStar && (
-          <NorthStarBlockHost
-            viewMode={viewMode}
-            savedRecipesForLibrary={savedRecipesForLibrary}
-            remainingCalories={Math.max(0, remaining)}
-            remainingProtein={remainingProtein}
-            remainingCarbs={remainingCarbs}
-            remainingFat={remainingFat}
-            dailyCalorieTarget={effectiveCalorieGoal}
-            consumedCalories={totals.calories} localHour={new Date().getHours()} /* ENG-1454 */
-            onPrimaryCta={(recipeId) => {
-              router.push(`/recipe/${recipeId}` as any);
-            }}
-            // ENG-1301 — compact secondary Log: reuses the existing
-            // quick-log insert path (logHistoryItemToSlot), attributed
-            // `source: "north_star"`. Success feedback = the standard
-            // optimistic ring update + log-confirm check.
-            onLogSuggestion={({ item, slotName }) =>
-              logHistoryItemToSlot(item, slotName, "north_star")
-            }
-            onBrowseLibrary={() => {
-              router.push("/(tabs)/library" as any);
-            }}
-            selectedDateKey={dayKey}
-            userCreatedAt={session?.user?.created_at ?? null}
-            hasEverLoggedAnyMeal={hasAnyJournalHistory}
-          />
-        )}
+        {/* Legacy north-star slot (Figma `654:2` put "what to eat next"
+            above Today's Meals; the dead-Figma placement). Cluster flag on
+            → the hoisted `northStarBlock` renders directly under the hero
+            cluster instead — v3 prototype order (ENG-1653). */}
+        {heroClusterOn ? null : northStarBlock}
 
         {viewMode === "day" && (
           <ReAnimated.View

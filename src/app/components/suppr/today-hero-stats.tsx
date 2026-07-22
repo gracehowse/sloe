@@ -7,6 +7,7 @@ import { TodayFreshDayLogPill } from "./today-fresh-day-log-pill";
 import { TodayHeroRing, type TodayHeroRingProps } from "./today-hero-ring";
 import {
   MACRO_RING_TOGGLE,
+  RING_VIEW_TOGGLE,
   TODAY_HERO_STAT_LABELS,
   todayStatusChip,
 } from "../../../lib/copy/today";
@@ -154,8 +155,19 @@ function DesktopHeroStats({
   // ENG-1372 — same gating as mobile-web `TodayHeroRing`: only a true fresh
   // day (host-confirmed zero logged entries) behind the flag qualifies.
   const emptyStateGrammarOn = isFeatureEnabled("empty_state_grammar_v1");
+  // ENG-1653 — desktop leg of the dial-view switch (Remaining ⇆ Consumed);
+  // see `today-hero-ring.tsx` for the rationale (the macros toggle had been
+  // dead since the jewel-dial swap). Local state like the prototype's
+  // `calView`; legacy (flag-off) keeps the existing control untouched.
+  const clusterHero = isFeatureEnabled("today_hero_cluster_v3");
+  const [dialMode, setDialMode] = React.useState<"remaining" | "consumed">("remaining");
+  const toggleDialMode = () =>
+    setDialMode((m) => (m === "remaining" ? "consumed" : "remaining"));
   const showFreshDayGrammar = emptyStateGrammarOn && isFreshDay;
-  const hideBonusCell = showFreshDayGrammar && bonusKcal <= 0;
+  // ENG-1653 (Grace, sim review): on the cluster hero BONUS always renders —
+  // 0 on an empty day — reversing the ENG-1372 law-3 fresh-day suppression
+  // for this layout. Legacy (flag-off) keeps the suppression.
+  const hideBonusCell = showFreshDayGrammar && bonusKcal <= 0 && !clusterHero;
   return (
     // Design Direction 2026 (ENG-795): canonical SupprCard so the desktop hero
     // adopts soft elevation (and drops its border) via the `elevation="card"`
@@ -185,8 +197,10 @@ function DesktopHeroStats({
             size={DESKTOP_RING_GEOMETRY.size}
             // ENG-1465 — restore the legacy `DailyRing` wiring the v3 swap
             // dropped: click-to-toggle + the win/commit pulses this host
-            // already receives on both breakpoints.
-            onToggle={onToggleExpanded}
+            // already receives on both breakpoints. ENG-1653 cluster hero:
+            // the click flips the Remaining ⇆ Consumed view instead.
+            onToggle={clusterHero ? toggleDialMode : onToggleExpanded}
+            displayMode={clusterHero ? dialMode : undefined}
             pulse={pulse}
             commitPulse={commitPulse}
           />
@@ -270,11 +284,24 @@ function DesktopHeroStats({
 
         <button
           type="button"
-          data-testid="today-macro-rings-toggle"
-          onClick={onToggleExpanded}
+          data-testid={clusterHero ? "today-ring-view-toggle" : "today-macro-rings-toggle"}
+          onClick={clusterHero ? toggleDialMode : onToggleExpanded}
+          aria-label={
+            clusterHero
+              ? dialMode === "remaining"
+                ? RING_VIEW_TOGGLE.a11yToConsumed
+                : RING_VIEW_TOGGLE.a11yToRemaining
+              : undefined
+          }
           className="text-[11px] font-semibold text-primary-solid hover:opacity-80 transition-opacity"
         >
-          {expanded ? MACRO_RING_TOGGLE.hide : MACRO_RING_TOGGLE.show}
+          {clusterHero
+            ? dialMode === "remaining"
+              ? RING_VIEW_TOGGLE.remaining
+              : RING_VIEW_TOGGLE.consumed
+            : expanded
+              ? MACRO_RING_TOGGLE.hide
+              : MACRO_RING_TOGGLE.show}
         </button>
       </div>
     </SupprCard>

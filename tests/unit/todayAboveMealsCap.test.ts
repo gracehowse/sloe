@@ -20,6 +20,15 @@ const HOST_SRC = readFileSync(
   "utf-8",
 );
 
+// ENG-1653: the hero (coach line + <TodayHeroStats>) is extracted to
+// today-hero-block so the host can mount it in one of two flag-picked slots
+// (tight cluster vs legacy). Pins that guarded the hero's internals now
+// read the extracted source. Mobile mirror does the same.
+const HERO_BLOCK_SRC = readFileSync(
+  resolve(REPO, "src/app/components/suppr/today-hero-block.tsx"),
+  "utf-8",
+);
+
 function countMatches(src: string, pattern: RegExp): number {
   const m = src.match(pattern);
   return m ? m.length : 0;
@@ -38,11 +47,13 @@ describe("Today above-meals cap (web) — context block dispatch", () => {
     expect(countMatches(HOST_SRC, /<NorthStarBlockHost[\s/]/g)).toBeLessThanOrEqual(1);
   });
 
-  it("TodayDeficitInsight renders exactly once, inside the hero coachLine (today_coach_in_hero_v1 collapsed ENG-1356)", () => {
+  it("TodayDeficitInsight renders exactly once, inside the hero coachLine (today_coach_in_hero_v1 collapsed ENG-1356; hero extracted ENG-1653)", () => {
     // `today_coach_in_hero_v1` was always-on in production (REDESIGN_DEFAULT_ON)
     // and is now collapsed — the legacy standalone context-block dispatch for
-    // the deficit line is gone; only the hero coachLine path renders.
-    expect(countMatches(HOST_SRC, /<TodayDeficitInsight[\s/]/g)).toBe(1);
+    // the deficit line is gone; only the hero coachLine path renders, and it
+    // lives in the extracted today-hero-block (ENG-1653), never in the host.
+    expect(countMatches(HOST_SRC, /<TodayDeficitInsight[\s/]/g)).toBe(0);
+    expect(countMatches(HERO_BLOCK_SRC, /<TodayDeficitInsight[\s/]/g)).toBe(1);
     expect(HOST_SRC).not.toMatch(/isFeatureEnabled\("today_coach_in_hero_v1"\)/);
   });
 });
@@ -67,10 +78,13 @@ describe("Today above-meals cap (web) — macro tiles to meals gap", () => {
     expect(HOST_SRC).toMatch(/<TodayMealsSection[\s\S]+?quickAddPanel=\{[\s\S]+?<QuickAddPanel/);
   });
 
-  it("NorthStarBlockHost renders between macro tiles and meals (Figma 654:2)", () => {
+  it("north-star mounts between macro tiles and meals on the LEGACY path, and directly under the hero cluster when today_hero_cluster_v3 is on (ENG-1653)", () => {
+    // The hoisted `northStarBlockWeb` (gated on `showAboveMealsNorthStarWeb`)
+    // mounts in exactly one of two slots: legacy below-macros (dead Figma
+    // 654:2) or directly under the hero cluster (v3 prototype order).
     const between = macroGridToMealsSlice(HOST_SRC);
-    expect(between).toMatch(/<NorthStarBlockHost[\s/]/);
-    expect(between).toMatch(/showAboveMealsNorthStarWeb/);
+    expect(between).toMatch(/\{heroClusterOn \? null : northStarBlockWeb\}/);
+    expect(countMatches(HOST_SRC, /\{heroClusterOn \? northStarBlockWeb : null\}/g)).toBe(1);
   });
 });
 
@@ -88,8 +102,11 @@ describe("Today above-meals cap (web) — folded primitives", () => {
 });
 
 describe("Today above-meals cap (web) — canonical four primitives", () => {
-  it("renders <TodayHeroStats> exactly once", () => {
-    expect(countMatches(HOST_SRC, /<TodayHeroStats[\s/]/g)).toBe(1);
+  it("renders the hero exactly once (host mounts <TodayHeroBlock> once; the block renders <TodayHeroStats> once — ENG-1653)", () => {
+    expect(countMatches(HOST_SRC, /<TodayHeroBlock[\s/]/g)).toBe(1);
+    expect(countMatches(HERO_BLOCK_SRC, /<TodayHeroStats[\s/]/g)).toBe(1);
+    expect(countMatches(HOST_SRC, /\{heroClusterOn \? heroBlockWeb : null\}/g)).toBe(1);
+    expect(countMatches(HOST_SRC, /\{heroClusterOn \? null : heroBlockWeb\}/g)).toBe(1);
   });
 
   it("renders <TodayMacroSection> exactly once (the Tiles/Bars/Rings switcher)", () => {
@@ -152,18 +169,18 @@ describe("Eat-again banner retired (ENG-984, web)", () => {
 });
 
 describe("Today above-meals cap (web) — context dispatch shape", () => {
-  it("the context block uses an IIFE dispatch (single render path)", () => {
-    const hasIIFE = /\(\(\)\s*=>\s*\{[\s\S]+?<(TodayFastingPill|TodayDeficitInsight)/.test(
-      HOST_SRC,
-    );
-    expect(hasIIFE).toBe(true);
+  it("the fasting context block renders only WITH content (single conditional mount)", () => {
+    // Historically an IIFE dispatch; the deficit line then moved inside the
+    // hero (ENG-1356 → today-hero-block, ENG-1653) leaving fasting as the
+    // one context block, mounted directly by its conditional.
+    expect(HOST_SRC).toMatch(/\{activeFast \? \(\s*<TodayFastingPill/);
   });
 });
 
 describe("ENG-889 — coach line inside hero card", () => {
-  it("NutritionTracker passes coachLine into TodayHeroStats unconditionally (today_coach_in_hero_v1 collapsed ENG-1356)", () => {
+  it("the hero block passes coachLine into TodayHeroStats unconditionally (today_coach_in_hero_v1 collapsed ENG-1356; extracted ENG-1653)", () => {
     expect(HOST_SRC).not.toMatch(/today_coach_in_hero_v1/);
-    expect(HOST_SRC).toMatch(/coachLine=\{coachLineEl\}/);
+    expect(HERO_BLOCK_SRC).toMatch(/coachLine=\{coachLineEl\}/);
   });
 
   it("today-hero-ring renders the coachLine slot below stats", () => {

@@ -37,10 +37,12 @@ describe("ENG-889 S5 — Fresh start empty Today", () => {
     // `today_tracker_tier_v1` was always-on in production (REDESIGN_DEFAULT_ON)
     // and was collapsed in ENG-1356 — no flag check remains, only the
     // de-tinted (tier-on) "Fresh start" chip.
-    const src = read("src/app/components/suppr/today-hero-ring.tsx");
-    expect(src).not.toMatch(/today_tracker_tier_v1/);
-    expect(src).toMatch(/state === "empty"[\s\S]*text-foreground-brand/);
-    expect(src).not.toMatch(/state === "empty"[\s\S]*bg-ring-bg/);
+    const ring = read("src/app/components/suppr/today-hero-ring.tsx");
+    const parts = read("src/app/components/suppr/today-hero-ring-parts.tsx");
+    expect(ring).not.toMatch(/today_tracker_tier_v1/);
+    expect(parts).not.toMatch(/today_tracker_tier_v1/);
+    expect(parts).toMatch(/state === "empty"[\s\S]*text-foreground-brand/);
+    expect(parts).not.toMatch(/state === "empty"[\s\S]*bg-ring-bg/);
   });
 
   it("mobile hero chip de-tints Fresh start (today_tracker_tier_v1 collapsed ENG-1356, always-on tint)", () => {

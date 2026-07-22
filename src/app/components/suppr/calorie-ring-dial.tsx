@@ -83,6 +83,11 @@ export interface CalorieRingDialProps {
    *  log lands. Brief scale-up + soft plum glow — the web analog of mobile's
    *  commit haptic, same treatment the legacy `DailyRing` carried. */
   commitPulse?: boolean;
+  /** ENG-1653 — dial-view switch (prototype ring-tap): "remaining" shows the
+   *  budget arithmetic (kcal left / kcal over); "consumed" shows what's been
+   *  eaten (kcal eaten). Default "remaining" (today's behaviour). Mobile
+   *  twin: `CalorieRingDial.tsx` `displayMode`. */
+  displayMode?: "remaining" | "consumed";
 }
 
 export function CalorieRingDial({
@@ -92,6 +97,7 @@ export function CalorieRingDial({
   hideCenter = false,
   numeralLarge = false,
   onToggle,
+  displayMode = "remaining",
   pulse = false,
   commitPulse = false,
 }: CalorieRingDialProps) {
@@ -136,11 +142,16 @@ export function CalorieRingDial({
   // dial.
   const celebrating = pulse && !isEmpty && !isOver;
 
-  const centerValue = isOver
-    ? Math.round(consumed - target)
-    : Math.max(0, Math.round(target - consumed));
+  // ENG-1653: consumed view shows the eaten total; the arc + the status line
+  // below the ring still carry the over/under verdict.
+  const showConsumed = displayMode === "consumed";
+  const centerValue = showConsumed
+    ? Math.round(consumed)
+    : isOver
+      ? Math.round(consumed - target)
+      : Math.max(0, Math.round(target - consumed));
   const animated = useCountUp(centerValue);
-  const label = isOver ? "kcal over" : "kcal left";
+  const label = showConsumed ? "kcal eaten" : isOver ? "kcal over" : "kcal left";
 
   const track: React.ReactNode[] = [];
   const lit: React.ReactNode[] = [];

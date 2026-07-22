@@ -82,7 +82,7 @@ describe("ENG-1093 — empty multi-ring parity (web)", () => {
 
 describe("ENG-1093 — equal-width macro toggle (no wobble)", () => {
   it("mobile pins the toggle label to one centred width", () => {
-    expect(MOBILE_HERO).toMatch(/minWidth: 84/);
+    expect(MOBILE_HERO).toMatch(/minWidth: clusterHero \? 180 : 84/);
     expect(MOBILE_HERO).toMatch(/textAlign: "center"/);
   });
 

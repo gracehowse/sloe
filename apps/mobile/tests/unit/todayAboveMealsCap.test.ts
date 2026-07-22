@@ -50,6 +50,15 @@ const HOST_SRC = fs.readFileSync(
   "utf-8",
 );
 
+// ENG-1653: the hero (entrance wrapper + coach line + <TodayHero>) is
+// extracted to TodayHeroBlock so the host can mount it in one of two
+// flag-picked slots (tight cluster vs legacy). Pins that guarded the
+// hero's internals now read the extracted source.
+const HERO_BLOCK_SRC = fs.readFileSync(
+  path.resolve(__dirname, "../../components/today/TodayHeroBlock.tsx"),
+  "utf-8",
+);
+
 function countMatches(src: string, pattern: RegExp): number {
   const m = src.match(pattern);
   return m ? m.length : 0;
@@ -77,11 +86,13 @@ describe("Today above-meals cap (mobile) — context block dispatch", () => {
     expect(countMatches(HOST_SRC, /<NorthStarBlockHost[\s/]/g)).toBeLessThanOrEqual(1);
   });
 
-  it("TodayDeficitInsight renders exactly once, inside the hero coachLine (today_coach_in_hero_v1 collapsed ENG-1356)", () => {
+  it("TodayDeficitInsight renders exactly once, inside the hero coachLine (today_coach_in_hero_v1 collapsed ENG-1356; hero extracted ENG-1653)", () => {
     // `today_coach_in_hero_v1` was always-on in production (REDESIGN_DEFAULT_ON)
     // and is now collapsed — the legacy standalone context-block dispatch for
-    // the deficit line is gone; only the hero coachLine path renders.
-    expect(countMatches(HOST_SRC, /<TodayDeficitInsight[\s/]/g)).toBe(1);
+    // the deficit line is gone; only the hero coachLine path renders, and it
+    // lives in the extracted TodayHeroBlock (ENG-1653), never in the host.
+    expect(countMatches(HOST_SRC, /<TodayDeficitInsight[\s/]/g)).toBe(0);
+    expect(countMatches(HERO_BLOCK_SRC, /<TodayDeficitInsight[\s/]/g)).toBe(1);
     expect(HOST_SRC).not.toMatch(/isFeatureEnabled\("today_coach_in_hero_v1"\)/);
   });
 });
@@ -144,11 +155,15 @@ describe("Today above-meals cap (mobile) — canonical four primitives", () => {
     expect(countMatches(HOST_SRC, /<TodayDateHeader[\s/]/g)).toBe(1);
   });
 
-  it("renders <TodayHero> exactly once", () => {
+  it("renders the hero exactly once (host mounts <TodayHeroBlock> once; the block renders <TodayHero> once — ENG-1653)", () => {
     // The pattern excludes `<TodayHeroRing` and (deleted) variants
     // because `[\s/]` enforces that the component name is followed
-    // by a word-terminating JSX character.
-    expect(countMatches(HOST_SRC, /<TodayHero[\s/]/g)).toBe(1);
+    // by a word-terminating JSX character. The host builds the block
+    // ONCE and mounts it in exactly one of two flag-picked slots.
+    expect(countMatches(HOST_SRC, /<TodayHeroBlock[\s/]/g)).toBe(1);
+    expect(countMatches(HERO_BLOCK_SRC, /<TodayHero[\s/]/g)).toBe(1);
+    expect(countMatches(HOST_SRC, /\{heroClusterOn \? heroBlock : null\}/g)).toBe(1);
+    expect(countMatches(HOST_SRC, /\{heroClusterOn \? null : heroBlock\}/g)).toBe(1);
   });
 
   it("renders <TodayMacroSection> exactly once (the Tiles/Bars/Rings switcher)", () => {
@@ -184,10 +199,14 @@ describe("Today above-meals cap (mobile) — macro tiles to meals gap", () => {
     expect(HOST_SRC).toMatch(/<TodayMealsSection[\s\S]+?quickAddPanel=\{[\s\S]+?<QuickAddPanel/);
   });
 
-  it("NorthStarBlockHost renders between macro tiles and meals (Figma 654:2)", () => {
+  it("north-star mounts between macro tiles and meals on the LEGACY path, and directly under the hero cluster when today_hero_cluster_v3 is on (ENG-1653)", () => {
+    // The hoisted `northStarBlock` (gated on `showAboveMealsNorthStar`)
+    // mounts in exactly one of two slots: the legacy below-macros slot
+    // (dead Figma 654:2 order) or directly under the hero cluster (v3
+    // prototype order — ring → eat-next → macros).
     const between = macroGridToMealsSlice(HOST_SRC);
-    expect(between).toMatch(/<NorthStarBlockHost[\s/]/);
-    expect(between).toMatch(/showAboveMealsNorthStar/);
+    expect(between).toMatch(/\{heroClusterOn \? null : northStarBlock\}/);
+    expect(countMatches(HOST_SRC, /\{heroClusterOn \? northStarBlock : null\}/g)).toBe(1);
   });
 });
 
@@ -221,7 +240,8 @@ describe("Today premium sprint (2026-05-19) — below-meals prompts", () => {
     expect(mealsIdx).toBeGreaterThan(-1);
     expect(northStarAboveIdx).toBeGreaterThan(-1);
     expect(northStarAboveIdx).toBeLessThan(mealsIdx);
-    expect(HOST_SRC).toMatch(/showAboveMealsNorthStar\s*&&[\s\S]*<NorthStarBlockHost/);
+    // ENG-1653: the gate moved into the hoisted `northStarBlock` ternary.
+    expect(HOST_SRC).toMatch(/const northStarBlock = showAboveMealsNorthStar \? \(\s*<NorthStarBlockHost/);
   });
 
   it("OnboardingNudgeBanner renders after meals so trust content stays above the fold (ENG-1183)", () => {
@@ -269,27 +289,22 @@ describe("Eat-again banner retired (ENG-984, mobile)", () => {
 });
 
 describe("Today above-meals cap (mobile) — context dispatch shape", () => {
-  it("the context block uses an IIFE dispatch (single render path)", () => {
-    // The mutually-exclusive context block is an inline IIFE — the
-    // `(() => { ... })()` pattern in the JSX. This pin asserts the
-    // dispatch shape exists; if a future sweep replaces it with
-    // separate top-level conditionals (the pre-Phase-4 anti-
-    // pattern), the IIFE disappears and this fires.
-    //
-    // The pin matches any IIFE that returns one of the four
-    // context-block components — generous enough to survive
-    // refactors, strict enough to catch the regression.
-    const hasIIFE = /\(\(\)\s*=>\s*\{[\s\S]+?<(TodayFastingPill|TodayDeficitInsight)/.test(
-      HOST_SRC,
-    );
-    expect(hasIIFE).toBe(true);
+  it("the fasting context block mounts its wrapper only WITH content (ENG-1653 phantom-gap fix)", () => {
+    // Historically the mutually-exclusive context dispatch was an inline
+    // IIFE; the deficit line then moved inside the hero (ENG-1356 →
+    // TodayHeroBlock, ENG-1653) leaving fasting as the one context block.
+    // ENG-1653 also fixed its wrapper mounting unconditionally (an empty
+    // ReAnimated.View the scroll gap paid out around on non-fasting
+    // days). This pins the conditional-mount shape — if a sweep re-wraps
+    // the conditional inside an always-mounted View, this fires.
+    expect(HOST_SRC).toMatch(/\{activeFastStart \? \(\s*<ReAnimated\.View style=\{contextEntrance\.style\}>\s*<TodayFastingPill/);
   });
 });
 
 describe("ENG-889 — coach line inside hero card (mobile)", () => {
-  it("index passes coachLine into TodayHero unconditionally (today_coach_in_hero_v1 collapsed ENG-1356)", () => {
+  it("the hero block passes coachLine into TodayHero unconditionally (today_coach_in_hero_v1 collapsed ENG-1356; extracted ENG-1653)", () => {
     expect(HOST_SRC).not.toMatch(/today_coach_in_hero_v1/);
-    expect(HOST_SRC).toMatch(/coachLine=\{heroCoachLine/);
+    expect(HERO_BLOCK_SRC).toMatch(/coachLine=\{heroCoachLine/);
   });
 
   it("TodayHeroRing renders the coachLine slot below stats", () => {

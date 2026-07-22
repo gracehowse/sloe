@@ -186,9 +186,11 @@ describe("(tabs)/index.tsx — canonical Today composition root pin", () => {
     expect(todayHeroOpenTag).not.toMatch(/onVariantChange/);
     expect(indexSrc).not.toMatch(/heroVariant: TodayHeroVariant/);
     expect(indexSrc).not.toContain('AsyncStorage.getItem(HERO_VARIANT_STORAGE_KEY)');
-    // TodayHero is still rendered — pin the open tag so a future
-    // refactor that removes the hero entirely fails this test loudly.
-    expect(indexSrc).toMatch(/<TodayHero[\s\n]+consumed=/);
+    // The hero is still rendered — since ENG-1653 the composition root
+    // mounts it via the extracted <TodayHeroBlock> (which renders
+    // <TodayHero> internally; see todayAboveMealsCap pins). Pin the open
+    // tag so a refactor that removes the hero entirely fails loudly.
+    expect(indexSrc).toMatch(/<TodayHeroBlock[\s\n]+entranceStyle=/);
   });
 
   it("no longer renders <TodayQuickLogStrip> in the composition root", () => {

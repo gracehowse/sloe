@@ -88,7 +88,7 @@ import { PhotoLogDialog } from "./suppr/photo-log-dialog";
 import { useLabelLogHost } from "./suppr/use-label-log-host";
 import { AiPaywallDialog, type AiPaywallFeature } from "./suppr/ai-paywall-dialog";
 import { TodayLoadingSkeleton } from "./suppr/today-loading-skeleton.tsx";
-import { TodayHeroStats } from "./suppr/today-hero-stats";
+import { TodayHeroBlock } from "./suppr/today-hero-block";
 import { useWebWinMoment } from "../../lib/preferences/useWebWinMoment.ts";
 import { useCommitPulse } from "../../lib/preferences/useCommitPulse.ts";
 import { useLogConfirmCheck } from "../../lib/preferences/useLogConfirmCheck.ts";
@@ -1568,6 +1568,77 @@ export const NutritionTracker = memo(function NutritionTracker({
     return <TodayLoadingSkeleton />;
   }
 
+  // ENG-1653 (mobile-led parity — "we need a proper hero section / today
+  // page"): `today_hero_cluster_v3` compresses greeting → strip → hero into
+  // the v3 prototype's tight cluster (vs the flat space-y-6) and moves the
+  // north-star "eat next" module to directly under the hero (prototype
+  // order; the below-macros slot came from the dead Figma `654:2`). The two
+  // blocks are built ONCE and mounted in one of two flag-picked slots, so
+  // OFF renders the exact legacy tree. Mirror of the mobile TodayScreen.
+  const heroClusterOn = isFeatureEnabled("today_hero_cluster_v3");
+  const heroBlockWeb =
+    viewMode === "day" ? (
+      <TodayHeroBlock
+        totals={totals}
+        effectiveMacroTargets={effectiveMacroTargets}
+        effectiveCalorieTarget={effectiveCalorieTarget}
+        baseCalorieTarget={baseCalorieTarget}
+        totalBurnKcal={totalBurnKcal}
+        aiSourcedCount={mealsForSelectedDate.filter(isAiSourcedFoodHistoryItem).length}
+        ringExpanded={ringExpanded}
+        onToggleExpanded={() => setRingExpanded((v) => !v)}
+        pulse={winPulse}
+        commitPulse={commitPulse}
+        logConfirmVisible={logConfirmVisible}
+        // ENG-758: real weigh-in count (distinct weigh-in days in the last 7)
+        // from the profile's weight_kg_by_day map, not the old confidence proxy.
+        tdeeLearnDays={countWeighInDaysInWindow(profileWeightKgByDay, todayKey())}
+        onPressStatusChip={() => setWhyThisNumberOpen(true)}
+        onOpenCoach={() => trackerRouter.push("/coach")}
+        hasActiveFast={Boolean(activeFast)}
+        isTodaySelected={selectedDateKey === todayKey()}
+        selectedDate={selectedDate}
+        byDay={nutritionByDay}
+        isFreshDay={selectedDateKey === todayKey() && mealsForSelectedDate.length === 0}
+        onLogFreshDaySlot={() => {
+          setMealSlot(slotForHour(new Date().getHours()));
+          setLogSheetOpen(true);
+        }}
+      />
+    ) : null;
+  const northStarBlockWeb = showAboveMealsNorthStarWeb ? (
+    <NorthStarBlockHost
+      viewMode={viewMode}
+      savedRecipesForLibrary={savedRecipesForLibrary as Array<NorthStarRecipe>}
+      remainingCalories={Math.max(0, effectiveCalorieTarget - totals.calories)}
+      remainingProtein={Math.max(0, effectiveMacroTargets.protein - totals.protein)}
+      remainingCarbs={Math.max(0, effectiveMacroTargets.carbs - totals.carbs)}
+      remainingFat={Math.max(0, effectiveMacroTargets.fat - totals.fat)}
+      dailyCalorieTarget={effectiveCalorieTarget}
+      consumedCalories={totals.calories} localHour={new Date().getHours()} /* ENG-1454 */
+      onPrimaryCta={(_recipeId) => {
+        setMealSlot(slotForHour(new Date().getHours()));
+        setLogSheetOpen(true);
+      }}
+      // ENG-1301 — compact secondary Log: reuses the existing quick-log
+      // insert primitive (addLoggedMealForDate), attributed
+      // `source: "north_star"`; toast = the standard success feedback.
+      onLogSuggestion={({ meal, slotName, title }) => {
+        addLoggedMealForDate(selectedDateKey, meal, "north_star");
+        toast.success(`${title} logged to ${slotName}`);
+      }}
+      onBrowseLibrary={() => {
+        setMealSlot(slotForHour(new Date().getHours()));
+        setLogSheetOpen(true);
+      }}
+      selectedDateKey={selectedDateKey}
+      userCreatedAt={authUserCreatedAt}
+      hasEverLoggedAnyMeal={Object.values(nutritionByDay).some(
+        (meals) => Array.isArray(meals) && meals.length > 0,
+      )}
+    />
+  ) : null;
+
   return (
     <div className="product-shell py-pm-5 space-y-4 relative">
       {/* ENG-798 win-moment overlay — mirrors mobile index.tsx:5382-5389.
@@ -1631,6 +1702,13 @@ export const NutritionTracker = memo(function NutritionTracker({
               : "flex-1 min-w-0 space-y-6"
           }
         >
+      {/* ENG-1653 hero cluster (`today_hero_cluster_v3`): one wrapper owns
+          greeting → strip → hero. OFF mirrors the column's space-y-6 —
+          pixel-identical to the pre-cluster tree. ON compresses to the
+          prototype rhythm: space-y-1 (4px), strip +20 (`!mt-5` beats the
+          space-y sibling margin), hero at the bare 4. Mirror of the mobile
+          TodayScreen hero cluster. */}
+      <div className={heroClusterOn ? "space-y-1" : "space-y-6"}>
       {viewMode === "day" ? (
         // v3 serif date hero (ENG-1247, prototype `.t-greet`): eyebrow rule +
         // Newsreader day name + date subline (parity with mobile). The "DAY N"
@@ -1662,6 +1740,7 @@ export const NutritionTracker = memo(function NutritionTracker({
         </div>
       ) : null}
 
+      <div className={heroClusterOn && viewMode === "day" ? "!mt-5" : undefined}>
       <TodayDateHeader
         viewMode={viewMode}
         onViewModeChange={setViewMode}
@@ -1684,6 +1763,17 @@ export const NutritionTracker = memo(function NutritionTracker({
         onStreakPress={weeklyRecap.trigger}
         streakResetCopyVisible={streakJustReset}
       />
+      </div>
+
+      {/* ENG-1653: hero inside the cluster when the flag is on (strip → ring
+          at the bare space-y-1); legacy fragment slot below when off. The
+          north-star "eat next" module follows the cluster — prototype
+          ring → eat-next → macros order. */}
+      {heroClusterOn ? heroBlockWeb : null}
+      </div>
+
+      {heroClusterOn ? northStarBlockWeb : null}
+
       {weeklyRecap.dialog}
 
       {viewMode === "week" && (
@@ -1728,77 +1818,16 @@ export const NutritionTracker = memo(function NutritionTracker({
 
       {viewMode === "day" && (
       <>
-      {/* Phase 4 / Top-5 #2 (2026-04-28) — Today's above-meals composition
-          is capped at FOUR blocks (date header / hero / one context block /
-          macro tiles). Pre-Phase-4 the hero / AI pill / north-star block /
-          macro tiles / nutrients grid all stacked unconditionally; the cap
-          rule moves the prompts into a mutually exclusive context-block
-          dispatch below the hero. The AI-estimated count chip moved INSIDE
-          the hero (TodayHeroStats's new `aiSourcedCount` prop). Reference:
-          `docs/ux/teardown-2026-04-28-daily-loop.md` §F1 + Top-5 #2. */}
+      {/* Phase 4 / Top-5 #2 (2026-04-28) — above-meals composition capped at
+          FOUR blocks (date header / hero / one context block / macro tiles);
+          `docs/ux/teardown-2026-04-28-daily-loop.md` §F1. Hero details in
+          `TodayHeroBlock` (extracted ENG-1653). */}
 
-      {/* Daily ring + 4-tile hero stats (Logged / Target / Burned / Net).
-          Desktop (>= 768px) renders stats beside the ring; mobile-web
-          shows just the ring. Canonical copy + deficit/surplus detail
-          comes from `src/lib/copy/today.ts`. AI-estimated-count chip
-          surfaces inline as a caption inside the hero block via
-          `aiSourcedCount` (Phase 4). */}
-      {(() => {
-        const remainingToday = Math.max(0, effectiveCalorieTarget - totals.calories);
-        const coachScreenEnabled = isFeatureEnabled("coach_screen_v1");
-        const coachLineEl =
-          !activeFast &&
-          viewMode === "day" &&
-          selectedDateKey === todayKey() &&
-          remainingToday > 0 ? (
-            <TodayDeficitInsight
-              remaining={remainingToday}
-              selectedDate={selectedDate}
-              byDay={nutritionByDay}
-              onPress={coachScreenEnabled ? () => trackerRouter.push("/coach") : undefined}
-            />
-          ) : null;
-        return (
-      <TodayHeroStats
-        loggedKcal={Math.round(totals.calories)}
-        targetKcal={Math.round(effectiveCalorieTarget)}
-        burnedKcal={Math.round(totalBurnKcal)}
-        aiSourcedCount={mealsForSelectedDate.filter(isAiSourcedFoodHistoryItem).length}
-        consumed={totals.calories}
-        target={effectiveCalorieTarget}
-        baseGoal={baseCalorieTarget}
-        proteinPct={effectiveMacroTargets.protein > 0 ? Math.min(totals.protein / effectiveMacroTargets.protein, 1) : 0}
-        carbsPct={effectiveMacroTargets.carbs > 0 ? Math.min(totals.carbs / effectiveMacroTargets.carbs, 1) : 0}
-        fatPct={effectiveMacroTargets.fat > 0 ? Math.min(totals.fat / effectiveMacroTargets.fat, 1) : 0}
-        expanded={ringExpanded}
-        onToggleExpanded={() => setRingExpanded((v) => !v)}
-        pulse={winPulse}
-        commitPulse={commitPulse}
-        logConfirmVisible={logConfirmVisible}
-        isOnTrack={
-          totals.calories > 100 &&
-          effectiveCalorieTarget > 0 &&
-          Math.abs(totals.calories - effectiveCalorieTarget) / effectiveCalorieTarget <= 0.1
-        }
-        // ENG-758: real weigh-in count (distinct weigh-in days in the last 7)
-        // from the profile's weight_kg_by_day map, not the old confidence proxy.
-        tdeeLearnDays={countWeighInDaysInWindow(profileWeightKgByDay, todayKey())}
-        onPressStatusChip={() => setWhyThisNumberOpen(true)}
-        // ENG-1293 — always-present Coach entry (sweep decision #3): renders
-        // in every hero state on mobile-web (`< md`); desktop gets the sidebar
-        // item. Same `coach_screen_v1` gate; the deficit-line deep-link stays.
-        onPressCoach={coachScreenEnabled ? () => trackerRouter.push("/coach") : undefined}
-        coachLine={coachLineEl}
-        // ENG-1372 — fresh-day pill: TODAY with zero entries only (a past
-        // empty day is a gap, not a fresh start); reuses the openLog slot reset.
-        isFreshDay={selectedDateKey === todayKey() && mealsForSelectedDate.length === 0}
-        onLogFreshDaySlot={() => {
-          setMealSlot(slotForHour(new Date().getHours()));
-          setLogSheetOpen(true);
-        }}
-      />
-        );
-      })()}
+      {/* Hero — hoisted to `heroBlockWeb` / extracted to `TodayHeroBlock`
+          (ENG-1653; ring + 4-tile stats + coach line — see that component
+          for the composition history). Cluster flag on → renders inside
+          the hero cluster above instead of here. */}
+      {heroClusterOn ? null : heroBlockWeb}
 
       {/* Single context block — active fast only (mobile parity, 2026-06-06).
           Eat-again removed from Today scroll (2026-05-22 v4) and fully
@@ -1923,39 +1952,10 @@ export const NutritionTracker = memo(function NutritionTracker({
           single "Quick add" CTA above Meals (default collapsed first run; the
           user's last choice persists via `suppr-quick-add-collapsed-v1`). */}
 
-      {/* Figma `654:2` — What to eat next above Today's Meals. */}
-      {showAboveMealsNorthStarWeb && (
-        <NorthStarBlockHost
-          viewMode={viewMode}
-          savedRecipesForLibrary={savedRecipesForLibrary as Array<NorthStarRecipe>}
-          remainingCalories={Math.max(0, effectiveCalorieTarget - totals.calories)}
-          remainingProtein={Math.max(0, effectiveMacroTargets.protein - totals.protein)}
-          remainingCarbs={Math.max(0, effectiveMacroTargets.carbs - totals.carbs)}
-          remainingFat={Math.max(0, effectiveMacroTargets.fat - totals.fat)}
-          dailyCalorieTarget={effectiveCalorieTarget}
-          consumedCalories={totals.calories} localHour={new Date().getHours()} /* ENG-1454 */
-          onPrimaryCta={(_recipeId) => {
-            setMealSlot(slotForHour(new Date().getHours()));
-            setLogSheetOpen(true);
-          }}
-          // ENG-1301 — compact secondary Log: reuses the existing quick-log
-          // insert primitive (addLoggedMealForDate), attributed
-          // `source: "north_star"`; toast = the standard success feedback.
-          onLogSuggestion={({ meal, slotName, title }) => {
-            addLoggedMealForDate(selectedDateKey, meal, "north_star");
-            toast.success(`${title} logged to ${slotName}`);
-          }}
-          onBrowseLibrary={() => {
-            setMealSlot(slotForHour(new Date().getHours()));
-            setLogSheetOpen(true);
-          }}
-          selectedDateKey={selectedDateKey}
-          userCreatedAt={authUserCreatedAt}
-          hasEverLoggedAnyMeal={Object.values(nutritionByDay).some(
-            (meals) => Array.isArray(meals) && meals.length > 0,
-          )}
-        />
-      )}
+      {/* Legacy north-star slot (Figma `654:2` order — dead Figma). Cluster
+          flag on → the hoisted `northStarBlockWeb` renders directly under
+          the hero cluster instead — v3 prototype order (ENG-1653). */}
+      {heroClusterOn ? null : northStarBlockWeb}
 
       {/* 5. Meals Section — larger top break vs hero cluster (ENG-871). */}
       <div>
