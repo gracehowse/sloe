@@ -41,10 +41,13 @@ export const PlateWordmarkSized: Story = {
 };
 
 /**
- * `SupprMark` with `design_system_brandmark` forced ON → it routes through the
- * canonical plate-ring variant (the flag-on branch in SupprMark). Uses the same
- * `window.__SUPPR_FORCE_FLAGS__` hook as Playwright's forceFlagsOn / track.ts;
- * the `beforeEach` cleanup resets it so the flag never leaks to other stories.
+ * `design_system_brandmark` is retired (ENG-1651, vestigial-reference cleanup
+ * — the brand mark unified unconditionally 2026-06-04, zero live
+ * `isFeatureEnabled` call sites remain in `suppr-mark.tsx`). Forcing the flag
+ * via `window.__SUPPR_FORCE_FLAGS__` below is now a no-op: both stories render
+ * the identical Sloe wordmark as the plain `Mark` story above. Kept as
+ * duplicate coverage rather than deleted, since removing them changes nothing
+ * about what's under test.
  */
 export const MarkBrandmarkOn: Story = {
   beforeEach() {
@@ -56,14 +59,7 @@ export const MarkBrandmarkOn: Story = {
   },
 };
 
-/**
- * `SupprMark` with `design_system_brandmark` forced OFF → the pre-redesign
- * legacy mark branch (`suppr-mark.tsx` 29-56, 69-70). Now that Redesign 2026
- * is default-ON, every un-forced story above renders the on-state, so this is
- * the only story exercising the off-path — required for the 100% branch gate.
- * Paired with `MarkBrandmarkOn` so both branches stay covered regardless of the
- * default flag state. Same per-story hook + cleanup.
- */
+/** See `MarkBrandmarkOn` — same no-op force flag, opposite value. */
 export const MarkBrandmarkOff: Story = {
   beforeEach() {
     const w = window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> };

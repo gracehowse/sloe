@@ -172,10 +172,10 @@ export function CookieConsent() {
   // wrap.
   // P5 parity #31 (2026-05-31): retoken the chrome off raw slate onto the
   // redesign design tokens — bg-card / border-border / muted text + the
-  // --elev-sheet depth token, plus the quiet SupprPlateMark. No flag gate:
-  // the banner must paint on first paint pre-consent. SupprPlateMark is
-  // imported directly (not SupprMark, which evaluates the
-  // design_system_brandmark flag).
+  // --elev-sheet depth token, plus the quiet SupprPlateMark. SupprPlateMark
+  // is a deprecated alias for SupprMark (src/app/components/ui/suppr-mark.tsx)
+  // — the brand mark unified unconditionally 2026-06-04, no flag read remains
+  // on either name, so this import is just historical naming, not a gate.
   // ENG-1386: dock above the mobile product tab bar (5rem + safe-area,
   // shared with App.tsx) at z-40 so that nav (z-50, App.tsx:817) always
   // wins taps — this only applies to the liftAboveMobileChrome (product

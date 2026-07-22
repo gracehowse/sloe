@@ -44,9 +44,11 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() },
 }));
 
-// `SupprMark` (rendered on the "Paste a recipe link" card) reads the
-// `design_system_brandmark` flag from this same module. Default it OFF so
-// the legacy S-glyph (still a brand mark) renders; one test flips it on.
+// `SupprMark` (rendered on the "Paste a recipe link" card) always renders
+// the Sloe wordmark unconditionally (unified 2026-06-04, no flag read) —
+// the `design_system_brandmark` flag and legacy S-glyph are retired. The
+// test below still exercises the mock at both `isFeatureEnabledSpy` states
+// to pin that the mark never regresses to being flag-gated again.
 //
 // `recipe-import-redesign` (ENG-898 web flag-gating parity with mobile) gates
 // the NEW L4 amber error banner + the 3-method source tiles. Default it ON in

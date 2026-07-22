@@ -460,7 +460,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // §3.1). Default-on; off → legacy stacked ActionRow list.
   "create_recipe_action_sheet_grid_v1",
   "design_system_colours",
-  "design_system_brandmark",
   "design_system_icons",
   "redesign_winmoment",
   "redesign_motion",

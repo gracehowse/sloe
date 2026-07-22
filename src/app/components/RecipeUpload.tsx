@@ -1933,7 +1933,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           <>
           {/* Paste-link pill — the import CTA panel. */}
           <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 text-center">
-            {/* ENG-797 brandmark — mobile leads this panel with <SupprMark size={56} /> (apps/mobile/app/import-shared.tsx). Gating is internal to SupprMark (design_system_brandmark). */}
+            {/* ENG-797 brandmark — mobile leads this panel with <SupprMark size={56} /> (apps/mobile/app/import-shared.tsx). SupprMark renders the wordmark unconditionally (unified 2026-06-04) — no flag gate. */}
             <SupprMark size={48} className="mx-auto mb-4" />
             <h3 className="font-[family-name:var(--font-headline)] text-xl text-foreground-brand mb-1">
               Paste a recipe link

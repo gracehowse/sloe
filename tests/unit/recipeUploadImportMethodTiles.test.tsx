@@ -40,7 +40,8 @@ vi.mock("sonner", () => ({
 }));
 
 // `recipe-import-redesign` ON by default in this suite; the flag-OFF case forces
-// it off. (`design_system_brandmark` stays OFF — only the import flag matters.)
+// it off. (`design_system_brandmark` was collapsed permanently on, ENG-1651 —
+// no longer a live flag this suite's mock needs to account for.)
 const { isFeatureEnabledSpy } = vi.hoisted(() => ({
   isFeatureEnabledSpy: vi.fn((flag: string) => flag === "recipe-import-redesign"),
 }));

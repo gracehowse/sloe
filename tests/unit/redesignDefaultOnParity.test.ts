@@ -168,9 +168,12 @@ describe("REDESIGN_DEFAULT_ON web ↔ mobile parity", () => {
   });
 
   it("core design-system flags default ON on both platforms", () => {
+    // `design_system_brandmark` collapsed out of REDESIGN_DEFAULT_ON (ENG-1651,
+    // lighter-touch slice): the brand mark has rendered unconditionally since
+    // 2026-06-04 with zero live isFeatureEnabled call sites, so it no longer
+    // needs a default-on entry on either platform.
     const core = [
       "design_system_colours",
-      "design_system_brandmark",
       "design_system_icons",
       "redesign_winmoment",
       "redesign_motion",
