@@ -275,6 +275,15 @@ flag-gate again"). Wiring the host to surface S13 after each commit is
 the only remaining step beyond presentation — scoped minimally and left
 to the host so this pass touches zero persistence code.
 
+> **In-session replacement under `log_session_tray_v1` (ENG-1643,
+> 2026-07-21):** when the session tray flag is ON, the *participating* add
+> paths (search "Use this" + in-sheet one-tap rows) no longer present this
+> S13 card — the tray increment is the confirmation and the sheet stays
+> open. S13 is unchanged when the flag is OFF, and stays live under either
+> flag state for the non-participating paths (voice / photo / manual /
+> barcode-recovery) and every other host. See the "2026-07-21 — session
+> tray" section below.
+
 ### 2026-06-17 — describe review active-slot anchoring
 
 The mobile natural-language describe path now threads the Today host's
@@ -433,6 +442,91 @@ prop through `<LogSheet>`; selection + gating live at the host
 `Spacing` gutters, `Type.captionStrong` label on mobile; matching Tailwind
 token classes on web). `PressableScale` (`haptic="selection"`) on mobile;
 hover + `:focus-visible` ring + `active:scale` on web.
+
+### 2026-07-21 — session tray (immediate-commit multi-add, flag-gated)
+
+**Ticket:** ENG-1643. **Spec (normative):**
+`docs/specs/2026-07-21-log-session-tray.md`. **Decision:**
+`docs/decisions/2026-07-21-log-session-tray-immediate-commit.md`.
+
+Behind `log_session_tray_v1` (default OFF — registered in
+`KNOWN_DEFAULT_OFF_FLAGS` on both `src/lib/analytics/track.ts` and
+`apps/mobile/lib/analytics.ts`), every add from the LogSheet **still commits
+immediately** through the existing one-commit path (ENG-1462), but the sheet
+**stays open** instead of ending the flow: the search clears/refocuses and a
+**session tray** pinned to the sheet's bottom edge accumulates a *receipt* of
+the items committed this sheet-session.
+
+**Behaviour (flag ON):**
+- **Participating add paths:** the search portion-preview "Use this" commit and
+  the in-sheet one-tap rows (go-tos / Recent / Saved / Library). Each appends
+  the commit's RESULT (which carries the committed `mealId`) to the tray and
+  keeps the sheet open — the tray increment IS the confirmation (no S13 card).
+  Non-participants (unchanged, by design): voice / photo / scan modals, the
+  manual quick-add form, barcode manual-entry recovery — they keep S13.
+- **Collapsed bar:** sage success check + `{n} added · {~}{kcal} kcal` +
+  expand chevron + a primary **Done**. kcal shows the honest `~` (ENG-1417,
+  behind `kcal_trust_qualifier_v1`, exactly as S13) unless **every** tray item
+  is verified. The count also rides the sheet title (`… · {n} added`), visible
+  in every state (the ENG-1449 "visible in every state" lesson).
+- **Expanded panel:** eyebrow "Added this session", one row per item
+  (`{title}` / `{~}{kcal} kcal`, `· {Slot}` appended only when the tray spans
+  multiple slots), a `Total` footer (`{~}{kcal} kcal · {P} P · {C} C · {F} F`),
+  a ghost **Save as usual meal** (rendered only at ≥ 2 items), and Done.
+- **Per-item Undo (persistent):** the row's ✕ deletes the committed journal row
+  via the EXISTING removal path (`deleteMeal` mobile / `removeLoggedMeal` web),
+  then drops the row from tray state; the ✕ disables while its removal is in
+  flight (no double-submit). Undo stays available for the whole session — the
+  fix for the punished ~1-second undo toast.
+- **Done / close:** Done closes the sheet (nothing else — everything is already
+  committed; `haptic="confirm"` on mobile). Backdrop / swipe / X close freely
+  with **no prompt** — the tray is a receipt, never a stage, so closing in any
+  state loses nothing. The close effect resets tray state (presentation only —
+  it never un-commits; logged items live on in Today as normal editable rows).
+- **Save as usual meal (§4.6):** opens the existing seeded save flow
+  (`openSaveMealSheetWithSeed` mobile / `handleOpenSaveCombo` web) prefilled
+  with the tray's items via `sessionTrayToSavedMealItems` — a small change, no
+  gap. Saving does not close the sheet or clear the tray.
+
+**Gating:** flag OFF ⇒ no tray prop is threaded ⇒ the sheet renders + behaves
+byte-identically to pre-ENG-1643 (S13 card, Done closes the sheet). The
+`else` path stays fully alive. Removal condition: 100% for two weeks, no
+regression → a cleanup PR removes only the in-sheet S13 branch (S13 stays for
+voice / photo / manual / other hosts).
+
+**Wiring:** all new logic is in new files (screen-budget ratchet). Pure shared
+module `src/lib/nutrition/logSessionTray.ts` (`LogSessionTrayItem`,
+`sessionTrayTotals`, `trayIsFullyVerified`, `trayIsMultiSlot`,
+`resolveUsualMealName`, `committedToTrayItem`, `sessionTrayToSavedMealItems`,
+`LogSessionTrayProps`) + mobile re-export shim `apps/mobile/lib/logSessionTray.ts`;
+shared React state hook `src/lib/nutrition/useLogSessionTray.ts` (`items` /
+`append` / `undo` with the in-flight guard / `reset`). Presentational tray:
+`src/app/components/suppr/log-session-tray.tsx` +
+`apps/mobile/components/today/LogSessionTray.tsx` (same
+`LogSessionTrayProps` shape, same testID grammar `log-session-tray*`, same
+copy). Commit + tray + S13 presentation live in the parity-mirrored commit
+hooks `src/lib/nutrition/useLogSheetFoodCommits.ts` (web) and
+`apps/mobile/app/(tabs)/_today/useLogSheetCommits.ts` (mobile — the extraction
+closed the long-standing platform-structure divergence). Hosts
+(`NutritionTracker.tsx` / `TodayScreen.tsx`) read the flag, thread the
+`sessionTray` prop through `<LogSheet>`, and gain exactly one
+`resetLogSessionTray()` call in the sheet-close effect. `FoodSearchPanel` is
+untouched — all behaviour change is host-side, after `onSelect`. Tokens only;
+`PressableScale` haptics (selection / confirm / warn) on mobile, hover +
+`:focus-visible` + active on web.
+
+**Analytics:** per-item `food_logged` fires unchanged from the commit path
+(per-item provenance preserved — not batched). New events (same names both
+platforms): `log_session_tray_undo` `{kcal}`, `log_session_tray_done`
+`{items, kcal}`, `log_session_tray_save_meal_opened` `{items}`.
+
+**Tests:** `tests/unit/logSessionTray.test.ts` (shared math),
+`tests/unit/useLogSessionTray.test.tsx` (hook append/undo/reset + in-flight
+guard), `tests/unit/logSessionTrayWeb.test.tsx` +
+`apps/mobile/tests/unit/logSessionTray.test.tsx` (render harnesses),
+`logSheetOneCommitModel.test.ts` §9 extension (the receipt-never-a-stage
+source pins), and the `logSheetWebMobileParity.test.ts` ENG-1643 block (shared
+props shape, testID grammar, copy, both sheets mounting the tray).
 
 ## Where it lives
 
