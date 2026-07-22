@@ -38,7 +38,7 @@ import { refreshAdaptiveTdeeForUser } from "@/lib/refreshAdaptiveTdee";
 import { writeMealToHealthKitIfEnabled } from "@/lib/healthKitMealWriter";
 import { snapshotDailyTargetIfMissing } from "@suppr/nutrition-core/dailyTargetSnapshot";
 import { ENERGY_NUMBERS_V1_FLAG } from "@suppr/nutrition-core/energyNumbers";
-import { getMealShare } from "@/lib/mealShare";
+import { getMealShare, storePendingMealShare } from "@/lib/mealShare";
 import {
   mealShareTotals,
   shareItemToLoggableMeal,
@@ -341,7 +341,19 @@ export default function MealSharedScreen() {
             label={authed ? "Add to my log" : "Sign in to add this"}
             loading={authed && submitting}
             disabled={submitting}
-            onPress={authed ? handleConfirm : () => router.push("/login")}
+            onPress={
+              authed
+                ? handleConfirm
+                : () => {
+                    // ENG-1649 — stash the token so post-auth drain
+                    // (app/_layout.tsx) re-opens this screen; no re-tap of
+                    // the original link needed. Fire-and-forget: the push
+                    // shouldn't wait on storage, and the drain only reads
+                    // after sign-in completes.
+                    void storePendingMealShare(token ?? "");
+                    router.push("/login");
+                  }
+            }
           />
           <SupprButton variant="ghost" label="Not now" onPress={goBack} disabled={submitting} />
         </View>

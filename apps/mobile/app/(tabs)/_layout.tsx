@@ -17,6 +17,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors';
 import { useOnboardingGate } from '@/hooks/useOnboardingGate';
 import { isFeatureEnabled } from '@/lib/analytics';
 import { useHasSignedInBefore } from '@/lib/hasSignedInBefore';
+import { takePendingMealShare } from '@/lib/mealShare';
 
 /**
  * Phase 2 / B1.1 — tab structure collapses 6 → 4 (2026-04-27 strategic
@@ -53,6 +54,32 @@ import { useHasSignedInBefore } from '@/lib/hasSignedInBefore';
  *
  * Documentation: `docs/journeys/tab-collapse-2026-04-27.md`.
  */
+/**
+ * ENG-1649 — post-auth resume for a signed-out meal-share accept. Mounted
+ * only inside the fully-gated tab tree (session present + onboarding
+ * complete), so this is the mobile analogue of web's `/home`-mount drain
+ * in `SharedMealAcceptHost`. On mount it reads + clears the AsyncStorage
+ * pending token (written by `/meal-shared`'s "Sign in to add this" tap)
+ * and re-opens the accept screen — no re-tap of the original link. A ref
+ * guards it to one drain per mount; `takePendingMealShare` clears the key,
+ * so a normal signed-in launch (no pending token) is a no-op.
+ */
+function ResumePendingMealShare() {
+  const router = useRouter();
+  const drainedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (drainedRef.current) return;
+    drainedRef.current = true;
+    void (async () => {
+      const token = await takePendingMealShare();
+      if (token) {
+        router.push({ pathname: '/meal-shared', params: { token } });
+      }
+    })();
+  }, [router]);
+  return null;
+}
+
 export default function TabLayout() {
   const { session, loading } = useAuth();
   const colors = useThemeColors();
@@ -120,6 +147,7 @@ export default function TabLayout() {
     // strip, which overlays every route until answered). The prompt
     // renders null once a stored choice exists.
     <View style={{ flex: 1 }}>
+    <ResumePendingMealShare />
     <Tabs
       // ENG-1247 — set the tab scene container background to the app page colour
       // directly (not only via the nav theme). The nav theme background applies

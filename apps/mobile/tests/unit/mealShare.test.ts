@@ -28,10 +28,18 @@ vi.mock("expo-constants", () => ({
   default: { expoConfig: { extra: {} } },
 }));
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Share } from "react-native";
 import { supabase } from "@/lib/supabase";
 import { track, isFeatureEnabled } from "@/lib/analytics";
-import { buildMobileMealShareUrl, journalMealToShareInput, shareJournalMeal } from "../../lib/mealShare";
+import {
+  buildMobileMealShareUrl,
+  journalMealToShareInput,
+  shareJournalMeal,
+  storePendingMealShare,
+  takePendingMealShare,
+} from "../../lib/mealShare";
+import { MEAL_SHARE_STORAGE_KEY } from "@suppr/shared/share/mealShareLink";
 import type { JournalMeal } from "../../lib/nutritionJournal";
 
 function makeMeal(overrides: Partial<JournalMeal> = {}): JournalMeal {
@@ -224,5 +232,39 @@ describe("shareJournalMeal — link vs text orchestration", () => {
       outcome: "error",
       mode: "link",
     });
+  });
+});
+
+describe("pending meal-share resume rail (ENG-1649)", () => {
+  const VALID = "a1b2c3d4".repeat(4); // 32 hex
+
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it("stores a normalised token and takes it back once (read + clear)", async () => {
+    await storePendingMealShare(VALID);
+    expect(await AsyncStorage.getItem(MEAL_SHARE_STORAGE_KEY)).toBe(VALID);
+
+    const first = await takePendingMealShare();
+    expect(first).toBe(VALID);
+    // Drained — a second take is a clean miss (at-most-once resume).
+    expect(await takePendingMealShare()).toBeNull();
+    expect(await AsyncStorage.getItem(MEAL_SHARE_STORAGE_KEY)).toBeNull();
+  });
+
+  it("normalises hyphenated/upper input on store", async () => {
+    await storePendingMealShare("A1B2-C3D4-A1B2-C3D4-A1B2-C3D4-A1B2-C3D4");
+    expect(await takePendingMealShare()).toBe(VALID);
+  });
+
+  it("never stores a malformed token", async () => {
+    await storePendingMealShare("not-a-token");
+    expect(await AsyncStorage.getItem(MEAL_SHARE_STORAGE_KEY)).toBeNull();
+    expect(await takePendingMealShare()).toBeNull();
+  });
+
+  it("take returns null when nothing is pending", async () => {
+    expect(await takePendingMealShare()).toBeNull();
   });
 });

@@ -96,7 +96,7 @@ already pending.
 |---|---|---|
 | Share a logged meal | "Share meal" row on a Today meal card (`src/app/components/suppr/today-meals-section.tsx`) — `onShareMealLink` prop wired from `NutritionTracker.tsx` when the flag is on | Today meal long-press Alert **and** the branded action sheet both delegate to `shareJournalMeal()` (`apps/mobile/lib/mealShare.ts`), called from `apps/mobile/components/today/TodayMealsSection.tsx` |
 | Open a share link (signed in, signed out, or new) | `/m/<token>` — public Next.js route, anon-reachable (`app/m/[token]/page.tsx` → `MealShareLandingClient.tsx`) | `suppr:///meal-shared?token=<hex>` resolves as a real Expo Router route (`apps/mobile/app/meal-shared.tsx`) — **not** a custom deep-link-pipeline case; `decideDeepLinkAction` explicitly `{kind:"ignore"}`s it so the recipe-import deep-link pipeline never intercepts it |
-| Resume a share after signup/login (web only) | `?mealShare=<token>` query param on `/home` (consumed once by a ref-guarded effect in `SharedMealAcceptHost`, `src/app/components/suppr/shared-meal-accept-host.tsx`, mounted in `src/app/App.tsx`), or the `suppr.pending_meal_share` localStorage handoff (`storePendingMealShare` / `takePendingMealShare`, `mealShareClient.ts`) written by the landing page before it redirects to `/signup` or `/login` | Not applicable — mobile has no signed-out landing page; `/meal-shared` itself gates the CTA on auth state (see Step 3) |
+| Resume a share after signup/login | `?mealShare=<token>` query param on `/home` (consumed once by a ref-guarded effect in `SharedMealAcceptHost`, `src/app/components/suppr/shared-meal-accept-host.tsx`, mounted in `src/app/App.tsx`), or the `suppr.pending_meal_share` localStorage handoff (`storePendingMealShare` / `takePendingMealShare`, `mealShareClient.ts`) written by the landing page before it redirects to `/signup` or `/login` | ENG-1649 parity: the `/meal-shared` "Sign in to add this" tap stashes the token via `storePendingMealShare` (AsyncStorage, `mealShare.ts`); `ResumePendingMealShare` in `app/(tabs)/_layout.tsx` drains it once post-auth (session + onboarding gate = the `/home` analogue) and re-opens `/meal-shared` |
 
 ## Step 1 — Sharer: mint a link
 
@@ -298,11 +298,16 @@ narrower than web's open date input, matching mobile's denser input model).
 
 **The CTA split:** signed in → primary "Add to my log" (loading state while
 submitting, disabled during submit — no double-submit) + ghost "Not now."
-Signed out → primary label changes to "Sign in to add this" and routes to
-`/login` instead of submitting (there's no `nutrition_entries` row to write
-without a `user_id`, so this is a hard gate, not a soft nudge). **There is
-no mobile equivalent of web's signed-out "stash token → land back after
-auth" resume rail** — see Edge cases.
+Signed out → primary label changes to "Sign in to add this"; the tap
+stashes the token via `storePendingMealShare` (AsyncStorage,
+`suppr.pending_meal_share`) then routes to `/login` (there's no
+`nutrition_entries` row to write without a `user_id`, so this is a hard
+gate, not a soft nudge). **Mobile now has the signed-out resume rail
+(ENG-1649)** — mirror of web's: the token is drained once, post-auth, by
+`ResumePendingMealShare` mounted in the fully-gated tab tree
+(`apps/mobile/app/(tabs)/_layout.tsx` — session present + onboarding
+complete, the mobile analogue of web's `/home` mount), which re-opens
+`/meal-shared` so no re-tap of the original link is needed.
 
 **On confirm:** builds one `nutrition_entries` row per item via
 `shareItemToLoggableMeal` → `newMealId()` → `buildNutritionEntryRow`, a
@@ -346,13 +351,14 @@ only reachable by a direct RPC call; there is no UI path to it.
   the landing page's own error handling (network/RPC failure → `"invalid"`,
   per `mealShareClient.ts`'s doc comment) means the visitor sees the generic
   "This link isn't valid" copy, not a crash.
-- **Signed-out recipient on mobile** → no resume rail exists (see Step 3).
-  The "Sign in to add this" CTA routes to `/login` with no token carried
-  through; after signing in, the user is back on the tab bar with no pending
-  share to accept. They'd need to re-open the original share link/message to
-  try again. This is a real, current asymmetry with web — tracked as
-  **ENG-1649** (decision ticket for whether mobile gets a signed-out resume
-  rail) — see Web ↔ mobile parity below.
+- **Signed-out recipient on mobile** → resume rail now exists (ENG-1649,
+  parity with web). The "Sign in to add this" CTA stashes the token
+  (`storePendingMealShare`, AsyncStorage) before routing to `/login`; after
+  auth + onboarding the user lands on the tab bar, where
+  `ResumePendingMealShare` (`apps/mobile/app/(tabs)/_layout.tsx`) drains the
+  token once and re-opens `/meal-shared` — no re-tap of the original link.
+  The token is read-and-cleared (at-most-once), so a later normal launch
+  never replays it.
 - **A meal fails to serialize** (e.g. a non-finite macro, an empty recipe
   title) → `mealToShareItem` returns `null` before any RPC call; the sharer
   falls straight to the text-only path with no error surfaced — treated
