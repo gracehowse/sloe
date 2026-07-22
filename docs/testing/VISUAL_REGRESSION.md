@@ -1,6 +1,6 @@
 # Visual regression — web + mobile
 
-**Web:** Playwright snapshots (committed baselines) + **Chromatic** (hosted PR review, informs not gates) + **Storybook** (component isolation). **Mobile:** Maestro deeplink sweep + pixel diff. **Beta feedback:** Centercode (qualitative — not layout QA). Optional **PostHog Visual Review** on PRs.
+**Web:** Playwright snapshots (committed baselines) + **Chromatic** (hosted PR review, informs not gates) + **Storybook** (component isolation). **Mobile:** Maestro deeplink sweep + pixel diff + **Storybook role catalog** (RN-web in the shared Chromatic pipeline, ENG-1664). **Beta feedback:** Centercode (qualitative — not layout QA). Optional **PostHog Visual Review** on PRs.
 
 ## Process — when you change a sub-page
 
@@ -119,7 +119,7 @@ the merge gate.
 
 HTML reports land in `coverage/storybook/` (`npm run test:storybook:coverage`).
 
-**Stories:** `src/app/components/ui/*.stories.tsx`, overview `src/stories/DesignSystem.mdx`. **CI:** `.github/workflows/storybook.yml` on component path changes.
+**Stories:** `src/app/components/ui/*.stories.tsx`, overview `src/stories/DesignSystem.mdx`. **Mobile role catalog:** `apps/mobile/stories/roles/*.stories.tsx` — one story per UI **role** (Card, InsetPanel, Notice, Sheet, CommitPill, GhostPill, Chip, AddRow, IconButton, CountBadge), rendered via `react-native-web` + `vite-plugin-rnw` in the same Storybook build (`.storybook/mobile-vite.ts`). Light/dark via the toolbar; rest/pressed/disabled/loading variants per role. Chromatic: `npm run chromatic:storybook`. **CI:** `.github/workflows/storybook.yml` on component path changes.
 
 Add a story when shipping or changing a shared primitive; still add a Playwright or Maestro baseline when the change affects a full page.
 
