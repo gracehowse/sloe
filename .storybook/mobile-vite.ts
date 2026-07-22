@@ -96,6 +96,15 @@ export function mergeMobileStorybookVite(config: UserConfig): UserConfig {
             );
           }
 
+          // Module-scope createBrowserClient throws without a URL in Chromatic's
+          // extraction browser — stub every import path to the browser client.
+          if (
+            source === "@/lib/supabase/browserClient" ||
+            source.includes("lib/supabase/browserClient")
+          ) {
+            return path.join(coverageStubs, "supabase-browser-client.ts");
+          }
+
           if (!isMobileModule(importer)) return null;
 
           if (source === "@/context/theme") {
