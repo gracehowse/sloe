@@ -181,10 +181,11 @@ describe("TodayPlannedMealsCard — Sloe TD3 re-skin", () => {
 
 /**
  * F-178/F-179 (ENG-1065) — empty-state branch. When the host mounts the card
- * with no planned meals (flag-ON path, `today_planned_empty_state`), the card
- * keeps the SAME shell + "Planned" header and shows a calm one-liner plus a
- * ghost "Plan your day →" affordance that routes to the Plan tab. This is the
- * component's render fork; the flag itself lives at the host (pinned below).
+ * with no planned meals, the card keeps the SAME shell + "Planned" header and
+ * shows a calm one-liner plus a ghost "Plan your day →" affordance that
+ * routes to the Plan tab. This is the component's render fork; the host
+ * always mounts it now on the day view (`today_planned_empty_state`
+ * collapsed, ENG-1651; wiring pinned below).
  */
 describe("TodayPlannedMealsCard — empty-state branch (F-178/F-179)", () => {
   it("renders the SAME 'Planned' header in the empty state", () => {

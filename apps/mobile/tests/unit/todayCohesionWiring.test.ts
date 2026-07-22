@@ -30,8 +30,9 @@ describe("Today cohesion — index.tsx host wiring", () => {
     expect(src).not.toMatch(/tierV1/);
   });
 
-  it("F-178/F-179: Planned card mounts when populated OR the empty-state flag is on", () => {
-    expect(src).toMatch(/plannedMeals\.length > 0 \|\| isFeatureEnabled\("today_planned_empty_state"\)/);
+  it("F-178/F-179: Planned card mounts on any day view, populated or not (empty-state flag collapsed, ENG-1651)", () => {
+    expect(src).not.toMatch(/isFeatureEnabled\("today_planned_empty_state"\)/);
+    expect(src).toMatch(/viewMode === "day" && \(/);
   });
 
   it("F-158: Complete-Day is the extracted <TodayCompleteDayButton>, not an inline floating Pressable", () => {

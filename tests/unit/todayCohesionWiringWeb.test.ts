@@ -13,8 +13,9 @@ const read = (rel: string) => readFileSync(resolve(__dirname, rel), "utf8");
 describe("Today cohesion — NutritionTracker web host wiring", () => {
   const src = read("../../src/app/components/NutritionTracker.tsx");
 
-  it("F-178/F-179: Planned card mounts when populated OR the empty-state flag is on", () => {
-    expect(src).toMatch(/isFeatureEnabled\("today_planned_empty_state"\)/);
+  it("F-178/F-179: Planned card mounts when populated OR on any day view (empty-state flag collapsed, ENG-1651)", () => {
+    expect(src).not.toMatch(/isFeatureEnabled\("today_planned_empty_state"\)/);
+    expect(src).toMatch(/viewMode === "day" \? \(/);
     // The card is fed an empty array when there is no plan (drives the empty branch).
     expect(src).toMatch(/plannedMeals=\{mealPlan\?\.\[0\]\?\.meals \?\? \[\]\}/);
   });

@@ -108,8 +108,9 @@ function TodayPlannedMealsCardImpl({
           header above, with a calm one-liner and a ghost "Plan your day →"
           affordance into the Plan tab. Padding snaps to the F-159 rhythm
           (Spacing.md = 16) — same horizontal/vertical inset a populated row uses,
-          so the two states read as one element in two states. The host gates
-          whether this mounts when empty behind `today_planned_empty_state`. */}
+          so the two states read as one element in two states. The host always
+          mounts this on the day view, empty or not (`today_planned_empty_state`
+          collapsed, ENG-1651). */}
       {isEmpty ? (
         <SupprCard lift={cardLift} padding="none">
           <View style={{ paddingHorizontal: Spacing.md, paddingVertical: Spacing.md, gap: Spacing.dense }}>
