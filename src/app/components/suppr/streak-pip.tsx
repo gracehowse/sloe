@@ -2,12 +2,10 @@
 
 import * as React from "react";
 import { Flame, Shield } from "lucide-react";
-import { useFeatureFlagEnabled } from "posthog-js/react";
 
 /**
  * StreakPip — small pill that shows the user's current logging streak
- * next to the Today date row. Web parity to
- * `apps/mobile/components/today/StreakPip.tsx`.
+ * next to the Today date row.
  *
  * Rationale (D-2026-04-27-07):
  *   "Streak shrinks to a pip; weekly recap stays as Sunday card,
@@ -18,8 +16,18 @@ import { useFeatureFlagEnabled } from "posthog-js/react";
  * production design spec, lucide `Flame` is the canonical glyph.
  *
  * Streak < 2 renders the pip in muted neutral; ≥ 2 turns primary.
- * 0-day streaks still render so first-time users understand what the
- * surface is.
+ * A 0-day streak with no freeze protection renders nothing (empty-state
+ * suppressed — `premium-sweep-v2-p0-t26` collapsed permanently on,
+ * ENG-1651). A 0-day streak WITH freeze protection still renders.
+ *
+ * KNOWN WEB/MOBILE DIVERGENCE (flagged, not silently left — ENG-1651):
+ * mobile's `apps/mobile/components/today/StreakPip.tsx` explicitly does
+ * the opposite — it documents "we do NOT hide a 0-day streak — the
+ * pip's persistent presence is part of the calm-streak posture." This
+ * predates the flag collapse (the flag was always web-only), so
+ * collapsing it just removed the only mechanism that could have
+ * reverted web back to mobile's behavior. Whether these two should
+ * actually match is an open product question, not resolved here.
  *
  * 2026-05-12 (premium-bar audit web parity, DC8 polish):
  *   - `freezeProtected` swaps the Flame → Shield + calm slate when a
@@ -64,11 +72,10 @@ export function StreakPip({
   const active = safeDays >= 2;
   const isLg = size === "lg";
 
-  // When flag is on and there's no streak yet, suppress the pip
-  // entirely -- the empty-state "Start your streak" copy reads as
-  // growth-shouty pressure and violates calm voice.
-  const suppressEmpty = useFeatureFlagEnabled("premium-sweep-v2-p0-t26");
-  if (suppressEmpty && safeDays === 0 && !freezeProtected) {
+  // No streak yet: suppress the pip entirely -- the empty-state "Start
+  // your streak" copy reads as growth-shouty pressure and violates calm
+  // voice. (premium-sweep-v2-p0-t26, collapsed permanently-on 2026-07-21.)
+  if (safeDays === 0 && !freezeProtected) {
     return null;
   }
 

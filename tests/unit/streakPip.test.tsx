@@ -16,9 +16,14 @@ import { render, screen } from "@testing-library/react";
 import { StreakPip } from "../../src/app/components/suppr/streak-pip";
 
 describe("StreakPip (web)", () => {
-  it("renders 'Start your streak' at zero days", () => {
-    render(<StreakPip days={0} />);
-    expect(screen.getByText("Start your streak")).toBeDefined();
+  it("renders nothing at zero days (empty-state suppressed, ENG-1651/premium-sweep-v2-p0-t26)", () => {
+    const { container } = render(<StreakPip days={0} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("still renders at zero days when a freeze protected today's streak", () => {
+    render(<StreakPip days={0} freezeProtected />);
+    expect(screen.getByText("0-day streak · freeze")).toBeDefined();
   });
 
   it("renders '1-day streak' at one day", () => {
@@ -31,12 +36,12 @@ describe("StreakPip (web)", () => {
     expect(screen.getByText("5-day streak")).toBeDefined();
   });
 
-  it("clamps non-finite or negative inputs to 0 (defensive)", () => {
-    const { rerender } = render(<StreakPip days={Number.NaN} />);
-    expect(screen.getByText("Start your streak")).toBeDefined();
+  it("clamps non-finite or negative inputs to 0 (defensive), which renders nothing", () => {
+    const { container, rerender } = render(<StreakPip days={Number.NaN} />);
+    expect(container).toBeEmptyDOMElement();
 
     rerender(<StreakPip days={-3} />);
-    expect(screen.getByText("Start your streak")).toBeDefined();
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("exposes a default accessibility label tied to the day count", () => {
