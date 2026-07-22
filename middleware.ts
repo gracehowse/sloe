@@ -78,6 +78,14 @@ function isPublic(pathname: string): boolean {
   // recipient hasn't signed in yet, so gating it would 307 every share-link
   // click to /login before they've even seen what was shared with them.
   if (pathname.startsWith("/m/")) return true;
+  // ENG-1645 — `/g/<code>` is the referral landing page
+  // (`app/g/[code]/ReferralLandingClient.tsx`), built to capture an
+  // anonymous invitee and route them into signup. `PUBLIC_ROUTES` is an
+  // exact-match Set, so a dynamic segment like `/g/ABC123` never matched it
+  // — every referral link 307'd a signed-out invitee to /login before they
+  // ever saw what was shared, breaking the capture-then-signup loop the
+  // page exists for (same bug class as ENG-1642's /m/ gap above).
+  if (pathname.startsWith("/g/")) return true;
   if (isDevPreview(pathname)) return true;
   return false;
 }
