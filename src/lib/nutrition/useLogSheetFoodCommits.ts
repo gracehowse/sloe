@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, type Dispatch, type SetStateAction } from "react";
 import {
   foodSelectionAnalyticsSource,
   foodSelectionSourceLabel,
@@ -10,7 +10,21 @@ import {
 import { mealImageFields } from "./foodHistory.ts";
 import type { FoodHistoryItem } from "./foodHistory.ts";
 import type { LoggedMeal } from "../../types/recipe.ts";
-import type { FoodLoggedSource } from "../analytics/events.ts";
+import type { SavedMealItem } from "./savedMeals.ts";
+import { track } from "../analytics/track.ts";
+import { AnalyticsEvents, type FoodLoggedSource } from "../analytics/events.ts";
+import { useLogSessionTray } from "./useLogSessionTray.ts";
+import {
+  committedToTrayItem,
+  sessionTrayToSavedMealItems,
+  sessionTrayTotals,
+  type CommittedLogItem,
+  type LogSessionTrayItem,
+  type LogSessionTrayProps,
+} from "./logSessionTray.ts";
+import type { LogSheetProps } from "../../app/components/suppr/log-sheet.tsx";
+
+type LogSheetConfirmationState = NonNullable<LogSheetProps["confirmation"]>;
 
 /** Structural superset of the panel's `FoodSearchSelection` this hook needs. */
 export type LogSheetFoodSelection = FoodSelectionLike & {
@@ -30,35 +44,34 @@ export interface UseLogSheetFoodCommitsArgs {
     analyticsSource?: FoodLoggedSource,
   ) => string;
   eatenAtForCurrentLog: () => Pick<LoggedMeal, "eatenAt">;
-  presentLogSheetConfirmation: (payload: {
-    title: string;
-    kcal: number;
-    mealIds: string[];
-    /** ENG-1502 — per-item trust bit; absent = honest `~` (ENG-1417). */
-    kcalIsVerified?: boolean;
-  }) => void;
+  /** S13 confirmation state setter (host-owned). */
+  setLogSheetConfirmation: Dispatch<SetStateAction<LogSheetConfirmationState | null>>;
+  /** Closes the sheet (Done, and the S13 onDone). */
+  setLogSheetOpen: Dispatch<SetStateAction<boolean>>;
+  /** Existing removal path — the S13 Undo and the tray's per-item Undo. */
+  removeLoggedMeal: (mealId: string) => void;
+  /** ENG-1643 — flag ON: participating adds append to the tray and keep the
+   *  sheet open instead of presenting the S13 confirmation. */
+  sessionTrayEnabled: boolean;
+  /** Opens the seeded save-as-usual-meal flow with the tray's items (§4.6). */
+  onOpenSaveMeal: (items: Omit<SavedMealItem, "id" | "position">[]) => void;
 }
 
 /**
- * ENG-1502 (extraction pass, screen-budget ratchet ENG-621/717) — the two
- * LogSheet food-commit paths, lifted byte-for-byte out of
- * `NutritionTracker.tsx`. Mobile mirror stays inline in `TodayScreen.tsx`
- * (`commitLogSheetFoodSelection` / `logHistoryItemFromSheet`).
+ * ENG-1502/1643 (extraction pass, screen-budget ratchet ENG-621/717) — the
+ * LogSheet food-commit cluster + the S13 presentation + the session-tray state,
+ * lifted out of `NutritionTracker.tsx`. The exact parity mirror of mobile
+ * `apps/mobile/app/(tabs)/_today/useLogSheetCommits.ts`.
  *
- * - `commitFoodSearchSelection` — canonical food-search selection commit.
- *   Used by both the `<FoodSearch>` dialog and the inline `<FoodSearchPanel>`
- *   mounted inside `<LogSheet>`. Both surfaces produce the exact same
- *   `FoodSearchSelection` payload so the journal row, source label,
- *   caffeine/alcohol auto-track, and OFF micro persistence stay identical
- *   regardless of entry point. Returns the ENG-1502 `kcalIsVerified` trust
- *   bit (true only for verified-USDA / Suppr-generic rows) so the S13
- *   confirmation renders the unqualified kcal only when the data genuinely
- *   is verified.
+ * Spec: `docs/specs/2026-07-21-log-session-tray.md`.
  *
- * - `logHistoryItemFromSheet` — re-log of a prior journal row (go-tos /
- *   Recent). The journal doesn't persist the ENG-1417 trust bit, so this
- *   path always presents `kcalIsVerified: false` — unknown trust must never
- *   read as confident.
+ * - `commitFoodSearchSelection` — canonical food-search selection commit. Used
+ *   by both the `<FoodSearch>` dialog and the inline `<FoodSearchPanel>`. Returns
+ *   the committed row id + macros + the ENG-1502 `kcalIsVerified` trust bit.
+ * - `logHistoryItemFromSheet` — re-log of a prior journal row (go-tos / Recent).
+ *   Trust is unknown (journal rows don't persist the ENG-1417 bit) → honest `~`.
+ * - Flag ON: both participating paths append the commit RESULT to the tray and
+ *   keep the sheet open; flag OFF presents the honest S13 confirmation.
  */
 export function useLogSheetFoodCommits({
   selectedDateKey,
@@ -66,12 +79,57 @@ export function useLogSheetFoodCommits({
   timeLabel,
   addLoggedMealForDate,
   eatenAtForCurrentLog,
-  presentLogSheetConfirmation,
+  setLogSheetConfirmation,
+  setLogSheetOpen,
+  removeLoggedMeal,
+  sessionTrayEnabled,
+  onOpenSaveMeal,
 }: UseLogSheetFoodCommitsArgs) {
+  const tray = useLogSessionTray({ onRemoveItem: removeLoggedMeal });
+  const appendLogSessionTray = tray.append;
+
+  const undoLogSessionTray = useCallback(
+    (item: LogSessionTrayItem) => {
+      try {
+        track(AnalyticsEvents.log_session_tray_undo, { kcal: item.kcal });
+      } catch {
+        /* analytics fire-and-forget */
+      }
+      return tray.undo(item);
+    },
+    [tray],
+  );
+
+  const presentLogSheetConfirmation = useCallback(
+    (payload: {
+      title: string;
+      kcal: number;
+      mealIds: string[];
+      /** ENG-1502 — per-item trust bit; absent = honest `~` (ENG-1417). */
+      kcalIsVerified?: boolean;
+    }) => {
+      setLogSheetConfirmation({
+        title: payload.title,
+        kcal: Math.round(payload.kcal),
+        ...(payload.kcalIsVerified !== undefined
+          ? { kcalIsVerified: payload.kcalIsVerified }
+          : {}),
+        slot: mealSlot,
+        onDone: () => {
+          setLogSheetConfirmation(null);
+          setLogSheetOpen(false);
+        },
+        onUndo: () => {
+          for (const mealId of payload.mealIds) removeLoggedMeal(mealId);
+          setLogSheetConfirmation(null);
+        },
+      });
+    },
+    [mealSlot, removeLoggedMeal, setLogSheetConfirmation, setLogSheetOpen],
+  );
+
   const commitFoodSearchSelection = useCallback(
-    (
-      selection: LogSheetFoodSelection,
-    ): { id: string; title: string; kcal: number; kcalIsVerified: boolean } => {
+    (selection: LogSheetFoodSelection): CommittedLogItem => {
       const sourceLabel = foodSelectionSourceLabel(selection.source);
 
       // ENG-1046 — shared scaling core (mobile parity).
@@ -108,6 +166,10 @@ export function useLogSheetFoodCommits({
         id,
         title: selection.name,
         kcal: mealCalories,
+        protein: mealProtein,
+        carbs: mealCarbs,
+        fat: mealFat,
+        slot: mealSlot,
         kcalIsVerified: selection.verified === true,
       };
     },
@@ -135,6 +197,24 @@ export function useLogSheetFoodCommits({
         },
         "quick_add",
       );
+      // ENG-1643 — flag ON appends to the tray (sheet stays open); OFF presents
+      // S13. Trust is unknown either way (a history re-log copies a prior
+      // journal row that doesn't persist the ENG-1417 bit) → honest `~`.
+      if (sessionTrayEnabled) {
+        appendLogSessionTray(
+          committedToTrayItem({
+            id,
+            title: item.recipeTitle,
+            kcal: item.calories,
+            protein: item.protein,
+            carbs: item.carbs,
+            fat: item.fat,
+            slot,
+            kcalIsVerified: false,
+          }),
+        );
+        return;
+      }
       presentLogSheetConfirmation({
         title: item.recipeTitle,
         kcal: item.calories,
@@ -142,8 +222,50 @@ export function useLogSheetFoodCommits({
         kcalIsVerified: false,
       });
     },
-    [addLoggedMealForDate, presentLogSheetConfirmation, selectedDateKey],
+    [
+      addLoggedMealForDate,
+      presentLogSheetConfirmation,
+      selectedDateKey,
+      sessionTrayEnabled,
+      appendLogSessionTray,
+    ],
   );
 
-  return { commitFoodSearchSelection, logHistoryItemFromSheet };
+  const sessionTrayProp: LogSessionTrayProps | undefined = sessionTrayEnabled
+    ? {
+        items: tray.items,
+        pendingUndoIds: tray.pendingUndoIds,
+        onUndo: undoLogSessionTray,
+        onDone: () => {
+          try {
+            track(AnalyticsEvents.log_session_tray_done, {
+              items: tray.items.length,
+              kcal: sessionTrayTotals(tray.items).kcal,
+            });
+          } catch {
+            /* analytics fire-and-forget */
+          }
+          setLogSheetOpen(false);
+        },
+        onSaveMeal: () => {
+          try {
+            track(AnalyticsEvents.log_session_tray_save_meal_opened, {
+              items: tray.items.length,
+            });
+          } catch {
+            /* analytics fire-and-forget */
+          }
+          onOpenSaveMeal(sessionTrayToSavedMealItems(tray.items));
+        },
+      }
+    : undefined;
+
+  return {
+    commitFoodSearchSelection,
+    logHistoryItemFromSheet,
+    presentLogSheetConfirmation,
+    appendLogSessionTray,
+    resetLogSessionTray: tray.reset,
+    sessionTrayProp,
+  };
 }

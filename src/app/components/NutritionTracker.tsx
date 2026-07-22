@@ -14,6 +14,7 @@ import {
 } from "../../lib/nutrition/dayTargetSchedule.ts";
 import { previousDayKey } from "../../lib/nutrition/copyYesterdayMeals.ts";
 import { useLogSheetFoodCommits } from "../../lib/nutrition/useLogSheetFoodCommits.ts";
+import { committedToTrayItem } from "../../lib/nutrition/logSessionTray.ts";
 import { ACTIVITY_BUDGET_DISCOVERABILITY_KEY } from "../../lib/nutrition/activityBudgetDiscoverability.ts";
 import { useAiMethodTooltip } from "../../lib/today/useAiMethodTooltip.ts";
 // Weekly TDEE check-in ritual (PR claude/weekly-checkin-ritual-v2,
@@ -382,11 +383,17 @@ export const NutritionTracker = memo(function NutritionTracker({
   const [logSheetConfirmation, setLogSheetConfirmation] = useState<
     NonNullable<React.ComponentProps<typeof LogSheet>["confirmation"]> | null
   >(null);
+  // ENG-1643 — flag ON: participating adds append to the session tray and keep
+  // the sheet open; flag OFF leaves the tray unthreaded (pre-ENG-1643). The
+  // tray state + commit branching live in `useLogSheetFoodCommits` (mirror of
+  // mobile `useLogSheetCommits`); `resetLogSessionTray` is threaded back here.
+  const sessionTrayEnabled = isFeatureEnabled("log_session_tray_v1");
   useEffect(() => {
     if (!logSheetOpen) {
       setLogSheetConfirmation(null);
+      resetLogSessionTray();
     }
-  }, [logSheetOpen]);
+  }, [logSheetOpen]); // eslint-disable-line react-hooks/exhaustive-deps -- resetLogSessionTray is stable; ENG-1449 pin keeps deps [logSheetOpen]
   const { openLabelLog, labelLogDialog } = useLabelLogHost({
     addLoggedMeal,
     mealSlot,
@@ -814,49 +821,30 @@ export const NutritionTracker = memo(function NutritionTracker({
     [addLoggedMeal, mealSlot],
   );
 
-  const presentLogSheetConfirmation = useCallback(
-    (payload: {
-      title: string;
-      kcal: number;
-      mealIds: string[];
-      /** ENG-1502 — per-item trust bit; absent = honest `~` (ENG-1417). */
-      kcalIsVerified?: boolean;
-    }) => {
-      setLogSheetConfirmation({
-        title: payload.title,
-        kcal: Math.round(payload.kcal),
-        ...(payload.kcalIsVerified !== undefined
-          ? { kcalIsVerified: payload.kcalIsVerified }
-          : {}),
-        slot: mealSlot,
-        onDone: () => {
-          setLogSheetConfirmation(null);
-          setLogSheetOpen(false);
-        },
-        onUndo: () => {
-          for (const mealId of payload.mealIds) removeLoggedMeal(mealId);
-          setLogSheetConfirmation(null);
-        },
-      });
-    },
-    [mealSlot, removeLoggedMeal],
-  );
-
-  // ENG-1502 (extraction pass, screen-budget ratchet) — the canonical
-  // food-search commit + the history re-log moved to
-  // `useLogSheetFoodCommits`. The search commit threads the per-item
-  // `kcalIsVerified` trust bit into the S13 confirmation; the history
-  // path always presents the honest `~` (journal rows don't persist the
-  // ENG-1417 trust bit). Mobile mirror stays inline in `TodayScreen.tsx`.
-  const { commitFoodSearchSelection, logHistoryItemFromSheet } =
-    useLogSheetFoodCommits({
-      selectedDateKey,
-      mealSlot,
-      timeLabel,
-      addLoggedMealForDate,
-      eatenAtForCurrentLog,
-      presentLogSheetConfirmation,
-    });
+  // ENG-1502/1643 (extraction pass, screen-budget ratchet) — the food-search
+  // commit + the history re-log + the S13 `presentLogSheetConfirmation` + the
+  // session-tray state all live in `useLogSheetFoodCommits`, the exact parity
+  // mirror of mobile `useLogSheetCommits`. Flag ON: participating adds append to
+  // the tray and keep the sheet open; OFF presents the honest S13 confirmation.
+  const {
+    commitFoodSearchSelection,
+    logHistoryItemFromSheet,
+    presentLogSheetConfirmation,
+    appendLogSessionTray,
+    resetLogSessionTray,
+    sessionTrayProp,
+  } = useLogSheetFoodCommits({
+    selectedDateKey,
+    mealSlot,
+    timeLabel,
+    addLoggedMealForDate,
+    eatenAtForCurrentLog,
+    setLogSheetConfirmation,
+    setLogSheetOpen,
+    removeLoggedMeal,
+    sessionTrayEnabled,
+    onOpenSaveMeal: (seedItems) => handleOpenSaveCombo(mealSlot, seedItems),
+  });
 
   const logSheetGoTos = useMemo(() => {
     const slot = normaliseMealSlot(mealSlot);
@@ -2662,6 +2650,10 @@ export const NutritionTracker = memo(function NutritionTracker({
         open={logSheetOpen}
         onOpenChange={setLogSheetOpen}
         confirmation={logSheetConfirmation ?? undefined}
+        // ENG-1643 — the session-tray receipt (immediate-commit multi-add).
+        // `sessionTrayProp` is undefined when the flag is off, so the sheet
+        // renders exactly as pre-ENG-1643 (mirror of mobile TodayScreen).
+        sessionTray={sessionTrayProp}
         initialQuery={logSheetInitialQuery}
         showBarcodeFreePromise
         // ENG-773 — log-time meal-slot selector (web parity with mobile
@@ -2747,6 +2739,7 @@ export const NutritionTracker = memo(function NutritionTracker({
           favoritePendingKeys,
           onSelect: (selection) => {
             const result = commitFoodSearchSelection(selection);
+            if (sessionTrayEnabled) { appendLogSessionTray(committedToTrayItem(result)); return; }
             presentLogSheetConfirmation({
               title: result.title,
               kcal: result.kcal,
