@@ -476,6 +476,9 @@ export const AnalyticsEvents = {
    *  meal-row kebab menu, `today_meal_row_longpress` is mobile's
    *  long-press Alert + branded action sheet. */
   meal_share_link_created: "meal_share_link_created",
+  /** ENG-1648 — owner revoked a meal-share link from Settings.
+   *  Payload: `{ share_id: string }`. */
+  meal_share_link_revoked: "meal_share_link_revoked",
   /** ENG-1642 — a recipient opened a meal-share link: the anon `/m/<token>`
    *  web landing (`MealShareLandingClient.tsx`), the post-auth `/home`
    *  resume (`SharedMealAcceptHost`), or mobile's `/meal-shared` route.
