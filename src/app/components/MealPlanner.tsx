@@ -86,6 +86,9 @@ import { scaleBatchCookToShoppingList } from "../../lib/planning/scaleBatchCookT
 import { shoppingScopeFor } from "../../lib/household/shoppingScope.ts";
 import { AdjustConstraintsSheet } from "./plan/AdjustConstraintsSheet.tsx";
 import { computeSmartRecipeSuggestions } from "../../lib/planning/smartSuggestions";
+import { addRecipeToPlanSlot } from "../../lib/planning/addRecipeToPlanSlot";
+import type { SmartSuggestion } from "../../lib/planning/smartSuggestions";
+import { PlanSmartSuggestionsSection } from "./plan/PlanSmartSuggestionsSection";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -291,6 +294,7 @@ export const MealPlanner = memo(function MealPlanner({
   // already ships these; web catches up behind one flag). Default-on; off → swap-
   // only slot affordance and no templates entry point.
   const planWebParity = isFeatureEnabled("plan_web_parity_v1");
+  const planSmartSuggestionsV2 = isFeatureEnabled("plan_smart_suggestions_v2");
   // ENG-956 — per-meal lock ("keep this meal", Refresh the rest). Default-OFF.
   // On → each meal row gets a quiet Lock glyph + a "Keep this meal" action, and
   // Regenerate keeps locked meals while re-rolling only the unlocked ones
@@ -828,10 +832,17 @@ export const MealPlanner = memo(function MealPlanner({
     [discoverRecipes, savedRecipesForLibrary],
   );
 
-  const suggestionPoolIds = useMemo(
-    () => savedRecipesForLibrary.map((r) => r.id),
-    [savedRecipesForLibrary],
-  );
+  const suggestionPoolIds = useMemo(() => {
+    const ids = new Set(savedRecipesForLibrary.map((r) => r.id));
+    for (const r of discoverRecipes) ids.add(r.id);
+    for (const day of mealPlan ?? []) {
+      for (const meal of day.meals) {
+        const rid = (meal as { recipeId?: string }).recipeId;
+        if (rid) ids.add(rid);
+      }
+    }
+    return [...ids];
+  }, [savedRecipesForLibrary, discoverRecipes, mealPlan]);
   const suggestionPoolKey = suggestionPoolIds.join(",");
 
   useEffect(() => {
@@ -865,12 +876,22 @@ export const MealPlanner = memo(function MealPlanner({
 
   const smartSuggestions = useMemo(() => {
     if (!planWebParity || !planHasRealMeals) return [];
+    const plannerTargets = {
+      calories: nutritionTargets.calories,
+      protein: nutritionTargets.protein,
+      carbs: nutritionTargets.carbs,
+      fat: nutritionTargets.fat,
+      fiber: nutritionTargets.fiber ?? 28,
+      ...DEFAULT_PLANNER_BANDS,
+    };
     return computeSmartRecipeSuggestions({
       mealPlan,
       titleToId: recipeTitleToId,
       dbIngredientsByRecipeId: suggestionIngredients,
-      extraRecipePool: savedRecipesForLibrary,
-      max: 4,
+      extraRecipePool: [...savedRecipesForLibrary, ...discoverRecipes],
+      planTargets: plannerTargets,
+      rankByMacroFit: planSmartSuggestionsV2,
+      max: 6,
     });
   }, [
     planWebParity,
@@ -879,6 +900,9 @@ export const MealPlanner = memo(function MealPlanner({
     recipeTitleToId,
     suggestionIngredients,
     savedRecipesForLibrary,
+    discoverRecipes,
+    nutritionTargets,
+    planSmartSuggestionsV2,
   ]);
 
   const handleSaveSmartSuggestion = useCallback(
@@ -893,6 +917,55 @@ export const MealPlanner = memo(function MealPlanner({
       }
     },
     [toggleSaveRecipe, userTier],
+  );
+
+  const handleAddSmartSuggestionToPlan = useCallback(
+    (suggestion: SmartSuggestion) => {
+      const fit = suggestion.macroFit;
+      if (!fit || !mealPlan) return;
+      const plannerTargets = {
+        calories: nutritionTargets.calories,
+        protein: nutritionTargets.protein,
+        carbs: nutritionTargets.carbs,
+        fat: nutritionTargets.fat,
+        fiber: nutritionTargets.fiber ?? 28,
+        ...DEFAULT_PLANNER_BANDS,
+      };
+      const pool = [...discoverRecipes, ...savedRecipesForLibrary];
+      setMealPlan((prev) => {
+        if (!prev) return prev;
+        return addRecipeToPlanSlot({
+          plan: prev,
+          dayIndex: fit.dayIndex,
+          mealIndex: fit.mealIndex,
+          recipe: suggestion.recipe,
+          targets: plannerTargets,
+          recipePool: pool,
+        });
+      });
+      void syncShoppingListForPlanEdit({
+        kind: "add",
+        recipe: {
+          id: suggestion.recipe.id,
+          title: suggestion.recipe.title,
+          multiplier: 1 / (suggestion.recipe.servings || 1),
+        },
+      });
+      toast.success(`Added to ${fit.slotName.toLowerCase()}`);
+    },
+    [
+      mealPlan,
+      nutritionTargets,
+      discoverRecipes,
+      savedRecipesForLibrary,
+      setMealPlan,
+      syncShoppingListForPlanEdit,
+    ],
+  );
+
+  const smartSuggestionDayLabel = useCallback(
+    (dayIndex: number) => shortWeekdayLabel(planCalendarDateForIndex(dayIndex, startOffset)),
+    [startOffset],
   );
 
   const openSwap = (day: number, slot: SwapTarget["slot"], mealIndex: number) => {
@@ -2264,70 +2337,17 @@ export const MealPlanner = memo(function MealPlanner({
       )}
 
       {planWebParity && planHasRealMeals && smartSuggestions.length > 0 ? (
-        <SupprCard
-          data-testid="planner-smart-suggestions"
-          elevation="card"
-          padding="lg"
-          radius="xl"
-          className="mt-2"
-        >
-          <div className="flex items-start gap-2 mb-3">
-            <Sparkles size={16} className="text-primary-solid mt-0.5 shrink-0" aria-hidden />
-            <div>
-              <h2 className="text-base font-semibold text-foreground">Smart suggestions</h2>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Recipes that share ingredients already in your plan — less waste, fewer one-off buys.
-              </p>
-            </div>
-          </div>
-          <ul className="space-y-2">
-            {smartSuggestions.map((s) => {
-              const overlap = s.sharedIngredients.slice(0, 3).join(", ");
-              const extra =
-                s.sharedIngredients.length > 3
-                  ? ` +${s.sharedIngredients.length - 3} more`
-                  : "";
-              return (
-                <li
-                  key={s.recipe.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2.5"
-                >
-                  <div className="min-w-0 flex-1">
-                    <button
-                      type="button"
-                      onClick={() => onOpenRecipe?.(s.recipe.id)}
-                      className="text-left text-[13px] font-semibold text-foreground hover:text-primary-solid transition-colors truncate max-w-full"
-                    >
-                      {s.recipe.title}
-                    </button>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
-                      Also uses {overlap}
-                      {extra}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[11px] tabular-nums text-muted-foreground">
-                      {Math.round(s.recipe.calories)} kcal
-                    </span>
-                    {s.recipe.isSaved ? (
-                      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Saved
-                      </span>
-                    ) : (
-                      <SupprButton
-                        variant="ghost"
-                        className="h-8 px-2 text-[11px]"
-                        onClick={() => handleSaveSmartSuggestion(s.recipe.id)}
-                      >
-                        Save
-                      </SupprButton>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </SupprCard>
+        <PlanSmartSuggestionsSection
+          suggestions={smartSuggestions}
+          v2Enabled={planSmartSuggestionsV2}
+          onOpenRecipe={onOpenRecipe}
+          onSave={handleSaveSmartSuggestion}
+          onAddToPlan={planSmartSuggestionsV2 ? handleAddSmartSuggestionToPlan : undefined}
+          dayLabelForIndex={smartSuggestionDayLabel}
+          isSaved={(id) =>
+            savedRecipesForLibrary.some((r) => r.id === id && r.isSaved)
+          }
+        />
       ) : null}
 
       {/* F2-F (2026-04-28): bottom CTA row only renders when the

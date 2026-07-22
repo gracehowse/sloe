@@ -167,6 +167,9 @@ export const AnalyticsEvents = {
   /** Planner overlap suggestions — user saved a suggested recipe from the Plan tab.
    *  Payload: `{ recipeId, platform: "web" | "mobile" }`. */
   smart_suggestion_saved: "smart_suggestion_saved",
+  /** ENG-1634 — user added a smart suggestion to the plan from Plan or Shopping.
+   *  Payload: `{ recipeId, dayIndex, mealIndex, platform, surface: "plan" | "shopping" }`. */
+  smart_suggestion_added_to_plan: "smart_suggestion_added_to_plan",
   /** ENG-978/979 — user shared the rich recipe card (import success or recipe detail).
    *  Payload: `{ surface: "import_success" | "recipe_detail", platform, hasCreatorCredit }`. */
   recipe_share_card_shared: "recipe_share_card_shared",

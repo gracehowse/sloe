@@ -272,6 +272,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // ENG-1131 — web Plan parity: move-meal picker, templates dialog, portion
   // stepper (mobile already ships). Default-on; off → swap-only affordance.
   "plan_web_parity_v1",
+  // ENG-1634 — smart suggestions v2: overlap + macro-fit ranking, Add to plan
+  // CTA, shopping-list carousel. Default-on; off → overlap-only MVP (save CTA).
+  "plan_smart_suggestions_v2",
   // ENG-1129 — cook-mode "Log this meal" confirms servings eaten (default 1)
   // instead of silently logging the whole batch scale. Default-on; off → legacy
   // multiply-by-batch-scale path.

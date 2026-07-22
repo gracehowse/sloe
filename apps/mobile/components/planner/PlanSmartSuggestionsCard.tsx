@@ -1,8 +1,11 @@
 import { useCallback } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, ScrollView } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { Sparkles } from "lucide-react-native";
-import type { SmartSuggestion } from "@suppr/shared/planning/smartSuggestions";
+import {
+  smartSuggestionMacroFitLabel,
+  type SmartSuggestion,
+} from "@suppr/shared/planning/smartSuggestions";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
@@ -15,11 +18,122 @@ import { Spacing, Radius, Type } from "@/constants/theme";
 type PlanSmartSuggestionsCardProps = {
   userId: string | null;
   suggestions: SmartSuggestion[];
+  /** ENG-1634 v2 — one-tap add to the annotated plan slot. */
+  onAddToPlan?: (suggestion: SmartSuggestion) => void;
+  dayLabelForIndex?: (dayIndex: number) => string;
+  v2Enabled?: boolean;
 };
+
+function SuggestionRow({
+  suggestion,
+  saved,
+  onOpen,
+  onSave,
+  onAddToPlan,
+  dayLabel,
+  v2Enabled,
+  colors,
+  accent,
+}: {
+  suggestion: SmartSuggestion;
+  saved: boolean;
+  onOpen: () => void;
+  onSave: () => void;
+  onAddToPlan?: () => void;
+  dayLabel?: string;
+  v2Enabled: boolean;
+  colors: ReturnType<typeof useThemeColors>;
+  accent: ReturnType<typeof useAccent>;
+}) {
+  const overlap = suggestion.sharedIngredients.slice(0, 3).join(", ");
+  const extra =
+    suggestion.sharedIngredients.length > 3
+      ? ` +${suggestion.sharedIngredients.length - 3} more`
+      : "";
+  const macroLabel =
+    v2Enabled && suggestion.macroFit && dayLabel
+      ? smartSuggestionMacroFitLabel(suggestion.macroFit, dayLabel)
+      : null;
+
+  return (
+    <View
+      style={[
+        styles.row,
+        v2Enabled ? styles.carouselRow : null,
+        {
+          borderColor: colors.border,
+          backgroundColor: colors.card,
+        },
+      ]}
+    >
+      <View style={styles.rowMain}>
+        <Pressable
+          onPress={onOpen}
+          accessibilityRole="button"
+          accessibilityLabel={`Open ${suggestion.recipe.title}`}
+        >
+          <Text style={[Type.captionStrong, { color: colors.text }]} numberOfLines={2}>
+            {suggestion.recipe.title}
+          </Text>
+        </Pressable>
+        <Text
+          style={[Type.caption, { color: colors.textSecondary, marginTop: Spacing.xs }]}
+          numberOfLines={2}
+        >
+          Also uses {overlap}
+          {extra}
+        </Text>
+        {macroLabel ? (
+          <Text
+            style={[Type.caption, { color: accent.primarySolid, marginTop: Spacing.xs }]}
+            numberOfLines={1}
+          >
+            {macroLabel}
+          </Text>
+        ) : null}
+      </View>
+      <View style={styles.rowAside}>
+        <Text
+          style={[Type.caption, { color: colors.textSecondary, fontVariant: ["tabular-nums"] }]}
+        >
+          {Math.round(suggestion.recipe.calories)} kcal
+        </Text>
+        {v2Enabled && onAddToPlan && suggestion.macroFit ? (
+          <SupprButton
+            variant="primary"
+            haptic="selection"
+            onPress={onAddToPlan}
+            accessibilityLabel={`Add ${suggestion.recipe.title} to plan`}
+            style={styles.addBtn}
+          >
+            Add to plan
+          </SupprButton>
+        ) : saved ? (
+          <Text style={[Type.caption, styles.savedLabel, { color: colors.textSecondary }]}>
+            Saved
+          </Text>
+        ) : (
+          <SupprButton
+            variant="ghost"
+            haptic="selection"
+            onPress={onSave}
+            accessibilityLabel={`Save ${suggestion.recipe.title}`}
+            style={styles.saveBtn}
+          >
+            Save
+          </SupprButton>
+        )}
+      </View>
+    </View>
+  );
+}
 
 export function PlanSmartSuggestionsCard({
   userId,
   suggestions,
+  onAddToPlan,
+  dayLabelForIndex,
+  v2Enabled = false,
 }: PlanSmartSuggestionsCardProps) {
   const colors = useThemeColors();
   const accent = useAccent();
@@ -39,6 +153,30 @@ export function PlanSmartSuggestionsCard({
   );
 
   if (suggestions.length === 0) return null;
+
+  const renderRow = (s: SmartSuggestion) => {
+    const saved = isSaved(s.recipe.id) || s.recipe.isSaved;
+    const dayLabel =
+      s.macroFit && dayLabelForIndex ? dayLabelForIndex(s.macroFit.dayIndex) : undefined;
+    return (
+      <SuggestionRow
+        key={s.recipe.id}
+        suggestion={s}
+        saved={saved}
+        colors={colors}
+        accent={accent}
+        v2Enabled={v2Enabled}
+        dayLabel={dayLabel}
+        onOpen={() => router.push(`/recipe/${s.recipe.id}` as Href)}
+        onSave={() => handleSave(s.recipe.id)}
+        onAddToPlan={
+          onAddToPlan && s.macroFit
+            ? () => onAddToPlan(s)
+            : undefined
+        }
+      />
+    );
+  };
 
   return (
     <View
@@ -60,68 +198,18 @@ export function PlanSmartSuggestionsCard({
           </Text>
         </View>
       </View>
-      <View style={styles.list}>
-        {suggestions.map((s) => {
-          const overlap = s.sharedIngredients.slice(0, 3).join(", ");
-          const extra =
-            s.sharedIngredients.length > 3 ? ` +${s.sharedIngredients.length - 3} more` : "";
-          const saved = isSaved(s.recipe.id) || s.recipe.isSaved;
-          return (
-            <View
-              key={s.recipe.id}
-              style={[
-                styles.row,
-                {
-                  borderColor: colors.border,
-                  backgroundColor: colors.card,
-                },
-              ]}
-            >
-              <View style={styles.rowMain}>
-                <Pressable
-                  onPress={() => router.push(`/recipe/${s.recipe.id}` as Href)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open ${s.recipe.title}`}
-                >
-                  <Text
-                    style={[Type.captionStrong, { color: colors.text }]}
-                    numberOfLines={2}
-                  >
-                    {s.recipe.title}
-                  </Text>
-                </Pressable>
-                <Text
-                  style={[Type.caption, { color: colors.textSecondary, marginTop: Spacing.xs }]}
-                  numberOfLines={2}
-                >
-                  Also uses {overlap}
-                  {extra}
-                </Text>
-              </View>
-              <View style={styles.rowAside}>
-                <Text style={[Type.caption, { color: colors.textSecondary, fontVariant: ["tabular-nums"] }]}>
-                  {Math.round(s.recipe.calories)} kcal
-                </Text>
-                {saved ? (
-                  <Text style={[Type.caption, styles.savedLabel, { color: colors.textSecondary }]}>
-                    Saved
-                  </Text>
-                ) : (
-                  <SupprButton
-                    variant="ghost"
-                    haptic="selection"
-                    onPress={() => handleSave(s.recipe.id)}
-                    accessibilityLabel={`Save ${s.recipe.title}`}
-                    style={styles.saveBtn}
-                  >
-                    Save
-                  </SupprButton>
-                )}
-              </View>
-            </View>
-          );
-        })}
-      </View>
+      {v2Enabled ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.carousel}
+          testID="planner-smart-suggestions-carousel"
+        >
+          {suggestions.map(renderRow)}
+        </ScrollView>
+      ) : (
+        <View style={styles.list}>{suggestions.map(renderRow)}</View>
+      )}
     </View>
   );
 }
@@ -146,6 +234,10 @@ const styles = StyleSheet.create({
   list: {
     gap: Spacing.sm,
   },
+  carousel: {
+    gap: Spacing.sm,
+    paddingRight: Spacing.sm,
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -155,6 +247,10 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     borderRadius: Radius.lg,
     borderWidth: 1,
+  },
+  carouselRow: {
+    width: 280,
+    flexShrink: 0,
   },
   rowMain: {
     flex: 1,
@@ -171,6 +267,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   saveBtn: {
+    minHeight: 32,
+    paddingHorizontal: Spacing.sm,
+  },
+  addBtn: {
     minHeight: 32,
     paddingHorizontal: Spacing.sm,
   },

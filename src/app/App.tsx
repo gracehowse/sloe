@@ -570,7 +570,7 @@ export default function App() {
                 }}
               /></FeatureErrorBoundary>
             ) : (
-              <FeatureErrorBoundary feature="Shopping List"><ShoppingList userTier={userTier} onUpgrade={() => openUpgradePromo("shopping_list")} onNavigate={(view) => navigateToView(view as View)} /></FeatureErrorBoundary>
+              <FeatureErrorBoundary feature="Shopping List"><ShoppingList userTier={userTier} onUpgrade={() => openUpgradePromo("shopping_list")} onNavigate={(view) => navigateToView(view as View)} onOpenRecipe={openRecipeById} /></FeatureErrorBoundary>
             )}
           </>
         );
@@ -608,7 +608,7 @@ export default function App() {
           </>
         );
       case "shopping":
-        return <ShoppingList userTier={userTier} onUpgrade={() => openUpgradePromo("shopping_list")} onNavigate={(view) => navigateToView(view as View)} />;
+        return <ShoppingList userTier={userTier} onUpgrade={() => openUpgradePromo("shopping_list")} onNavigate={(view) => navigateToView(view as View)} onOpenRecipe={openRecipeById} />;
       case "settings":
         return (
           <>

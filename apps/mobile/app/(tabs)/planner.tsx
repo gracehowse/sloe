@@ -34,7 +34,7 @@ import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
 import { recipeUnderlayColor } from "@suppr/shared/recipe/recipeHeroFallback";
 import { supabase } from "@/lib/supabase";
 import { upsertShoppingListJsonItems } from "@suppr/shared/supabase/shoppingJsonFallback";
-import { syncPlanSwapToShoppingList, syncPlanRemoveToShoppingList } from "@/lib/planShoppingSync";
+import { syncPlanSwapToShoppingList, syncPlanRemoveToShoppingList, syncPlanEditToShoppingList } from "@/lib/planShoppingSync";
 import { getMyHousehold } from "@suppr/shared/household/householdClient";
 import {
   shoppingScopeFor,
@@ -91,6 +91,8 @@ import { FilterChip } from "@/components/ui/FilterChip";
 import { SkeletonCard } from "@/components/ui/SkeletonRow";
 import { PlanSmartSuggestionsCard } from "@/components/planner/PlanSmartSuggestionsCard";
 import { usePlanSmartSuggestions } from "@/hooks/usePlanSmartSuggestions";
+import { addRecipeToPlanSlot } from "@suppr/shared/planning/addRecipeToPlanSlot";
+import type { SmartSuggestion } from "@suppr/shared/planning/smartSuggestions";
 import { SupprButton } from "@/components/ui/SupprButton";
 import {
   generateSmartPlan,
@@ -693,6 +695,7 @@ export default function PlannerScreen() {
   // ENG-1193 / ENG-1131 — smart recipe suggestions on Plan (shared scorer +
   // save CTA). Same flag as web `plan_web_parity_v1` (default-on).
   const planWebParity = isFeatureEnabled("plan_web_parity_v1");
+  const planSmartSuggestionsV2 = isFeatureEnabled("plan_smart_suggestions_v2");
   // ENG-1098 "Calm mode" — quiet the per-slot aim numbers (rows still render;
   // only the "Aim ~X kcal" line is hidden). Shared key with web + Today.
   const [calmMode] = useCalmMode();
@@ -1419,7 +1422,82 @@ export default function PlannerScreen() {
     planHasRealMeals,
     savedRecipes,
     discoverRecipes,
+    planTargets: planTargets
+      ? {
+          calories: planTargets.calories,
+          protein: planTargets.protein,
+          carbs: planTargets.carbs,
+          fat: planTargets.fat,
+          fiber: planTargets.fiber,
+          ...DEFAULT_PLANNER_BANDS,
+        }
+      : null,
+    rankByMacroFit: planSmartSuggestionsV2,
   });
+
+  const handleAddSmartSuggestionToPlan = useCallback(
+    (suggestion: SmartSuggestion) => {
+      const fit = suggestion.macroFit;
+      if (!fit || !plan || !planTargets) return;
+      const plannerTargets: PlannerTargets = {
+        calories: planTargets.calories,
+        protein: planTargets.protein,
+        carbs: planTargets.carbs,
+        fat: planTargets.fat,
+        fiber: planTargets.fiber,
+        ...DEFAULT_PLANNER_BANDS,
+      };
+      const allPool = [...savedRecipes, ...discoverRecipes];
+      const next = addRecipeToPlanSlot({
+        plan,
+        dayIndex: fit.dayIndex,
+        mealIndex: fit.mealIndex,
+        recipe: suggestion.recipe,
+        targets: plannerTargets,
+        recipePool: allPool as Parameters<typeof addRecipeToPlanSlot>[0]["recipePool"],
+        fiberForMeal: (m) => planMealFiberG(m, recipeFiberPool),
+      });
+      const enriched = enrichPlanDaysFiber(next, recipeFiberPool);
+      setPlan(enriched);
+      void persistPlan(enriched);
+      track(AnalyticsEvents.smart_suggestion_added_to_plan, {
+        recipeId: suggestion.recipe.id,
+        dayIndex: fit.dayIndex,
+        mealIndex: fit.mealIndex,
+        platform: "mobile",
+        surface: "plan",
+      });
+      void syncPlanEditToShoppingList(shoppingScope, {
+        kind: "add",
+        recipe: {
+          id: suggestion.recipe.id,
+          title: suggestion.recipe.title,
+          multiplier: 1 / (suggestion.recipe.servings || 1),
+        },
+      }).then((count) => {
+        if (count != null) setShoppingItemCount(count);
+      });
+      toast.showToast(`Added to ${fit.slotName.toLowerCase()}`);
+    },
+    [
+      plan,
+      planTargets,
+      savedRecipes,
+      discoverRecipes,
+      recipeFiberPool,
+      persistPlan,
+      setPlan,
+      shoppingScope,
+      toast,
+    ],
+  );
+
+  const smartSuggestionDayLabel = useCallback(
+    (dayIndex: number) =>
+      WEEKDAY_LONG[planCalendarDateForIndex(dayIndex, startOffset).getDay()] ??
+      `Day ${dayIndex + 1}`,
+    [startOffset],
+  );
   // ENG-956 — locked-meal count drives the "Refresh the rest" label + the
   // keep-locked regenerate path. Always 0 when the flag is off.
   const lockedMealCount = useMemo(
@@ -3942,7 +4020,13 @@ export default function PlannerScreen() {
         )}
 
         {planWebParity && planHasRealMeals ? (
-          <PlanSmartSuggestionsCard userId={userId} suggestions={planSmartSuggestions} />
+          <PlanSmartSuggestionsCard
+            userId={userId}
+            suggestions={planSmartSuggestions}
+            v2Enabled={planSmartSuggestionsV2}
+            onAddToPlan={planSmartSuggestionsV2 ? handleAddSmartSuggestionToPlan : undefined}
+            dayLabelForIndex={smartSuggestionDayLabel}
+          />
         ) : null}
 
         {/* Shopping list CTA card removed 2026-04-20 per Grace's

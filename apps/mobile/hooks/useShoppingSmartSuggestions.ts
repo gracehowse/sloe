@@ -4,56 +4,30 @@ import {
   type SmartSuggestion,
 } from "@suppr/shared/planning/smartSuggestions";
 import type { PlannerTargets } from "@/lib/mealPlanAlgo";
-import type { RecipeCard } from "@/lib/types";
+import type { DayPlan, RecipeCard, ShoppingItem } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
 
-export type PlanSmartSuggestionsDayPlan = ReadonlyArray<{
-  day: number;
-  meals: ReadonlyArray<{
-    recipeTitle: string;
-    recipeId?: string;
-    isPlaceholder?: boolean;
-  }>;
-}>;
-
-type UsePlanSmartSuggestionsInput = {
+type UseShoppingSmartSuggestionsInput = {
   enabled: boolean;
   userId: string | null;
-  mealPlan: PlanSmartSuggestionsDayPlan | null;
-  planHasRealMeals: boolean;
+  shoppingItems: readonly Pick<ShoppingItem, "id" | "name" | "amount" | "unit" | "checked">[];
+  mealPlan: DayPlan[] | null;
   savedRecipes: readonly RecipeCard[];
   discoverRecipes: readonly RecipeCard[];
   planTargets?: PlannerTargets | null;
-  rankByMacroFit?: boolean;
 };
 
-function collectRecipeIdsForIngredientFetch(input: {
-  mealPlan: PlanSmartSuggestionsDayPlan | null;
-  recipePool: readonly RecipeCard[];
-}): string[] {
-  const ids = new Set<string>();
-  for (const recipe of input.recipePool) ids.add(recipe.id);
-  for (const day of input.mealPlan ?? []) {
-    for (const meal of day.meals) {
-      if (meal.recipeId) ids.add(meal.recipeId);
-    }
-  }
-  return [...ids];
-}
-
-export function usePlanSmartSuggestions({
+export function useShoppingSmartSuggestions({
   enabled,
   userId,
+  shoppingItems,
   mealPlan,
-  planHasRealMeals,
   savedRecipes,
   discoverRecipes,
   planTargets,
-  rankByMacroFit = true,
-}: UsePlanSmartSuggestionsInput): {
+}: UseShoppingSmartSuggestionsInput): {
   suggestions: SmartSuggestion[];
   loadingIngredients: boolean;
-  recipeTitleToId: (title: string) => string | null;
 } {
   const [suggestionIngredients, setSuggestionIngredients] = useState<
     Map<string, string[]>
@@ -70,11 +44,13 @@ export function usePlanSmartSuggestions({
     [recipePool],
   );
 
-  const ingredientFetchIds = useMemo(
-    () => collectRecipeIdsForIngredientFetch({ mealPlan, recipePool }),
-    [mealPlan, recipePool],
-  );
+  const ingredientFetchIds = useMemo(() => recipePool.map((r) => r.id), [recipePool]);
   const ingredientFetchKey = ingredientFetchIds.join(",");
+
+  const uncheckedCount = useMemo(
+    () => shoppingItems.filter((i) => !i.checked).length,
+    [shoppingItems],
+  );
 
   useEffect(() => {
     if (!enabled || !userId || ingredientFetchIds.length === 0) {
@@ -115,30 +91,29 @@ export function usePlanSmartSuggestions({
   }, [enabled, userId, ingredientFetchKey, ingredientFetchIds]);
 
   const suggestions = useMemo(() => {
-    if (!enabled || !planHasRealMeals) return [];
+    if (!enabled || uncheckedCount === 0) return [];
     return computeSmartRecipeSuggestions({
-      mealPlan: mealPlan as Parameters<
-        typeof computeSmartRecipeSuggestions
-      >[0]["mealPlan"],
+      mealPlan,
       titleToId: recipeTitleToId,
       dbIngredientsByRecipeId: suggestionIngredients,
       extraRecipePool: recipePool as Parameters<
         typeof computeSmartRecipeSuggestions
       >[0]["extraRecipePool"],
+      shoppingListItems: shoppingItems,
       planTargets,
-      rankByMacroFit,
-      max: 6,
+      rankByMacroFit: true,
+      max: 8,
     });
   }, [
     enabled,
-    planHasRealMeals,
+    uncheckedCount,
     mealPlan,
     recipeTitleToId,
     suggestionIngredients,
     recipePool,
+    shoppingItems,
     planTargets,
-    rankByMacroFit,
   ]);
 
-  return { suggestions, loadingIngredients, recipeTitleToId };
+  return { suggestions, loadingIngredients };
 }

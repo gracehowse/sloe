@@ -69,7 +69,16 @@ import { readActiveCloudMealPlanSlotId } from "@/lib/activeMealPlanSlot";
 import { PlanTabChrome } from "@/components/tabs/PlanTabChrome";
 import { ShoppingLoadingSkeleton } from "@/components/shopping/ShoppingLoadingSkeleton";
 import { ShoppingUpdateFromPlanBanner } from "@/components/shopping/ShoppingUpdateFromPlanBanner";
+import { ShoppingSmartSuggestionsCarousel } from "@/components/shopping/ShoppingSmartSuggestionsCarousel";
 import { Layout } from "@/constants/layout";
+import { useMealPlanSlots } from "@/hooks/use-meal-plan-slots";
+import { useDiscoverRecipes, useSavedLibraryRecipes } from "@/lib/recipes";
+import { useShoppingSmartSuggestions } from "@/hooks/useShoppingSmartSuggestions";
+import { addRecipeToPlanSlot } from "@suppr/shared/planning/addRecipeToPlanSlot";
+import { DEFAULT_PLANNER_BANDS } from "@/lib/mealPlanAlgo";
+import type { SmartSuggestion } from "@suppr/shared/planning/smartSuggestions";
+import { planCalendarDateForIndex } from "@suppr/shared/mealPlan/planCalendarAnchor";
+import { syncPlanEditToShoppingList } from "@/lib/planShoppingSync";
 
 type ShoppingItem = {
   id: string;
@@ -750,6 +759,67 @@ export default function ShoppingListScreen() {
     [items.length, planStartDate, shoppingListOutOfSync],
   );
 
+  const planSmartSuggestionsV2 = isFeatureEnabled("plan_smart_suggestions_v2");
+  const { activePlan, setActivePlan } = useMealPlanSlots(null, { userId });
+  const { recipes: discoverRecipes } = useDiscoverRecipes();
+  const { recipes: savedRecipes } = useSavedLibraryRecipes(userId);
+  const { suggestions: shoppingSmartSuggestions } = useShoppingSmartSuggestions({
+    enabled: planSmartSuggestionsV2,
+    userId,
+    shoppingItems: items,
+    mealPlan: activePlan,
+    savedRecipes,
+    discoverRecipes,
+    planTargets: null,
+  });
+
+  const handleShoppingAddToPlan = useCallback(
+    (suggestion: SmartSuggestion) => {
+      const fit = suggestion.macroFit;
+      if (!fit || !activePlan) return;
+      const plannerTargets = {
+        calories: 2000,
+        protein: 150,
+        carbs: 200,
+        fat: 65,
+        fiber: 28,
+        ...DEFAULT_PLANNER_BANDS,
+      };
+      const recipePool = [...savedRecipes, ...discoverRecipes];
+      const next = addRecipeToPlanSlot({
+        plan: activePlan,
+        dayIndex: fit.dayIndex,
+        mealIndex: fit.mealIndex,
+        recipe: suggestion.recipe,
+        targets: plannerTargets,
+        recipePool: recipePool as Parameters<typeof addRecipeToPlanSlot>[0]["recipePool"],
+      });
+      setActivePlan(next);
+      void syncPlanEditToShoppingList(scope, {
+        kind: "add",
+        recipe: {
+          id: suggestion.recipe.id,
+          title: suggestion.recipe.title,
+          multiplier: 1 / (suggestion.recipe.servings || 1),
+        },
+      });
+    },
+    [activePlan, savedRecipes, discoverRecipes, setActivePlan, scope],
+  );
+
+  const shoppingSuggestionDayLabel = useCallback((dayIndex: number) => {
+    const weekdays = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ] as const;
+    return weekdays[planCalendarDateForIndex(dayIndex, 0).getDay()] ?? `Day ${dayIndex + 1}`;
+  }, []);
+
   return (
     <View
       testID="screen-shopping"
@@ -792,6 +862,15 @@ export default function ShoppingListScreen() {
             pantryStaples={pantryStaples}
             onSynced={() => setShoppingListOutOfSync(false)}
           />
+        ) : null}
+        {planSmartSuggestionsV2 && items.length > 0 && activePlan ? (
+          <View style={{ paddingHorizontal: Spacing.xl }}>
+            <ShoppingSmartSuggestionsCarousel
+              suggestions={shoppingSmartSuggestions}
+              onAddToPlan={handleShoppingAddToPlan}
+              dayLabelForIndex={shoppingSuggestionDayLabel}
+            />
+          </View>
         ) : null}
         <View style={[styles.headerRow, { justifyContent: "flex-end" }]}>
           {items.length > 0 ? (

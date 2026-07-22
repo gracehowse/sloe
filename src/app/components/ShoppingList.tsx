@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Icons } from "./ui/icons";
 import { SupprCard } from "./ui/suppr-card";
 import { ShoppingUpdateFromPlanButton } from "./ShoppingUpdateFromPlanButton";
+import { ShoppingSmartSuggestionsCarousel } from "./shopping/ShoppingSmartSuggestionsCarousel";
 import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { supabase } from "../../lib/supabase/browserClient.ts";
@@ -27,11 +28,17 @@ import {
   householdMemberInitials,
 } from "../../lib/household/memberAccents.ts";
 import type { UserTier } from "../../types/recipe.ts";
+import { useShoppingSmartSuggestions } from "../../hooks/useShoppingSmartSuggestions.ts";
+import { addRecipeToPlanSlot } from "../../lib/planning/addRecipeToPlanSlot.ts";
+import { DEFAULT_PLANNER_BANDS } from "../../lib/nutrition/mealPlanAlgo.ts";
+import type { SmartSuggestion } from "../../lib/planning/smartSuggestions.ts";
+import { planCalendarDateForIndex, shortWeekdayLabel } from "../../lib/planning/planDayLabel.ts";
 
 interface ShoppingListProps {
   userTier: UserTier;
   onUpgrade?: () => void;
   onNavigate?: (view: string) => void;
+  onOpenRecipe?: (recipeId: string) => void;
 }
 
 /**
@@ -56,6 +63,7 @@ export const ShoppingList = memo(function ShoppingList({
   userTier: _userTier,
   onUpgrade: _onUpgrade,
   onNavigate: _onNavigate,
+  onOpenRecipe,
 }: ShoppingListProps) {
   const {
     shoppingItems,
@@ -69,7 +77,78 @@ export const ShoppingList = memo(function ShoppingList({
     resyncShoppingListFromPlan,
     pantryStaples,
     savePantryStaples,
+    mealPlan,
+    setMealPlan,
+    discoverRecipes,
+    savedRecipesForLibrary,
+    nutritionTargets,
+    syncShoppingListForPlanEdit,
+    mealPlanStartDate,
   } = useAppData();
+
+  const planSmartSuggestionsV2 = isFeatureEnabled("plan_smart_suggestions_v2");
+  const plannerTargets = useMemo(
+    () => ({
+      calories: nutritionTargets.calories,
+      protein: nutritionTargets.protein,
+      carbs: nutritionTargets.carbs,
+      fat: nutritionTargets.fat,
+      fiber: nutritionTargets.fiber ?? 28,
+      ...DEFAULT_PLANNER_BANDS,
+    }),
+    [nutritionTargets],
+  );
+  const { suggestions: shoppingSmartSuggestions } = useShoppingSmartSuggestions({
+    enabled: planSmartSuggestionsV2,
+    userId,
+    shoppingItems,
+    mealPlan,
+    savedRecipes: savedRecipesForLibrary,
+    discoverRecipes,
+    planTargets: plannerTargets,
+  });
+
+  const handleShoppingAddToPlan = useCallback(
+    (suggestion: SmartSuggestion) => {
+      const fit = suggestion.macroFit;
+      if (!fit || !mealPlan) return;
+      const pool = [...discoverRecipes, ...savedRecipesForLibrary];
+      setMealPlan(
+        addRecipeToPlanSlot({
+          plan: mealPlan,
+          dayIndex: fit.dayIndex,
+          mealIndex: fit.mealIndex,
+          recipe: suggestion.recipe,
+          targets: plannerTargets,
+          recipePool: pool,
+        }),
+      );
+      void syncShoppingListForPlanEdit({
+        kind: "add",
+        recipe: {
+          id: suggestion.recipe.id,
+          title: suggestion.recipe.title,
+          multiplier: 1 / (suggestion.recipe.servings || 1),
+        },
+      });
+    },
+    [
+      mealPlan,
+      discoverRecipes,
+      savedRecipesForLibrary,
+      setMealPlan,
+      plannerTargets,
+      syncShoppingListForPlanEdit,
+    ],
+  );
+
+  const shoppingSuggestionDayLabel = useCallback(
+    (dayIndex: number) => {
+      const startOffset = mealPlanStartDate ? 0 : 0;
+      return shortWeekdayLabel(planCalendarDateForIndex(dayIndex, startOffset));
+    },
+    [mealPlanStartDate],
+  );
 
   // Resolve member metadata once, only when in a household. Used for
   // the "Shared with Sarah & Tom" banner + per-row attribution chip.
@@ -237,6 +316,17 @@ export const ShoppingList = memo(function ShoppingList({
       isFeatureEnabled("shopping_update_from_plan_v1") ? (
         <div className="mb-4" style={{ maxWidth: 900 }}>
           <ShoppingUpdateFromPlanButton resync={resyncShoppingListFromPlan} />
+        </div>
+      ) : null}
+
+      {planSmartSuggestionsV2 && totalItemCount > 0 && mealPlan ? (
+        <div className="mb-4" style={{ maxWidth: 900 }}>
+          <ShoppingSmartSuggestionsCarousel
+            suggestions={shoppingSmartSuggestions}
+            onOpenRecipe={onOpenRecipe}
+            onAddToPlan={handleShoppingAddToPlan}
+            dayLabelForIndex={shoppingSuggestionDayLabel}
+          />
         </div>
       ) : null}
 

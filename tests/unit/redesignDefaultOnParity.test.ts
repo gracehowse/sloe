@@ -99,6 +99,7 @@ const GATE_15_SHARED = [
   "recipe_share_card_v1",
   "cook_log_servings_confirm",
   "plan_web_parity_v1",
+  "plan_smart_suggestions_v2",
   "import-save-first-v1",
   // ENG-1246 (Gap #16) — shared editorial Profile block, default-on both platforms.
   "sloe_v3_profile",

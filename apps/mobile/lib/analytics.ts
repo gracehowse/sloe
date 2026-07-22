@@ -457,6 +457,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // ENG-1131 / ENG-1193 — web Plan parity (move, templates, portion) + smart
   // suggestions (web + mobile). Default-on; keep in sync with track.ts.
   "plan_web_parity_v1",
+  // ENG-1634 — smart suggestions v2: overlap + macro-fit ranking, Add to plan
+  // CTA, shopping-list carousel. Default-on; off → overlap-only MVP (save CTA).
+  "plan_smart_suggestions_v2",
   // ENG-1129 — cook-mode servings-eaten confirm before journal write. Default-on;
   // off → legacy batch-scale multiply. Keep in sync with track.ts.
   "cook_log_servings_confirm",

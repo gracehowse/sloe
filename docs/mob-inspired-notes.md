@@ -32,7 +32,7 @@ Session screenshots (if available locally) may live under the Cursor project `as
 
 - **Shopping:** We **merge** ingredients across recipes with **categories**; numeric amounts **scale** with **portion multipliers** on planner slots (see `portionMultiplier` / `generateShoppingList.ts`). **Display grouping** now merges rows that share a **normalized ingredient name** and shows **mixed units** as `amount unit + amount unit` (no false summing)—see `shoppingDisplayGroups.ts` + `ShoppingList.tsx`. We still do **not** show Mob-style **thumbnails per line**.
 - **Discover / feed:** Strong scroll and save; different information architecture than Mob’s category grid + rails (both are valid).
-- **Smart suggestions:** **Shipped (MVP)** — overlap scoring with the current plan in `MealPlanner.tsx` (`smartSuggestions.ts`); save-to-library + analytics. The old static catalog is removed; extending overlap further using **community recipes** (DB ingredients only) is a follow-up.
+- **Smart suggestions:** **Shipped (v2, ENG-1634)** — overlap + macro-fit ranking with Add to plan on Plan + Shopping (behind `plan_smart_suggestions_v2`, default-on). Overlap uses plan meals **and** unchecked shopping-list rows; pool includes saved + discover recipes with Supabase `recipe_ingredients`.
 
 ---
 
