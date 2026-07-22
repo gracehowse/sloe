@@ -23,22 +23,34 @@ cd docs/ux/redesign/v4-today && python3 -m http.server 8098
 Controls: day-state switcher (Fresh morning / Mid-day / Evening · over),
 light/dark, and the dial (or the hint under it) flips Remaining ⇆ Consumed.
 
-## The one composition (no variants — D-2026-04-27-03)
+## The one composition (rev 2 — Mobbin-benchmarked)
 
-wordmark → greeting (+8) → week strip (+20) → **hero** (+4):
+Rebuilt per Grace ("we can do better — use mobbin for inspo; the big log
+dinner button needs removing, people know where to log") against the Mobbin
+pulls in `docs/ux/reviews/2026-07-05-ui-critique-mobbin-benchmark.md` §Today.
 
-1. jewel dial — tap = Remaining ⇆ Consumed (ENG-1653's dial-view switch)
-2. status line (Under / Over budget · A fresh plate)
-3. fresh-day log pill — the screen's one filled CTA
-4. GOAL / EATEN / BONUS — bonus **always** renders (0 on empty)
-5. **macro band** — all three macros with values + micro-tracks, IN the hero;
-   tap → macro detail (the standalone macro section below is **retired**)
-6. **one guide-line** — a single always-present coach entry that absorbs the
-   deficit line AND the ENG-1293 Coach chip
-7. view hint (`Remaining · tap to switch`)
+wordmark → greeting (+8) → week strip (+20) → **hero** (+4), reading
+**verdict → interpretation → ledger**:
 
-then **Eat next** recipe card (+24; hides when over budget — the guide-line
-carries the landing copy), Quick add, Today's meals.
+1. jewel dial on a state-keyed **ambient wash** (sage under / amber over /
+   frost empty — the Lifesum grammar: mood, not a spreadsheet cell)
+2. verdict line + view hint (`Remaining · tap to switch`, MacroFactor's
+   reframe — tap the dial or the hint)
+3. **narrative guide-line directly under the verdict** (the Oura grammar:
+   the number never speaks for itself) — ONE always-present coach entry
+   absorbing the deficit line and the ENG-1293 Coach chip; fades in after
+   the dial sweep
+4. **the board** — one aligned 3-column ledger: GOAL / EATEN / BONUS
+   (bonus always renders, 0 on empty) over thin macro tracks at
+   deliberately lower weight (MacroFactor); tap a macro → detail. The
+   standalone macro section below the hero is **retired**
+5. **no log pill** — Cal AI's filled-pill-in-the-ring pattern rejected;
+   the FAB is the log affordance (supersedes ENG-1372 law 2 and the
+   July-5 review's "invitation inside the hero" rule — Grace, 2026-07-21)
+
+then **Eat next** recipe card with real embedded photography (+24; hides
+when over budget — the guide-line carries the landing copy), Quick add,
+Today's meals.
 
 ## Already shipped from this direction
 
@@ -50,5 +62,8 @@ remaining slices (absorbing ENG-1656) — ticketed after ratification.
 ## Open questions for ratification
 
 1. Guide-line absorbing the Coach chip (ENG-1293 entry preserved, restyled).
-2. Macro band **replacing** the macro section vs coexisting with it.
+2. The board **replacing** the standalone macro section vs coexisting.
 3. Eat-next hiding when over budget.
+4. The ambient hero wash (a deliberate departure from the flat ENG-1571
+   dial-material ruling — wash sits BEHIND the dial on the page ground,
+   the dial itself stays flat; needs an explicit OK).
