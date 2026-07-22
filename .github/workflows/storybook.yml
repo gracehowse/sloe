@@ -38,6 +38,11 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # Mobile colocated stories need apps/mobile deps (react-native-svg, etc.).
+      # Root npm ci does not install them; without this, Vite fails to resolve
+      # packages that exist only under apps/mobile/package.json.
+      - name: Install mobile dependencies
+        run: npm ci --prefix apps/mobile
       - name: Storybook coverage ratchet (sibling stories or explicit skips)
         run: npm run check:storybook-coverage
       - run: npx playwright install --with-deps chromium

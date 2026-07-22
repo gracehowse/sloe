@@ -133,6 +133,7 @@ export function mergeMobileStorybookVite(config: UserConfig): UserConfig {
         "expo-splash-screen": path.join(coverageStubs, "expo-splash-screen.ts"),
         "expo-apple-authentication": path.join(coverageStubs, "expo-apple-authentication.tsx"),
         "@expo/vector-icons": path.join(coverageStubs, "expo-vector-icons.tsx"),
+        "posthog-react-native": path.join(coverageStubs, "posthog-react-native.tsx"),
         "react-native-reanimated": path.join(coverageStubs, "reanimated.ts"),
         "@react-native-async-storage/async-storage": path.join(stubsRoot, "async-storage.ts"),
       },
