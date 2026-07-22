@@ -12,11 +12,13 @@ export interface SupprNoticeProps extends React.ComponentProps<"div"> {
   leading?: React.ReactNode;
 }
 
+// Soft / SoftStrong named tokens — not accent slash-opacity (ENG-1591).
+// Mirrors mobile `SupprNotice` toneColors (primarySoft + primarySoftStrong, etc.).
 const toneClass: Record<SupprNoticeTone, string> = {
-  primary: "border-primary/20 bg-primary/10",
-  warning: "border-warning bg-warning/10",
-  destructive: "border-destructive/20 bg-destructive/10",
-  offline: "border-primary/20 bg-card",
+  primary: "border-primary-soft bg-primary-soft",
+  warning: "border-warning bg-warning-soft",
+  destructive: "border-destructive-soft bg-destructive-soft",
+  offline: "border-primary-soft bg-card",
   neutral: "border-border bg-card",
 };
 
