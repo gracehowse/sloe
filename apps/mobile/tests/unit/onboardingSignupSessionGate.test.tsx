@@ -14,9 +14,8 @@
  * future build" in fine print) — a trust-killer for MFP refugees.
  *
  * This test pins the user-observable contract of the fix:
- *   1. NO email field is rendered (Apple Sign-In is the single honest
- *      path); the fine print is the Terms/Privacy line only — the
- *      "coming soon" email promise was removed in ENG-1516.
+ *   1. NO fake email *field* is rendered (ENG-672 honesty). ENG-1563 adds a
+ *      discoverable "Continue with email" escape that routes to `/login`.
  *   2. The Apple Sign-In CTA is present.
  *   3. After a successful Apple sign-in the step does NOT self-advance
  *      — forward motion is owned by the shell's session-driven
@@ -53,6 +52,9 @@ vi.mock("expo-apple-authentication", () => ({
   AppleAuthenticationScope: { FULL_NAME: 0, EMAIL: 1 },
 }));
 vi.mock("js-sha256", () => ({ sha256: () => "hashed-nonce" }));
+vi.mock("expo-router", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }),
+}));
 vi.mock("@/lib/supabase", () => ({
   supabase: {
     auth: {
@@ -97,13 +99,16 @@ afterEach(() => {
   signInWithIdTokenMock.mockReset();
 });
 
-describe("MobileSignupStep — honest, Apple-only, session-gated (ENG-672)", () => {
-  it("renders the Apple Sign-In CTA and NO email field", () => {
-    const { getByLabelText, queryByPlaceholderText, queryByText, getByText } =
+describe("MobileSignupStep — honest, session-gated (ENG-672 / ENG-1563)", () => {
+  it("renders Apple CTA, no fake email field, and a discoverable email escape", () => {
+    const { getByLabelText, queryByPlaceholderText, queryByText, getByText, getByTestId } =
       renderSignup();
     expect(getByLabelText("Sign in with Apple")).toBeTruthy();
-    // The email field is gone — it advertised a path that didn't exist.
+    // The email *field* is gone — it advertised a path that didn't exist.
     expect(queryByPlaceholderText("you@example.com")).toBeNull();
+    // ENG-1563 — discoverable escape to real login email entry.
+    expect(getByTestId("signup-continue-email")).toBeTruthy();
+    expect(getByLabelText("I already have an account")).toBeTruthy();
     // The optional first-name field stays.
     expect(queryByPlaceholderText("Grace")).toBeTruthy();
     // ENG-1516 — the "Email sign-up is coming soon" promise is gone too
