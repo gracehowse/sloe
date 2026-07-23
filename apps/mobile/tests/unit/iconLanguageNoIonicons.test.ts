@@ -27,7 +27,8 @@ const SWEPT_FILES = [
 // ENG-120 — the ONLY production files allowed to keep an `@expo/vector-icons`
 // import, and only for brand `logo-*` glyphs lucide doesn't ship.
 const BRAND_CARVE_OUTS = new Set<string>([
-  "app/login.tsx",
+  // ENG-1565: Apple logo glyph moved out of login.tsx into the pressable extract.
+  "components/login/LoginScreenPressables.tsx",
   "app/import-shared.tsx",
   "components/onboarding/steps/signup.tsx",
 ]);

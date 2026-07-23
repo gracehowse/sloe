@@ -17,6 +17,9 @@ import { describe, expect, it } from "vitest";
 const readSrc = (rel: string) => readFileSync(resolve(__dirname, rel), "utf8");
 
 const screen = readSrc("../../app/cookbook-import.tsx");
+// ENG-1565: pressable chrome + StyleSheet tokens extracted for screen budget.
+const pressables = readSrc("../../components/cookbook/CookbookImportPressables.tsx");
+const screenAndPressables = `${screen}\n${pressables}`;
 const reviewRow = readSrc("../../components/cookbook/CookbookReviewRow.tsx");
 const parsingView = readSrc("../../components/cookbook/CookbookParsingView.tsx");
 const successView = readSrc("../../components/cookbook/CookbookSuccessView.tsx");
@@ -25,7 +28,7 @@ describe("cookbook-import — DS §2.3 typography compliance", () => {
   it("cardTitle uses Type.headline (serifMedium), not raw fontWeight", () => {
     // Type.headline = Newsreader_500Medium / serifMedium — the correct serif
     // role for recipe names per DS §2.3 rule 2.
-    expect(screen).toMatch(/cardTitle.*Type\.headline/s);
+    expect(screenAndPressables).toMatch(/cardTitle.*Type\.headline/s);
     // Must NOT use a bare fontWeight:'700' for the card title any more.
     expect(screen).not.toMatch(/cardTitle.*fontWeight.*['"]700['"]/);
   });
@@ -47,11 +50,11 @@ describe("cookbook-import — DS §2.3 typography compliance", () => {
 
   it("primaryBtnText uses FontFamily.sansSemibold (Inter 600)", () => {
     // DS §2.2 cta-primary: Inter 600 / 15pt — not fontWeight:'700'.
-    expect(screen).toMatch(/primaryBtnText[\s\S]*?FontFamily\.sansSemibold/);
+    expect(screenAndPressables).toMatch(/primaryBtnText[\s\S]*?FontFamily\.sansSemibold/);
   });
 
   it("segBtnText uses FontFamily.sansSemibold", () => {
-    expect(screen).toMatch(/segBtnText[\s\S]*?FontFamily\.sansSemibold/);
+    expect(screenAndPressables).toMatch(/segBtnText[\s\S]*?FontFamily\.sansSemibold/);
   });
 
   it("CookbookSuccessView uses Type.title for the 'Saved.' H1", () => {
@@ -74,15 +77,15 @@ describe("cookbook-import — DS §4 radius compliance", () => {
   });
 
   it("uses Radius.lg (8) for cards, not Radius.xl*2 (24)", () => {
-    expect(screen).toMatch(/borderRadius:\s*Radius\.lg/);
+    expect(screenAndPressables).toMatch(/borderRadius:\s*Radius\.lg/);
     // Explicit ban on the old Radius.xl * 2 arithmetic.
-    expect(screen).not.toMatch(/Radius\.xl\s*\*\s*2/);
+    expect(screenAndPressables).not.toMatch(/Radius\.xl\s*\*\s*2/);
   });
 
   it("segment buttons use Radius.lg (8), not hardcoded 14", () => {
-    const noComments = screen.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+    const noComments = screenAndPressables.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
     expect(noComments).not.toMatch(/borderRadius:\s*14\b/);
-    expect(screen).toMatch(/segBtn[\s\S]*?Radius\.lg/);
+    expect(screenAndPressables).toMatch(/segBtn[\s\S]*?Radius\.lg/);
   });
 
   it("CookbookReviewRow uses Radius.lg for card and Radius.md for checkbox", () => {

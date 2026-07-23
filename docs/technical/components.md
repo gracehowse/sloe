@@ -149,7 +149,9 @@
 
 | Screen | Purpose |
 |--------|---------|
-| `login.tsx` | Auth — email/password, magic link, Apple Sign-In |
+| `login.tsx` | Auth — email/password, magic link, Apple Sign-In. Pressable chrome in `components/login/LoginScreenPressables.tsx` (ENG-1565). |
+| `creator/[id].tsx` | Creator profile + recipe grid. Pressable chrome in `components/creator/CreatorProfileParts.tsx` (ENG-1565). |
+| `cookbook-import.tsx` | Cookbook PDF import flow. Pressable chrome in `components/cookbook/CookbookImportPressables.tsx` (ENG-1565). |
 | `onboarding.tsx` | 15-step profile setup with TDEE calculator |
 | `recipe/[id].tsx` | Recipe detail with portion-adjusted view, macro rings, ingredients |
 | `recipe/verify.tsx` | Ingredient-level nutrition verification with USDA search |

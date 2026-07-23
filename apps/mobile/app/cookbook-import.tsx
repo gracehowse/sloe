@@ -4,7 +4,6 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -29,6 +28,16 @@ import type { PlanImportNutritionMode, PlanImportVerifiedRecipe } from "@suppr/s
 import { CookbookParsingView } from "@/components/cookbook/CookbookParsingView";
 import { CookbookSuccessView } from "@/components/cookbook/CookbookSuccessView";
 import { CookbookReviewRow } from "@/components/cookbook/CookbookReviewRow";
+import {
+  CookbookFooterSaveButton,
+  CookbookHeaderSaveButton,
+  CookbookImportBanner,
+  CookbookLegacyRecipeCard,
+  CookbookNutritionModeSeg,
+  CookbookParseButton,
+  CookbookUploadZone,
+  makeCookbookImportPressableStyles,
+} from "@/components/cookbook/CookbookImportPressables";
 
 type Step = "pick" | "parsing" | "review" | "success";
 type PickedFile = { uri: string; name: string; mimeType: string };
@@ -379,8 +388,8 @@ export default function CookbookImportScreen() {
   }, [userId, selectedRecipes, bookName, nutritionMode, router, redesignOn]);
 
   const styles = useMemo(
-    () =>
-      StyleSheet.create({
+    () => ({
+      ...StyleSheet.create({
         root: { flex: 1, backgroundColor: colors.background },
         scroll: { padding: Spacing.md, paddingBottom: insets.bottom + Spacing.xl },
         subtitle: {
@@ -390,7 +399,6 @@ export default function CookbookImportScreen() {
           lineHeight: 20,
           marginBottom: Spacing.md,
         },
-        // DS §3.1 label: Inter SemiBold 13pt, spacing from grid.
         label: {
           fontFamily: FontFamily.sansSemibold,
           fontSize: 13,
@@ -398,7 +406,6 @@ export default function CookbookImportScreen() {
           marginTop: Spacing.md,
           marginBottom: Spacing.xs,
         },
-        // DS §4: inputs → radius-xl (12). DS §3.1 card internal padding 16pt.
         textInput: {
           borderWidth: 1,
           borderColor: colors.border,
@@ -408,154 +415,15 @@ export default function CookbookImportScreen() {
           color: colors.text,
           backgroundColor: colors.card,
         },
-        // DS §4: upload zone → radius-xl (12). Standard card padding Spacing.xl.
-        uploadZone: {
-          borderWidth: 1,
-          borderColor: colors.border,
-          borderStyle: "dashed",
-          borderRadius: Radius.xl,
-          backgroundColor: colors.card,
-          padding: Spacing.xl,
-          marginTop: Spacing.sm,
-        },
-        // DS §2.3: upload zone title is screen's primary editorial moment → serif.
-        uploadTitle: { ...Type.headline, color: colors.text },
-        uploadHint: {
-          fontFamily: FontFamily.sansRegular,
-          fontSize: 13,
-          color: colors.textSecondary,
-          marginTop: Spacing.xs,
-          lineHeight: 18,
-        },
-        // DS §2.2 cta-primary: Inter 600 / 15pt. Radius-xl (12). Min-height 48pt.
-        // primaryForeground token instead of raw '#fff'.
-        primaryBtn: {
-          backgroundColor: accent.primary,
-          borderRadius: Radius.xl,
-          paddingVertical: Spacing.md,
-          alignItems: "center",
-          marginTop: Spacing.md,
-          minHeight: 48,
-          justifyContent: "center",
-        },
-        primaryBtnText: {
-          fontFamily: FontFamily.sansSemibold,
-          fontSize: Type.bodyLarge.fontSize,
-          lineHeight: Type.bodyLarge.lineHeight,
-          color: accent.primaryForeground,
-        },
-        // DS §4: standard cards → radius-lg (8). Flat-card surfaces
-        // (2026-06-12, Withings grammar — decision:
-        // docs/decisions/2026-06-12-flat-card-surfaces.md): the soft outer lift
-        // (`Elevation.cardSoft`) is retired; the inner card fill on the cream
-        // ground is the separation. Outer/inner split kept as a flat radius
-        // holder so the call site needs no churn.
-        cardOuter: {
-          borderRadius: Radius.lg,
-          marginBottom: Spacing.md,
-        },
-        card: {
-          backgroundColor: colors.card,
-          borderRadius: Radius.lg,
-          padding: Spacing.md,
-          borderWidth: 1,
-          borderColor: colors.border,
-        },
-        // DS §2.3 rule 2: recipe/meal names always Fraunces (Newsreader). Type.headline
-        // = serifMedium 17pt — the correct role for a recipe name in a review list card.
-        cardTitle: { ...Type.headline, color: colors.text },
-        cardMeta: {
-          ...Type.captionSmall,
-          color: colors.textSecondary,
-          marginTop: Spacing.xs,
-        },
-        // DS §4: segment control → radius-lg (8). DS §6.2 active: 2pt terracotta + tint.
-        seg: { flexDirection: "row", gap: Spacing.sm, marginBottom: Spacing.md },
-        segBtn: {
-          flex: 1,
-          paddingVertical: Spacing.sm,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
-          borderColor: colors.border,
-          alignItems: "center",
-        },
-        segBtnActive: {
-          borderWidth: 2,
-          borderColor: accent.primary,
-          backgroundColor: accent.primarySoft,
-        },
-        segBtnText: {
-          fontFamily: FontFamily.sansSemibold,
-          fontSize: 13,
-          color: colors.text,
-        },
-        // DS §10.8: inline banner — error/warning with auto-dismiss on success.
-        bannerError: {
-          backgroundColor: `${accent.destructive}14`,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
-          borderColor: `${accent.destructive}40`,
-          padding: Spacing.md,
-          marginBottom: Spacing.sm,
-        },
-        bannerWarning: {
-          backgroundColor: `${accent.warning}14`,
-          borderRadius: Radius.lg,
-          borderWidth: 1,
-          borderColor: `${accent.warning}40`,
-          padding: Spacing.md,
-          marginBottom: Spacing.sm,
-        },
-        bannerText: {
-          fontFamily: FontFamily.sansRegular,
-          fontSize: 14,
-          color: colors.text,
-          lineHeight: 20,
-        },
-        bannerUpgradeBtnText: {
-          fontFamily: FontFamily.sansSemibold,
-          fontSize: 14,
-          color: accent.primarySolid,
-          marginTop: Spacing.xs,
-        },
-        reviewFooter: {
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-          backgroundColor: colors.background,
-          padding: Spacing.md,
-          paddingBottom: insets.bottom + Spacing.md,
-        },
-        reviewCount: {
-          ...Type.bodyLarge,
-          color: colors.text,
-          marginBottom: Spacing.sm,
-        },
-        footerSaveBtn: {
-          backgroundColor: accent.primary,
-          borderRadius: Radius.xl,
-          paddingVertical: Spacing.md,
-          alignItems: "center",
-          minHeight: 48,
-          justifyContent: "center",
-        },
       }),
+      ...makeCookbookImportPressableStyles(colors, accent, insets.bottom),
+    }),
     [colors, insets.bottom, accent],
   );
 
-  // DS §10.8: inline banner component — no Alert for non-destructive feedback.
-  const BannerView = useMemo(() => {
-    if (!banner) return null;
-    return (
-      <View style={banner.kind === "error" ? styles.bannerError : styles.bannerWarning}>
-        <Text style={styles.bannerText}>{banner.message}</Text>
-        {banner.kind === "warning" && banner.upgradeAction ? (
-          <Pressable onPress={banner.upgradeAction}>
-            <Text style={styles.bannerUpgradeBtnText}>View plans</Text>
-          </Pressable>
-        ) : null}
-      </View>
-    );
-  }, [banner, styles]);
+  const saveLabel = committing
+    ? "Saving…"
+    : `Save ${selectedRecipes.length} recipes to Library`;
 
   // ─── Parsing state ────────────────────────────────────────────────────────
 
@@ -591,21 +459,18 @@ export default function CookbookImportScreen() {
           onBack={() => setStep("pick")}
           rightSlot={
             !redesignOn ? (
-              <Pressable onPress={() => void finishSave()} disabled={committing} hitSlop={8}>
-                <Text
-                  style={[
-                    Type.bodyLarge,
-                    { fontFamily: FontFamily.sansSemibold, color: accent.primarySolid },
-                  ]}
-                >
-                  {committing ? "…" : "Save"}
-                </Text>
-              </Pressable>
+              <CookbookHeaderSaveButton
+                committing={committing}
+                onPress={() => void finishSave()}
+                accentPrimarySolid={accent.primarySolid}
+              />
             ) : undefined
           }
         />
         <View style={{ paddingHorizontal: Spacing.md, paddingTop: Spacing.sm }}>
-          {redesignOn && banner ? BannerView : null}
+          {redesignOn && banner ? (
+            <CookbookImportBanner banner={banner} styles={styles} />
+          ) : null}
           <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 15, color: colors.text }}>
             {selectedRecipes.length} of {recipes.length} selected ·{" "}
             <Text style={{ fontFamily: FontFamily.serifMedium }}>{bookName}</Text>
@@ -616,19 +481,11 @@ export default function CookbookImportScreen() {
             </Text>
           ) : null}
           <Text style={styles.label}>Nutrition handling</Text>
-          <View style={styles.seg}>
-            {(["author", "match"] as const).map((mode) => (
-              <Pressable
-                key={mode}
-                style={[styles.segBtn, nutritionMode === mode && styles.segBtnActive]}
-                onPress={() => setNutritionMode(mode)}
-              >
-                <Text style={styles.segBtnText}>
-                  {mode === "author" ? "Author's numbers" : "Match & verify"}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          <CookbookNutritionModeSeg
+            nutritionMode={nutritionMode}
+            onSelect={setNutritionMode}
+            styles={styles}
+          />
         </View>
 
         {redesignOn ? (
@@ -654,15 +511,12 @@ export default function CookbookImportScreen() {
               <Text style={styles.reviewCount}>
                 {selectedRecipes.length} of {recipes.length} selected
               </Text>
-              <Pressable
-                style={styles.footerSaveBtn}
+              <CookbookFooterSaveButton
+                label={saveLabel}
+                committing={committing}
                 onPress={() => void finishSave()}
-                disabled={committing}
-              >
-                <Text style={styles.primaryBtnText}>
-                  {committing ? "Saving…" : `Save ${selectedRecipes.length} recipes to Library`}
-                </Text>
-              </Pressable>
+                styles={styles}
+              />
             </View>
           </>
         ) : (
@@ -673,51 +527,25 @@ export default function CookbookImportScreen() {
               data={recipes}
               keyExtractor={(item) => item.key}
               contentContainerStyle={{ paddingHorizontal: Spacing.md, paddingBottom: insets.bottom + 80 }}
-              renderItem={({ item }) => {
-                const excluded = excludedKeys.has(item.key);
-                const kcal =
-                  nutritionMode === "author" && item.authorNutrition?.calories
-                    ? item.authorNutrition.calories
-                    : item.supprNutrition.calories;
-                return (
-                  <Pressable
-                    style={styles.cardOuter}
-                    onPress={() => toggleExclude(item.key)}
-                    testID={`cookbook-recipe-${item.key}`}
-                  >
-                    <View style={[styles.card, excluded && { opacity: 0.45 }]}>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                        <Text
-                          style={[
-                            styles.cardTitle,
-                            excluded && { textDecorationLine: "line-through" },
-                          ]}
-                        >
-                          {item.title}
-                        </Text>
-                        <Text style={{ fontFamily: FontFamily.sansSemibold, fontSize: 14, color: colors.text }}>
-                          {kcal} kcal
-                        </Text>
-                      </View>
-                      <Text style={styles.cardMeta}>
-                        Serves {item.serves} · {item.ingredientCount ?? item.ingredients.length} ingredients ·{" "}
-                        {item.confidence} confidence{excluded ? " · excluded" : ""}
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              }}
+              renderItem={({ item }) => (
+                <CookbookLegacyRecipeCard
+                  item={item}
+                  excluded={excludedKeys.has(item.key)}
+                  nutritionMode={nutritionMode}
+                  onToggle={toggleExclude}
+                  styles={styles}
+                  colors={colors}
+                />
+              )}
             />
             <View style={{ padding: Spacing.md, paddingBottom: insets.bottom + Spacing.md }}>
-              <Pressable
-                style={styles.primaryBtn}
+              <CookbookFooterSaveButton
+                label={saveLabel}
+                committing={committing}
                 onPress={() => void finishSave()}
-                disabled={committing}
-              >
-                <Text style={styles.primaryBtnText}>
-                  {committing ? "Saving…" : `Save ${selectedRecipes.length} recipes to Library`}
-                </Text>
-              </Pressable>
+                styles={styles}
+                containerStyle={styles.primaryBtn}
+              />
             </View>
           </>
         )}
@@ -738,25 +566,16 @@ export default function CookbookImportScreen() {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        {BannerView}
+        {banner ? <CookbookImportBanner banner={banner} styles={styles} /> : null}
         <Text style={styles.subtitle}>
           Upload one searchable PDF from your scanner app. Sloe extracts every recipe with
           ingredients — then you build your week in Plan.
         </Text>
-        <Pressable
-          testID="cookbook-import-pick-pdf"
-          style={styles.uploadZone}
+        <CookbookUploadZone
+          pickedFileName={pickedFile?.name ?? null}
           onPress={() => void pickPdf()}
-        >
-          <Text style={styles.uploadTitle}>
-            {pickedFile ? pickedFile.name : "Choose cookbook PDF"}
-          </Text>
-          <Text style={styles.uploadHint}>
-            {pickedFile
-              ? "Tap to replace · export a searchable PDF (not a flat scan)"
-              : "Searchable PDF export (not a flat scan) — 4 MB max"}
-          </Text>
-        </Pressable>
+          styles={styles}
+        />
         <Text style={styles.label}>Book name</Text>
         <TextInput
           testID="cookbook-import-book-name"
@@ -766,13 +585,7 @@ export default function CookbookImportScreen() {
           placeholder="e.g. Fast 800"
           placeholderTextColor={colors.textSecondary}
         />
-        <Pressable
-          testID="cookbook-import-parse"
-          style={styles.primaryBtn}
-          onPress={() => void runParse()}
-        >
-          <Text style={styles.primaryBtnText}>Parse cookbook</Text>
-        </Pressable>
+        <CookbookParseButton onPress={() => void runParse()} styles={styles} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
