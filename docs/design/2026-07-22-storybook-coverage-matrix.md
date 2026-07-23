@@ -8,13 +8,13 @@
 
 | Area | Visual | Stories | Explicit skips | Status |
 |------|--------|---------|----------------|--------|
-| `src/app/components/ui` | 62 | **62** | 0 | ✅ |
-| `src/app/components/suppr` | 167 | **160** | **7** | ✅ |
-| `src/app/components` (other hosts) | 147 | **112** | **35** | ✅ |
-| `apps/mobile/components/ui` | 23 | **23** | 0 | ✅ |
-| `apps/mobile/components` (features) | ~352 | **~264** | **88** | ✅ |
+| `src/app/components/ui` | 65 | **65** | 0 | ✅ |
+| `src/app/components/suppr` | 171 | **162** | **9** | ✅ |
+| `src/app/components` (other hosts) | 151 | **113** | **38** | ✅ |
+| `apps/mobile/components/ui` | 26 | **26** | 0 | ✅ |
+| `apps/mobile/components` (features) | 364 | **267** | **97** | ✅ |
 
-Canonical skip list: [`scripts/storybook-coverage-skips.json`](../../scripts/storybook-coverage-skips.json) (130 entries). CI: `npm run check:storybook-coverage` (`npm run ci` + Storybook workflow).
+Canonical skip list: [`scripts/storybook-coverage-skips.json`](../../scripts/storybook-coverage-skips.json) (144 entries). CI: `npm run check:storybook-coverage` (`npm run ci` + Storybook workflow).
 
 ## Pipeline
 
