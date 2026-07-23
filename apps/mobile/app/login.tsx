@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Linking,
   Platform,
-  Pressable,
   Text,
   TextInput,
   View,
@@ -12,8 +11,6 @@ import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as AppleAuthentication from "expo-apple-authentication";
 import { sha256 } from "js-sha256";
-import { Ionicons } from "@expo/vector-icons"; // ENG-120: lucide has no brand glyph — Ionicons retained for logo-* only
-import { Check, ChevronLeft, Mail, X as CloseIcon } from "lucide-react-native";
 
 import { useAuth } from "@/context/auth";
 import { hasSupabaseConfig, supabase } from "@/lib/supabase";
@@ -22,11 +19,20 @@ import { useEmailEntrySignUpDefault } from "@/lib/hasSignedInBefore";
 import { getSupprWebBase } from "@/lib/supprWeb";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
-import { Accent, Spacing } from "@/constants/theme";
+import { Spacing } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import KeyboardSafeView from "@/components/KeyboardSafeView";
 import { SloeHeaderWordmark } from "@/components/SloeHeaderWordmark";
 import { makeLoginStyles } from "@/components/login/loginStyles";
+import {
+  LoginAppleSecondaryButton,
+  LoginBackRow,
+  LoginChooserActions,
+  LoginCloseButton,
+  LoginHintLink,
+  LoginSubmitButton,
+  LoginTermsCheckbox,
+} from "@/components/login/LoginScreenPressables";
 
 // ENG-1474 — deep link GoTrue redirects PKCE email links to; `app/auth-callback.tsx`
 // exchanges the `?code=`. Must match `additional_redirect_urls` in supabase/config.toml.
@@ -84,16 +90,11 @@ export default function LoginScreen() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [isSignUp, setIsSignUp] = useState(false);
-  // ENG-1514: entering the email form from the chooser defaults to CREATE on
-  // a session-less fresh install; `?intent=signin` (onboarding welcome) or a
-  // prior session on this device flips the default to sign-in.
   const emailEntrySignUp = useEmailEntrySignUpDefault();
-  // Chooser first (Figma 296:2); ENG-1563 `?email=1` opens the form.
   const emailParam = useLocalSearchParams<{ email?: string | string[] }>().email;
   const openEmail = (Array.isArray(emailParam) ? emailParam[0] : emailParam) === "1";
   const [view, setView] = useState<"chooser" | "email">(openEmail ? "email" : "chooser");
   const [appleAuthAvailable, setAppleAuthAvailable] = useState(false);
-  // Terms assent required at account creation (Nguyen v. Barnes & Noble).
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   useEffect(() => {
@@ -101,10 +102,8 @@ export default function LoginScreen() {
     void AppleAuthentication.isAvailableAsync().then(setAppleAuthAvailable);
   }, []);
 
-  // ENG-1474: surface a `suppr://auth-callback` failure (`?error=…`) via `message`.
   useAuthCallbackError(setMessage);
 
-  // Styles extracted to `@/components/login/loginStyles` (ENG-1474; Sloe DS reskin).
   const styles = useMemo(() => makeLoginStyles(colors), [colors]);
 
   if (!hasSupabaseConfig()) {
@@ -128,8 +127,6 @@ export default function LoginScreen() {
     );
   }
 
-  // Signed-in users skip this screen immediately. Onboarding is gated in
-  // `(tabs)/_layout.tsx` — no intermediate launch screen here.
   if (session?.user?.id) {
     return <Redirect href="/(tabs)" />;
   }
@@ -152,7 +149,6 @@ export default function LoginScreen() {
         const { error } = await supabase.auth.signUp({
           email: resolvedEmail,
           password: resolvedPassword,
-          // ENG-1474: confirmation link deep-links back into the app (not Safari).
           options: { emailRedirectTo: AUTH_CALLBACK_DEEP_LINK },
         });
         if (error) {
@@ -190,7 +186,6 @@ export default function LoginScreen() {
     }
     setBusy(true);
     try {
-      // Apple expects SHA256(rawNonce) on the request; Supabase verifies the ID token using rawNonce.
       const rawNonce = createAppleRawNonce();
       const hashedNonce = sha256(rawNonce);
       const credential = await AppleAuthentication.signInAsync({
@@ -212,8 +207,6 @@ export default function LoginScreen() {
       if (error) {
         setMessage(formatAuthError(error));
       } else {
-        // Login screen Apple button is always sign-in (returning users);
-        // new-user Apple sign-up goes through the onboarding signup step.
         try { track(AnalyticsEvents.user_signed_in, { method: "apple", platform: "mobile" }); } catch { /* ignore */ }
       }
     } catch (e: unknown) {
@@ -228,7 +221,6 @@ export default function LoginScreen() {
   async function onSendPasswordReset() {
     if (!email.trim()) { setMessage("Enter your email first, then tap Forgot password."); return; }
     setBusy(true);
-    // ENG-1474: recovery link deep-links into the app. ENG-1483 adds `next` so it lands on the reset form, not the `/(tabs)` default.
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${AUTH_CALLBACK_DEEP_LINK}?next=${encodeURIComponent("/reset-password")}`,
     });
@@ -240,7 +232,6 @@ export default function LoginScreen() {
   async function onSendMagicLink() {
     if (!email.trim()) { setMessage("Enter your email to receive a magic link."); return; }
     setBusy(true);
-    // ENG-1474: magic-link deep-links back into the app.
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: { emailRedirectTo: AUTH_CALLBACK_DEEP_LINK },
@@ -252,32 +243,45 @@ export default function LoginScreen() {
 
   const appleVisible = Platform.OS === "ios" && appleAuthAvailable;
 
+  const termsFinePrint = (
+    <Text style={styles.termsFinePrint}>
+      By continuing you agree to our{" "}
+      <Text style={styles.termsFinePrintLink} onPress={() => void Linking.openURL(legalUrl("/terms"))}>
+        Terms
+      </Text>
+      {" "}and{" "}
+      <Text style={styles.termsFinePrintLink} onPress={() => void Linking.openURL(legalUrl("/privacy"))}>
+        Privacy Policy
+      </Text>
+      .
+    </Text>
+  );
+
+  const termsCheckboxCopy = (
+    <>
+      I agree to the{" "}
+      <Text style={styles.termsLink} onPress={() => void Linking.openURL(legalUrl("/terms"))}>
+        Terms of Service
+      </Text>
+      {" "}and{" "}
+      <Text style={styles.termsLink} onPress={() => void Linking.openURL(legalUrl("/privacy"))}>
+        Privacy Policy
+      </Text>
+      .
+    </>
+  );
+
   return (
     <KeyboardSafeView
       style={{ paddingTop: insets.top, backgroundColor: colors.background }}
       contentContainerStyle={styles.container}
     >
-      {/* Close X — only when login was PUSHED (welcome's "I already have an
-          account"); a root session-less launch has no destination (ENG-1514). */}
-      {router.canGoBack() && (
-        <View style={styles.closeRow}>
-          <Pressable
-            testID="login-close"
-            accessibilityRole="button"
-            accessibilityLabel="Close"
-            style={styles.closeBtn}
-            onPress={() => router.back()}
-          >
-            <CloseIcon size={26} color={colors.textTertiary} strokeWidth={2} />
-          </Pressable>
-        </View>
-      )}
+      {router.canGoBack() ? (
+        <LoginCloseButton onPress={() => router.back()} styles={styles} />
+      ) : null}
 
       <View style={styles.centerBody}>
         {view === "chooser" ? (
-          /* ── Chooser (default) ──────────────────────────────────────
-             Wordmark, positioning headline, Apple (ink) + email (outline);
-             Google OMITTED per ENG-924. Email reveals the form below. */
           <>
             <View style={styles.brandSection}>
               <SloeHeaderWordmark fontSize={36} />
@@ -290,61 +294,29 @@ export default function LoginScreen() {
               </Text>
             </View>
 
-            <View style={styles.chooser}>
-              {/* Apple Sign-In — hidden when capability not provisioned. */}
-              {appleVisible && (
-                <Pressable
-                  testID="login-apple"
-                  accessibilityRole="button"
-                  accessibilityLabel="Continue with Apple"
-                  style={[styles.appleBtn, busy && styles.btnDisabled]}
-                  onPress={() => void onAppleSignIn()}
-                  disabled={busy}
-                >
-                  <Ionicons name="logo-apple" size={20} color={Accent.primaryForeground} />
-                  <Text style={styles.appleBtnText}>Continue with Apple</Text>
-                </Pressable>
-              )}
-
-              <Pressable
-                testID="login-continue-email"
-                accessibilityRole="button"
-                accessibilityLabel="Continue with email"
-                style={styles.emailBtn}
-                onPress={() => { setIsSignUp(emailEntrySignUp); setView("email"); setMessage(null); }}
-              >
-                <Mail size={20} color={colors.navPrimary} strokeWidth={2} />
-                <Text style={styles.emailBtnText}>Continue with email</Text>
-              </Pressable>
-
-              {/* Terms / Privacy fine print (frame 296:2). */}
-              <Text style={styles.termsFinePrint}>
-                By continuing you agree to our{" "}
-                <Text style={styles.termsFinePrintLink} onPress={() => void Linking.openURL(legalUrl("/terms"))}>
-                  Terms
-                </Text>
-                {" "}and{" "}
-                <Text style={styles.termsFinePrintLink} onPress={() => void Linking.openURL(legalUrl("/privacy"))}>
-                  Privacy Policy
-                </Text>
-                .
-              </Text>
-            </View>
+            <LoginChooserActions
+              appleVisible={appleVisible}
+              busy={busy}
+              onAppleSignIn={() => void onAppleSignIn()}
+              onContinueEmail={() => {
+                setIsSignUp(emailEntrySignUp);
+                setView("email");
+                setMessage(null);
+              }}
+              styles={styles}
+              termsFinePrint={termsFinePrint}
+            />
           </>
         ) : (
-          /* ── Email form (progressive disclosure) ────────────────────
-             unchanged in behaviour; back affordance returns to chooser. */
           <>
-            <Pressable
-              testID="login-back"
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-              style={styles.backRow}
-              onPress={() => { setView("chooser"); setIsSignUp(false); setMessage(null); }}
-            >
-              <ChevronLeft size={18} color={colors.textSecondary} strokeWidth={2} />
-              <Text style={styles.backText}>Back</Text>
-            </Pressable>
+            <LoginBackRow
+              onPress={() => {
+                setView("chooser");
+                setIsSignUp(false);
+                setMessage(null);
+              }}
+              styles={styles}
+            />
 
             <View style={styles.brandSection}>
               <Text style={styles.title}>{isSignUp ? "Create your account" : "Welcome back"}</Text>
@@ -387,74 +359,58 @@ export default function LoginScreen() {
                 style={styles.input}
               />
 
-              {isSignUp && (
-                <Pressable
-                  onPress={() => setAcceptedTerms((v) => !v)}
-                  style={styles.termsRow}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: acceptedTerms }}
-                  accessibilityLabel="Agree to Terms of Service and Privacy Policy"
-                >
-                  <View style={[styles.termsCheckbox, acceptedTerms && styles.termsCheckboxChecked]}>
-                    {acceptedTerms ? <Check size={12} color={colors.primaryForeground} strokeWidth={3} /> : null}
-                  </View>
-                  <Text style={styles.termsText}>
-                    I agree to the{" "}
-                    <Text style={styles.termsLink} onPress={() => void Linking.openURL(legalUrl("/terms"))}>
-                      Terms of Service
-                    </Text>
-                    {" "}and{" "}
-                    <Text style={styles.termsLink} onPress={() => void Linking.openURL(legalUrl("/privacy"))}>
-                      Privacy Policy
-                    </Text>
-                    .
-                  </Text>
-                </Pressable>
-              )}
+              {isSignUp ? (
+                <LoginTermsCheckbox
+                  acceptedTerms={acceptedTerms}
+                  onToggle={() => setAcceptedTerms((v) => !v)}
+                  styles={styles}
+                  termsCopy={termsCheckboxCopy}
+                />
+              ) : null}
 
-              <Pressable
-                testID="login-submit"
-                style={[styles.btn, (busy || (isSignUp && !acceptedTerms)) && styles.btnDisabled]}
+              <LoginSubmitButton
+                busy={busy}
+                isSignUp={isSignUp}
+                acceptedTerms={acceptedTerms}
                 onPress={() => void onSubmit()}
-                disabled={busy || (isSignUp && !acceptedTerms)}
-              >
-                <Text style={styles.btnText}>{busy ? (isSignUp ? "Creating account..." : "Signing in...") : (isSignUp ? "Create Account" : "Sign In")}</Text>
-              </Pressable>
+                styles={styles}
+              />
 
               {message ? <Text style={styles.errorText}>{message}</Text> : null}
 
-              <Pressable onPress={() => { setIsSignUp((v) => !v); setMessage(null); }}>
-                <Text style={styles.hint}>
-                  {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Create one"}
-                </Text>
-              </Pressable>
+              <LoginHintLink
+                onPress={() => {
+                  setIsSignUp((v) => !v);
+                  setMessage(null);
+                }}
+              >
+                {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Create one"}
+              </LoginHintLink>
 
-              {!isSignUp && (
-                <Pressable onPress={() => void onSendPasswordReset()}>
-                  <Text style={[styles.hint, { marginTop: 0 }]}>Forgot password?</Text>
-                </Pressable>
-              )}
+              {!isSignUp ? (
+                <LoginHintLink onPress={() => void onSendPasswordReset()} textStyle={[styles.hint, { marginTop: 0 }]}>
+                  Forgot password?
+                </LoginHintLink>
+              ) : null}
 
-              {!isSignUp && (
-                <Pressable onPress={() => void onSendMagicLink()}>
-                  <Text style={[styles.hint, { color: colors.text, fontWeight: "600" }]}>Sign in with magic link</Text>
-                </Pressable>
-              )}
+              {!isSignUp ? (
+                <LoginHintLink
+                  onPress={() => void onSendMagicLink()}
+                  textStyle={[styles.hint, { color: colors.text, fontWeight: "600" }]}
+                >
+                  Sign in with magic link
+                </LoginHintLink>
+              ) : null}
 
-              {/* Apple also reachable from the email step — hidden when not provisioned. */}
-              {appleVisible && (
-                <>
-                  <View style={{ height: Spacing.sm }} />
-                  <Pressable
-                    style={[styles.appleBtn, (busy || (isSignUp && !acceptedTerms)) && styles.btnDisabled]}
-                    onPress={() => void onAppleSignIn()}
-                    disabled={busy || (isSignUp && !acceptedTerms)}
-                  >
-                    <Ionicons name="logo-apple" size={20} color={Accent.primaryForeground} />
-                    <Text style={styles.appleBtnText}>Continue with Apple</Text>
-                  </Pressable>
-                </>
-              )}
+              {appleVisible ? (
+                <LoginAppleSecondaryButton
+                  busy={busy}
+                  isSignUp={isSignUp}
+                  acceptedTerms={acceptedTerms}
+                  onPress={() => void onAppleSignIn()}
+                  styles={styles}
+                />
+              ) : null}
             </View>
           </>
         )}

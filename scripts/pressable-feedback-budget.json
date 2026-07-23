@@ -2,9 +2,6 @@
   "allow": {},
   "pins": {
     "apps/mobile/app/(tabs)/barcode.tsx": 16,
-    "apps/mobile/app/cookbook-import.tsx": 8,
-    "apps/mobile/app/creator/[id].tsx": 6,
-    "apps/mobile/app/login.tsx": 10,
     "apps/mobile/app/paywall.tsx": 8,
     "apps/mobile/app/plan-import.tsx": 11,
     "apps/mobile/app/progress-metric.tsx": 5,

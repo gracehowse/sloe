@@ -602,6 +602,18 @@
       {
         "file": "apps/mobile/components/today/onboarding-nudges/OnboardingNudgeBanner.tsx",
         "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/creator/CreatorProfileParts.tsx",
+        "reason": "ENG-1565 extract — covered via creator profile screen skip"
+      },
+      {
+        "file": "apps/mobile/components/cookbook/CookbookImportPressables.tsx",
+        "reason": "ENG-1565 extract — covered via cookbook-import screen skip"
+      },
+      {
+        "file": "apps/mobile/components/login/LoginScreenPressables.tsx",
+        "reason": "ENG-1565 extract — covered via login screen skip"
       }
     ]
   }
