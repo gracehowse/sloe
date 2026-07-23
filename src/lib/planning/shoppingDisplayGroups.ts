@@ -5,6 +5,15 @@ import {
   shoppingIngredientHeadline,
   stripHeadlineForMixedQuantity,
 } from "./shoppingQuantityMerge";
+import { stripShoppingPrepFromName } from "./shoppingScanLabel";
+
+export type FormatShoppingGroupLabelOptions = {
+  /**
+   * ENG-1669 — in-store scan density: strip cook-prep suffixes from the
+   * name so the primary line is buyable identity only.
+   */
+  forShoppingScan?: boolean;
+};
 
 export type ShoppingDisplayGroup = {
   /** Stable id for React keys (underlying item ids). */
@@ -50,30 +59,71 @@ export function formatMixedShoppingAmounts(items: ShoppingItem[]): string {
   return formatMergedShoppingAmounts(items);
 }
 
+export type ShoppingGroupLabelParts = {
+  /** Quantity-first amount when present ("200 g", "2 × 400 g"). Null when name-only. */
+  quantity: string | null;
+  /** Buyable ingredient name (prep-stripped when `forShoppingScan`). */
+  name: string;
+};
+
 /**
- * One premium shopping row line — no redundant "(qty)" suffixes.
+ * Qty + name parts for Mob-style typography (bold qty, regular name).
+ * Pass `{ forShoppingScan: true }` (ENG-1669) to drop prep suffixes.
  */
-export function formatShoppingGroupLabel(group: ShoppingDisplayGroup): string {
+export function formatShoppingGroupParts(
+  group: ShoppingDisplayGroup,
+  options: FormatShoppingGroupLabelOptions = {},
+): ShoppingGroupLabelParts {
+  const scan = options.forShoppingScan === true;
+
   if (group.items.length === 1) {
     const item = group.items[0]!;
     const mixed = formatMixedShoppingAmounts([item]);
     const headline = shoppingIngredientHeadline(item);
-    const name = stripHeadlineForMixedQuantity(headline, mixed);
-    if (!mixed) return name || headline;
-    if (!name) return mixed;
-    if (name.toLowerCase().includes(mixed.toLowerCase())) return name;
-    if (/^[\d/]/.test(mixed) || /^\d+×/.test(mixed)) return `${mixed} ${name}`.trim();
-    return `${name} · ${mixed}`;
+    let name = stripHeadlineForMixedQuantity(headline, mixed);
+    if (scan) name = stripShoppingPrepFromName(name);
+    if (!mixed) {
+      const fallback = name || (scan ? stripShoppingPrepFromName(headline) : headline);
+      return { quantity: null, name: fallback };
+    }
+    if (!name) return { quantity: mixed, name: "" };
+    if (name.toLowerCase().includes(mixed.toLowerCase())) {
+      return { quantity: null, name };
+    }
+    if (/^[\d/]/.test(mixed) || /^\d+×/.test(mixed)) {
+      return { quantity: mixed, name };
+    }
+    return { quantity: mixed, name };
   }
 
   const mixed = formatMixedShoppingAmounts(group.items);
-  const name = stripHeadlineForMixedQuantity(group.displayName.trim(), mixed);
-  if (!mixed) return name;
-  if (!name) return mixed;
-  if (name.toLowerCase().includes(mixed.toLowerCase())) return name;
+  let name = stripHeadlineForMixedQuantity(group.displayName.trim(), mixed);
+  if (scan) name = stripShoppingPrepFromName(name);
+  if (!mixed) return { quantity: null, name };
+  if (!name) return { quantity: mixed, name: "" };
+  if (name.toLowerCase().includes(mixed.toLowerCase())) {
+    return { quantity: null, name };
+  }
   // Quantity-first reads like a real shopping list: "700 g spinach".
-  if (/^[\d/]/.test(mixed) || /^\d+×/.test(mixed)) return `${mixed} ${name}`.trim();
-  return `${name} · ${mixed}`;
+  return { quantity: mixed, name };
+}
+
+/**
+ * One premium shopping row line — no redundant "(qty)" suffixes.
+ * Pass `{ forShoppingScan: true }` (ENG-1669 density) to drop prep suffixes.
+ */
+export function formatShoppingGroupLabel(
+  group: ShoppingDisplayGroup,
+  options: FormatShoppingGroupLabelOptions = {},
+): string {
+  const { quantity, name } = formatShoppingGroupParts(group, options);
+  if (!quantity) return name;
+  if (!name) return quantity;
+  // Name · qty only when quantity isn't a leading numeric form.
+  if (!/^[\d/]/.test(quantity) && !/^\d+×/.test(quantity)) {
+    return `${name} · ${quantity}`;
+  }
+  return `${quantity} ${name}`.trim();
 }
 
 /** Stable merge key — strips leading qty/units so "600 g spinach" and "100g spinach" group. */

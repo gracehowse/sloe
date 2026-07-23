@@ -7,8 +7,13 @@ export function formatShoppingListSubtitle(input: {
   itemCount: number;
   planStartDate: string | null;
   outOfSync?: boolean;
+  /**
+   * ENG-1669 — when the tab badge already owns remaining-count, omit the
+   * redundant "N items" and keep only the plan-context clause.
+   */
+  omitItemCount?: boolean;
 }): string {
-  const countPart = `${input.itemCount} item${input.itemCount === 1 ? "" : "s"}`;
+  const stale = input.outOfSync ? " · plan changed since" : "";
   if (input.planStartDate) {
     const d = new Date(input.planStartDate + "T12:00:00");
     const label = d.toLocaleDateString(undefined, {
@@ -16,8 +21,14 @@ export function formatShoppingListSubtitle(input: {
       month: "short",
       day: "numeric",
     });
-    const stale = input.outOfSync ? " · plan changed since" : "";
-    return `${countPart} · from plan of ${label}${stale}`;
+    const planPart = `from plan of ${label}${stale}`;
+    if (input.omitItemCount) return planPart;
+    const countPart = `${input.itemCount} item${input.itemCount === 1 ? "" : "s"}`;
+    return `${countPart} · ${planPart}`;
   }
-  return `${countPart} · from this week's plan`;
+  if (input.omitItemCount) {
+    return input.outOfSync ? `from this week's plan${stale}` : "from this week's plan";
+  }
+  const countPart = `${input.itemCount} item${input.itemCount === 1 ? "" : "s"}`;
+  return `${countPart} · from this week's plan${input.outOfSync ? stale : ""}`;
 }

@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from "react";
-import { Check, Package, Users, X } from "lucide-react";
+import { Users } from "lucide-react";
 import { toast } from "sonner";
 import { Icons } from "./ui/icons";
 import { SupprCard } from "./ui/suppr-card";
@@ -9,11 +9,11 @@ import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 import { useAppData } from "../../context/AppDataContext.tsx";
 import { supabase } from "../../lib/supabase/browserClient.ts";
 import {
-  formatShoppingGroupLabel,
   groupShoppingItemsByIngredientName,
   isShoppingGroupFullyChecked,
   type ShoppingDisplayGroup,
 } from "../../lib/planning/shoppingDisplayGroups.ts";
+import { ShoppingListRow } from "./shopping/ShoppingListRow.tsx";
 import { sortShoppingCategories } from "../../lib/planning/shoppingAisleOrder.ts";
 import { withNormalizedShoppingFields } from "../../lib/planning/normalizeShoppingIngredientRow.ts";
 import { formatShoppingListSubtitle } from "../../lib/planning/shoppingListMeta.ts";
@@ -23,9 +23,7 @@ import {
   type HouseholdData,
 } from "../../lib/household/householdClient.ts";
 import {
-  householdMemberAccent,
   householdMemberFirstName,
-  householdMemberInitials,
 } from "../../lib/household/memberAccents.ts";
 import type { UserTier } from "../../types/recipe.ts";
 
@@ -59,6 +57,9 @@ export const ShoppingList = memo(function ShoppingList({
     pantryStaples,
     savePantryStaples,
   } = useAppData();
+
+  // ENG-1669 — in-store scan density (default ON; PostHog kill switch).
+  const densityV1 = isFeatureEnabled("shopping_list_density_v1");
 
   // Resolve member metadata once, only when in a household. Used for
   // the "Shared with Sarah & Tom" banner + per-row attribution chip.
@@ -145,8 +146,9 @@ export const ShoppingList = memo(function ShoppingList({
         itemCount: totalItemCount,
         planStartDate: shoppingListPlanStartDate,
         outOfSync: shoppingListOutOfSync,
+        omitItemCount: densityV1,
       }),
-    [totalItemCount, shoppingListPlanStartDate, shoppingListOutOfSync],
+    [totalItemCount, shoppingListPlanStartDate, shoppingListOutOfSync, densityV1],
   );
 
   const toggleGroupChecked = (group: ShoppingDisplayGroup) => {
@@ -204,16 +206,21 @@ export const ShoppingList = memo(function ShoppingList({
       ) : null}
 
       <div className="hidden md:block">
-      {/* Sloe DS (Figma 289:2 D8 — Shopping list) — page title reads in
-          Newsreader serif plum (`text-foreground-brand`), matching the
-          Plan / Today / Progress landmark headings. */}
+      {/* ENG-1669 Mob-flat: title carries list count; drop redundant Progress
+          chrome below. Flag-off keeps the serif Shopping list landmark. */}
       <h1
         className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"
         style={{ margin: "0 0 4px" }}
       >
-        Shopping list
+        {densityV1 && totalItemCount > 0
+          ? `Shopping list (${totalItemCount})`
+          : "Shopping list"}
       </h1>
-      <p className="text-muted-foreground" style={{ fontSize: 13, marginBottom: 12 }}>
+      <p
+        className="text-muted-foreground"
+        style={{ fontSize: 13, marginBottom: 12 }}
+        data-testid="shopping-list-subtitle"
+      >
         {subtitle}
       </p>
       </div>
@@ -225,7 +232,7 @@ export const ShoppingList = memo(function ShoppingList({
         </div>
       ) : null}
 
-      {totalItemCount > 0 ? (
+      {totalItemCount > 0 && !densityV1 ? (
         <div
           className="flex items-center gap-3 mb-5"
           style={{ maxWidth: 900 }}
@@ -262,6 +269,19 @@ export const ShoppingList = memo(function ShoppingList({
               Remove {checkedCount} checked
             </button>
           ) : null}
+        </div>
+      ) : null}
+      {totalItemCount > 0 && densityV1 && checkedCount > 0 ? (
+        <div className="mb-4" style={{ maxWidth: 900 }}>
+          <button
+            type="button"
+            onClick={handleClearChecked}
+            data-testid="shopping-clear-checked"
+            className="text-[11px] font-semibold text-muted-foreground hover:text-primary-solid hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+            title="Remove checked items"
+          >
+            Clear checked
+          </button>
         </div>
       ) : null}
 
@@ -304,14 +324,43 @@ export const ShoppingList = memo(function ShoppingList({
         </SupprCard>
       ) : (
         <div
-          className="grid grid-cols-1 md:grid-cols-3 gap-4"
-          style={{ maxWidth: 900 }}
+          className={
+            densityV1
+              ? "flex flex-col gap-6"
+              : "grid grid-cols-1 md:grid-cols-3 gap-4"
+          }
+          style={{ maxWidth: densityV1 ? 560 : 900 }}
         >
           {categorySections.map((section) => {
             const sectionTotal = section.groups.length;
             const sectionChecked = section.groups.filter((g) =>
               isShoppingGroupFullyChecked(g),
             ).length;
+            if (densityV1) {
+              return (
+                <section key={section.name}>
+                  <h2 className="text-[15px] font-bold tracking-tight text-foreground mb-2">
+                    {section.name}
+                  </h2>
+                  <ul className="flex flex-col">
+                    {section.groups.map((group) => (
+                      <ShoppingListRow
+                        key={group.key}
+                        group={group}
+                        densityV1={densityV1}
+                        activeHouseholdId={activeHouseholdId}
+                        memberById={memberById}
+                        onToggle={toggleGroupChecked}
+                        onRemove={removeGroup}
+                        onMarkStaple={(g) => {
+                          void markGroupAsStaple(g);
+                        }}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              );
+            }
             return (
             <SupprCard
               key={section.name}
@@ -341,106 +390,20 @@ export const ShoppingList = memo(function ShoppingList({
                 </span>
               </div>
               <ul className="flex flex-col">
-                {section.groups.map((group) => {
-                  const allChecked = isShoppingGroupFullyChecked(group);
-                  const rowLabel = formatShoppingGroupLabel(group);
-
-                  // Honeydew parity (2026-04-30): per-row check
-                  // attribution. When the group is checked AND we
-                  // have a household AND a single member toggled it,
-                  // surface their initials chip.
-                  const checkedByEntries = group.items
-                    .map((i) => i.checkedBy ?? null)
-                    .filter((id): id is string => Boolean(id));
-                  const uniqueCheckedBy = [...new Set(checkedByEntries)];
-                  const showAttribution =
-                    activeHouseholdId != null &&
-                    allChecked &&
-                    uniqueCheckedBy.length === 1;
-                  const attributedMember = showAttribution
-                    ? memberById.get(uniqueCheckedBy[0]!)
-                    : null;
-
-                  return (
-                    <li
-                      key={group.key}
-                      className="flex items-center border-t border-border first:border-t-0 group"
-                      style={{ gap: 10, padding: "8px 0", fontSize: 13 }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => toggleGroupChecked(group)}
-                        aria-pressed={allChecked}
-                        aria-label={`${allChecked ? "Uncheck" : "Check"} ${rowLabel}`}
-                        className="shrink-0 grid place-items-center transition-colors"
-                        style={{
-                          // Gap 9 (parity): align checkbox size with mobile (22×22 r11).
-                          width: 22,
-                          height: 22,
-                          borderRadius: 11,
-                          border: allChecked ? "1.5px solid var(--primary)" : "1.5px solid var(--border)",
-                          background: allChecked ? "var(--primary)" : "transparent",
-                          cursor: "pointer",
-                        }}
-                      >
-                        {allChecked ? (
-                          <Check width={11} height={11} strokeWidth={3} className="text-primary-foreground" aria-hidden />
-                        ) : null}
-                      </button>
-                      <span
-                        className={`flex-1 ${
-                          allChecked
-                            ? "line-through text-muted-foreground"
-                            : "text-foreground"
-                        }`}
-                      >
-                        {rowLabel}
-                      </span>
-                      {attributedMember ? (
-                        <span
-                          data-testid={`shopping-attribution-${group.key}`}
-                          className="inline-flex items-center gap-1 shrink-0"
-                          title={`${householdMemberFirstName(attributedMember.displayName)} checked this`}
-                        >
-                          <span
-                            aria-hidden
-                            className="inline-flex items-center justify-center text-[9px] font-bold text-white"
-                            style={{
-                              // Gap 14 (parity): align avatar size with mobile (16×16 full radius).
-                              width: 16,
-                              height: 16,
-                              borderRadius: 9999,
-                              background: householdMemberAccent(attributedMember.index),
-                            }}
-                          >
-                            {householdMemberInitials(attributedMember.displayName)}
-                          </span>
-                          <span className="text-[10px] font-semibold text-muted-foreground">
-                            {householdMemberFirstName(attributedMember.displayName)}
-                          </span>
-                        </span>
-                      ) : null}
-                      <button
-                        type="button"
-                        onClick={() => void markGroupAsStaple(group)}
-                        aria-label={`Always have ${rowLabel} — hide from future shopping lists`}
-                        data-testid={`shopping-row-staple-${group.key}`}
-                        className="shrink-0 size-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-primary-solid hover:bg-primary/10 transition-opacity opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      >
-                        <Package width={14} height={14} aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeGroup(group)}
-                        aria-label={`Remove ${rowLabel}`}
-                        data-testid={`shopping-row-remove-${group.key}`}
-                        className="shrink-0 size-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-opacity opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      >
-                        <X width={14} height={14} aria-hidden />
-                      </button>
-                    </li>
-                  );
-                })}
+                {section.groups.map((group) => (
+                  <ShoppingListRow
+                    key={group.key}
+                    group={group}
+                    densityV1={densityV1}
+                    activeHouseholdId={activeHouseholdId}
+                    memberById={memberById}
+                    onToggle={toggleGroupChecked}
+                    onRemove={removeGroup}
+                    onMarkStaple={(g) => {
+                      void markGroupAsStaple(g);
+                    }}
+                  />
+                ))}
               </ul>
             </SupprCard>
             );

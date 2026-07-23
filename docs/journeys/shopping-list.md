@@ -66,14 +66,16 @@ Both platforms route through the **same shared generator** — `generateShopping
 
 **What happens:**
 - Rows render grouped by grocery aisle in walk order (`sortShoppingCategories`, `src/lib/planning/shoppingAisleOrder.ts`), with same-ingredient lines collapsed into display groups (`groupShoppingItemsByIngredientName`, `src/lib/planning/shoppingDisplayGroups.ts`).
-- A slim progress bar (`role="progressbar"`, `aria-valuenow`) counts **checked GROUPS ÷ total GROUPS, not raw rows** — this is deliberate so the web and mobile denominators match even though display grouping can differ subtly between the two clients. Per-section progress counts are also shown.
+- **ENG-1669 in-store density** (`shopping_list_density_v1`, default ON / kill switch): Mob-inspired flat list **without ingredient images** — bold quantity + regular name left, rounded-square checkbox right; aisle headers bold sans on page ground (no category cards); prep suffixes stripped via `stripShoppingPrepFromName`; multi-recipe merges show a quiet `N recipes` caption (full titles on long-press / hover). Title is `Shopping list (N)` with share/trash trailing; Progress card/bar is hidden (count lives in the title). Flag off restores legacy cards + Progress + checkbox-left + full recipe paragraphs.
+- A slim progress bar (`role="progressbar"`, `aria-valuenow`) counts **checked GROUPS ÷ total GROUPS, not raw rows** when density is off — web and mobile denominators match. **ENG-1669 density ON** hides the progress chrome (Mob-flat; count is in the title) and drops per-section X/Y counts.
 - Checking a row persists to `shopping_items.checked` + `checked_by` + `checked_at` and propagates to every other device/household member via a scope-filtered Supabase realtime subscription (~1s latency).
 - Both platforms use a **unique per-effect realtime channel topic** (a monotonic counter appended to the topic name) to avoid a class of bug where a fast effect re-fire finds a same-topic channel still subscribed and throws on `.on()`.
 
 **Web:** `src/app/components/ShoppingList.tsx`, `src/context/appData/useShoppingListState.ts`.
 **Mobile:** `apps/mobile/app/shopping.tsx`, `apps/mobile/components/shopping/ShoppingLoadingSkeleton.tsx`.
+**Shared display:** `src/lib/planning/shoppingScanLabel.ts` (prep strip, shop-sensible qty, recipe-count caption).
 
-**Web ↔ mobile parity:** identical on core view/check/group/progress. Loading state differs slightly — mobile has a skeleton (`deeplink_skeletons` flag) plus a spinner fallback for a native cold-open deep link; web has a dynamic-import skeleton. Not a behaviour gap.
+**Web ↔ mobile parity:** identical on core view/check/group **and** ENG-1669 Mob-flat density (scan labels, qty/name typography, checkbox-right, flat aisles, no ingredient images, title count, hidden progress). Loading state differs slightly — mobile has a skeleton (`deeplink_skeletons` flag) plus a spinner fallback for a native cold-open deep link; web has a dynamic-import skeleton. Not a behaviour gap.
 
 **What happens next:** the user either finishes shopping (list stays as a record), acts on a smart suggestion (Step 2b), or hits one of the update paths below (Steps 3–5) if the plan or a recipe changes mid-week.
 
@@ -81,7 +83,7 @@ Both platforms route through the **same shared generator** — `generateShopping
 
 **Why this exists:** Mob's most-loved planning mechanic — recipes that share ingredients already in the list — reduces waste and raises meals-per-shop. Sloe adds a remaining-macro fit annotation so suggestions also respect today's calorie/macro budget (neither Mob nor ZOE ranks overlap by nutrition).
 
-**What the user does:** with a non-empty list and a saved library that overlaps it (≥2 shared ingredients), sees a "Smart suggestions" section under the progress card. Taps **Add to plan** on a row.
+**What the user does:** with a non-empty list and a saved library that overlaps it (≥2 shared ingredients), sees a "Smart suggestions" section under the progress strip/card (ENG-1669). Taps **Add to plan** on a row.
 
 **What happens:**
 1. Ranks saved-library recipes by **ingredient overlap** (primary), then **remaining-macro fit** (secondary tie-break + row annotation).

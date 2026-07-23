@@ -57,13 +57,15 @@ function seedItems(overrides: Partial<MockAppData> = {}) {
 }
 
 describe("ShoppingList — prototype rewrite (2026-04-21)", () => {
-  it("renders the title 'Shopping list' and a derived 'N items · from this week's plan' subtitle", () => {
+  // ENG-1669 density default-ON: title keeps Sentence Case "Shopping list"
+  // and appends the item count; subtitle drops the count prefix.
+  it("renders the title 'Shopping list' with count and a plan-derived subtitle", () => {
     seedItems();
     render(<ShoppingList userTier="free" />);
     expect(
-      screen.getByRole("heading", { level: 1, name: /Shopping list/i }),
+      screen.getByRole("heading", { level: 1, name: /Shopping list \(5\)/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/5 items · from this week's plan/i)).toBeInTheDocument();
+    expect(screen.getByText(/from this week's plan/i)).toBeInTheDocument();
   });
 
   it("renders one card per category with the source-case overline", () => {

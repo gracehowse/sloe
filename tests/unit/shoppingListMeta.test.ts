@@ -19,4 +19,21 @@ describe("formatShoppingListSubtitle", () => {
       formatShoppingListSubtitle({ itemCount: 1, planStartDate: null }),
     ).toBe("1 item · from this week's plan");
   });
+
+  it("omitItemCount drops the redundant count (ENG-1669)", () => {
+    expect(
+      formatShoppingListSubtitle({
+        itemCount: 99,
+        planStartDate: "2026-07-23",
+        omitItemCount: true,
+      }),
+    ).toMatch(/^from plan of /);
+    expect(
+      formatShoppingListSubtitle({
+        itemCount: 99,
+        planStartDate: null,
+        omitItemCount: true,
+      }),
+    ).toBe("from this week's plan");
+  });
 });

@@ -225,6 +225,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (mobile + web). Default-ON so the dead-end fix ships everywhere; the
   // PostHog gate is the kill switch for the non-destructive DB write path.
   "shopping_update_from_plan_v1",
+  // ENG-1669 — in-store shopping-list density (hide recipe paragraphs, strip
+  // prep from labels, shop-sensible qty, thin progress, less chrome spam).
+  // Default-ON; PostHog row is the kill switch. Keep in sync with mobile.
+  "shopping_list_density_v1",
   // Device-validated 2026-07-07 (device-verify2 pass, 4/4 verbatim contract
   // match) + Fable lens review on ENG-1454's under-eating string — flipped
   // per the growth-builds-default-ON convention.

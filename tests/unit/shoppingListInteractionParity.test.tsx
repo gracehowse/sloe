@@ -48,6 +48,12 @@ vi.mock("../../src/context/AppDataContext.tsx", () => ({
   useAppData: () => appDataState.current,
 }));
 
+// ENG-1669 — density is default-ON; F3 parity pins the legacy slim progress
+// bar + "Remove N checked" copy, so force the kill switch off here.
+vi.mock("../../src/lib/analytics/track.ts", () => ({
+  isFeatureEnabled: (flag: string) => flag !== "shopping_list_density_v1",
+}));
+
 import { ShoppingList } from "../../src/app/components/ShoppingList";
 
 const items: ShoppingItem[] = [

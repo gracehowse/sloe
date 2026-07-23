@@ -440,6 +440,10 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (mobile + web). Default-ON so the dead-end fix ships everywhere; the
   // PostHog gate is the kill switch for the non-destructive DB write path.
   "shopping_update_from_plan_v1",
+  // ENG-1669 — in-store shopping-list density (hide recipe paragraphs, strip
+  // prep from labels, shop-sensible qty, thin progress, less chrome spam).
+  // Default-ON; PostHog row is the kill switch. Keep in sync with web.
+  "shopping_list_density_v1",
   // Skia hero ring (SPEC 1) — default ON, SAFE for binaries without the
   // native pod: CalorieRing probes TurboModuleRegistry.get("RNSkiaModule")
   // (null, never throws) before requiring the module, so old clients
