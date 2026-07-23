@@ -376,6 +376,11 @@ export function reset(): void {
  *   (ios-simulator MCP unavailable). Flag-off keeps every current
  *   monogram render (sans initial, no ring, existing per-site fill)
  *   byte-identical as the kill switch. Keep in sync with web.
+ * - `today_date_header_serif_v1` (ENG-1505) — compact date-header title
+ *   converges `Type.headline` → `Type.title` (serif-24 tab-title voice,
+ *   web parity). DEFAULT-OFF: visual chrome change; flag-off keeps legacy
+ *   `Type.headline`. Mobile-only in practice; web already ships serif-24
+ *   un-gated. Keep in sync with web registry.
  * - `recipe_estimated_cost_v1` (ENG-1274) — per-serving grocery cost estimate
  *   in the v3 recipe-detail hero meta row (Pro signal; static UK reference
  *   prices, honest range). DEFAULT-OFF until Grace ramps in PostHog after a
@@ -904,6 +909,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   // `smart_suggestions_v1` (ENG-1634) — MOVED to REDESIGN_DEFAULT_ON 2026-07-22.
   "meal_share_manage_v1", // ENG-1648 — Settings "My shared links" list + revoke; off = section hidden (kill switch). Web + mobile.
   "in_app_help_import_v1", // ENG-1597 — contextual "?" hints on Import→Verify→Save; off = hidden (kill switch). Web + mobile.
+  "today_date_header_serif_v1", // ENG-1505 — compact date-header title converges Type.headline → Type.title (serif-24 tab-title voice, web parity); off = legacy Type.headline (kill switch). Mobile-only in practice; web already ships serif-24 un-gated. Keep in sync with src/lib/analytics/track.ts.
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

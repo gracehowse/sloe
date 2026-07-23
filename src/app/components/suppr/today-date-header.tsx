@@ -128,7 +128,7 @@ export function TodayDateHeader({
             >
               {/* S6 chrome title ruling (2026-07-10, ENG-1375): sans-bold →
                   the S6 serif-24 tab-title voice (`ScreenChrome` grammar,
-                  mobile `Type.title`). */}
+                  mobile `Type.title` when `today_date_header_serif_v1` ON). */}
               <h1 className="font-[family-name:var(--font-headline)] text-2xl font-medium leading-[1.1] tracking-tight text-foreground-brand truncate">
                 {titleText}
               </h1>
@@ -211,7 +211,8 @@ export function TodayDateHeader({
               </p>
             ) : null}
             {/* S6 chrome title ruling (2026-07-10, ENG-1375): sans-bold →
-                the S6 serif-24 tab-title voice; mobile's compact date header is still Type.headline sans — convergence call tracked in ENG-1505. */}
+                the S6 serif-24 tab-title voice; Mobile parity lands behind
+                `today_date_header_serif_v1` (ENG-1505, default-OFF). */}
             <h1 className="font-[family-name:var(--font-headline)] text-2xl font-medium leading-[1.1] tracking-tight text-foreground-brand truncate">
               {titleText}
             </h1>
