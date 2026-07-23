@@ -735,6 +735,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "primary_screen_chrome_v1", // ENG-1577 — 33px title + 40px muted-circle actions; Today remains the exception.
   "bottom_chrome_contract_v1", // ENG-1376 — measured floating-bar clearance + Settings viewport ownership.
   "recipe_sparse_media_v1", // ENG-1575 — 0/1/2/many Library composition + one recipe fallback policy.
+  "recipe_placeholder_identity_v1", // ENG-1667 — layer-2 deterministic placeholder identity: larger hero glyph scale (web + mobile).
   "semantic_stat_roles_v1", // ENG-1578 — sibling stats stay ink; state lives in sanctioned indicators.
   "library_single_filter_row_v1", // ENG-1607 — Cookbook single provenance chip row (v3); off = legacy two-row stack (kill switch). Web + mobile.
   "recipe_estimated_cost_v1", // ENG-1274 — per-serving grocery cost estimate (Pro) on recipe-detail hero meta; off = hidden (kill switch). Web + mobile.

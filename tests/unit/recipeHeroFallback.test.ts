@@ -27,6 +27,7 @@ import {
   HERO_TINTS,
   HERO_TINTS_DARK,
   PLUM_DUOTONE,
+  RECIPE_PLACEHOLDER_IDENTITY_FLAG,
   djb2,
   getRecipeFallback,
   patternSvgContent,
@@ -198,12 +199,14 @@ describe("parity: renderers + wiring", () => {
     const src = readFileSync(WEB_COMPONENT, "utf8");
     expect(src).toMatch(/from ["'].*recipeHeroFallback["']/);
     expect(src).toMatch(/getRecipeFallback/);
+    expect(src).toMatch(new RegExp(RECIPE_PLACEHOLDER_IDENTITY_FLAG));
   });
 
   it("mobile renderer exists and consumes the shared utility", () => {
     const src = readFileSync(MOBILE_COMPONENT, "utf8");
     expect(src).toMatch(/recipeHeroFallback/);
     expect(src).toMatch(/getRecipeFallback/);
+    expect(src).toMatch(new RegExp(RECIPE_PLACEHOLDER_IDENTITY_FLAG));
   });
 
   it("Discover surfaces wire the fallback component (no flat tint on no-image)", () => {

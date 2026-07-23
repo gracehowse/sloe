@@ -187,7 +187,7 @@ export function DiscoverRecipeImage({
         className="relative overflow-hidden w-full h-full"
         style={{ aspectRatio, backgroundColor: underlay }}
       >
-        <RecipeHeroFallback id={id} title={title} iconSize={iconSize} />
+        <RecipeHeroFallback id={id} title={title} iconSize={iconSize} variant="hero" />
       </div>
     );
   }

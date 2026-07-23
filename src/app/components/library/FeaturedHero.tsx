@@ -71,7 +71,7 @@ export function FeaturedHero({ recipe, onPress }: FeaturedHeroProps) {
             onError={() => setBroken(true)}
           />
         ) : (
-          <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={32} />
+          <RecipeHeroFallback id={recipe.id} title={recipe.title} iconSize={32} variant="hero" />
         )}
         <span
           className="absolute left-3 top-3 rounded-full px-[11px] py-[5px] text-[10px] font-bold uppercase tracking-[0.08em] text-white backdrop-blur-sm"
