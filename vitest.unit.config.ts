@@ -36,9 +36,12 @@ export default defineConfig({
         "app/**/*.d.ts",
         "**/node_modules/**",
         ".next/**",
-        // ENG-1662: Storybook files are Chromatic's job, not unit coverage.
-        "**/*.stories.{ts,tsx}",
-        "**/.storybook/**",
+        // Storybook canvases + story-only scaffolding are measured by
+        // `test:storybook:coverage` (vitest.storybook.config.ts), not the
+        // unit gate — including them here dilutes the product-code baseline.
+        "**/*.stories.*",
+        "**/_story*.{ts,tsx}",
+        "**/_*Story*.{ts,tsx}",
       ],
       // Whole-app baseline (ENG-1351, 2026-07-05): include now folds in root
       // app/** (routes, billing/checkout pages, DMCA form, error boundaries —
