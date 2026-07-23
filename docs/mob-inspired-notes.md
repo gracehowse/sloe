@@ -34,7 +34,7 @@ Session screenshots (if available locally) may live under the Cursor project `as
 - **Discover / feed:** Strong scroll and save; different information architecture than Mob’s category grid + rails (both are valid).
 - **Smart suggestions:** **Shipped (two surfaces)** —
   - Plan tab (ENG-1193): overlap with meals already on the plan (`smartSuggestions.ts`); save-to-library.
-  - Shopping list (ENG-1634): overlap with the current list + remaining-macro fit annotation (`shoppingSmartSuggestions.ts`); one-tap Add to plan via ENG-957 list sync. Flag `smart_suggestions_v1` (default OFF).
+  - Shopping list (ENG-1634): overlap with the current list + remaining-macro fit annotation (`shoppingSmartSuggestions.ts`); one-tap Add to plan via ENG-957 list sync. Flag `smart_suggestions_v1` (default ON).
 
 ---
 

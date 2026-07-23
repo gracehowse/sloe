@@ -403,6 +403,11 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // security-reviewed + live-verified (ENG-1650) before the flip. Keep in
   // sync with src/lib/analytics/track.ts.
   "meal_share_links_v1",
+  // ENG-1634 — shopping-list "Smart suggestions" (overlap + remaining-macro
+  // fit, Add to plan via ENG-957). MOVED to REDESIGN_DEFAULT_ON 2026-07-22
+  // (Grace ship-on): PostHog row also at 100% as the kill switch / ramp
+  // control. Off → section hidden. Keep in sync with web.
+  "smart_suggestions_v1",
   // ENG-1464 — trust chips/dots show the source name ("USDA") instead of the
   // "USDA verified" over-promise. Default-ON (N=1 tester); flag-off keeps the
   // legacy "USDA verified" copy (kill switch). Keep in sync with web.
@@ -896,7 +901,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "today_hero_cluster_v3", // ENG-1653 — tight v3 hero cluster (8/20/4 wordmark→greeting→strip→dial rhythm), Coach chip de-orphaned to the hero foot, north-star "eat next" directly under the hero (prototype order); off = legacy flat-24 composition (kill switch). Web + mobile.
   "today_section_rhythm_v1", // ENG-1655 — two-tier section rhythm (within 8–12, between-section 24); off = flat Spacing.xl scroll gap (kill switch). Web + mobile.
   "today_hero_macro_legend_v1", // ENG-1656 — macro legend in hero foot + force bars detail band; off = legacy Tiles/Bars/Rings pref (kill switch). Web + mobile.
-  "smart_suggestions_v1", // ENG-1634 — shopping-list "Smart suggestions" section: recipes ranked by ingredient overlap + remaining-macro-fit annotation, one-tap Add to plan. Off = section hidden (kill switch). Web + mobile.
+  // `smart_suggestions_v1` (ENG-1634) — MOVED to REDESIGN_DEFAULT_ON 2026-07-22.
   "meal_share_manage_v1", // ENG-1648 — Settings "My shared links" list + revoke; off = section hidden (kill switch). Web + mobile.
 ] as const;
 
