@@ -25,11 +25,13 @@ import { describe, expect, it } from "vitest";
 
 const PHOTO_PATH = resolve(__dirname, "../../components/PhotoLogSheet.tsx");
 const VOICE_PATH = resolve(__dirname, "../../components/VoiceLogSheet.tsx");
+const VOICE_ACTIONS_PATH = resolve(__dirname, "../../components/voice/VoiceLogSheetActions.tsx");
 const ITEM_PATH = resolve(__dirname, "../../components/AiLogReviewItem.tsx");
 const SUMMARY_PATH = resolve(__dirname, "../../components/AiLogReviewSummary.tsx");
 
 const PHOTO_SRC = readFileSync(PHOTO_PATH, "utf8");
 const VOICE_SRC = readFileSync(VOICE_PATH, "utf8");
+const VOICE_ACTIONS_SRC = readFileSync(VOICE_ACTIONS_PATH, "utf8");
 const ITEM_SRC = readFileSync(ITEM_PATH, "utf8");
 const SUMMARY_SRC = readFileSync(SUMMARY_PATH, "utf8");
 
@@ -106,7 +108,7 @@ describe("AI log review parity (audit B5)", () => {
     });
 
     it("uses the 'Log anyway' label when any item is low confidence", () => {
-      expect(VOICE_SRC).toMatch(/hasLowConfidence\s*\?\s*"Log anyway"/);
+      expect(VOICE_ACTIONS_SRC).toMatch(/hasLowConfidence\s*\?\s*"Log anyway"/);
     });
   });
 

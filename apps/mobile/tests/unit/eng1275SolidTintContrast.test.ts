@@ -30,7 +30,7 @@ const ROOT = resolve(__dirname, "../..");
 const read = (rel: string) => readFileSync(resolve(ROOT, rel), "utf8");
 
 const BADGE = read("components/Badge.tsx");
-const HYDRATION = read("components/HydrationStimulantsCard.tsx");
+const HYDRATION_PARTS = read("components/hydration/HydrationStimulantsCardParts.tsx");
 const THEME_CTX = read("context/theme.tsx");
 
 const AA_NORMAL = 4.5;
@@ -194,9 +194,8 @@ describe("ENG-1275 mobile — call sites ink with the scheme-resolved `-solid`, 
   });
 
   it("HydrationStimulantsCard alcohol chip label reads accent.alcoholSolid", () => {
-    expect(HYDRATION).toContain("import { useAccent }");
-    expect(HYDRATION).toContain('tone === "alcohol" ? accent.alcoholSolid');
-    // Water/caffeine chips keep their tone; the StatRow fill stays Accent.warning.
-    expect(HYDRATION).toContain("tones(waterTone)[tone]");
+    expect(HYDRATION_PARTS).toContain("import { useAccent }");
+    expect(HYDRATION_PARTS).toContain('tone === "alcohol" ? accent.alcoholSolid');
+    expect(HYDRATION_PARTS).toContain("tones(waterTone)[tone]");
   });
 });

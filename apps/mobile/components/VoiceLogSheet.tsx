@@ -18,12 +18,12 @@ import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { Mic, X } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
@@ -42,6 +42,7 @@ import type { RefineVoiceItem } from "@suppr/nutrition-core/refineLog";
 import AiLogReviewItem from "./AiLogReviewItem";
 import AiLogReviewSummary from "./AiLogReviewSummary";
 import RefineByDescribing from "./RefineByDescribing";
+import { VoiceLogSheetActions } from "@/components/voice/VoiceLogSheetActions";
 
 type Theme = {
   text: string;
@@ -228,12 +229,14 @@ export default function VoiceLogSheet({
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
-        <Pressable
+        <PressableScale
+          scaleTo={1}
+          haptic="selection"
           onPress={onClose}
           style={{ flex: 1, backgroundColor: MODAL_OVERLAY_SCRIM, justifyContent: "flex-end" }}
         >
-          <Pressable
-            onPress={() => {}}
+          <View
+            onStartShouldSetResponder={() => true}
             style={{
               backgroundColor: colors.card,
               // Sloe DS — 24px sheet corner (mirrors web `rounded-t-[24px]`).
@@ -264,14 +267,9 @@ export default function VoiceLogSheet({
                 <Mic size={IconSize.xl} color={Accent.purple} strokeWidth={2.25} />
                 <Text style={[Type.title, { color: themeColors.navPrimary }]}>Voice log</Text>
               </View>
-              <Pressable
-                onPress={onClose}
-                accessibilityRole="button"
-                accessibilityLabel="Close"
-                hitSlop={12}
-              >
+              <PressableScale haptic="selection" onPress={onClose} accessibilityRole="button" accessibilityLabel="Close" hitSlop={12}>
                 <X size={IconSize.hero} color={colors.textSecondary} strokeWidth={2.25} />
-              </Pressable>
+              </PressableScale>
             </View>
             <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: Spacing.md }}>
               {stage === "review"
@@ -282,7 +280,8 @@ export default function VoiceLogSheet({
             {stage === "input" && (
               <View>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.md, marginBottom: Spacing.md }}>
-                  <Pressable
+                  <PressableScale
+                    haptic="confirm"
                     accessibilityRole="button"
                     accessibilityLabel="Record voice log"
                     accessibilityState={{ selected: isRecording }}
@@ -304,7 +303,7 @@ export default function VoiceLogSheet({
                       color={isRecording ? colors.primaryForeground : Accent.success}
                       strokeWidth={2.25}
                     />
-                  </Pressable>
+                  </PressableScale>
                   <Text style={{ flex: 1, ...Type.captionSmall, color: colors.textSecondary }}>
                     {isRecording
                       ? "Listening… release to stop."
@@ -403,78 +402,21 @@ export default function VoiceLogSheet({
               </ScrollView>
             )}
 
-            {/* Action row */}
-            <View style={{ flexDirection: "row", gap: Spacing.sm, marginTop: Spacing.lg }}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Cancel"
-                onPress={onClose}
-                style={{
-                  flex: 1,
-                  paddingVertical: 12,
-                  alignItems: "center",
-                  borderWidth: 1,
-                  borderColor: colors.cardBorder,
-                  borderRadius: Radius.md,
-                }}
-              >
-                <Text style={typeScaleV1 ? { ...Type.button, color: colors.text } : { fontSize: 14, fontWeight: "600", color: colors.text }}>{stage === "review" ? "Back" : "Cancel"}</Text>
-              </Pressable>
-              {stage === "input" && (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Estimate nutrition from description"
-                  onPress={() => submitTranscript(transcript)}
-                  disabled={!transcript.trim()}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 12,
-                    alignItems: "center",
-                    borderRadius: Radius.md,
-                    backgroundColor: transcript.trim() ? accent.primary : colors.cardBorder,
-                  }}
-                >
-                  <Text style={typeScaleV1 ? { ...Type.button, color: colors.primaryForeground } : { fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Estimate</Text>
-                </Pressable>
-              )}
-              {stage === "error" && (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Try again"
-                  onPress={() => setStage("input")}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 12,
-                    alignItems: "center",
-                    borderRadius: Radius.md,
-                    backgroundColor: accent.primary,
-                  }}
-                >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>Try again</Text>
-                </Pressable>
-              )}
-              {stage === "review" && (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Log all items"
-                  onPress={handleLogAll}
-                  disabled={items.length === 0}
-                  style={{
-                    flex: 1,
-                    paddingVertical: 12,
-                    alignItems: "center",
-                    borderRadius: Radius.md,
-                    backgroundColor: items.length === 0 ? colors.cardBorder : accent.primary,
-                  }}
-                >
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: colors.primaryForeground }}>
-                    {hasLowConfidence ? "Log anyway" : "Log all"}
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          </Pressable>
-        </Pressable>
+            <VoiceLogSheetActions
+              stage={stage}
+              typeScaleV1={typeScaleV1}
+              transcript={transcript}
+              itemsCount={items.length}
+              hasLowConfidence={hasLowConfidence}
+              accentPrimary={accent.primary}
+              colors={colors}
+              onClose={onClose}
+              onSubmitTranscript={() => submitTranscript(transcript)}
+              onRetry={() => setStage("input")}
+              onLogAll={handleLogAll}
+            />
+          </View>
+        </PressableScale>
       </KeyboardAvoidingView>
     </Modal>
   );

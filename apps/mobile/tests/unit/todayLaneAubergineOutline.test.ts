@@ -34,7 +34,7 @@ const LOG_SHEET = read("components/today/LogSheet.tsx");
 // S13 LoggedConfirmation extracted from LogSheet.tsx (ENG-1484, screen-budget
 // ratchet) — the Done/Undo confirmation CTAs live here now.
 const LOG_SHEET_CONFIRMATION = read("components/today/LogSheetConfirmation.tsx");
-const QUICK_ADD = read("components/QuickAddPanel.tsx");
+const QUICK_ADD = `${read("components/QuickAddPanel.tsx")}\n${read("components/quick-add/QuickAddPanelRows.tsx")}`;
 // EAT_AGAIN banner retired (ENG-984, 2026-06-17) — component deleted.
 const FIRST_MEAL = read("components/today/TodayFirstMealEmptyState.tsx");
 const ADD_FORM = read("components/today/TodayAddFoodForm.tsx");
