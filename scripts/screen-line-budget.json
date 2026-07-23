@@ -15,7 +15,7 @@
   "apps/mobile/app/cook.tsx": 1901,
   "apps/mobile/app/cookbook-import.tsx": 779,
   "apps/mobile/app/create-recipe.tsx": 1417,
-  "apps/mobile/app/creator/[id].tsx": 647,
+  "apps/mobile/app/creator/[id].tsx": 315,
   "apps/mobile/app/fasting.tsx": 778,
   "apps/mobile/app/health-sync.tsx": 1257,
   "apps/mobile/app/household-settings.tsx": 1191,

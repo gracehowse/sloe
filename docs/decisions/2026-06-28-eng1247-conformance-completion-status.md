@@ -31,13 +31,18 @@ What **is** complete for launch:
 - ~~**CookMode dark theme** — `recipe_detail_v3_conformance` (web + mobile inline + `/cook`)~~ ✅ 2026-06-28
 - ~~**B15–B16 ImportFlow** — paste clear (×) + verify review-banner / ver-dot grammar~~ ✅ 2026-06-28
 
-### Grace-gated (§B — ratified 2026-06-28)
+### Grace-gated (§B — ratified 2026-06-28; registry synced 2026-07-23)
 
-29 structural decisions **resolved** — see `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` and 🔒 registry in `conformance-backlog.md`. Remaining explicit builds: B15–B16 import affordances, B18 MFP strip, B21 WeeklyRecap detail, B26 DeleteAccount sheet, B28 ResetPlan sheet.
+29 structural decisions **resolved** — see `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` (incl. 2026-07 addendum) and 🔒/✅ registry in `conformance-backlog.md`. **2026-07-23 reopen challenge: reopen none** under ENG-1247.
 
-### Net-new prototype screens
+### Net-new prototype screens (reframed 2026-07-23)
 
-Coach, AdaptiveTDEE, ScanLabel → **🔒 keep-current / deferred** (not net-new builds). **ResetPlan** (B28) is the lone 🆕 build row.
+| Surface | Status |
+|---------|--------|
+| **Coach** | ✅ Shipped (ENG-1240, `coach_screen_v1`) — supersedes B9 “distributed only” |
+| **AdaptiveTDEE** | 🔒 Keep inline on Progress (B2) — not a full-screen build |
+| **ScanLabel standalone destination** | 🔒 Won’t-do (B13) — job covered by LogHub Label (ENG-1336) + custom-food OCR |
+| **ResetPlan** | ✅ B28 sheet shipped (`reset_plan_confirm_v1`) |
 
 ## Definition of done (revised)
 
@@ -54,7 +59,7 @@ These are **not** open ENG-1247 ⬜ rows:
 
 | Item | Status |
 |------|--------|
-| **BatchCook assign-portions planner** | 🔒 Out of scope — beyond Grace B3 minimal v1 (ENG-1255 ships scaling + shopping only). Historical deferral ENG-1225 if product wants full planner later. |
+| **BatchCook assign-portions / fridge pips** | 🔒 Out of scope — beyond Grace B3 minimal v1 (ENG-1255 ships scaling + shopping only). Fuller meal-prep planner = new Grace product call only (not ENG-1247). |
 | **Web Profile read showcase** | Follow-up — B6 mobile showcase ships behind `profile_showcase_v1`; web keeps legacy `Profile.tsx` editor until parity work lands. |
 | **CookMode dark aubergine theme** | ✅ Shipped behind `recipe_detail_v3_conformance` (2026-06-28). |
 
@@ -64,9 +69,9 @@ These are **not** open ENG-1247 ⬜ rows:
 2. ~~**Mark 🔒** every ratified keep-current row~~ — ✅ Done 2026-06-28.
 3. **Close remaining ⬜:** autonomous §A + B15–B16, B18, B21, B26, B28 builds; ramp flags after two-week hold.
 
-## Grace product calls (2026-06-28)
+## Grace product calls (2026-06-28; addendum 2026-07)
 
-Recorded in `docs/decisions/2026-06-28-eng1247-section-b-ratified.md`: B1 build AdjustConstraints ✅ shipped; B2 inline AdaptiveTDEE; B3 build BatchCook minimal; B6 Profile showcase; A2b ConfirmFood mix.
+Recorded in `docs/decisions/2026-06-28-eng1247-section-b-ratified.md`: B1 build AdjustConstraints ✅ shipped; B2 inline AdaptiveTDEE; B3 build BatchCook minimal; B6 Profile showcase; A2b ConfirmFood mix. **Addendum:** B9 Coach ✅ ENG-1240; B13 ScanLabel 🔒 no standalone destination (LogHub Label ENG-1336); reopen challenge = none.
 
 ## Flags (default OFF, on `main`)
 
