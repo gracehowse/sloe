@@ -4,7 +4,7 @@ import { useShoppingSmartSuggestions } from "./useShoppingSmartSuggestions.ts";
 
 /**
  * ENG-1634 — "Smart suggestions" section on the web Shopping list.
- * Flag-gated (`smart_suggestions_v1`, default OFF). Mirrors mobile
+ * Flag-gated (`smart_suggestions_v1`, default ON). Mirrors mobile
  * `apps/mobile/components/shopping/ShoppingSmartSuggestions.tsx`.
  */
 export function ShoppingSmartSuggestions() {

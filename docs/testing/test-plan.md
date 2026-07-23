@@ -23,7 +23,7 @@
 | U11 | `shoppingDisplayGroups.test.ts` | 5 | Shopping list grouping | Medium |
 | U12 | `smartSuggestions.test.ts` | 2 | Recipe suggestions (plan-tab overlap) | Low |
 | U12b | `shoppingSmartSuggestions.test.ts` | 21 | Shopping-list overlap + macro-fit ranker (ENG-1634) | High |
-| U12c | `smartSuggestionsFlagParity.test.ts` | 2 | `smart_suggestions_v1` web↔mobile default-OFF parity | Medium |
+| U12c | `smartSuggestionsFlagParity.test.ts` | 2 | `smart_suggestions_v1` web↔mobile default-ON parity | Medium |
 | U13 | `stripeTier.test.ts` | 3 | Stripe → tier mapping | High |
 | U14 | `trackerStats.test.ts` | 3 | Tracker aggregation | High |
 | U15 | `imperial.test.ts` | 3 | Unit conversion | Medium |

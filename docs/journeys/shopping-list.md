@@ -88,7 +88,7 @@ Both platforms route through the **same shared generator** — `generateShopping
 2. Shows "Also uses Garlic Clove, Fish Sauce, Jasmine Rice…" for shared items.
 3. **Add to plan** reuses the ENG-957 list sync (`kind: "add"`) — merges the recipe's ingredients into the shopping list without a full delete-and-replace. It does **not** place the recipe onto a specific day of the week grid yet (no day picker on this surface).
 
-**Flag:** `smart_suggestions_v1` — default OFF. Off → section hidden.
+**Flag:** `smart_suggestions_v1` — default ON (2026-07-22). Off → section hidden (kill switch).
 
 **Web:** `src/app/components/shopping/ShoppingSmartSuggestions.tsx` + `useShoppingSmartSuggestions.ts`, ranker `src/lib/planning/shoppingSmartSuggestions.ts`.
 **Mobile:** `apps/mobile/components/shopping/ShoppingSmartSuggestions.tsx` + `hooks/useShoppingSmartSuggestions.ts` (same shared ranker).
@@ -237,7 +237,7 @@ Tests: `tests/unit/scaleBatchCookToShoppingList.test.ts` proves the shared modul
 | Event | Fires on | Platforms | Notes |
 |---|---|---|---|
 | `shopping_list_generated` | Step 1 (generate from plan) | **Web only** | Mobile gap — see Step 1 and Known limitations |
-| `shopping_smart_suggestion_add_to_plan` | Step 2b (smart suggestions) | Both | Flag `smart_suggestions_v1` (default OFF) |
+| `shopping_smart_suggestion_add_to_plan` | Step 2b (smart suggestions) | Both | Flag `smart_suggestions_v1` (default ON) |
 | `recipe_shopping_list_added` | Step 3 (add from recipe) | Web + mobile | `{ recipeId, ingredientCount, addedCount, mergedCount, platform }` |
 | `plan_shopping_synced` | Step 4 (plan-edit sync) | Web + mobile | `{ editKind, addedCount, mergedCount, decrementedCount, removedCount, platform }` |
 | `shopping_item_attribution_seen` | Step 6 (household chip first render) | Planned as a follow-up per the household-sharing decision record; not yet confirmed live. | |

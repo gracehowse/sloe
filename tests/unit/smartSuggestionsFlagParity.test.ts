@@ -1,9 +1,9 @@
 /**
  * ENG-1634 — `smart_suggestions_v1` registration parity (web ↔ mobile).
  *
- * Shopping-list Smart suggestions is a new visual section → ships DEFAULT-OFF
- * behind PostHog. Both platforms must register the same default-OFF membership
- * so a ramp can't light one surface and leave the other dark.
+ * Shopping-list Smart suggestions ships DEFAULT-ON (Grace ship-on 2026-07-22):
+ * both platforms must list it in `REDESIGN_DEFAULT_ON` and NOT in
+ * `KNOWN_DEFAULT_OFF_FLAGS`. PostHog row at 100% is the kill/ramp control.
  */
 
 import { readFileSync } from "node:fs";
@@ -34,19 +34,19 @@ const parseDefaultOn = (src: string) =>
 const parseDefaultOff = (src: string) =>
   parseBlock(src, "KNOWN_DEFAULT_OFF_FLAGS = [", "] as const;");
 
-describe("smart_suggestions_v1 flag registration (ENG-1634, default-OFF)", () => {
+describe("smart_suggestions_v1 flag registration (ENG-1634, default-ON)", () => {
   const webOn = parseDefaultOn(WEB_TRACK);
   const mobileOn = parseDefaultOn(MOBILE_ANALYTICS);
   const webOff = parseDefaultOff(WEB_TRACK);
   const mobileOff = parseDefaultOff(MOBILE_ANALYTICS);
 
-  it("is registered DEFAULT-OFF on BOTH platforms", () => {
-    expect(webOff.has(FLAG), "web KNOWN_DEFAULT_OFF_FLAGS").toBe(true);
-    expect(mobileOff.has(FLAG), "mobile KNOWN_DEFAULT_OFF_FLAGS").toBe(true);
+  it("is registered DEFAULT-ON on BOTH platforms", () => {
+    expect(webOn.has(FLAG), "web REDESIGN_DEFAULT_ON").toBe(true);
+    expect(mobileOn.has(FLAG), "mobile REDESIGN_DEFAULT_ON").toBe(true);
   });
 
-  it("is NOT also in either REDESIGN_DEFAULT_ON set", () => {
-    expect(webOn.has(FLAG), "web REDESIGN_DEFAULT_ON").toBe(false);
-    expect(mobileOn.has(FLAG), "mobile REDESIGN_DEFAULT_ON").toBe(false);
+  it("is NOT also in either KNOWN_DEFAULT_OFF_FLAGS set", () => {
+    expect(webOff.has(FLAG), "web KNOWN_DEFAULT_OFF_FLAGS").toBe(false);
+    expect(mobileOff.has(FLAG), "mobile KNOWN_DEFAULT_OFF_FLAGS").toBe(false);
   });
 });

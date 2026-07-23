@@ -4,7 +4,7 @@ import { ShoppingSmartSuggestionsView } from "./ShoppingSmartSuggestionsView";
 
 /**
  * ENG-1634 — "Smart suggestions" section on the mobile Shopping screen.
- * Flag-gated (`smart_suggestions_v1`, default OFF). Mirrors web
+ * Flag-gated (`smart_suggestions_v1`, default ON). Mirrors web
  * `src/app/components/shopping/ShoppingSmartSuggestions.tsx`.
  */
 export interface ShoppingSmartSuggestionsProps {
