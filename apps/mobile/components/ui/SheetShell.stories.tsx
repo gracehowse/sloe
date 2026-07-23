@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { Text, View } from "react-native";
-import { SafeAreaProvider } from "react-native-safe-area-context";
 import { chromaticVisualContract } from "../../../../.storybook/chromaticVisualContract";
 
 import { MobileStoryThemeProvider } from "@suppr/storybook-stubs/mobile-theme";
@@ -17,11 +16,9 @@ const meta = {
   decorators: [
     (Story) => (
       <MobileStoryThemeProvider>
-        <SafeAreaProvider>
-          <div style={{ width: 360, minHeight: 640, background: "#F7F6FA" }}>
-            <Story />
-          </div>
-        </SafeAreaProvider>
+        <div style={{ width: 360, minHeight: 640, background: "#F7F6FA" }}>
+          <Story />
+        </div>
       </MobileStoryThemeProvider>
     ),
   ],

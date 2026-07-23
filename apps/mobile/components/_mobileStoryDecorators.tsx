@@ -1,11 +1,14 @@
 import type { Decorator } from "@storybook/react";
-import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { MobileStoryThemeProvider } from "@suppr/storybook-stubs/mobile-theme";
 import { Colors } from "@/constants/theme";
 import type { RecipeCard } from "@/lib/types";
 
-/** Standard 360px mobile frame used across Mobile/* Storybook stories. */
+/**
+ * Standard 360px mobile frame used across Mobile/* Storybook stories.
+ * SafeAreaProvider (with RN-web initialMetrics) lives inside
+ * MobileStoryThemeProvider — do not nest a metrics-less provider here.
+ */
 export const mobileStoryFrame: Decorator = (Story) => (
   <MobileStoryThemeProvider>
     <div style={{ width: 360, padding: 16, background: "#F7F6FA" }}>
@@ -22,13 +25,12 @@ export const mobileStoryFullscreen: Decorator = (Story) => (
   </MobileStoryThemeProvider>
 );
 
+/** Alias of mobileStoryFrame without padding — theme stub already wraps SafeArea. */
 export const mobileStorySafeArea: Decorator = (Story) => (
   <MobileStoryThemeProvider>
-    <SafeAreaProvider>
-      <div style={{ width: 360, background: "#F7F6FA" }}>
-        <Story />
-      </div>
-    </SafeAreaProvider>
+    <div style={{ width: 360, background: "#F7F6FA" }}>
+      <Story />
+    </div>
   </MobileStoryThemeProvider>
 );
 

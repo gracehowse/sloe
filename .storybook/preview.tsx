@@ -3,8 +3,10 @@ import React from "react";
 import { ThemeProvider } from "next-themes";
 import { withThemeByClassName } from "@storybook/addon-themes";
 import { initialize, mswLoader } from "msw-storybook-addon";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import "../src/styles/index.css";
 import { mswHandlers } from "./msw-handlers";
+import { STORYBOOK_SAFE_AREA_METRICS } from "./stubs/safe-area-metrics";
 
 initialize({ onUnhandledRequest: "bypass" });
 
@@ -32,9 +34,11 @@ const preview: Preview = {
   },
   decorators: [
     (Story) => (
-      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-        <Story />
-      </ThemeProvider>
+      <SafeAreaProvider initialMetrics={STORYBOOK_SAFE_AREA_METRICS}>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+          <Story />
+        </ThemeProvider>
+      </SafeAreaProvider>
     ),
     withThemeByClassName({
       themes: {
