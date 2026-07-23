@@ -273,8 +273,7 @@ export default async function RecipePage({ params }: Props) {
             <RecipeHeroFallback
               id={recipe.id}
               title={recipe.title}
-              iconSize={48}
-              variant="hero"
+              iconSize={48} variant="hero"
             />
           </RecipeUnderlaySurface>
         )}
