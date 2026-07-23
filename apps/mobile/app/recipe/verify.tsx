@@ -89,6 +89,9 @@ const STANDARD_UNITS: FoodPortion[] = [
   { label: "ml", gramWeight: 1, amount: 1 },
 ];
 
+import { ContextualHelpHint } from "@/components/help/ContextualHelpHint";
+import { IMPORT_VERIFY_HELP } from "@suppr/shared/help/importLoopHints";
+
 /** v3 Verify chrome (ENG-1247 A7): chevron back + serif "Verify ingredients"
  *  title (was a text "‹ Back" + uppercase letter-spaced "VERIFY"). Shared by the
  *  loaded, load-error, and loading-skeleton render branches (was duplicated 3×). */
@@ -99,7 +102,9 @@ function VerifyTopBar({ onBack, colors, accessibilityLabel = "Back" }: { onBack:
         <ChevronLeft size={26} color={colors.text} />
       </PressableScale>
       <Text style={{ color: colors.text, fontFamily: FontFamily.serifSemibold, fontSize: 18 }}>Verify ingredients</Text>
-      <View style={{ width: 40 }} />
+      <View style={{ width: 40, alignItems: "flex-end" }}>
+        <ContextualHelpHint topic={IMPORT_VERIFY_HELP} testID="recipe-verify-help" />
+      </View>
     </View>
   );
 }

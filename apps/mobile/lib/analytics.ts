@@ -895,6 +895,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "today_hero_cluster_v3", // ENG-1653 — tight v3 hero cluster (8/20/4 wordmark→greeting→strip→dial rhythm), Coach chip de-orphaned to the hero foot, north-star "eat next" directly under the hero (prototype order); off = legacy flat-24 composition (kill switch). Web + mobile.
   "today_section_rhythm_v1", // ENG-1655 — two-tier section rhythm (within 8–12, between-section 24); off = flat Spacing.xl scroll gap (kill switch). Web + mobile.
   "today_hero_macro_legend_v1", // ENG-1656 — macro legend in hero foot + force bars detail band; off = legacy Tiles/Bars/Rings pref (kill switch). Web + mobile.
+  "in_app_help_import_v1", // ENG-1597 — contextual "?" hints on Import→Verify→Save; off = hidden (kill switch). Web + mobile.
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when
