@@ -1,15 +1,24 @@
-# Component-level Storybook build + interaction/a11y smoke (not full-route visual QA).
+# Component-level Storybook build + coverage + Chromatic publish.
+# Full library always builds + uploads for browse.
+# Chromatic *snapshots* limited to the visual contract (anatomy owners + roles).
+# Decision: docs/decisions/2026-07-22-storybook-chromatic-always-current.md
 name: Storybook
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
       - "src/app/components/**"
+      - "apps/mobile/components/**"
       - "src/stories/**"
       - "apps/mobile/stories/**"
       - ".storybook/**"
       - "src/styles/**"
+      - "scripts/check-storybook-coverage.mjs"
+      - "scripts/storybook-coverage-skips.json"
+      - "scripts/chromatic-storybook-visual-contract.txt"
+      - "chromatic.storybook.config.json"
       - ".github/workflows/storybook.yml"
   pull_request:
     # ENG-853: `storybook` is a required branch-protection context. A
@@ -17,20 +26,64 @@ on:
     # PRs, so every PR must enter this workflow. Push-to-main remains filtered.
 
 concurrency:
-  group: storybook-${{ github.head_ref }}
+  group: storybook-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
   storybook:
     runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Install mobile dependencies
+        run: npm ci --prefix apps/mobile
+      - name: Storybook coverage ratchet (sibling stories or explicit skips)
+        run: npm run check:storybook-coverage
       - run: npx playwright install --with-deps chromium
       - run: npm run build-storybook
+      - name: Publish Storybook library + curated Chromatic snapshots
+        # Prefer CHROMATIC_STORYBOOK_PROJECT_TOKEN (dedicated Storybook project).
+        # Falls back to CHROMATIC_PROJECT_TOKEN (shares Playwright quota — temporary).
+        # Do NOT gate on `secrets.*` in `if:` — that makes the workflow unparsable.
+        uses: chromaui/action@latest
+        with:
+          projectToken: ${{ secrets.CHROMATIC_STORYBOOK_PROJECT_TOKEN || secrets.CHROMATIC_PROJECT_TOKEN }}
+          configFile: chromatic.storybook.config.json
+          storybookBuildDir: storybook-static
+          exitZeroOnChanges: true
+          # Curated contract only — mutually exclusive with onlyChanged.
+          onlyStoryFiles: |
+            src/app/components/ui/suppr-card.stories.tsx
+            src/app/components/ui/suppr-notice.stories.tsx
+            src/app/components/ui/icon-button.stories.tsx
+            src/app/components/ui/count-badge.stories.tsx
+            src/app/components/ui/sheet-shell.stories.tsx
+            src/app/components/ui/add-row-button.stories.tsx
+            apps/mobile/components/ui/SupprCard.stories.tsx
+            apps/mobile/components/ui/SupprNotice.stories.tsx
+            apps/mobile/components/ui/IconButton.stories.tsx
+            apps/mobile/components/ui/CountBadge.stories.tsx
+            apps/mobile/components/ui/SheetShell.stories.tsx
+            apps/mobile/components/ui/AddRowButton.stories.tsx
+            apps/mobile/stories/roles/AddRow.stories.tsx
+            apps/mobile/stories/roles/Card.stories.tsx
+            apps/mobile/stories/roles/Chip.stories.tsx
+            apps/mobile/stories/roles/CommitPill.stories.tsx
+            apps/mobile/stories/roles/CountBadge.stories.tsx
+            apps/mobile/stories/roles/GhostPill.stories.tsx
+            apps/mobile/stories/roles/IconButton.stories.tsx
+            apps/mobile/stories/roles/InsetPanel.stories.tsx
+            apps/mobile/stories/roles/Notice.stories.tsx
+            apps/mobile/stories/roles/Sheet.stories.tsx
+          autoAcceptChanges: true
       - name: Storybook tests (vitest — plays, a11y, interactions, 100% UI coverage)
         run: npm run test:storybook:coverage

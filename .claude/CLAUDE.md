@@ -132,13 +132,41 @@ contract: "Design craft contract" in `.claude/agents/_project-context.md`.
   check how the nearest existing sibling renders it and match exactly — or
   document why this one is deliberately different.
 
+## Storybook + Chromatic — non-negotiable (2026-07-22)
+
+Every visual component stays documented in Storybook and snapshotted by
+Chromatic. Catalog drift is a bug, same class as a missing test.
+
+- **Sibling story required** for every visual `.tsx` under
+  `src/app/components/**` and `apps/mobile/components/**` (hooks,
+  `_` fixtures, and explicit skips excepted). New or changed UI ships with
+  its `*.stories.tsx` in the **same PR** — never "stories follow-up".
+- **Skip only with a row** in `scripts/storybook-coverage-skips.json` when
+  the surface cannot render without live auth/Supabase/camera/native and
+  cannot be stubbed lightly. Non-visual providers/trackers belong there too.
+- **Enforced by** `npm run check:storybook-coverage` (in `npm run ci` + the
+  Storybook workflow). Living inventory:
+  `docs/design/2026-07-22-storybook-coverage-matrix.md`.
+- **Story quality bar:** `@storybook/nextjs-vite` Meta, `tags: ["autodocs"]`,
+  purpose in `docs.description`, ≥2 stories (default + one meaningful state),
+  real props (no invented API). Mobile uses `@suppr/storybook-stubs/*` + RN-web
+  pipeline in `.storybook/main.ts` — do not stand up a second Storybook app.
+- **Chromatic:** Storybook snapshots publish on every PR via the Storybook
+  workflow (`chromatic:storybook` / `chromaui` Storybook job) with
+  **`onlyChanged: false`** so the hosted build shows the full catalog, not
+  TurboSnap’s “N changed stories” count. Playwright E2E Chromatic remains the
+  shell/cohesion archive track (separate job). Both stay current; neither is
+  optional for UI work.
+- Changing a component's look or states → update its stories in the same
+  change so Chromatic diffs the real surface, not a stale stub.
+
 ## Required workflow
 For any meaningful feature, fix, or change:
 1. Audit affected area
 2. Plan change
 3. Implement
 4. Check web/mobile parity
-5. Update tests
+5. Update tests **and** Storybook stories (visual components)
 6. Update documentation
 7. Re-audit or run release gate if appropriate
 

@@ -252,6 +252,12 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (Grace ship-on): PostHog row also at 100% as the kill switch / ramp
   // control. Off → section hidden. Keep in sync with mobile.
   "smart_suggestions_v1",
+  // ENG-1662 — anatomy owner components (SupprNotice, IconButton, CountBadge)
+  // + AddRow left-align panel form + first notice migration (NorthStar
+  // library-empty). DEFAULT-ON for sim validation; off restores the legacy
+  // radius-8 hand-rolled notice + centred AddRow (kill switch). Keep in sync
+  // with apps/mobile/lib/analytics.ts.
+  "ui_anatomy_owners_v1",
   // ENG-1089 — render the Discover import card ABOVE the cluster carousels on web
   // mobile-web (mobile native already shows it first; this is the web↔mobile
   // parity fix). WEB-ONLY — mobile has no carousel branch, so there is no mobile

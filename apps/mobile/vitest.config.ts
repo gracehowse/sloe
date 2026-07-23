@@ -177,6 +177,9 @@ export default defineConfig({
         "tests/**",
         ".expo/**",
         "dist/**",
+        // ENG-1662: Storybook files are Chromatic's job, not unit coverage.
+        "**/*.stories.{ts,tsx}",
+        "**/.storybook/**",
       ],
       // ENG-1351 (2026-07-05): this config previously had NO thresholds
       // block, so mobile coverage could regress freely with nothing to

@@ -3,6 +3,7 @@ import type { ComponentType } from "react";
 
 import { withMobileStorybookTheme } from "./mobileStoryDecorators";
 import { ROLE_DOCS } from "./roleDocs";
+import { chromaticVisualContract } from "../../../../.storybook/chromaticVisualContract";
 
 export function createMobileRoleMeta<const TRole extends keyof typeof ROLE_DOCS>({
   title,
@@ -18,6 +19,7 @@ export function createMobileRoleMeta<const TRole extends keyof typeof ROLE_DOCS>
     component,
     decorators: [withMobileStorybookTheme],
     parameters: {
+      ...chromaticVisualContract.parameters,
       layout: "centered",
       a11y: {
         // RN-web catalog — primitive a11y gaps (spinner labels, Notice checkbox)
@@ -30,6 +32,7 @@ export function createMobileRoleMeta<const TRole extends keyof typeof ROLE_DOCS>
         },
       },
     },
-    tags: ["mobile-role"],
+    // CSF requires string-literal tags (cannot spread imported constants).
+    tags: ["mobile-role", "chromatic"],
   };
 }

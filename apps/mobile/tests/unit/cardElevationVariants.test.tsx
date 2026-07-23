@@ -306,7 +306,7 @@ describe("progress-hierarchy-v1 tinted hero carve-out (ENG-1525/ENG-1497)", () =
   const HIERARCHY_DIR = "components/progress/hierarchy";
   const HERO_FILE = `${HIERARCHY_DIR}/ProgressTrajectoryHero.tsx`;
   const hierarchyFiles = readdirSync(resolve(MOBILE_ROOT, HIERARCHY_DIR))
-    .filter((f) => f.endsWith(".tsx"))
+    .filter((f) => f.endsWith(".tsx") && !f.endsWith(".stories.tsx"))
     .map((f) => `${HIERARCHY_DIR}/${f}`);
 
   it("the hero draws hairline + wash from the heroTint token trio only", () => {

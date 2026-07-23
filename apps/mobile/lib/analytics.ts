@@ -419,6 +419,12 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // (Grace ship-on): PostHog row also at 100% as the kill switch / ramp
   // control. Off → section hidden. Keep in sync with web.
   "smart_suggestions_v1",
+  // ENG-1662 — anatomy owner components (SupprNotice, IconButton, CountBadge)
+  // + AddRow left-align panel form + first notice migration (NorthStar
+  // library-empty). DEFAULT-ON for sim validation; off restores the legacy
+  // radius-8 hand-rolled notice + centred AddRow (kill switch). Keep in sync
+  // with src/lib/analytics/track.ts.
+  "ui_anatomy_owners_v1",
   // ENG-1464 — trust chips/dots show the source name ("USDA") instead of the
   // "USDA verified" over-promise. Default-ON (N=1 tester); flag-off keeps the
   // legacy "USDA verified" copy (kill switch). Keep in sync with web.

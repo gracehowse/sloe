@@ -3,8 +3,8 @@ import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-na
 import { Radius, ShadowColor, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import { PressableScale } from "@/components/ui/PressableScale";
 import { CountBadge } from "@/components/ui/CountBadge";
+import { PressableScale } from "@/components/ui/PressableScale";
 
 /**
  * SegmentedTrack — THE §8 segmented control (ENG-1375 S2/S3, component-grammar
@@ -57,9 +57,8 @@ export interface SegmentedTrackOption<T extends string = string> {
   /** Spoken label when the visual one is terse (e.g. "W" → "Weekly"). */
   accessibilityLabel?: string;
   /** Optional count badge after the label (ENG-1532 amendment — the Plan
-   *  Shopping unchecked count). Hidden at 0; caps at "999+". Treatment
-   *  copied from SubTabPill's badge (ink pill on the active segment,
-   *  border-grey on inactive). */
+   *  Shopping unchecked count). Hidden at 0; caps at "999+". Owned by
+   *  `CountBadge` (ENG-1662) — same treatment as SubTabPill. */
   badge?: number;
   testID?: string;
 }

@@ -1,0 +1,37 @@
+import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+
+import { MobileStoryThemeProvider } from "@suppr/storybook-stubs/mobile-theme";
+import { TodayLoadingSkeleton } from "./TodayLoadingSkeleton";
+
+const meta = {
+  title: "Mobile/Today/TodayLoadingSkeleton",
+  component: TodayLoadingSkeleton,
+  tags: ["autodocs"],
+  decorators: [
+    (Story) => (
+      <MobileStoryThemeProvider>
+        <div style={{ width: 360, padding: 16, background: "#F7F6FA" }}>
+          <Story />
+        </div>
+      </MobileStoryThemeProvider>
+    ),
+  ],
+  parameters: { layout: "fullscreen" },
+  
+} satisfies Meta<typeof TodayLoadingSkeleton>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {};
+export const DarkTheme: Story = {
+  decorators: [
+    (Story) => (
+      <MobileStoryThemeProvider scheme="dark">
+        <div style={{ width: 360, padding: 16, background: "#1A1A1E" }}>
+          <Story />
+        </div>
+      </MobileStoryThemeProvider>
+    ),
+  ],
+};

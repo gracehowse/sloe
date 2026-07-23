@@ -3,11 +3,16 @@
  *
  * The AddControl ruling (2026-07-10, ENG-1375 S4 —
  * `docs/decisions/2026-07-10-chip-grammar-soft-tint.md` §AddControl): every
- * in-card "add another X" affordance is a quiet-fill pill —
- * `colors.fillQuiet` fill, radius 12 (`Radius.xl`), Plus glyph +
- * `accent.primarySolid` semibold label, full-width in-card. NO border, NO
- * second card. DASHED borders are upload dropzones ONLY (photo-log,
- * RecipeUpload) — never an add-row action.
+ * in-card "add another X" affordance is a quiet-fill row —
+ * `colors.fillQuiet` fill, radius 12 (`Radius.xl` — the 12-inside-24 inset
+ * standard), Plus glyph + `accent.primarySolid` semibold label, full-width
+ * in-card. NO border, NO second card. DASHED borders are upload dropzones
+ * ONLY (photo-log, RecipeUpload) — never an add-row action.
+ *
+ * ENG-1662 / anatomy program: under `ui_anatomy_owners_v1` the row is
+ * LEFT-ALIGNED (panel form) so it reads as an InsetPanel-with-action, not a
+ * squashed centred pill next to radius-full chips. Flag-off keeps the
+ * legacy centred label (kill switch).
  *
  * Extracted from the canonical pair: `TodayMealsSection` "Add food" pill
  * (mobile) ↔ `today-meals-section.tsx` (web) — the FIRST quiet-fill adoption
@@ -31,6 +36,7 @@ import {
 import { FontFamily, FontWeight, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 
 export interface AddRowButtonProps {
   label: string;
@@ -71,6 +77,9 @@ export function AddRowButton({
   const isDisabled = disabled || loading;
   const typeRole = size === "md" ? Type.body : Type.captionSmall;
   const glyphSize = size === "md" ? 15 : 12;
+  // ENG-1662 — panel form (left-aligned) so the 12-radius inset row doesn't
+  // read as a squashed pill next to radius-full chips.
+  const panelForm = isFeatureEnabled("ui_anatomy_owners_v1");
 
   return (
     <PressableScale
@@ -87,7 +96,7 @@ export function AddRowButton({
         {
           flexDirection: "row",
           alignItems: "center",
-          justifyContent: "center",
+          justifyContent: panelForm ? "flex-start" : "center",
           gap: size === "md" ? Spacing.sm : Spacing.xs,
           paddingVertical: Spacing.sm,
           paddingHorizontal: size === "md" ? Spacing.dense : Spacing.xs,

@@ -12,6 +12,7 @@ import { ChevronRight, Sparkles } from "lucide-react";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { resolveOverBudgetCaption, type OverBudgetStage } from "../../../lib/nutrition/coachOverBudgetStage.ts";
 import { SupprCard } from "../ui/suppr-card";
+import { SupprNotice } from "../ui/suppr-notice";
 import { cn } from "../ui/utils";
 import type { NorthStarKind } from "./north-star-block";
 
@@ -73,6 +74,43 @@ export function NorthStarBlockNonDefault({
   }
 
   if (kind === "library-empty") {
+    // ENG-1662 — SupprNotice under `ui_anatomy_owners_v1` (radius 24 quiet
+    // fill). Flag-off keeps the legacy radius-8 hand-rolled row.
+    if (isFeatureEnabled("ui_anatomy_owners_v1")) {
+      return (
+        <SupprNotice
+          tone="primary"
+          variant="block"
+          data-slot="north-star-library-empty"
+          data-testid={testID}
+          role="button"
+          tabIndex={0}
+          onClick={onOpenLibrary}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            onOpenLibrary?.();
+          }}
+          aria-label="Pick recipes for your library"
+          className="cursor-pointer transition-opacity hover:opacity-80 active:opacity-60"
+          leading={
+            <Sparkles aria-hidden width={18} height={18} className="shrink-0 text-primary-solid" />
+          }
+        >
+          <span className="flex items-center gap-3">
+            <span className="flex-1 text-[13px] text-foreground-secondary">
+              Pick a few recipes — we&apos;ll suggest from there.
+            </span>
+            <ChevronRight
+              aria-hidden
+              width={18}
+              height={18}
+              className="shrink-0 text-foreground-secondary"
+            />
+          </span>
+        </SupprNotice>
+      );
+    }
     // ENG-1198: parity with mobile's flattened inset-row grammar. Whole row
     // is the tap target; sparkle → primary-solid, chevron → secondary.
     return (

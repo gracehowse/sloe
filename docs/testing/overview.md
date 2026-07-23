@@ -19,8 +19,8 @@ Two separate coverage tracks — do not mix them:
 | Command | Scope | Target |
 |---------|--------|--------|
 | `npm run test:storybook:coverage` | 10 UI primitives with stories (`vitest.storybook.config.ts`) | **100%** on scoped files |
-| `npm run test:coverage` | All of `src/**` **and root `app/**`** (web + shared lib + Next.js routes) | **Baseline gate** in CI (see below) |
-| `npm run mobile:test:coverage` | `apps/mobile/app/**` + `lib/**` | **Baseline gate** — mobile workspace (see below) |
+| `npm run test:coverage` | All of `src/**` **and root `app/**`** (web + shared lib + Next.js routes; excludes `*.stories.*` — ENG-1662) | **Baseline gate** in CI (see below) |
+| `npm run mobile:test:coverage` | `apps/mobile/app/**` + `lib/**` (excludes `*.stories.*` — ENG-1662) | **Baseline gate** — mobile workspace (see below) |
 
 ### Whole-app baseline (`npm run test:coverage`)
 
@@ -38,7 +38,9 @@ glob, so it was silently unmeasured and could never fail the gate below. It is n
 CI enforces minimum thresholds in `vitest.unit.config.ts` — **lines/statements 59%, branches 79%,
 functions 76%** (lowered from the old `src/**`-only 56/56/80/74 on 2026-07-05 to reflect the newly
 measured `app/**` volume — see the ENG-1351 comment in that file for the full rationale). **Ratchet
-these up** as coverage improves — never lower without explicit decision.
+these up** as coverage improves — never lower without explicit decision. Storybook `*.stories.*`
+files are excluded from this gate (ENG-1662) — Chromatic owns story coverage via
+`test:storybook:coverage`.
 
 **Why headline % looks low:** ~45k lines live in React components (`NutritionTracker`, `ProgressDashboard`, `AppDataContext`, …) with little or no render coverage, and root `app/**` route/page files are mostly thin wrappers with no render tests yet. Shared business logic under `src/lib/**` is already strong; closing the gap means component/integration tests on critical surfaces, not more parser unit tests.
 

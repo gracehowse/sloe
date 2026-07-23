@@ -11,6 +11,7 @@ import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { SupprCard } from "@/components/ui/SupprCard";
+import { SupprNotice } from "@/components/ui/SupprNotice";
 
 import type { NorthStarKind } from "@/components/today/NorthStarBlock";
 
@@ -98,6 +99,33 @@ export function NorthStarBlockNonDefault({
   }
 
   if (kind === "library-empty") {
+    // ENG-1662 — under `ui_anatomy_owners_v1` this is a SupprNotice (system
+    // speaking, radius 24 quiet fill). Flag-off keeps the legacy radius-8
+    // hand-rolled row (kill switch).
+    if (isFeatureEnabled("ui_anatomy_owners_v1")) {
+      return (
+        <PressableScale
+          testID={testID ?? "north-star-library-empty"}
+          haptic="selection"
+          accessibilityRole="button"
+          accessibilityLabel="Pick recipes for your library"
+          onPress={onOpenLibrary}
+        >
+          <SupprNotice
+            tone="primary"
+            variant="block"
+            leading={<Sparkles size={IconSize.lg} color={accent.primarySolid} />}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.sm }}>
+              <Text style={[Type.body, { color: colors.text, fontWeight: "600", flex: 1 }]}>
+                {"Pick a few recipes — we'll suggest from there."}
+              </Text>
+              <ChevronRight size={IconSize.lg} color={colors.textSecondary} />
+            </View>
+          </SupprNotice>
+        </PressableScale>
+      );
+    }
     // 2026-05-23 — flattened from a primary-tinted SupprCard with a
     // separate solid CTA pill into a single tappable inset row with a
     // chevron. Same grammar as the Discover "Import from TikTok" row

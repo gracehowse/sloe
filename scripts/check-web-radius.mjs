@@ -128,7 +128,16 @@ export function scanTree(repoRoot = REPO_ROOT, scanDirs = SCAN_DIRS, legalPx = L
   const byFile = {};
   for (const d of scanDirs) {
     for (const abs of sharedWalk(join(repoRoot, d), [], SCAN_EXTS)) {
-      const rel = relative(repoRoot, abs);
+      const rel = relative(repoRoot, abs).replaceAll("\\", "/");
+      // Storybook canvases + story-only scaffolding (same carve-out as token-scale).
+      if (
+        rel.includes("/stories/") ||
+        rel.includes(".stories.") ||
+        /(?:^|\/)_story[^/]*\.(tsx?|jsx?)$/i.test(rel) ||
+        /(?:^|\/)_[^/]*Story[^/]*\.(tsx?|jsx?)$/i.test(rel)
+      ) {
+        continue;
+      }
       const hits = findViolations(readFileSync(abs, "utf8"), legalPx);
       if (hits.length > 0) byFile[rel] = hits;
     }

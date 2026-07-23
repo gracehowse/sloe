@@ -65,7 +65,10 @@ function collectTargetTsx(): string[] {
   for (const dir of SCAN_DIRS) {
     const abs = join(MOBILE_ROOT, dir);
     for (const entry of readdirSync(abs)) {
-      if (entry.endsWith(".tsx")) files.push(join(dir, entry));
+      // Storybook canvases are not product UI — they may use page-ground hexes
+      // for RN-web framing. Product `.tsx` files remain zero-hex.
+      if (!entry.endsWith(".tsx") || entry.endsWith(".stories.tsx")) continue;
+      files.push(join(dir, entry));
     }
   }
   for (const f of SCAN_FILES) files.push(f);
