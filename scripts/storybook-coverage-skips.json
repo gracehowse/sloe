@@ -614,6 +614,22 @@
       {
         "file": "apps/mobile/components/login/LoginScreenPressables.tsx",
         "reason": "ENG-1565 extract — covered via login screen skip"
+      },
+      {
+        "file": "apps/mobile/components/hydration/HydrationStimulantsCardParts.tsx",
+        "reason": "ENG-1565 extract — covered via HydrationStimulantsCard parent"
+      },
+      {
+        "file": "apps/mobile/components/progress/ProgressMetricSections.tsx",
+        "reason": "ENG-1565 extract — covered via progress-metric screen story skip"
+      },
+      {
+        "file": "apps/mobile/components/quick-add/QuickAddPanelRows.tsx",
+        "reason": "ENG-1565 extract — covered via QuickAddPanel parent"
+      },
+      {
+        "file": "apps/mobile/components/voice/VoiceLogSheetActions.tsx",
+        "reason": "ENG-1565 extract — covered via VoiceLogSheet parent"
       }
     ]
   }
