@@ -36,6 +36,9 @@ export default defineConfig({
         "app/**/*.d.ts",
         "**/node_modules/**",
         ".next/**",
+        // ENG-1662: Storybook files are Chromatic's job, not unit coverage.
+        "**/*.stories.{ts,tsx}",
+        "**/.storybook/**",
       ],
       // Whole-app baseline (ENG-1351, 2026-07-05): include now folds in root
       // app/** (routes, billing/checkout pages, DMCA form, error boundaries —
