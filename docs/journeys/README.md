@@ -11,6 +11,12 @@ reachable because a real feature limit was hit. This structure mirrors
 (loops 1-15) — read that file for the narrative "why this loop exists," this
 file for "which doc, read in what order."
 
+**In-app help (user-facing):** The journey docs are the internal authoring
+backbone for contextual guidance inside the live app. Scope, phasing, and
+copy registry live in
+[`docs/specs/2026-07-23-in-app-help-contextual-guidance.md`](../specs/2026-07-23-in-app-help-contextual-guidance.md)
+(ENG-1597). Runtime copy: `src/lib/help/contextualHelp.ts`.
+
 Each journey doc is self-contained; cross-links go to Maestro / Playwright /
 Vitest where automation exists. A secondary A-Z index for readers who already
 know the doc name is below the loops.
