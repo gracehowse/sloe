@@ -746,6 +746,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "today_hero_macro_legend_v1", // ENG-1656 — macro legend in hero foot + force bars detail band; off = legacy Tiles/Bars/Rings pref (kill switch). Web + mobile.
   "smart_suggestions_v1", // ENG-1634 — shopping-list "Smart suggestions" section: recipes ranked by ingredient overlap + remaining-macro-fit annotation, one-tap Add to plan. Off = section hidden (kill switch). Web + mobile.
   "meal_share_manage_v1", // ENG-1648 — Settings "My shared links" list + revoke; off = section hidden (kill switch). Web + mobile.
+  "in_app_help_import_v1", // ENG-1597 — contextual "?" hints on Import→Verify→Save; off = hidden (kill switch). Web + mobile.
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {

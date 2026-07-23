@@ -11,7 +11,6 @@ import { RecipeUnderlaySurface } from "../../../src/app/components/suppr/RecipeU
 import { isRetiredStockImageUrl } from "../../../src/lib/recipes/heroImageFallback.ts";
 import { recipeConfidenceTier } from "../../../src/lib/nutrition/verifyConfidencePolicy.ts";
 import { SupprLogoMark } from "../../components/SupprLogoMark.tsx";
-
 function getServerClient() {
   return createClient(supabasePublicUrl(), supabasePublicAnonKey());
 }

@@ -68,6 +68,8 @@ import {
 } from "@suppr/nutrition-core/ingredientOverrides";
 import { track } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import { ContextualHelpHint } from "@/components/help/ContextualHelpHint";
+import { IMPORT_VERIFY_HELP } from "@suppr/shared/help/importLoopHints";
 import { classifyConfidence } from "@suppr/nutrition-core/aiLogging";
 import {
   nutritionDelta,
@@ -89,9 +91,7 @@ const STANDARD_UNITS: FoodPortion[] = [
   { label: "ml", gramWeight: 1, amount: 1 },
 ];
 
-/** v3 Verify chrome (ENG-1247 A7): chevron back + serif "Verify ingredients"
- *  title (was a text "‹ Back" + uppercase letter-spaced "VERIFY"). Shared by the
- *  loaded, load-error, and loading-skeleton render branches (was duplicated 3×). */
+/** v3 Verify chrome (ENG-1247 A7): chevron back + serif title. */
 function VerifyTopBar({ onBack, colors, accessibilityLabel = "Back" }: { onBack: () => void; colors: ReturnType<typeof useThemeColors>; accessibilityLabel?: string }) {
   return (
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }}>
@@ -99,7 +99,7 @@ function VerifyTopBar({ onBack, colors, accessibilityLabel = "Back" }: { onBack:
         <ChevronLeft size={26} color={colors.text} />
       </PressableScale>
       <Text style={{ color: colors.text, fontFamily: FontFamily.serifSemibold, fontSize: 18 }}>Verify ingredients</Text>
-      <View style={{ width: 40 }} />
+      <View style={{ width: 40, alignItems: "flex-end" }}><ContextualHelpHint topic={IMPORT_VERIFY_HELP} testID="recipe-verify-help" /></View>
     </View>
   );
 }
