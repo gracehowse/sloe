@@ -79,6 +79,10 @@ const EXCLUDE_PATH_FRAGMENTS = [
   "/__tests__/",
   ".test.ts",
   ".test.tsx",
+  // Storybook canvases may document retired copy in demo chrome
+  ".stories.ts",
+  ".stories.tsx",
+  "/stories/",
 ];
 
 /** Enumerate source files under a root. */

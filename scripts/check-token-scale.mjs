@@ -250,8 +250,19 @@ export function scanTree(repoRoot = REPO_ROOT, scanDirs = SCAN_DIRS, legalRadius
   const byFile = {};
   for (const d of scanDirs) {
     for (const abs of sharedWalk(join(repoRoot, d), [], SCAN_EXTS)) {
-      const rel = relative(repoRoot, abs);
+      const rel = relative(repoRoot, abs).replaceAll("\\", "/");
       if (TOKEN_DEF_FILES.has(rel)) continue;
+      // Storybook canvases + story-only scaffolding are not product UI —
+      // framing hexes / demo chrome are allowed (same carve-out as
+      // check:anatomy + mobile hex census).
+      if (
+        rel.includes("/stories/") ||
+        rel.includes(".stories.") ||
+        /(?:^|\/)_story[^/]*\.(tsx?|jsx?)$/i.test(rel) ||
+        /(?:^|\/)_[^/]*Story[^/]*\.(tsx?|jsx?)$/i.test(rel)
+      ) {
+        continue;
+      }
       const hits = findViolations(readFileSync(abs, "utf8"), legalRadius);
       if (hits.length > 0) byFile[rel] = hits;
     }
