@@ -32,13 +32,15 @@ Session screenshots (if available locally) may live under the Cursor project `as
 
 - **Shopping:** We **merge** ingredients across recipes with **categories**; numeric amounts **scale** with **portion multipliers** on planner slots (see `portionMultiplier` / `generateShoppingList.ts`). **Display grouping** now merges rows that share a **normalized ingredient name** and shows **mixed units** as `amount unit + amount unit` (no false summing)—see `shoppingDisplayGroups.ts` + `ShoppingList.tsx`. We still do **not** show Mob-style **thumbnails per line**.
 - **Discover / feed:** Strong scroll and save; different information architecture than Mob’s category grid + rails (both are valid).
-- **Smart suggestions:** **Shipped (MVP)** — overlap scoring with the current plan in `MealPlanner.tsx` (`smartSuggestions.ts`); save-to-library + analytics. The old static catalog is removed; extending overlap further using **community recipes** (DB ingredients only) is a follow-up.
+- **Smart suggestions:** **Shipped (two surfaces)** —
+  - Plan tab (ENG-1193): overlap with meals already on the plan (`smartSuggestions.ts`); save-to-library.
+  - Shopping list (ENG-1634): overlap with the current list + remaining-macro fit annotation (`shoppingSmartSuggestions.ts`); one-tap Add to plan via ENG-957 list sync. Flag `smart_suggestions_v1` (default OFF).
 
 ---
 
 ## Backlog ideas (prioritize later)
 
-1. **Smart suggestions — community / DB ingredients** — Same overlap scoring using Supabase `recipe_ingredients` where catalog data is missing.
+1. **Smart suggestions — place on a plan day** — ENG-1634 Add to plan currently merges ingredients into the list; a day-picker that also inserts the meal onto the weekly grid is the follow-up.
 2. **Shopping list UX pass** — Category headers polish, optional **recipe thumbnails** where we have images, **badge** on nav for unchecked count.
 3. **Plan switcher** — Named plans (“Week of …”, “Your first plan”) if we outgrow a single `mealPlan`.
 4. **Stronger merge heuristics** — Same-unit conversion (e.g. g ↔ kg) before summing, where safe.

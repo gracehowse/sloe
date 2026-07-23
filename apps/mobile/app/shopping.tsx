@@ -69,6 +69,7 @@ import { readActiveCloudMealPlanSlotId } from "@/lib/activeMealPlanSlot";
 import { PlanTabChrome } from "@/components/tabs/PlanTabChrome";
 import { ShoppingLoadingSkeleton } from "@/components/shopping/ShoppingLoadingSkeleton";
 import { ShoppingUpdateFromPlanBanner } from "@/components/shopping/ShoppingUpdateFromPlanBanner";
+import { ShoppingSmartSuggestions } from "@/components/shopping/ShoppingSmartSuggestions";
 import { Layout } from "@/constants/layout";
 
 type ShoppingItem = {
@@ -88,10 +89,7 @@ const SHOPPING_PLAN_AUX_TIMEOUT_MS = 18_000;
 const SHOPPING_LEGACY_JSON_TIMEOUT_MS = 18_000;
 const shoppingQueryTimeout = Symbol("shopping_query_timeout");
 
-// Monotonic counter -> unique channel topic per effect run (same class
-// as ENG-794/ENG-1473: an un-awaited removeChannel can leave a same-topic
-// channel subscribed when `scope` churns or the effect remounts, so a
-// static topic throws on `.on()`). See lib/notifications.ts for the fix.
+// Unique realtime topic per effect run (ENG-794/ENG-1473) — static topics collide on remount.
 let shoppingRealtimeSeq = 0;
 
 async function raceShoppingQuery<T>(
@@ -779,14 +777,8 @@ export default function ShoppingListScreen() {
             {listSubtitle}
           </Text>
         ) : null}
-        {/* ENG-1527 — in-place "Update from plan" affordance. The stale-plan
-            caption above used to dead-end (only Share/Trash in the header);
-            this re-runs the generator non-destructively (keeps checked +
-            manual rows). */}
-        {items.length > 0 &&
-        shoppingListOutOfSync &&
-        scope &&
-        isFeatureEnabled("shopping_update_from_plan_v1") ? (
+        {/* ENG-1527 — non-destructive "Update from plan" when the list is stale. */}
+        {items.length > 0 && shoppingListOutOfSync && scope && isFeatureEnabled("shopping_update_from_plan_v1") ? (
           <ShoppingUpdateFromPlanBanner
             scope={scope}
             pantryStaples={pantryStaples}
@@ -795,8 +787,6 @@ export default function ShoppingListScreen() {
         ) : null}
         <View style={[styles.headerRow, { justifyContent: "flex-end" }]}>
           {items.length > 0 ? (
-            // Gap 7: use lucide Share2 + Trash2 to match the body icon set
-            // and DS §0.1(b) (abstract controls = lucide line icons).
             <View style={{ flexDirection: "row", gap: Spacing.md }}>
               <Pressable hitSlop={12} onPress={exportList} accessibilityLabel="Share shopping list" accessibilityRole="button">
                 <Share2 size={22} color={colors.text} strokeWidth={1.75} />
@@ -810,11 +800,7 @@ export default function ShoppingListScreen() {
           )}
         </View>
 
-        {/* Honeydew parity banner — visible only when in a household.
-            Shows "Shared with Sarah & Tom" + a Users icon. Tapping it
-            jumps to household settings so the user can confirm who's
-            seeing their list. Hidden for solo users — never steals
-            real estate from the per-user surface. */}
+        {/* Household shared-list banner — solo users never see this. */}
         {sharedWithLabel ? (
           <Pressable
             testID="shopping-household-banner"
@@ -911,10 +897,7 @@ export default function ShoppingListScreen() {
         ) : (
           <>
             <ReAnimated.View style={progressEntrance.style}>
-            {/* One-card grammar (ENG-1527): flat 24px hairline card, no outer
-                shadow holder. Gap 2: checkedGroupCount/totalGroupCount (both
-                group-based) so the denominator matches the pill count above.
-                Gap 11: heroValue serif for the progress count (DS §2.3.3). */}
+            {/* Flat progress card (ENG-1527 / ENG-1497) — group counts match the pill. */}
             <View style={styles.card}>
               <View style={styles.progressRow}>
                 <Text style={styles.progressLabel}>Progress</Text>
@@ -926,16 +909,20 @@ export default function ShoppingListScreen() {
             </View>
 
             {checkedCount > 0 && (
-              <Pressable
-                onPress={clearChecked}
-                style={{ alignSelf: "center", paddingVertical: 8, paddingHorizontal: Spacing.xl }}
-              >
+              <Pressable onPress={clearChecked} style={{ alignSelf: "center", paddingVertical: 8, paddingHorizontal: Spacing.xl }}>
                 <Text style={{ ...Type.body, fontWeight: "600", color: accent.primarySolid }}>
                   Remove {checkedCount} checked item{checkedCount !== 1 ? "s" : ""}
                 </Text>
               </Pressable>
             )}
             </ReAnimated.View>
+
+            {/* ENG-1634 — Smart suggestions (flag-gated; web parity). */}
+            <ShoppingSmartSuggestions
+              userId={userId}
+              scope={scope}
+              shoppingItemNames={items.map((i) => i.name)}
+            />
 
             <ReAnimated.View style={listEntrance.style}>
             {groupedSections.map((section) => {

@@ -7,7 +7,7 @@ Turn a meal plan (or a single recipe) into an aisle-ordered, real-time-synced sh
 
 ## Scope
 
-**In scope:** generating a list from the plan, the shopping screen itself (grouping, check-off, progress, realtime), adding a single recipe to the list, keeping the list in sync as the plan is edited, the non-destructive "Update from plan" re-sync, household-shared lists + check attribution, pantry staples, and the web/mobile chrome differences.
+**In scope:** generating a list from the plan, the shopping screen itself (grouping, check-off, progress, realtime), smart suggestions that reuse list ingredients, adding a single recipe to the list, keeping the list in sync as the plan is edited, the non-destructive "Update from plan" re-sync, household-shared lists + check attribution, pantry staples, and the web/mobile chrome differences.
 
 **Out of scope (see linked docs instead):**
 - Building/adjusting the meal plan itself → [meal-planning.md](./meal-planning.md) (the step immediately before this one)
@@ -75,7 +75,27 @@ Both platforms route through the **same shared generator** — `generateShopping
 
 **Web ↔ mobile parity:** identical on core view/check/group/progress. Loading state differs slightly — mobile has a skeleton (`deeplink_skeletons` flag) plus a spinner fallback for a native cold-open deep link; web has a dynamic-import skeleton. Not a behaviour gap.
 
-**What happens next:** the user either finishes shopping (list stays as a record), or hits one of the update paths below (Steps 3–5) if the plan or a recipe changes mid-week.
+**What happens next:** the user either finishes shopping (list stays as a record), acts on a smart suggestion (Step 2b), or hits one of the update paths below (Steps 3–5) if the plan or a recipe changes mid-week.
+
+## Step 2b — Smart suggestions (reuse what's already on the list)
+
+**Why this exists:** Mob's most-loved planning mechanic — recipes that share ingredients already in the list — reduces waste and raises meals-per-shop. Sloe adds a remaining-macro fit annotation so suggestions also respect today's calorie/macro budget (neither Mob nor ZOE ranks overlap by nutrition).
+
+**What the user does:** with a non-empty list and a saved library that overlaps it (≥2 shared ingredients), sees a "Smart suggestions" section under the progress card. Taps **Add to plan** on a row.
+
+**What happens:**
+1. Ranks saved-library recipes by **ingredient overlap** (primary), then **remaining-macro fit** (secondary tie-break + row annotation).
+2. Shows "Also uses Garlic Clove, Fish Sauce, Jasmine Rice…" for shared items.
+3. **Add to plan** reuses the ENG-957 list sync (`kind: "add"`) — merges the recipe's ingredients into the shopping list without a full delete-and-replace. It does **not** place the recipe onto a specific day of the week grid yet (no day picker on this surface).
+
+**Flag:** `smart_suggestions_v1` — default OFF. Off → section hidden.
+
+**Web:** `src/app/components/shopping/ShoppingSmartSuggestions.tsx` + `useShoppingSmartSuggestions.ts`, ranker `src/lib/planning/shoppingSmartSuggestions.ts`.
+**Mobile:** `apps/mobile/components/shopping/ShoppingSmartSuggestions.tsx` + `hooks/useShoppingSmartSuggestions.ts` (same shared ranker).
+
+**Distinct from** Plan-tab "Smart suggestions" (`smartSuggestions.ts` / ENG-1193) — that ranks recipes sharing ingredients with meals already *on the plan* and saves to library. This ranks against the *shopping list* and adds via list sync.
+
+**Analytics:** `shopping_smart_suggestion_add_to_plan` `{ recipeId, overlapCount, hasMacroFit, platform }` — same name both platforms; no ingredient-name PII.
 
 ## Step 3 — Add to list from a single recipe
 
@@ -217,6 +237,7 @@ Tests: `tests/unit/scaleBatchCookToShoppingList.test.ts` proves the shared modul
 | Event | Fires on | Platforms | Notes |
 |---|---|---|---|
 | `shopping_list_generated` | Step 1 (generate from plan) | **Web only** | Mobile gap — see Step 1 and Known limitations |
+| `shopping_smart_suggestion_add_to_plan` | Step 2b (smart suggestions) | Both | Flag `smart_suggestions_v1` (default OFF) |
 | `recipe_shopping_list_added` | Step 3 (add from recipe) | Web + mobile | `{ recipeId, ingredientCount, addedCount, mergedCount, platform }` |
 | `plan_shopping_synced` | Step 4 (plan-edit sync) | Web + mobile | `{ editKind, addedCount, mergedCount, decrementedCount, removedCount, platform }` |
 | `shopping_item_attribution_seen` | Step 6 (household chip first render) | Planned as a follow-up per the household-sharing decision record; not yet confirmed live. | |

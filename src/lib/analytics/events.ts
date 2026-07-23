@@ -167,6 +167,13 @@ export const AnalyticsEvents = {
   /** Planner overlap suggestions — user saved a suggested recipe from the Plan tab.
    *  Payload: `{ recipeId, platform: "web" | "mobile" }`. */
   smart_suggestion_saved: "smart_suggestion_saved",
+  /** ENG-1634 — shopping-list "Smart suggestions": user tapped "Add to plan"
+   *  (merges ingredients into the list via ENG-957 sync). Distinct from
+   *  `smart_suggestion_saved` (Plan tab, overlap-with-plan, saves to library).
+   *  Same name web + mobile. Payload:
+   *  `{ recipeId, overlapCount, hasMacroFit, platform }`. No PII; ingredient
+   *  names are not sent. */
+  shopping_smart_suggestion_add_to_plan: "shopping_smart_suggestion_add_to_plan",
   /** ENG-978/979 — user shared the rich recipe card (import success or recipe detail).
    *  Payload: `{ surface: "import_success" | "recipe_detail", platform, hasCreatorCredit }`. */
   recipe_share_card_shared: "recipe_share_card_shared",

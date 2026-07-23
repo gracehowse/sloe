@@ -98,7 +98,7 @@ Apply consistently on: recipe cards, detail, upload preview, tracker add-food fl
 ### Phase 4A (after 1A–2B)
 
 - **Named meal plans** or “Week of …” switcher — [`docs/mob-inspired-notes.md`](mob-inspired-notes.md) backlog.
-- **Smart suggestions v2** — overlap using **Supabase** ingredients for community recipes, not catalog-only — [`smartSuggestions.ts`](src/lib/planning/smartSuggestions.ts).
+- **Smart suggestions v2** — plan-tab overlap using **Supabase** ingredients — [`smartSuggestions.ts`](src/lib/planning/smartSuggestions.ts). Shopping-list overlap + remaining-macro fit (ENG-1634) — [`shoppingSmartSuggestions.ts`](src/lib/planning/shoppingSmartSuggestions.ts), flag `smart_suggestions_v1`.
 
 ### Phase 4B (later)
 
