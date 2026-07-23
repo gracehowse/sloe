@@ -49,10 +49,10 @@ Binding: `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` + planning ba
 | B6 | Profile | 🔄 mobile read showcase (`profile_showcase_v1`); web showcase follow-up |
 | B7 | Household, Plan household banner | 🔒 sharing grid |
 | B8 | Paywall, ProLock | 🔒 Figma 284:2 canonical |
-| B9 | Coach | 🔒 distributed coach; no unified screen |
+| B9 | Coach | ✅ unified Coach screen (`coach_screen_v1`, ENG-1240) — supersedes 2026-06-28 “distributed only” |
 | B10 | BurnDetail | 🔒 web inline panel |
 | B12 | CreateRecipe (both) | 🔒 keep live source set |
-| B13 | ScanLabel | 🔒 OCR in custom-food; standalone deferred |
+| B13 | ScanLabel | 🔒 no standalone destination; LogHub Label (ENG-1336) + custom-food OCR |
 | B14 | Meal action sheet | 🔒 web host-surface meal editing |
 | B17, §D6 | ImportFlow | 🔒 route-out pipeline; B15 clear ✅ 2026-06-28 |
 | B19, §D7 | MfpImport | 🔒 Settings-embedded CSV + auto mapping |
@@ -76,14 +76,14 @@ Binding: `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` + planning ba
 | §D17 | Grocery | 🔒 no Tesco/Ocado fiction (already marked) |
 | §D18 | EraseEverything, DeleteAccount dialog | 🔒 web dialog IA; DeleteAccount sheet ✅ B26 |
 
-**Still ⬜ (not keep-current):** autonomous §A cosmetic (Nutrients sort, Hydration sheet, CompleteDay, onboarding tokens, etc.) + CreatorProfile + import input-phase polish (single-line detect field, example chips — 🔒 route-out phases). **Shipped 2026-06-29:** B26 DeleteAccount 3-step sheet (`delete_account_sheet_v1`), B28 ResetPlan keep/clear sheet (`reset_plan_confirm_v1`), plan cooked state (diary match → strike-through + subline tally). **Shipped 2026-06-28:** B15 import clear button + B16 verify review banner (`unified-import-clear`, `RecipeImportReviewBanner`); B18 MFP reassurance strip (`mfp_tracker_reassurance_v1`, ENG-1258); B21 WeeklyRecap detail rows (`WeeklyRecapDetailRows`, ENG-1259). **Flag backlog (default-on, gate for rollback):** RecipeDetail CookMode dark theme (`recipe_detail_v3_conformance`). **Out of scope (not ⬜):** BatchCook assign-portions planner (Grace B3 minimal v1).
+**Still ⬜ (not keep-current):** autonomous §A cosmetic (Nutrients sort residual, CompleteDay polish, onboarding tokens, etc.). **Shipped 2026-07-23 (prototype gap audit):** ImportFlow input-phase polish ✅ (`import_input_v3_polish`); CreatorProfile structural pass ✅ (`creator_profile_v3`); VoiceLog listening orb + onboarding step-model conformance tracked as Linear **ENG-1671** / **ENG-1672** (product-call — not mixed into daily-loop polish). **Hydration interaction model is 🔒** (inline chip cards — not the prototype stepper sheet). **Shipped 2026-06-29:** B26 DeleteAccount 3-step sheet (`delete_account_sheet_v1`), B28 ResetPlan keep/clear sheet (`reset_plan_confirm_v1`), plan cooked state (diary match → strike-through + subline tally). **Shipped 2026-06-28:** B15 import clear button + B16 verify review banner (`unified-import-clear`, `RecipeImportReviewBanner`); B18 MFP reassurance strip (`mfp_tracker_reassurance_v1`, ENG-1258); B21 WeeklyRecap detail rows (`WeeklyRecapDetailRows`, ENG-1259). **Flag backlog (default-on, gate for rollback):** RecipeDetail CookMode dark theme (`recipe_detail_v3_conformance`). **Out of scope (not ⬜):** BatchCook assign-portions / fridge pips (Grace B3 minimal v1 — meal-prep roadmap bet only on a new Grace call). **2026-07-23 reopen challenge:** reopen none under ENG-1247.
 
 
 
 ## Cluster: import-flows
 
 
-### 🔒 ImportFlow — route-out paste sheet (§D6; B15 clear ✅ 2026-06-28)
+### 🔒 ImportFlow — route-out paste sheet (§D6; B15 clear ✅ 2026-06-28; input polish ✅ 2026-07-23 `import_input_v3_polish`)
 - proto: `4515-4631 (+CSS L817-820, L1286-1294, L2141-2142, L2199)`
 - mobile: apps/mobile/components/import/UnifiedImportSheet.tsx; apps/mobile/components/import/ImportDetectedChip.tsx; apps/mobile/components/import/ImportLoadingSkeleton.tsx; apps/mobile/lib/importRouting.ts
 - web: src/app/components/suppr/unified-import-sheet.tsx; src/app/components/suppr/import-detected-chip.tsx; src/lib/recipe-import/classifyImport.ts; src/lib/recipe-import/importRoutingWeb.ts
@@ -163,18 +163,17 @@ Binding: `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` + planning ba
   - **[MED]** Day toggle: proto = pushed-bar right icon-btn ('today') → toast 'Showing today.' · app = No day-scope toggle in the panel · _Prototype affords switching day scope; app shows current day only._
   - **[MED]** Bar colour ramp: proto = >=100% success, <50% warning, else primary · app = isLimit ? (>=100 destructive / >=80 warning / else success) : success; null → neutral · _App ramp is limit-aware (sodium/satfat go red), prototype is a generic 3-band. Different semantics._
 
-### ⬜ Hydration — H0 M4 L2
+### 🔒 Hydration — inline chip cards (stepper sheet keep-current)
 - proto: `6734-6772`
 - mobile: apps/mobile/components/HydrationStimulantsCard.tsx
 - web: src/app/components/suppr/hydration-stimulants-card.tsx
-- _Different interaction MODEL on both platforms. Prototype 'Hydration & stimulants' is a bottom Sheet with three stepper rows (icon + name + meal-sub + a -/value/+ .hyd-step control): Water (water-dots strip below, .hyd-btn 32px round), Caffeine (over-400 destructive copy), and a SELF-HIDING Alcohol row behind a dashed '.hyd-add' 'Track alcohol today' button; insight paragraph; single 'Save' primary CTA. App is an INLINE Today card grammar (SloeCard 'Hydration' + separate 'Stimulants' card, soft-lift), each tracked quantity rendered as a serif value over a full-width progress track plus a quick-add CHIP GRID (+250ml etc.) and an ellipsis reset menu — no +/- steppers, no Save CTA, no water-dots strip. Caffeine/alcohol self-hide via Settings TARGETS (caffeineMg/alcoholGWeekly === 0), not an in-sheet 'Track alcohol today' add button._
-  - **[HIGH 🔒keep?]** Container / interaction model: proto = Bottom Sheet with -/value/+ steppers (.hyd-step, .hyd-btn 32px round) and a 'Save' CTA · app = Inline Today section card(s) with quick-add chip grids + progress tracks + ellipsis reset menu; no Save · _App's chip-grid + track model is more capable (presets, from-food sub-line, week-rolling alcohol). Deliberate divergence — but it is NOT the prototype's stepper sheet._
-  - **[MED]** Water-dots strip: proto = .water-dots — 8 segment pills under the Water row (.on = macro-water) · app = No 8-dot strip; water shows a single continuous progress track + chips · _Prototype's discrete 8-glass dot strip is absent._
-  - **[MED]** Alcohol self-hide affordance: proto = Dashed '.hyd-add' button 'Track alcohol today' reveals the alcohol stepper row inline · app = Alcohol row shows only if Settings target alcoholGWeekly > 0; no in-card 'Track alcohol today' add · _Different opt-in path (Settings target vs inline add button)._
-  - **[LOW]** Caffeine over-limit copy: proto = '{caf} mg · over 400 mg limit' in destructive when caf>400; else '… of 400 mg' · app = 'Over {target} mg' in warning (amber) when over; '{n} / {target} mg' · _Copy + colour differ (destructive vs warning amber). Amber is the Grace-confirmed over-target treatment._
-  - **[MED]** Stepper control: proto = .hyd-btn 32px round +/- buttons, .hyd-val 17px semibold tnum · app = No steppers — quick-add chips (+250 ml, +1 cup etc.) · _Increment UI fundamentally different._
-  - **[MED]** Title + Save CTA: proto = Sheet title 'Hydration & stimulants'; bottom 'Save' btn--primary btn--block btn--lg; toast 'Hydration saved.' · app = Two card titles 'Hydration' / 'Stimulants'; no Save CTA (chips commit immediately) · _Single combined sheet + explicit Save vs two auto-committing cards._
-  - **[LOW]** Insight footer copy: proto = 'Rows you don't use stay hidden — add only what you want to see. Nothing here counts against your calorie ring unless you log it as a drink.' · app = No equivalent insight paragraph in the cards · _Explanatory insight line missing._
+- _**🔒 Interaction model (2026-07-23 reopen challenge):** do not build the prototype stepper sheet. App is an INLINE Today card grammar (SloeCard 'Hydration' + separate 'Stimulants' card), serif value + progress track + quick-add CHIP GRID (+250ml etc.) + ellipsis reset — more capable (presets, from-food sub-line, week-rolling alcohol). Caffeine/alcohol self-hide via Settings TARGETS. Residual cosmetic lines below are optional polish only — not a reopen of the sheet model._
+  - **[HIGH 🔒keep]** Container / interaction model: proto = Bottom Sheet with -/value/+ steppers (.hyd-step, .hyd-btn 32px round) and a 'Save' CTA · app = Inline Today section card(s) with quick-add chip grids + progress tracks + ellipsis reset menu; no Save · _Chip-grid + track model kept; stepper sheet will not ship under ENG-1247._
+  - **[MED 🔒keep]** Water-dots strip: proto = .water-dots — 8 segment pills under the Water row (.on = macro-water) · app = continuous progress track + chips · _Discrete 8-glass strip superseded by track + chips._
+  - **[MED 🔒keep]** Alcohol self-hide affordance: proto = Dashed '.hyd-add' button 'Track alcohol today' · app = Settings target alcoholGWeekly > 0 · _Settings opt-in kept._
+  - **[LOW 🔒keep]** Caffeine over-limit copy: proto = destructive over-400 · app = warning amber over target · _Amber is Grace-confirmed over-target treatment._
+  - **[MED 🔒keep]** Stepper control + Save CTA: proto = +/- steppers + sticky Save · app = quick-add chips, immediate commit · _Deliberate; do not reopen._
+  - **[LOW]** Insight footer copy: proto = explanatory insight paragraph · app = absent · _Optional copy polish only — not a model reopen._
 
 ### ✅ Notifications — H0 M2 L2 (core grouping + plates; header chrome 🔒keep)
 - proto: `5469-5498`
@@ -422,16 +421,16 @@ Binding: `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` + planning ba
 - proto: `5651-5726`
 - mobile: `apps/mobile/app/batch-cook.tsx`, `apps/mobile/components/plan/BatchCookSurface.tsx`
 - web: `src/app/components/plan/BatchCookSheet.tsx` (via `MealPlanner.tsx` / `PlanToolsV3.tsx`)
-- _Grace B3 (2026-06-28) ratified **minimal v1 only:** recipe picker → batch-size stepper → scaled shopping list → Save/Cook. Shipped web+mobile (ENG-1255). The prototype's second-phase **assign-portions** day×meal checklist and **fridge pip tracker** are intentionally **out of scope** — not a conformance gap; file separately if product wants full batch planner (historical deferral ENG-1225)._
+- _Grace B3 (2026-06-28) ratified **minimal v1 only:** recipe picker → batch-size stepper → scaled shopping list → Save/Cook. Shipped web+mobile (ENG-1255). The prototype's **assign-portions** day×meal checklist and **fridge pip tracker** are intentionally **out of scope** — not a conformance gap. A fuller meal-prep planner is a **new Grace product call** only (not ENG-1247; prior backlog cite of ENG-1225 was wrong — that ticket is jewel-ring wiring)._
   - **[HIGH 🔒keep] Assign portions + fridge pip tracker:** proto = day×meal slot checklist gated to batch size + `.batch-track` / `.bt-pip` "After cooking" tracker · app = not built · _Beyond Grace minimal v1 (B3); do not re-litigate under ENG-1247._
   - **[HIGH ✅] Core minimal flow:** proto intro picker + batch stepper + scaled shopping note + Save/Cook CTAs · app = shipped minimal v1 (recipe pick, portion stepper, scaled list, save/cook) · _B3 satisfied for launch conformance tally._
 
-### 🔒 Coach — distributed pieces; unified screen superseded (B9, ENG-923)
+### ✅ Coach — unified screen shipped (B9 superseded by ENG-1240)
 - proto: `5727-5765`
-- mobile: (none found)
-- web: (none found)
-- _No app equivalent on web OR mobile. Searched routes, components, and copy ('Your coach', 'What to eat next', 'coach-digest', 'Ask the coach') — zero matches outside the prototype. The prototype Coach is a full-screen daily digest: a 'Today's read' narrative card (remaining protein/kcal prose with a 'Coach' pill), a 'What to eat next' ranked list of saved-recipe suggestions (thumb, name, 'Best fit' badge, kcal·protein, a 'why' rationale), a low-confidence 'ranked from your saved recipes' note, and an 'Ask the coach' chip row. Entirely unbuilt. (Note: a separate post-log suggestion toast exists on Today, but it is not this screen.)_
-  - **[HIGH]** Entire Coach / daily-digest screen: proto = Full-screen coach: narrative digest card + 'What to eat next' ranked suggestion list (with Best-fit badge + why rationale) + Ask-the-coach chips · app = Does not exist on web or mobile · _Net-new prototype-only screen; no route, component, or copy exists. Needs a build decision._
+- mobile: `apps/mobile/app/coach.tsx`, `apps/mobile/components/coach/CoachScreenView.tsx` (+ stories)
+- web: `app/coach/page.tsx`, `src/app/components/suppr/coach-screen-client.tsx`, `src/app/components/suppr/coach-screen.tsx` (+ stories)
+- _**✅ Shipped 2026-07-01 (ENG-1240)** behind `coach_screen_v1`. Supersedes the 2026-06-28 B9 “distributed coach only / no unified screen” keep-current and the audit’s “Entirely unbuilt” note. Screen: Today's read (`coachDayNarrative`) + What to eat next (`mealCoach`) + Ask the coach chips (`coachAsk`). Decision: `docs/decisions/2026-07-01-coach-screen-eng1240.md`. Today one-liner remains the lightweight entry when the flag is off._
+  - **[HIGH ✅]** Unified Coach screen: proto = narrative digest + ranked suggestions + Ask chips · app = shipped web+mobile under `coach_screen_v1` · _B9 reverse complete; do not reopen as “missing”._
 
 ## Cluster: recipe-cook-detail
 
@@ -469,11 +468,11 @@ Binding: `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` + planning ba
 ## Cluster: create-recipe-creator
 
 
-### ⬜ CreatorProfile — H4 M5 L0
+### ✅ CreatorProfile — structural pass shipped 2026-07-23 (`creator_profile_v3`)
 - proto: `6517-6561, CSS 1035-1043, 569-572`
-- mobile: apps/mobile/app/creator/[id].tsx
-- web: app/creator/[id]/page.tsx (+ src/app/components/creator/CreatorRecipeList.tsx, CreatorFollowButton.tsx)
-- _Prototype CreatorProfile: pushed-bar with back + share(link) icons; creator-top row (64×64 round serif-initial avatar LEFT, name+handle·spec RIGHT); a creator-stats CARD (1px border, radius 16, shadow-card) with THREE cells Recipes / Followers / Following separated by hairlines; a two-up [Follow (primary) | Message (outline)] button row; bio; a 'Recipes' section-head; an rgrid (2-col card grid) of rcards; and a 'Share your own recipes / Go public' promo card. Both app platforms ship a real data-driven profile that diverges structurally: avatar-centered vertical header (96px avatar), inline TEXT stats showing only Followers · Recipes (no Following, no stat card), a SINGLE Follow button (no Message), a vertical recipe LIST (not a 2-col grid), and NO 'Go public' promo card._
+- mobile: apps/mobile/app/creator/[id].tsx; apps/mobile/components/creator/*
+- web: app/creator/[id]/page.tsx; src/app/components/creator/*
+- _2026-07-23: v3 structural pass behind `creator_profile_v3` — left-aligned header, 3-cell stats card (Following=0), full-width Follow (no Message), 2-col recipe grid, Go public → /create-recipe. Legacy centered header + list remains when flag off._
   - **[HIGH]** Stats presentation: proto = creator-stats CARD: 3 tappable cells Recipes / Followers / Following with serif numerals (20px) and hairline dividers, bordered+shadow card · app = Inline text 'N followers · M recipes' — only two stats, no Following, not a card, not tappable
   - **[HIGH]** 'Following' count: proto = Shows Following count as third stat · app = Absent on both web and mobile
   - **[HIGH 🔒keep?]** Avatar layout: proto = 64×64 round avatar, LEFT-aligned in a creator-top row with name/handle beside it; tint background, serif initial · app = 96×96 avatar, CENTER-aligned above a vertically-stacked name/handle/bio · _Centered avatar header is a common, defensible profile pattern; but it is a clear structural divergence from the prototype's left-aligned row_
@@ -900,12 +899,13 @@ Binding: `docs/decisions/2026-06-28-eng1247-section-b-ratified.md` + planning ba
 ## Cluster: scan-barcode
 
 
-### 🔒 ScanLabel — OCR in custom-food; standalone deferred (B13, ENG-1004)
+### 🔒 ScanLabel — no standalone destination (B13; LogHub Label via ENG-1336)
 - proto: `3914-3954`
-- mobile: apps/mobile/app/(tabs)/barcode.tsx (no ScanLabel path — only barcode scan + manual entry)
-- web: src/app/components/suppr/today-barcode-dialog.tsx (manual entry only); no camera/OCR surface anywhere in src/app
-- _Prototype ScanLabel is a dedicated full-screen camera flow with 3 phases (scan → reading → review): a dark .scanview, .scan-top header reading 'Scan a nutrition label', a .scan-frame.label-frame with .scan-corners + animated .label-lines placeholder bars, a 'Capture label' onbrand CTA, then a 'reading' phase with .scan-laser + .import-spin sparkles 'Reading the values…', resolving to a Pushed 'Check the label' review screen: a .lowconf-note ('Read from the label — tap any value to correct it before logging.'), a 2-col .label-grid of 4 large centred inputs (Calories/Protein/Carbs/Fat), a 'Food name' input, and a 'Log this food' primary CTA. NO equivalent exists in either app. Mobile's not-found state has an 'Enter manually' CTA that the inline comment says 'Routes to manual entry for now as the Label OCR path is deferred — see ENG-1004' — so the OCR flow is explicitly a tracked gap, not present. Web has no camera or label-OCR surface at all._
-  - **[HIGH]** ScanLabel full-screen capture flow (scan→reading→review): proto = Dedicated .scanview camera flow: 'Capture label' → laser/sparkle 'Reading the values…' → Pushed 'Check the label' with 2-col label-grid of 4 editable per-serving inputs + Food name + 'Log this food' CTA · app = Mobile: absent — not-found 'Enter manually' routes to plain manual entry (OCR deferred, ENG-1004). Web: absent entirely. · _Prototype-only screen with no app equivalent on either platform. The label-OCR capture is the whole point of this surface._
+- mobile: `apps/mobile/components/LabelLogSheet.tsx` + `apps/mobile/components/label-log/*` (LogHub Label); `apps/mobile/components/CreateCustomFoodSheet.tsx` (OCR pre-fill)
+- web: `src/app/components/suppr/label-log-dialog.tsx` (LogHub Label); custom-food scan-label path
+- _**🔒 Keep-current IA:** do not ship the prototype’s separate ScanLabel destination screen. **Job is covered:** ENG-1336 shipped capture → reading → editable per-serving review → journal commit as the LogHub **Label** method tile (`docs/decisions/2026-07-02-logsheet-v3-method-grid.md` 2026-07-21 addendum); custom-food also OCR-pre-fills via `/api/nutrition/scan-label`. Prior backlog text claiming “NO equivalent / deferred ENG-1004” was stale — **ENG-1004 is theme `useResolvedScheme`, not label OCR.**_
+  - **[HIGH 🔒keep]** Standalone ScanLabel destination: proto = dedicated full-screen scanview route · app = no separate destination; Label lives in LogHub + custom-food · _Do not reopen under ENG-1247._
+  - **[HIGH ✅]** Label capture → review → commit: proto = Capture label → Reading… → Check the label grid + Log CTA · app = LogHub Label (ENG-1336) on web + mobile · _Job shipped; not a gap._
 
 ### ⬜ Barcode scanner (scan + not-found + add-to-DB) — H0 M4 L1
 - proto: `3957-4005`

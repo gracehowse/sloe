@@ -3,14 +3,31 @@
  * ImportDetectedChip (ENG-1225 #3) — renders a "Detected: {label}" chip per
  * classified kind, and nothing for empty input.
  */
-import * as React from "react";
 import { render } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ImportDetectedChip } from "../../src/app/components/suppr/import-detected-chip";
+import { __resetForcedFlagSeedForTests } from "../../src/lib/analytics/track";
 
-void React;
+beforeEach(() => {
+  __resetForcedFlagSeedForTests();
+  window.localStorage.removeItem("__suppr_force_flags__");
+  delete (window as { __SUPPR_FORCE_FLAGS__?: Record<string, boolean> }).__SUPPR_FORCE_FLAGS__;
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("ImportDetectedChip", () => {
+  it("shows the detect row subline for CSV when v3 polish is on", () => {
+    const { getByTestId } = render(
+      <ImportDetectedChip input="my-fitness-pal-export.csv" />,
+    );
+    const chip = getByTestId("import-detected-chip");
+    expect(chip.getAttribute("data-variant")).toBe("row");
+    expect(chip.textContent).toContain("Bring your diary history across");
+  });
+
   it("shows the detected label + kind for a TikTok link", () => {
     const { getByTestId } = render(<ImportDetectedChip input="https://vm.tiktok.com/ZMabc/" />);
     const chip = getByTestId("import-detected-chip");

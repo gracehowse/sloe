@@ -748,6 +748,17 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // Linear ticket yet — file one before flag cleanup. Keep in sync with
   // src/lib/analytics/track.ts.
   "type_scale_v1",
+  // ENG-1611 — prototype ingredient text rows (Grace 2026-07-23).
+  "ingredient_text_rows_v1",
+  // Prototype gap audit 2026-07-23 — flip dark flags default-ON (PostHog = kill switch).
+  "progress_hierarchy_v1", // ENG-1525 — Progress 5-section hierarchy; off = legacy 13-card stack.
+  "library_single_filter_row_v1", // ENG-1607 — Cookbook single provenance chip row (v3).
+  "today_hero_cluster_v3", // ENG-1653 — tight v3 hero cluster + eat-next order.
+  "today_section_rhythm_v1", // ENG-1655 — two-tier section rhythm.
+  "today_hero_macro_legend_v1", // ENG-1656 — macro legend in hero foot.
+  // ENG-1247 Import input-phase polish + CreatorProfile structural pass.
+  "import_input_v3_polish",
+  "creator_profile_v3",
 ]);
 
 /**
@@ -907,21 +918,21 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "energy_numbers_v1", // ENG-1506/1507 — canonical energy numbers (selectMaintenance input policy + qualifiers)
   "referral_invite_loop_v1", // ENG-1541 — OFF until Pro-days entitlement grant is wired (unkeepable promise)
   "mobile_preauth_reveal_v1", // ENG-1513 — fresh installs run onboarding+reveal BEFORE the auth wall (match web/ENG-962). OFF → legacy auth-first gate.
-  "progress_hierarchy_v1", // ENG-1525 — Progress 5-section hierarchy; else = legacy 13-card stack (kill switch). Keep in sync with src/lib/analytics/track.ts.
+  // `progress_hierarchy_v1` — MOVED to REDESIGN_DEFAULT_ON 2026-07-23 (prototype gap audit).
   "primary_screen_chrome_v1", // ENG-1577 — 33px title + 40px muted-circle actions; Today remains the exception.
   "bottom_chrome_contract_v1", // ENG-1376 — measured floating-bar clearance + Settings viewport ownership.
   "recipe_sparse_media_v1", // ENG-1575 — 0/1/2/many Library composition + one recipe fallback policy.
   "recipe_placeholder_identity_v1", // ENG-1667 — layer-2 deterministic placeholder identity: larger hero glyph scale (web + mobile).
   "semantic_stat_roles_v1", // ENG-1578 — sibling stats stay ink; state lives in sanctioned indicators.
   "plan_alert_to_toast_v1", // ENG-1344 first slice — planner.tsx's 7 non-blocking Alert.alert calls migrate to the shared Toast primitive; else = legacy Alert.alert (unchanged). Mobile-only: web has no Alert.alert-as-toast pattern to migrate (already native sonner).
-  "library_single_filter_row_v1", // ENG-1607 — Cookbook single provenance chip row (v3); off = legacy two-row stack (kill switch). Web + mobile.
-  "ingredient_text_rows_v1", // ENG-1611 — foods/ingredients render as TEXT (no glyph/monogram/photo tiles) on log-sheet rows + recipe-detail ingredients; off = legacy tiles (kill switch). Web + mobile.
+  // `library_single_filter_row_v1` — MOVED to REDESIGN_DEFAULT_ON 2026-07-23 (prototype gap audit).
+  // `ingredient_text_rows_v1` (ENG-1611) — MOVED to REDESIGN_DEFAULT_ON 2026-07-23.
   "recipe_estimated_cost_v1", // ENG-1274 — per-serving grocery cost estimate (Pro) on recipe-detail hero meta; off = hidden (kill switch). Web + mobile.
   "web_gutter_convergence_v1", // ENG-1629 — converges web Targets.tsx/RecipeDetail.tsx page gutters onto .product-shell. WEB-ONLY: mobile has no Tailwind product-shell equivalent; registered here only for the web ↔ mobile KNOWN_DEFAULT_OFF_FLAGS discoverability parity.
   "onboarding_terminal_paywall_v1", // ENG-1459 — terminal onboarding is the full paywall (no stacked trial ask); off = legacy trial page + dialog/route (kill switch). Web + mobile.
-  "today_hero_cluster_v3", // ENG-1653 — tight v3 hero cluster (8/20/4 wordmark→greeting→strip→dial rhythm), Coach chip de-orphaned to the hero foot, north-star "eat next" directly under the hero (prototype order); off = legacy flat-24 composition (kill switch). Web + mobile.
-  "today_section_rhythm_v1", // ENG-1655 — two-tier section rhythm (within 8–12, between-section 24); off = flat Spacing.xl scroll gap (kill switch). Web + mobile.
-  "today_hero_macro_legend_v1", // ENG-1656 — macro legend in hero foot + force bars detail band; off = legacy Tiles/Bars/Rings pref (kill switch). Web + mobile.
+  // `today_hero_cluster_v3` — MOVED to REDESIGN_DEFAULT_ON 2026-07-23 (prototype gap audit).
+  // `today_section_rhythm_v1` — MOVED to REDESIGN_DEFAULT_ON 2026-07-23 (prototype gap audit).
+  // `today_hero_macro_legend_v1` — MOVED to REDESIGN_DEFAULT_ON 2026-07-23 (prototype gap audit).
   // `smart_suggestions_v1` (ENG-1634) — MOVED to REDESIGN_DEFAULT_ON 2026-07-22.
   "meal_share_manage_v1", // ENG-1648 — Settings "My shared links" list + revoke; off = section hidden (kill switch). Web + mobile.
   "in_app_help_import_v1", // ENG-1597 — contextual "?" hints on Import→Verify→Save; off = hidden (kill switch). Web + mobile.

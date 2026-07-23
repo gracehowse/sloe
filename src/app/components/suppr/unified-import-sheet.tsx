@@ -2,13 +2,19 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { FolderOpen, X } from "lucide-react";
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { classifyImport } from "../../../lib/recipe-import/classifyImport";
+import {
+  IMPORT_INPUT_INTRO,
+  IMPORT_INPUT_PLACEHOLDER,
+  IMPORT_INPUT_SAMPLES,
+} from "../../../lib/recipe-import/importInputSamples";
 import { routeImport } from "../../../lib/recipe-import/importRoutingWeb";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { ImportDetectedChip } from "./import-detected-chip";
 import { SupprButton } from "./suppr-button";
-import { X } from "lucide-react";
 
 /**
  * UnifiedImportSheet (web, ENG-1225 #3) — WEB twin of
@@ -23,26 +29,26 @@ import { X } from "lucide-react";
 export interface UnifiedImportSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Storybook / test harness — prefills the field when the sheet opens. */
+  initialText?: string;
 }
 
-export function UnifiedImportSheet({ open, onOpenChange }: UnifiedImportSheetProps) {
+export function UnifiedImportSheet({ open, onOpenChange, initialText }: UnifiedImportSheetProps) {
   const router = useRouter();
+  const v3 = isFeatureEnabled("import_input_v3_polish");
   const [text, setText] = React.useState("");
   const [hint, setHint] = React.useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (open) {
-      setText("");
+      setText(initialText ?? "");
       setHint(null);
     }
-  }, [open]);
+  }, [open, initialText]);
 
   const classification = classifyImport(text);
   const canImport = classification.kind !== "empty";
-  // v3 prototype detection-driven CTA (ENG-1247 A13): the label names what
-  // you're about to import ("Import recipe link") and the empty state guides
-  // ("Paste something to import"), instead of a flat "Import". Mirrors the
-  // prototype `det ? 'Import '+det.label.toLowerCase() : 'Paste something to import'`.
   const ctaLabel = canImport
     ? `Import ${classification.label.toLowerCase()}`
     : "Paste something to import";
@@ -56,14 +62,36 @@ export function UnifiedImportSheet({ open, onOpenChange }: UnifiedImportSheetPro
     }
   };
 
+  const onChooseFile = () => fileInputRef.current?.click();
+
+  const onFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    const name = file.name.toLowerCase();
+    if (name.endsWith(".csv") || file.type.includes("csv")) {
+      try {
+        const content = await file.text();
+        setText(content.trim() ? content : file.name);
+      } catch {
+        setText(file.name);
+      }
+    } else {
+      setText(file.name);
+    }
+    if (hint) setHint(null);
+  };
+
+  const legacyDescription =
+    "Paste a TikTok, Instagram or YouTube link, a recipe URL, a meal plan, an MFP export, or recipe text — we'll figure out what it is.";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-card border-border max-w-sm" data-testid="unified-import-sheet">
         <DialogHeader>
           <DialogTitle className="text-foreground">Import</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Paste a TikTok, Instagram or YouTube link, a recipe URL, a meal plan, an MFP export,
-            or recipe text — we&apos;ll figure out what it is.
+            {v3 ? IMPORT_INPUT_INTRO : legacyDescription}
           </DialogDescription>
         </DialogHeader>
         <div className="relative">
@@ -73,12 +101,17 @@ export function UnifiedImportSheet({ open, onOpenChange }: UnifiedImportSheetPro
               setText(e.target.value);
               if (hint) setHint(null);
             }}
-            rows={4}
+            rows={v3 ? 1 : 4}
             autoFocus
             data-testid="unified-import-input"
             aria-label="Paste a link, plan, export, or recipe"
-            placeholder="Paste here…"
-            className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            placeholder={v3 ? IMPORT_INPUT_PLACEHOLDER : "Paste here…"}
+            className={[
+              "w-full resize-none rounded-lg border border-border bg-background px-3 py-2 pr-10 text-sm text-foreground placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary",
+              v3 ? "min-h-10" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
           />
           {text.trim().length > 0 ? (
             <button
@@ -95,9 +128,58 @@ export function UnifiedImportSheet({ open, onOpenChange }: UnifiedImportSheetPro
             </button>
           ) : null}
         </div>
+
         <div className="min-h-[28px]">
-          <ImportDetectedChip input={text} />
+          {canImport ? (
+            <ImportDetectedChip input={text} />
+          ) : v3 ? (
+            <div data-testid="unified-import-samples">
+              <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-2 px-0.5">
+                Or try an example
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {IMPORT_INPUT_SAMPLES.map((sample) => (
+                  <button
+                    key={sample.id}
+                    type="button"
+                    data-testid={`unified-import-sample-${sample.id}`}
+                    onClick={() => {
+                      setText(sample.value);
+                      if (hint) setHint(null);
+                    }}
+                    className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors"
+                  >
+                    {sample.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
+
+        {v3 ? (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,text/csv,image/*"
+              className="sr-only"
+              aria-hidden
+              tabIndex={-1}
+              onChange={onFileChange}
+            />
+            <button
+              type="button"
+              data-testid="unified-import-choose-file"
+              onClick={onChooseFile}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-background px-4 py-3 text-sm font-semibold text-foreground hover:bg-muted/40 transition-colors"
+            >
+              <FolderOpen className="size-4" aria-hidden />
+              Choose a file (.csv, photo)
+            </button>
+          </>
+        ) : null}
+
         {hint ? <p className="text-sm text-muted-foreground">{hint}</p> : null}
         <SupprButton
           variant="primary"

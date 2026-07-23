@@ -8,7 +8,7 @@ import { ImportDetectedChip } from "./import-detected-chip";
 const meta = {
   title: "Suppr/ImportDetectedChip",
   component: ImportDetectedChip,
-  tags: ["ai-generated"],
+  tags: ["autodocs"],
   parameters: { layout: "padded" },
   decorators: [
     (Story) => (
@@ -23,14 +23,12 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Instagram: Story = { args: { input: "https://www.instagram.com/reel/Cabc123/" } };
+export const DetectRowSubline: Story = {
+  name: "Detect row (v3 subline)",
+  args: { input: "my-fitness-pal-export.csv" },
+};
 export const TikTok: Story = { args: { input: "https://vm.tiktok.com/ZMabc/" } };
-export const YouTube: Story = { args: { input: "https://youtu.be/abc123" } };
-export const RecipeLink: Story = { args: { input: "https://www.bbcgoodfood.com/recipes/lasagne" } };
 export const NutritionCsv: Story = {
   args: { input: "Date,Meal,Food,Calories,Protein (g)\n2026-06-20,Breakfast,Oats,320,12\n2026-06-20,Lunch,Salad,440,38" },
 };
-export const MealPlan: Story = {
-  args: { input: "Monday\nBreakfast: eggs\nLunch: salad\nTuesday\nDinner: salmon" },
-};
-export const RecipeText: Story = { args: { input: "Tahini bowl\n2 tbsp tahini\n1 can chickpeas" } };
 export const Empty: Story = { name: "Empty (renders nothing)", args: { input: "" } };

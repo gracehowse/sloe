@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { supabase } from "../../../lib/supabase/browserClient";
+import { isFeatureEnabled } from "../../../lib/analytics/track";
 import { normalizeRecipeTitle } from "../../../lib/recipes/normalizeRecipeTitle";
 import { formatTotalRecipeDuration } from "../../../lib/recipes/totalDuration";
 import {
@@ -115,6 +116,79 @@ export function CreatorRecipeList({
   }, [creatorId, hasMore, recipes.length]);
 
   if (recipes.length === 0) return null;
+
+  const v3Grid = isFeatureEnabled("creator_profile_v3");
+
+  if (v3Grid) {
+    return (
+      <>
+        <div
+          data-testid="creator-recipe-grid"
+          className="grid grid-cols-2 gap-3"
+        >
+          {recipes.map((r) => {
+            const kcal = Math.round(r.calories ?? 0);
+            const timeLabel = formatTotalRecipeDuration(r.prep_time_min, r.cook_time_min);
+            return (
+              <Link
+                key={r.id}
+                href={`/recipe/${r.id}`}
+                className="overflow-hidden rounded-xl border border-border bg-card hover:bg-muted/20 transition-colors"
+              >
+                {r.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={r.image_url}
+                    alt=""
+                    className="aspect-[4/3] w-full object-cover"
+                    style={{ backgroundColor: recipeUnderlayColor({ id: r.id, title: r.title }, fallbackScheme) }}
+                  />
+                ) : (
+                  <div
+                    className="relative aspect-[4/3] w-full overflow-hidden"
+                    style={{ backgroundColor: recipeUnderlayColor({ id: r.id, title: r.title }, fallbackScheme) }}
+                  >
+                    <RecipeHeroFallback id={r.id} title={r.title} iconSize={24} />
+                  </div>
+                )}
+                <div className="p-3">
+                  <p className="text-sm font-semibold text-foreground line-clamp-2">
+                    {normalizeRecipeTitle(r.title)}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground truncate">
+                    {kcal} kcal{timeLabel ? ` · ${timeLabel}` : ""}
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+        {hasMore ? (
+          <div className="mt-3 flex flex-col items-center gap-1.5">
+            <button
+              type="button"
+              onClick={loadMore}
+              disabled={loading}
+              className={[
+                "inline-flex items-center justify-center min-w-[140px] px-6 py-2.5 rounded-full text-sm font-bold transition-colors",
+                "bg-transparent border border-border text-foreground hover:bg-muted/40",
+                loading ? "opacity-60 cursor-not-allowed" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              {loading ? "Loading…" : "Load more"}
+            </button>
+            {error ? (
+              <p className="text-xs text-muted-foreground">
+                Couldn&apos;t load more recipes. Tap to try again.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </>
+    );
+  }
 
   return (
     <>

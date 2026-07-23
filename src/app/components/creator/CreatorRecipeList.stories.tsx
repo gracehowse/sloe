@@ -63,3 +63,10 @@ export const CompleteCatalog: Story = {
     initialHasMore: false,
   },
 };
+
+export const V3Grid: Story = {
+  name: "V3 two-column grid",
+  args: {
+    initialHasMore: false,
+  },
+};

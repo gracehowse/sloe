@@ -139,10 +139,20 @@ function looksLikeMealPlan(text: string): boolean {
   return days >= 2 || meals >= 3;
 }
 
+function looksLikeCsvFilename(text: string): boolean {
+  const trimmed = text.trim();
+  if (/\.csv$/i.test(trimmed)) return true;
+  return /\b(myfitnesspal|mfp|my-fitness-pal)\b/i.test(trimmed) && !trimmed.includes("\n");
+}
+
 export function classifyImport(raw: string): ImportClassification {
   const text = (raw ?? "").trim();
   if (!text) {
     return { kind: "empty", label: "Nothing to import", url: null, platform: null };
+  }
+
+  if (looksLikeCsvFilename(text)) {
+    return { kind: "csv", label: "Nutrition export (CSV)", url: null, platform: null };
   }
 
   const url = firstUrl(text);

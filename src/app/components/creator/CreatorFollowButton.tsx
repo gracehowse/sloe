@@ -121,6 +121,7 @@ export function CreatorFollowButton({
           ? "bg-transparent border border-border text-foreground hover:bg-muted/40"
           : "bg-primary text-primary-foreground hover:bg-primary/90",
         busy ? "opacity-60 cursor-not-allowed" : "",
+        className?.includes("w-full") ? "w-full" : "",
         className ?? "",
       ]
         .filter(Boolean)

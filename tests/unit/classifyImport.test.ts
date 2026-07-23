@@ -69,6 +69,11 @@ describe("classifyImport", () => {
     expect(r.platform).toBeNull();
   });
 
+  it("a bare .csv filename → csv", () => {
+    expect(classifyImport("my-fitness-pal-export.csv").kind).toBe("csv");
+    expect(classifyImport("my-fitness-pal-export.csv").label).toBe("Nutrition export (CSV)");
+  });
+
   it("a MyFitnessPal-style CSV → csv", () => {
     const csv = [
       "Date,Meal,Food,Calories,Protein (g),Carbs (g),Fat (g)",
