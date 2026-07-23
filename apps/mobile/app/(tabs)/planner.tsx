@@ -186,6 +186,7 @@ import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import { alertOrToast } from "@/lib/alertOrToast";
 import { ResetPlanSheet } from "@/components/plan/ResetPlanSheet";
+import { useOpenShoppingList } from "@/hooks/useOpenShoppingList";
 import { usePlannerGenerateMenu } from "@/hooks/usePlannerGenerateMenu";
 import { usePlannerTemplates } from "@/hooks/usePlannerTemplates";
 import { useResetPlanGate } from "@/hooks/useResetPlanGate";
@@ -1999,16 +2000,7 @@ export default function PlannerScreen() {
     }
   }, [plan?.length, sloeV3Plan]);
 
-  /**
-   * F1 fix (audit 2026-04-28) — generate shopping_items rows from a
-   * given plan. Called from (a) `generatePlan` after a fresh plan is
-   * set, and (b) `openShoppingList` (ENG-1668 — Plan Shopping CTAs,
-   * web parity with `handleShoppingList`).
-   *
-   * Side-effects: deletes existing `shopping_items` for the user,
-   * then inserts in batches of 50. Returns `{ ok, count }` so the
-   * caller can decide whether to surface a toast.
-   */
+  /** F1 — build shopping_items from plan. Used by generatePlan + openShoppingList (ENG-1668). */
   const generateShoppingListFromPlan = useCallback(
     async (
       planForGeneration: DayPlan[],
@@ -2016,15 +2008,7 @@ export default function PlannerScreen() {
       if (!userId) return { ok: false, error: "Not signed in" };
       const allRecipes = [...savedRecipes, ...discoverRecipes];
 
-      // ENG-1040 (audit 2026-06-11 P1-5) — route through the SAME shared
-      // generator as web (`generateShoppingListFromRecipeEntriesAsync`) so
-      // quantities (portion-multiplier-scaled), categories/aisles, and
-      // non-numeric amounts match web by construction. Mobile previously
-      // counted plain recipe occurrences and IGNORED `portionMultiplier`,
-      // so a planned meal at 2× bought 2× on web but 1× on iOS — the
-      // primary surface under-buying. We resolve each meal's recipe id, map
-      // its title → id, and build portion-scaled entries (skipping leftover
-      // + placeholder slots, exactly as web does in `AppDataContext`).
+      // ENG-1040 — shared generator (portion-scaled); was under-buying vs web.
       const titleToRecipe = new Map<string, { id: string; title: string }>();
       for (const r of allRecipes) {
         if (r.id && r.title && !titleToRecipe.has(r.title)) {
@@ -2181,25 +2165,12 @@ export default function PlannerScreen() {
     [userId, savedRecipes, discoverRecipes, shoppingScope, pantryStaples, planStartDate],
   );
 
-  // ENG-1668 — web parity: Plan "Shopping list" must GENERATE then navigate.
-  // Pre-fix mobile only `router.push("/shopping")`, so an existing plan
-  // with empty `shopping_items` forever showed the empty state.
-  const openShoppingList = useCallback(() => {
-    void (async () => {
-      if (plan && plan.length > 0) {
-        const res = await generateShoppingListFromPlan(plan);
-        if (!res.ok) {
-          alertOrToast(
-            toast.showToast,
-            "Couldn't build shopping list",
-            res.error,
-            "error",
-          );
-        }
-      }
-      router.push("/shopping" as Href);
-    })();
-  }, [plan, generateShoppingListFromPlan, toast.showToast, router]);
+  const openShoppingList = useOpenShoppingList({
+    plan,
+    generateShoppingListFromPlan,
+    showToast: toast.showToast,
+    router,
+  });
 
   const generatePlan = useCallback(async (options?: { resetMode?: ResetPlanMode }) => {
     if (savedRecipes.length === 0 && discoverRecipes.length === 0) {
