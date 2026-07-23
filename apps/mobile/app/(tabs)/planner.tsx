@@ -2003,9 +2003,9 @@ export default function PlannerScreen() {
    * F1 fix (audit 2026-04-28) — generate shopping_items rows from a
    * given plan. Lifted out of the dead-code block below the action
    * row so it can be called from (a) `generatePlan` after a fresh
-   * plan is set, and (b) the summary-card "Shopping list" button when
-   * the count is 0 (so a user who lands on an empty list with an
-   * active plan can rebuild without leaving the screen).
+   * plan is set, and (b) every Plan→Shopping navigation CTA
+   * (`handleShoppingList` — PlanToolsV3 + PlanTabChrome) so opening
+   * Shopping with an existing plan always rebuilds from the plan.
    *
    * Side-effects: deletes existing `shopping_items` for the user,
    * then inserts in batches of 50. Returns `{ ok, count }` so the
@@ -2182,6 +2182,16 @@ export default function PlannerScreen() {
     },
     [userId, savedRecipes, discoverRecipes, shoppingScope, pantryStaples, planStartDate],
   );
+
+  /** Web parity (`MealPlanner.handleShoppingList`) — rebuild from plan, then navigate. */
+  const handleShoppingList = useCallback(() => {
+    if (plan && plan.length > 0) {
+      void generateShoppingListFromPlan(plan).then((res) => {
+        if (!res.ok) setShoppingItemCount(0);
+      });
+    }
+    router.push("/shopping" as Href);
+  }, [plan, generateShoppingListFromPlan, router]);
 
   const generatePlan = useCallback(async (options?: { resetMode?: ResetPlanMode }) => {
     if (savedRecipes.length === 0 && discoverRecipes.length === 0) {
@@ -2613,7 +2623,7 @@ export default function PlannerScreen() {
         value="plan"
         onChange={(next) => {
           if (next === "shopping") {
-            router.push("/shopping" as Href);
+            handleShoppingList();
           }
         }}
         trailing={
@@ -2662,7 +2672,7 @@ export default function PlannerScreen() {
             onOpenMealOptions={planV3Meal.onOpenMealOptions}
             shoppingItemCount={shoppingItemCount}
             servingCount={householdMemberCount}
-            onOpenShopping={() => router.push("/shopping" as Href)}
+            onOpenShopping={handleShoppingList}
             onOpenBatchCook={() => router.push("/batch-cook" as Href)}
             batchCookSubtitle={defaultBatchCookToolSubtitle()}
             nutritionByDay={planWeekJournal}
