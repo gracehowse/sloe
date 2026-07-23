@@ -101,13 +101,13 @@ import {
   sharingStorageKey,
 } from "../../lib/household/sharingGridStorage.ts";
 import { BarcodeContributionsSection } from "./settings/BarcodeContributionsSection.tsx";
+import { MealSharedLinksSection } from "./settings/MealSharedLinksSection.tsx";
 
 const THEME_OPTIONS = [
   { value: "system", label: "Auto" },
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
 ] as const;
-
 
 /**
  * Audit 2026-04-30 P0-3 — Dashboard widget swatches now read from the
@@ -1866,7 +1866,7 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
             <p className="font-medium text-foreground">Export everything</p>
             <p className="text-xs mt-0.5">Yours forever. Take your data anywhere — recipes, meal log, weights, plans. Downloads as a JSON file.</p>
           </button>
-          <BarcodeContributionsSection />
+          <BarcodeContributionsSection /><MealSharedLinksSection />
           {/* 2026-05-02 — MFP CSV bulk-import card. Closes the
               MFP-refugee history-bridge gap (P1 customer-lens). Mirrors
               the same card on mobile Settings (App section) and on

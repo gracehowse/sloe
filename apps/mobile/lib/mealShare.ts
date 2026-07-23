@@ -22,6 +22,7 @@ import {
   normaliseMealShareToken,
   parseMealShareLookup,
   type MealShareLookup,
+  type OwnMealShareRow,
 } from "@suppr/shared/share/mealShareLink";
 
 type Extra = { supprApiUrl?: string };
@@ -95,6 +96,48 @@ export async function getMealShare(rawToken: string): Promise<MealShareLookup> {
   const { data, error } = await supabase.rpc("get_meal_share", { p_token: token });
   if (error) return { status: "invalid" };
   return parseMealShareLookup(data);
+}
+
+/** ENG-1648 — revoke own share. Network failure → `{ status: "error" }`. */
+export async function revokeMealShare(shareId: string): Promise<{ status: string }> {
+  const cleanId = shareId.trim();
+  if (!cleanId) return { status: "invalid" };
+  const supabase = await getSupabase();
+  const { data, error } = await supabase.rpc("revoke_meal_share", {
+    p_share_id: cleanId,
+  });
+  if (error || data == null || typeof data !== "object") return { status: "error" };
+  const status = (data as Record<string, unknown>).status;
+  return { status: typeof status === "string" ? status : "error" };
+}
+
+/** ENG-1648 — list own shares via RLS. Empty on failure. */
+export async function listOwnMealShares(): Promise<OwnMealShareRow[]> {
+  const supabase = await getSupabase();
+  const { data, error } = await supabase
+    .from("meal_shares")
+    .select("id, title, meal_slot, created_at, expires_at, revoked_at")
+    .order("created_at", { ascending: false });
+  if (error || !Array.isArray(data)) return [];
+  const rows: OwnMealShareRow[] = [];
+  for (const raw of data) {
+    const r = raw as Record<string, unknown>;
+    const id = typeof r.id === "string" ? r.id : "";
+    const title = typeof r.title === "string" ? r.title : "";
+    const mealSlot = typeof r.meal_slot === "string" ? r.meal_slot : "";
+    const createdAt = typeof r.created_at === "string" ? r.created_at : "";
+    const expiresAt = typeof r.expires_at === "string" ? r.expires_at : "";
+    if (!id || !title || !createdAt || !expiresAt) continue;
+    rows.push({
+      id,
+      title,
+      mealSlot,
+      createdAt,
+      expiresAt,
+      revokedAt: typeof r.revoked_at === "string" ? r.revoked_at : null,
+    });
+  }
+  return rows;
 }
 
 /**

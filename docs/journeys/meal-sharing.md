@@ -329,15 +329,16 @@ mounted in `src/app/App.tsx`), `src/app/components/suppr/shared-meal-accept-dial
 
 ## Step 4 — Sharer: revoke a link
 
-**What exists today:** `revoke_meal_share(p_share_id)` — an RPC, scoped to
+**What exists:** `revoke_meal_share(p_share_id)` — an RPC, scoped to
 `created_by = auth.uid()`, that sets `revoked_at` so any future
 `get_meal_share` call on that token returns `status:"revoked"` instead of
-`"ok"`. This ships in v1.
+`"ok"`. RLS `meal_shares_select_own` lets the owner list their rows. This
+ships in v1.
 
-**What does not exist yet:** a "my shared links" management surface (a list
-of links a user has sent, with a revoke button per row) on either platform.
-This is tracked as **ENG-1648** — not a silent gap. Today, revocation is
-only reachable by a direct RPC call; there is no UI path to it.
+**UI (ENG-1648):** Settings → Privacy **"My shared links"** (web + mobile),
+behind flag `meal_share_manage_v1` (default OFF). Expandable list of
+active / expired / revoked shares with per-row **Revoke** for active links.
+Tracks `meal_share_link_revoked`.
 
 ## Edge cases
 

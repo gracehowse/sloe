@@ -22,6 +22,34 @@
 /** Kill-switch flag: off → exact pre-ENG-1642 text-only share behaviour. */
 export const MEAL_SHARE_FLAG = "meal_share_links_v1";
 
+/**
+ * ENG-1648 — Settings "My shared links" management surface (list + revoke).
+ * Default-OFF; create flag (`meal_share_links_v1`) can stay ON while this ramps.
+ */
+export const MEAL_SHARE_MANAGE_FLAG = "meal_share_manage_v1";
+
+/** Own-share row for the Settings management list (ENG-1648). */
+export type OwnMealShareRow = {
+  id: string;
+  title: string;
+  mealSlot: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+};
+
+export type OwnMealShareLinkState = "active" | "expired" | "revoked";
+
+export function deriveOwnMealShareLinkState(
+  row: Pick<OwnMealShareRow, "expiresAt" | "revokedAt">,
+  nowMs: number = Date.now(),
+): OwnMealShareLinkState {
+  if (row.revokedAt) return "revoked";
+  const expiresMs = Date.parse(row.expiresAt);
+  if (Number.isFinite(expiresMs) && expiresMs <= nowMs) return "expired";
+  return "active";
+}
+
 /** localStorage key for the signed-out landing → post-auth resume handoff. */
 export const MEAL_SHARE_STORAGE_KEY = "suppr.pending_meal_share";
 

@@ -133,8 +133,8 @@ import {
 } from "@suppr/shared/household/sharingGridStorage";
 import { IconBox, SettingsRow } from "./SettingsRow";
 import { BarcodeContributionsSection } from "./BarcodeContributionsSection";
+import { MealSharedLinksSection } from "./MealSharedLinksSection";
 import { AnalyticsConsentRow } from "./AnalyticsConsentRow";
-
 /**
  * SettingsBundleContent — shared body of the legacy "More" tab.
  *
@@ -2283,7 +2283,7 @@ export function SettingsBundleContent({ context }: { context: Context }) {
             );
           }}
         />
-        <BarcodeContributionsSection userId={userId} />
+        <BarcodeContributionsSection userId={userId} /><MealSharedLinksSection />
         <AnalyticsConsentRow />{/* ENG-1286 — usage analytics + replay consent */}
         <SettingsRow
           testID="settings-bundle-help-row"
