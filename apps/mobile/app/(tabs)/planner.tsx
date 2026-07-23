@@ -2001,11 +2001,9 @@ export default function PlannerScreen() {
 
   /**
    * F1 fix (audit 2026-04-28) — generate shopping_items rows from a
-   * given plan. Lifted out of the dead-code block below the action
-   * row so it can be called from (a) `generatePlan` after a fresh
-   * plan is set, and (b) the summary-card "Shopping list" button when
-   * the count is 0 (so a user who lands on an empty list with an
-   * active plan can rebuild without leaving the screen).
+   * given plan. Called from (a) `generatePlan` after a fresh plan is
+   * set, and (b) `openShoppingList` (ENG-1668 — Plan Shopping CTAs,
+   * web parity with `handleShoppingList`).
    *
    * Side-effects: deletes existing `shopping_items` for the user,
    * then inserts in batches of 50. Returns `{ ok, count }` so the
@@ -2182,6 +2180,26 @@ export default function PlannerScreen() {
     },
     [userId, savedRecipes, discoverRecipes, shoppingScope, pantryStaples, planStartDate],
   );
+
+  // ENG-1668 — web parity: Plan "Shopping list" must GENERATE then navigate.
+  // Pre-fix mobile only `router.push("/shopping")`, so an existing plan
+  // with empty `shopping_items` forever showed the empty state.
+  const openShoppingList = useCallback(() => {
+    void (async () => {
+      if (plan && plan.length > 0) {
+        const res = await generateShoppingListFromPlan(plan);
+        if (!res.ok) {
+          alertOrToast(
+            toast.showToast,
+            "Couldn't build shopping list",
+            res.error,
+            "error",
+          );
+        }
+      }
+      router.push("/shopping" as Href);
+    })();
+  }, [plan, generateShoppingListFromPlan, toast.showToast, router]);
 
   const generatePlan = useCallback(async (options?: { resetMode?: ResetPlanMode }) => {
     if (savedRecipes.length === 0 && discoverRecipes.length === 0) {
@@ -2613,7 +2631,7 @@ export default function PlannerScreen() {
         value="plan"
         onChange={(next) => {
           if (next === "shopping") {
-            router.push("/shopping" as Href);
+            openShoppingList();
           }
         }}
         trailing={
@@ -2662,7 +2680,7 @@ export default function PlannerScreen() {
             onOpenMealOptions={planV3Meal.onOpenMealOptions}
             shoppingItemCount={shoppingItemCount}
             servingCount={householdMemberCount}
-            onOpenShopping={() => router.push("/shopping" as Href)}
+            onOpenShopping={openShoppingList}
             onOpenBatchCook={() => router.push("/batch-cook" as Href)}
             batchCookSubtitle={defaultBatchCookToolSubtitle()}
             nutritionByDay={planWeekJournal}

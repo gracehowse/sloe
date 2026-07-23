@@ -49,8 +49,8 @@ Two things feed the list besides the plan-level generate: a single recipe's "Add
 
 Both platforms route through the **same shared generator** — `generateShoppingListFromRecipeEntries[Async]` (`src/lib/planning/generateShoppingList.ts`, re-used by mobile via `@suppr/shared/planning/generateShoppingList`) — so quantities and aisle placement match by construction. This closed a prior mobile under-buy bug where `portionMultiplier` was silently ignored.
 
-**Web:** `src/context/AppDataContext.tsx:1622` (`generateShoppingListFromPlan`), `src/app/components/MealPlanner.tsx:665` (`handleShoppingList` → generate + `onNavigate("shopping")`).
-**Mobile:** `apps/mobile/app/(tabs)/planner.tsx:2077` (`generateShoppingListFromPlan`), `apps/mobile/app/(tabs)/planner.tsx:2567` (auto-rebuild after regenerate).
+**Web:** `src/context/AppDataContext.tsx` (`generateShoppingListFromPlan`), `src/app/components/MealPlanner.tsx` (`handleShoppingList` → generate + `onNavigate("shopping")`).
+**Mobile:** `apps/mobile/app/(tabs)/planner.tsx` — `generateShoppingListFromPlan` + `openShoppingList` (ENG-1668: Plan Shopping CTAs generate then navigate — web parity). Also auto-rebuilds after plan regenerate.
 
 **Tier gating:** there is no dedicated shopping-list gate. The real paywall is the existing multi-day-plan gate (`MealPlanner.tsx:878` web, `planner.tsx:1044` mobile) — a 1-day Free list is intentionally allowed. Decision: [`docs/decisions/2026-04-19-shopping-list-tier-gating.md`](../decisions/2026-04-19-shopping-list-tier-gating.md).
 
