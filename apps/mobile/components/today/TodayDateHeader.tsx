@@ -98,6 +98,9 @@ function TodayDateHeaderImpl({
   const calmDateNav = hideDayStrip && viewMode === "day";
   // ENG-1593 — Rule 7 monogram treatment, default-OFF (analytics.ts note).
   const avatarFrostRingV1 = isFeatureEnabled("avatar_monogram_frost_ring_v1");
+  // ENG-1505 — compact date-header title → serif-24 tab-title voice (web parity).
+  const dateHeaderSerifV1 = isFeatureEnabled("today_date_header_serif_v1");
+  const compactDateTitleStyle = dateHeaderSerifV1 ? Type.title : Type.headline;
 
   const navChromeStyle = {
     width: 32,
@@ -180,7 +183,7 @@ function TodayDateHeaderImpl({
               accessibilityRole="button"
               accessibilityLabel="Choose date"
             >
-              <Text style={{ ...Type.headline, color: textColor }} numberOfLines={1}>
+              <Text style={{ ...compactDateTitleStyle, color: textColor }} numberOfLines={1}>
                 {titleText}
               </Text>
               {dayGreeting && isToday ? (
@@ -273,7 +276,7 @@ function TodayDateHeaderImpl({
               </Text>
             ) : null}
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 1 }}>
-              <Text style={{ ...Type.headline, color: textColor }}>{titleText}</Text>
+              <Text style={{ ...compactDateTitleStyle, color: textColor }}>{titleText}</Text>
               {showStreakPip ? (
                 <StreakPip
                   days={streakDays!}

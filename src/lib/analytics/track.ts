@@ -752,6 +752,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   // `smart_suggestions_v1` (ENG-1634) — MOVED to REDESIGN_DEFAULT_ON 2026-07-22.
   "meal_share_manage_v1", // ENG-1648 — Settings "My shared links" list + revoke; off = section hidden (kill switch). Web + mobile.
   "in_app_help_import_v1", // ENG-1597 — contextual "?" hints on Import→Verify→Save; off = hidden (kill switch). Web + mobile.
+  "today_date_header_serif_v1", // ENG-1505 — MOBILE-ONLY: compact date-header title serif-24 (Type.title); web already ships serif-24 un-gated. Registered here for KNOWN_DEFAULT_OFF_FLAGS parity. Keep in sync with apps/mobile/lib/analytics.ts.
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {
