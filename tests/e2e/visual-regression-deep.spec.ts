@@ -74,15 +74,25 @@ test.describe("Visual regression — deep authenticated routes", () => {
       // `waitFor({ state: "visible" })` genuinely retries. Gated on
       // vp.name so mobile (where this nav never renders — `hidden md:block`)
       // doesn't pay a real wait for a locator that will never appear.
+      const fastingLink = page.getByTestId("settings-fasting-link");
       if (vp.name === "desktop") {
         const preferencesNav = page.getByTestId("settings-pane-nav-preferences");
         await preferencesNav.waitFor({ state: "visible", timeout: 10_000 });
         await preferencesNav.click();
+        // ENG-1640 — the two-pane shell hides inactive panels at md+ via
+        // `display:none` (SettingsTwoPaneShell.tsx). scrollIntoViewIfNeeded
+        // retries "element is not visible" until action timeout if the nav
+        // click hasn't finished swapping the active panel. Wait on the shell's
+        // authoritative active markers (aria-current + panel visibility), not
+        // just the nav mount — same idiom as settingsTwoPaneShell.test.tsx.
+        await expect(preferencesNav).toHaveAttribute("aria-current", "page", {
+          timeout: 10_000,
+        });
+        await expect(
+          page.getByTestId("settings-pane-panel-preferences"),
+        ).toBeVisible({ timeout: 10_000 });
       }
-      const fastingLink = page.getByTestId("settings-fasting-link");
-      // ENG-1640 — wait for visibility after Preferences pane mounts; desktop
-      // two-pane can still be settling when scrollIntoViewIfNeeded runs.
-      await fastingLink.waitFor({ state: "visible", timeout: 10_000 });
+      await expect(fastingLink).toBeVisible({ timeout: 10_000 });
       await fastingLink.scrollIntoViewIfNeeded();
       await stabilizeForScreenshot(page, 1500);
       await expect(page).toHaveScreenshot(
