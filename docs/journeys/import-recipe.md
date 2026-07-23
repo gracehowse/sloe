@@ -70,6 +70,13 @@ viral/retention wedge: "share a Reel, recipe appears in Suppr."
 Parallel entry into the same review→save flow: cookbook PDF batch import
 (mobile-only, Pro) — see **[import-cookbook.md](import-cookbook.md)**.
 
+### In-app help (ENG-1597)
+
+Flag `contextual_help_v1` (default OFF) shows a contextual **?** on the
+web Verify modal and mobile `/recipe/verify` chrome. Copy lives in
+`src/lib/help/contextualHelp.ts` — see
+`docs/specs/2026-07-23-in-app-help-contextual-guidance.md`.
+
 ## Legal caveat — Instagram / TikTok import (read before any public claim)
 
 **This section is a required read before anyone makes an external claim

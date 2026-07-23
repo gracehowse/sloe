@@ -47,6 +47,7 @@ import { ING_TIER_COLOR, ING_TIER_LABEL } from "../../../lib/recipe-ingredients/
 import { mapMealSourceToDot } from "../../../lib/nutrition/sourceMap";
 import { cleanIngredientDisplayName } from "../../../lib/recipe/cleanIngredientDisplayName";
 import { formatIngredientAmountUnit } from "../../../lib/recipe-ingredients/formatIngredientAmount";
+import { ContextualHelpHint } from "../help/ContextualHelpHint";
 
 export type RecipeVerifyModalProps = {
   open: boolean;
@@ -101,7 +102,10 @@ export function RecipeVerifyModal({
         data-testid="recipe-verify-modal"
       >
         <DialogHeader>
-          <DialogTitle className="text-foreground">Verify ingredients</DialogTitle>
+          <DialogTitle className="text-foreground flex items-center gap-2">
+            Verify ingredients
+            <ContextualHelpHint topicId="verify.why_verify" testId="recipe-verify-help" />
+          </DialogTitle>
           <DialogDescription className="text-muted-foreground">
             {recipeName
               ? `Confirm each ingredient so Sloe can lock reliable macros for ${recipeName}.`

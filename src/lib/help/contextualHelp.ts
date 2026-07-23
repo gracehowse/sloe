@@ -71,8 +71,10 @@ export const CONTEXTUAL_HELP_REGISTRY: Record<HelpTopicId, HelpContent> = {
   "verify.why_verify": {
     title: "Why verify ingredients?",
     paragraphs: [
-      "Verification grounds your recipe in real nutrition data. You can swap a match, fix an amount, or override macros by hand.",
-      "On web, review happens before you save. On mobile, you can also come back to Review ingredients any time from the recipe.",
+      "Import estimates nutrition from each ingredient match — some matches are low-confidence.",
+      "Flagged rows are excluded from headline totals until you confirm or fix them.",
+      "Tap Fix (or the row) to search a better food match; Save locks the recipe into your Library.",
+      "You can always re-open verify later from the recipe — nothing is permanent until you trust it.",
     ],
     learnMorePath: "/help#methodology",
   },

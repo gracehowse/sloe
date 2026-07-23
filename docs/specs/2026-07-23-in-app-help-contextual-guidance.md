@@ -11,6 +11,8 @@
 
 Ship **contextual, loop-aware guidance inside the app** — short explainers and “what’s next” rails at the moments users actually get stuck — rather than a second help center or a wiki link dump. **Phase 1** covers the **Recipe Capture loop** (Import → Verify → Save → Cook/Log): the highest-confusion, highest-viral wedge. Copy is **authored for users** in a shared registry (`src/lib/help/contextualHelp.ts`) and **sourced from** (not auto-generated from) the journey docs. Presentation is a **hybrid**: inline ⓘ triggers that open a compact sheet/dialog, plus one-shot session-limited coach hints where discoverability matters. Everything ships behind **`contextual_help_v1`** (default OFF) on web + mobile with before/after validation; deep methodology still lives on the existing web `/help` page, linked as an optional “Learn more” escape hatch.
 
+**Implementation status (2026-07-23):** Verify surface shipped (`ContextualHelpHint` on web `RecipeVerifyModal` + mobile `/recipe/verify`). Remaining Phase 1 surfaces tracked for ENG-1598.
+
 ---
 
 ## 2. Why this is its own build (not a docs task)
