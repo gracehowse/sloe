@@ -16,12 +16,17 @@ const MOBILE_PATH = resolve(
   __dirname,
   "../../apps/mobile/components/charts/CalorieRing.tsx",
 );
+const MOBILE_CENTER_PATH = resolve(
+  __dirname,
+  "../../apps/mobile/components/charts/calorieRing/CalorieRingCenter.tsx",
+);
 const WEB_PATH = resolve(
   __dirname,
   "../../src/app/components/suppr/daily-ring.tsx",
 );
 
 const MOBILE_SRC = readFileSync(MOBILE_PATH, "utf8");
+const MOBILE_CENTER_SRC = readFileSync(MOBILE_CENTER_PATH, "utf8");
 const WEB_SRC = readFileSync(WEB_PATH, "utf8");
 
 describe("Sloe calorie ring — mobile CalorieRing", () => {
@@ -41,8 +46,9 @@ describe("Sloe calorie ring — mobile CalorieRing", () => {
   });
 
   it("centre number + label use textColor (ink), not ring stroke hue", () => {
-    expect(MOBILE_SRC).toMatch(/color: textColor/);
-    expect(MOBILE_SRC).not.toMatch(/color: ringStateColor/);
+    // Centre ink styles live in CalorieRingCenter after ENG-1565 extraction.
+    expect(MOBILE_CENTER_SRC).toMatch(/color: textColor/);
+    expect(MOBILE_CENTER_SRC).not.toMatch(/color: ringStateColor/);
   });
 });
 

@@ -1,7 +1,6 @@
 import * as React from "react";
 import {
   LayoutChangeEvent,
-  Pressable,
   Text,
   TextInput,
   View,
@@ -13,6 +12,13 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { FontFamily, Radius } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { PressableScale } from "@/components/ui/PressableScale";
+import {
+  formatImperialHeightInches,
+  parseImperialHeightInches,
+} from "@/components/rulerSliderImperial";
+
+export { formatImperialHeightInches, parseImperialHeightInches } from "@/components/rulerSliderImperial";
 
 /**
  * RulerSlider — iOS-style horizontal ruler picker for mobile.
@@ -259,7 +265,8 @@ export function RulerSlider({
             ) : null}
           </View>
         ) : (
-          <Pressable
+          <PressableScale
+            haptic="selection"
             onPress={() => {
               setDraft(String(displayVal));
               setEditing(true);
@@ -295,7 +302,7 @@ export function RulerSlider({
                 {unit}
               </Text>
             ) : null}
-          </Pressable>
+          </PressableScale>
         )}
         <Text
           style={{
@@ -373,37 +380,6 @@ export function RulerSlider({
       </GestureDetector>
     </View>
   );
-}
-
-/** Helper: format total inches to "5′ 10″" for imperial height. */
-export function formatImperialHeightInches(totalIn: number): string {
-  const ft = Math.floor(totalIn / 12);
-  const inch = Math.round(totalIn - ft * 12);
-  return `${ft}′ ${inch}″`;
-}
-
-/**
- * Helper: parse common imperial height-entry shapes → total inches.
- * Mirror of the web helper at `src/app/components/suppr/ruler-slider.tsx`.
- *
- *  - `"70"`           → 70 (single number is treated as total inches)
- *  - `"5'10\""`       → 70
- *  - `"5 10"`         → 70
- *  - `"5ft 10in"`     → 70 (any non-digit run separates feet from inches)
- *  - `"5ft"`          → 60 (lone feet with explicit ft/' literal)
- */
-export function parseImperialHeightInches(text: string): number {
-  const trimmed = String(text).trim();
-  if (/^\d+(?:\.\d+)?$/.test(trimmed)) return parseFloat(trimmed);
-  const both = trimmed.match(/^(\d+)\D+(\d+)/);
-  if (both) {
-    const ft = parseInt(both[1], 10);
-    const inch = parseInt(both[2], 10);
-    return ft * 12 + inch;
-  }
-  const ftOnly = trimmed.match(/^(\d+)\s*(?:ft|'|′)\b/i);
-  if (ftOnly) return parseInt(ftOnly[1], 10) * 12;
-  return parseFloat(trimmed);
 }
 
 export default RulerSlider;

@@ -25,6 +25,9 @@ const read = (p: string) => readFileSync(resolve(ROOT, p), "utf8");
 
 const SKIA_SRC = read("apps/mobile/components/charts/SkiaRingArcs.tsx");
 const HOST_SRC = read("apps/mobile/components/charts/CalorieRing.tsx");
+const SVG_ARCS_SRC = read(
+  "apps/mobile/components/charts/calorieRing/CalorieRingSvgArcs.tsx",
+);
 const WEB_RING_SRC = read("src/app/components/suppr/daily-ring.tsx");
 const MOBILE_HERO = read("apps/mobile/components/today/TodayHeroRing.tsx");
 const WEB_HERO = read("src/app/components/suppr/today-hero-ring.tsx");
@@ -50,8 +53,11 @@ describe("ENG-1093 — empty multi-ring parity (mobile)", () => {
     expect(HOST_SRC).toMatch(/emptyMacroParity=\{emptyMacroParityOn\}/);
   });
 
-  it("host gates the SVG-fallback empty hairline off when macros are shown", () => {
-    expect(HOST_SRC).toMatch(/isEmpty && !\(emptyMacroParityOn && expanded\) \?/);
+  it("SVG arcs gate the empty hairline off when macros are shown", () => {
+    // Extracted from CalorieRing host into CalorieRingSvgArcs (ENG-1565).
+    expect(SVG_ARCS_SRC).toMatch(
+      /isEmpty && !\(emptyMacroParityOn && expanded\) \?/,
+    );
   });
 
   it("Skia renders the unpopulated macro tracks when macros shown on empty", () => {
