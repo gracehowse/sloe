@@ -110,6 +110,7 @@ import {
   generateShoppingListFromRecipeEntriesAsync,
   shoppingListIngredientMultiplier,
 } from "@suppr/shared/planning/generateShoppingList";
+import { fetchShoppingListIngredientsByRecipeId } from "@suppr/shared/planning/shoppingListIngredientFetch";
 import {
   filterShoppingItemsByPantry,
   parsePantryStaples,
@@ -2064,30 +2065,12 @@ export default function PlannerScreen() {
         ),
       ];
 
-      // Batch-fetch ingredients once and hand the shared generator a
-      // pre-built map (matches web's single `.in(recipe_id, …)` query).
-      const { data: ingredients, error: ingErr } = await supabase
-        .from("recipe_ingredients")
-        .select("name, amount, unit, recipe_id")
-        .in("recipe_id", recipeIds);
-      if (ingErr) return { ok: false, error: ingErr.message };
-      if (!ingredients || ingredients.length === 0) {
+      // ENG-1668 — UUID + seed-v2 ids (seed slugs must not hit recipe_id uuid col).
+      const { ingredientsByRecipeId, error: ingErr } =
+        await fetchShoppingListIngredientsByRecipeId(supabase, recipeIds);
+      if (ingErr) return { ok: false, error: ingErr };
+      if (ingredientsByRecipeId.size === 0) {
         return { ok: false, error: "No ingredient data on these recipes" };
-      }
-      const ingredientsByRecipeId = new Map<
-        string,
-        Array<{ name: string; amount: string; unit: string }>
-      >();
-      for (const ing of ingredients) {
-        const rid = String(ing.recipe_id ?? "");
-        if (!rid) continue;
-        const bucket = ingredientsByRecipeId.get(rid) ?? [];
-        bucket.push({
-          name: String(ing.name ?? ""),
-          amount: ing.amount != null ? String(ing.amount) : "",
-          unit: String(ing.unit ?? ""),
-        });
-        ingredientsByRecipeId.set(rid, bucket);
       }
 
       const shared = await generateShoppingListFromRecipeEntriesAsync({
