@@ -1,9 +1,12 @@
 /**
  * Login screen pressable chrome (ENG-1565).
  * Extracted from `app/login.tsx` for PressableScale migration + screen budget.
+ *
+ * ENG-924: chooser is Apple + email only — no Google provider/button here.
  */
 import React from "react";
 import { Text, View, type StyleProp, type TextStyle } from "react-native";
+// ENG-120: lucide has no brand glyph — Ionicons retained for logo-* only
 import { Ionicons } from "@expo/vector-icons";
 import { Check, ChevronLeft, Mail, X as CloseIcon } from "lucide-react-native";
 import { PressableScale } from "@/components/ui/PressableScale";

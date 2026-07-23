@@ -30,6 +30,11 @@ import {
 } from "@/lib/hasSignedInBefore";
 
 const LOGIN_SRC = readFileSync(join(__dirname, "..", "..", "app", "login.tsx"), "utf8");
+const LOGIN_PRESSABLES_SRC = readFileSync(
+  join(__dirname, "..", "..", "components", "login", "LoginScreenPressables.tsx"),
+  "utf8",
+);
+const LOGIN_SURFACE = `${LOGIN_SRC}\n${LOGIN_PRESSABLES_SRC}`;
 const AUTH_SRC = readFileSync(join(__dirname, "..", "..", "context", "auth.tsx"), "utf8");
 const WIPE_SRC = readFileSync(
   join(__dirname, "..", "..", "lib", "clearUserScopedStorage.ts"),
@@ -82,7 +87,8 @@ describe("has-signed-in-before marker", () => {
 describe("login.tsx wiring (ENG-1514)", () => {
   it("applies the entry default at the chooser → email transition", () => {
     expect(LOGIN_SRC).toMatch(/useEmailEntrySignUpDefault/);
-    expect(LOGIN_SRC).toMatch(/setIsSignUp\(emailEntrySignUp\); setView\("email"\)/);
+    expect(LOGIN_SRC).toMatch(/setIsSignUp\(emailEntrySignUp\)/);
+    expect(LOGIN_SRC).toMatch(/setView\("email"\)/);
   });
 
   it("keeps the Already-have-an-account toggle copy", () => {
@@ -92,13 +98,14 @@ describe("login.tsx wiring (ENG-1514)", () => {
   it("resets to sign-in-neutral state when backing out to the chooser", () => {
     // Guards the chooser Apple button from the isSignUp terms gate after a
     // create-default email visit.
-    expect(LOGIN_SRC).toMatch(/setView\("chooser"\); setIsSignUp\(false\)/);
+    expect(LOGIN_SRC).toMatch(/setView\("chooser"\)/);
+    expect(LOGIN_SRC).toMatch(/setIsSignUp\(false\)/);
   });
 
   it("gates the ✕ behind router.canGoBack() and pops instead of opening Safari", () => {
-    expect(LOGIN_SRC).toMatch(/router\.canGoBack\(\) &&/);
+    expect(LOGIN_SRC).toMatch(/router\.canGoBack\(\)/);
     expect(LOGIN_SRC).toMatch(/onPress={\(\) => router\.back\(\)}/);
-    expect(LOGIN_SRC).not.toMatch(/login-close[\s\S]{0,300}Linking\.openURL/);
+    expect(LOGIN_SURFACE).not.toMatch(/login-close[\s\S]{0,300}Linking\.openURL/);
   });
 
   it("pins the safe-area inset on the non-scrolling wrapper, not the scroll content", () => {

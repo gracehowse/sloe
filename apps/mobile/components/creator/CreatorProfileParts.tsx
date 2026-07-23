@@ -203,7 +203,7 @@ function buildStyles(
     avatar: {
       width: 96,
       height: 96,
-      borderRadius: 48,
+      borderRadius: Radius.full,
       backgroundColor: colors.cardBorder,
       marginBottom: Spacing.sm,
     },
@@ -220,7 +220,7 @@ function buildStyles(
     headerNameRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
+      gap: Spacing.xs,
     },
     displayName: {
       color: colors.text,
@@ -230,7 +230,6 @@ function buildStyles(
     handle: {
       color: colors.textSecondary,
       fontSize: 14,
-      marginTop: 2,
     },
     bio: {
       color: colors.text,
@@ -259,8 +258,8 @@ function buildStyles(
     },
     followBtn: {
       marginTop: Spacing.md,
-      paddingHorizontal: 24,
-      paddingVertical: 10,
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.sm,
       borderRadius: Radius.full,
       minWidth: 140,
       alignItems: "center",
@@ -324,7 +323,6 @@ function buildStyles(
     recipeMeta: {
       color: colors.textSecondary,
       ...Type.captionSmall,
-      marginTop: 2,
     },
     emptyRecipes: {
       paddingVertical: Spacing.xl,
@@ -351,8 +349,8 @@ function buildStyles(
     loadMoreBtn: {
       minWidth: 140,
       minHeight: 42,
-      paddingHorizontal: 24,
-      paddingVertical: 10,
+      paddingHorizontal: Spacing.lg,
+      paddingVertical: Spacing.sm,
       borderRadius: Radius.full,
       borderWidth: 1,
       borderColor: colors.cardBorder,

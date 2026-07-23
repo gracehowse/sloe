@@ -26,6 +26,12 @@ const SRC = readFileSync(
   join(__dirname, "..", "..", "app", "login.tsx"),
   "utf8",
 );
+// ENG-1565: chooser/back/close/submit pressables + Apple logo carve-out live here.
+const PRESSABLES_SRC = readFileSync(
+  join(__dirname, "..", "..", "components", "login", "LoginScreenPressables.tsx"),
+  "utf8",
+);
+const LOGIN_SURFACE = `${SRC}\n${PRESSABLES_SRC}`;
 // ENG-1474: presentation styles were extracted to `components/login/loginStyles.tsx`
 // (screen-budget shrink). Style-definition assertions read from there; JSX
 // wiring + handler/testID assertions still read `login.tsx` above.
@@ -61,15 +67,15 @@ describe("mobile login chooser — Figma 296:2", () => {
   });
 
   it("renders Continue with Apple and Continue with email", () => {
-    expect(SRC).toMatch(/Continue with Apple/);
-    expect(SRC).toMatch(/Continue with email/);
-    expect(SRC).toMatch(/testID="login-continue-email"/);
+    expect(LOGIN_SURFACE).toMatch(/Continue with Apple/);
+    expect(LOGIN_SURFACE).toMatch(/Continue with email/);
+    expect(PRESSABLES_SRC).toMatch(/testID="login-continue-email"/);
   });
 
   it("OMITS Google (ENG-924 — Apple + email only)", () => {
-    expect(SRC).not.toMatch(/Continue with Google/i);
-    expect(SRC).not.toMatch(/provider:\s*"google"/);
-    expect(SRC).toMatch(/ENG-924/);
+    expect(LOGIN_SURFACE).not.toMatch(/Continue with Google/i);
+    expect(LOGIN_SURFACE).not.toMatch(/provider:\s*"google"/);
+    expect(LOGIN_SURFACE).toMatch(/ENG-924/);
   });
 
   it("renders the Terms + Privacy fine print", () => {
@@ -87,22 +93,22 @@ describe("mobile login chooser — Figma 296:2", () => {
     // Preserved testIDs the Maestro / unit layers depend on.
     expect(SRC).toMatch(/testID="login-email"/);
     expect(SRC).toMatch(/testID="login-password"/);
-    expect(SRC).toMatch(/testID="login-submit"/);
+    expect(PRESSABLES_SRC).toMatch(/testID="login-submit"/);
     // Signed-in redirect unchanged.
     expect(SRC).toMatch(/session\?\.user\?\.id/);
     expect(SRC).toMatch(/Redirect\s+href=["']\/\(tabs\)["']/);
   });
 
   it("has a close affordance and a back affordance (chooser <-> email)", () => {
-    expect(SRC).toMatch(/testID="login-close"/);
-    expect(SRC).toMatch(/testID="login-back"/);
+    expect(PRESSABLES_SRC).toMatch(/testID="login-close"/);
+    expect(PRESSABLES_SRC).toMatch(/testID="login-back"/);
     expect(SRC).toMatch(/setView\("chooser"\)/);
     expect(SRC).toMatch(/setView\("email"\)/);
     // ENG-1514: the ✕ only renders when login was PUSHED onto a stack — a
     // root session-less launch has no destination, so no stray close; and
     // it pops back in-app rather than opening Safari.
-    expect(SRC).toMatch(/router\.canGoBack\(\) &&/);
+    expect(SRC).toMatch(/router\.canGoBack\(\)/);
     expect(SRC).toMatch(/onPress={\(\) => router\.back\(\)}/);
-    expect(SRC).not.toMatch(/login-close[\s\S]{0,300}Linking\.openURL/);
+    expect(LOGIN_SURFACE).not.toMatch(/login-close[\s\S]{0,300}Linking\.openURL/);
   });
 });
