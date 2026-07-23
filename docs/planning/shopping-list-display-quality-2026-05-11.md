@@ -61,15 +61,25 @@ Replace `175 g Instant Oats (525 g)` with one of:
 
 **Recommendation**: Option B for the visible shopping list (the per-recipe info already shows below as the recipe-title subtitle on existing items). Drop the parenthetical total entirely on existing single-quantity items.
 
-## Why this is deferred, not in the current PR
+## Status note (ENG-1669, 2026-07-23)
+
+In-store density shipped a related slice without waiting on V7/V8 parser work:
+
+- Prep suffixes stripped at **display** time (`stripShoppingPrepFromName` + `formatShoppingGroupLabel({ forShoppingScan: true })`) — does not fix bad ingredient rows in the DB, but stops cook-step noise on the shopping primary line.
+- Shop-sensible quantity rounding (`formatShopSensibleQuantity`) — `266.66 g` → `267 g`.
+- Recipe titles no longer dump under every row; quiet `N recipes` + long-press/hover for detail.
+
+V7 parser skip + V8 dual-quantity parenthetical redesign remain deferred as below.
+
+## Why V7/V8 parser work is still deferred
 
 - The parser change is downstream of F-138 Phase 5 (vision auto-verify matcher contract is in flux). Touching the extractor now risks breaking the cross-contract.
 - The backfill is non-trivial (must dedupe across ALL existing recipes, not just affected ones, to be safe).
-- The display redesign deserves a UI prototype review by `ui-product-designer` before shipping.
+- The dual-quantity parenthetical redesign still deserves a dedicated UI pass.
 
 ## Owner / next step
 
 - Owner: Grace + Claude
-- When: after F-138 Phase 5 lands
-- Tracker: this file
+- When: after F-138 Phase 5 lands (V7/V8 remainder)
+- Tracker: this file + ENG-1669 (density slice shipped)
 - Related: `docs/decisions/2026-05-08-food-correction-verification-pipeline.md`

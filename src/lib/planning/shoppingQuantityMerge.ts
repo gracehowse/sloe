@@ -1,4 +1,5 @@
 import type { ShoppingItem } from "../../types/recipe";
+import { formatShopSensibleQuantity } from "./shoppingScanLabel";
 import { dedupeShoppingLabel } from "./shoppingListLifecycle";
 
 export type ParsedShoppingQuantity = {
@@ -40,6 +41,7 @@ function parseAmountNumeric(amount: string): number | null {
   return Number.isFinite(v) && v > 0 ? v : null;
 }
 
+/** @deprecated Prefer formatShopSensibleQuantity — kept for strip/token equality checks. */
 function formatAmountNumber(n: number): string {
   const rounded = Math.round(n * 100) / 100;
   if (Number.isInteger(rounded)) return String(rounded);
@@ -118,8 +120,8 @@ export function parseShoppingItemQuantity(item: ShoppingItem): ParsedShoppingQua
 }
 
 function formatSummedQuantity(value: number, unit: string): string {
-  const n = formatAmountNumber(value);
-  return unit ? `${n} ${unit}` : n;
+  // ENG-1669 — shop-sensible display (266.66 g → 267 g); never fake precision.
+  return formatShopSensibleQuantity(value, unit) || formatAmountNumber(value);
 }
 
 /**

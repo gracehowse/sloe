@@ -10,8 +10,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from "react-native";
-import { Check, ChevronRight, Package, Share2, ShoppingCart, Trash2, Users } from "lucide-react-native";
-import { Swipeable } from "react-native-gesture-handler";
+import { ChevronRight, Share2, ShoppingCart, Trash2, Users } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useAuth } from "@/context/auth";
@@ -34,7 +33,6 @@ import {
   shoppingItemsTiedToCurrentPlan,
 } from "@suppr/shared/planning/shoppingListLifecycle";
 import {
-  formatShoppingGroupLabel,
   groupShoppingItemsByIngredientName,
   isShoppingGroupFullyChecked,
   type ShoppingDisplayGroup,
@@ -46,9 +44,7 @@ import {
 } from "@suppr/shared/planning/normalizeShoppingIngredientRow";
 import { getMyHousehold, type HouseholdData } from "@suppr/shared/household/householdClient";
 import {
-  householdMemberAccent,
   householdMemberFirstName,
-  householdMemberInitials,
 } from "@suppr/shared/household/memberAccents";
 import {
   shoppingScopeFor,
@@ -70,6 +66,8 @@ import { PlanTabChrome } from "@/components/tabs/PlanTabChrome";
 import { ShoppingLoadingSkeleton } from "@/components/shopping/ShoppingLoadingSkeleton";
 import { ShoppingUpdateFromPlanBanner } from "@/components/shopping/ShoppingUpdateFromPlanBanner";
 import { ShoppingSmartSuggestions } from "@/components/shopping/ShoppingSmartSuggestions";
+import { ShoppingProgressChrome } from "@/components/shopping/ShoppingProgressChrome";
+import { ShoppingListGroupRow } from "@/components/shopping/ShoppingListGroupRow";
 import { Layout } from "@/constants/layout";
 
 type ShoppingItem = {
@@ -125,6 +123,9 @@ export default function ShoppingListScreen() {
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const haptics = useHaptics();
+
+  // ENG-1669 — in-store scan density (default ON; PostHog kill switch).
+  const densityV1 = isFeatureEnabled("shopping_list_density_v1");
 
   const progressEntrance = useEntranceAnimation({ delay: 0 });
   const listEntrance = useEntranceAnimation({ delay: 80 });
@@ -474,37 +475,6 @@ export default function ShoppingListScreen() {
     [pantryStaples, removeItem, savePantryStaples, haptics],
   );
 
-  const clearAll = useCallback(() => {
-    Alert.alert(
-      "Clear shopping list",
-      household?.household
-        ? `Remove all items? This affects everyone in ${household.household.name}.`
-        : "Remove all items?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Clear All",
-          style: "destructive",
-          onPress: () => {
-            setItems([]);
-            if (userId && scope) {
-              const del = scope.kind === "household"
-                ? supabase.from("shopping_items").delete().eq("household_id", scope.householdId)
-                : supabase.from("shopping_items").delete().eq("user_id", scope.userId).is("household_id", null);
-              void del.then(({ error }) => {
-                if (error) {
-                  void supabase
-                    .from("shopping_lists")
-                    .upsert({ user_id: userId, items: [], updated_at: new Date().toISOString() }, { onConflict: "user_id" });
-                }
-              });
-            }
-          },
-        },
-      ],
-    );
-  }, [userId, scope, household?.household]);
-
   const clearChecked = useCallback(() => {
     setItems((prev) => {
       const next = prev.filter((i) => !i.checked);
@@ -520,6 +490,47 @@ export default function ShoppingListScreen() {
       return next;
     });
   }, [userId]);
+
+  const clearAll = useCallback(() => {
+    // ENG-1669 density: tuck "Remove checked" into the trash sheet (no floating link).
+    const buttons: {
+      text: string;
+      style?: "cancel" | "destructive" | "default";
+      onPress?: () => void;
+    }[] = [{ text: "Cancel", style: "cancel" }];
+    if (densityV1 && items.some((i) => i.checked)) {
+      buttons.push({
+        text: "Remove checked",
+        onPress: () => clearChecked(),
+      });
+    }
+    buttons.push({
+      text: "Clear All",
+      style: "destructive",
+      onPress: () => {
+        setItems([]);
+        if (userId && scope) {
+          const del = scope.kind === "household"
+            ? supabase.from("shopping_items").delete().eq("household_id", scope.householdId)
+            : supabase.from("shopping_items").delete().eq("user_id", scope.userId).is("household_id", null);
+          void del.then(({ error }) => {
+            if (error) {
+              void supabase
+                .from("shopping_lists")
+                .upsert({ user_id: userId, items: [], updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+            }
+          });
+        }
+      },
+    });
+    Alert.alert(
+      "Clear shopping list",
+      household?.household
+        ? `Remove items? This affects everyone in ${household.household.name}.`
+        : "Remove items?",
+      buttons,
+    );
+  }, [userId, scope, household?.household, densityV1, items, clearChecked]);
 
   const buildListText = useCallback(() => {
     const grouped = new Map<string, ShoppingItem[]>();
@@ -607,6 +618,32 @@ export default function ShoppingListScreen() {
     progressCount: { ...Type.heroValue, fontSize: 22, color: accent.primarySolid, fontVariant: ["tabular-nums"] },
     progressTrack: { height: 6, backgroundColor: colors.inputBg, borderRadius: 3, overflow: "hidden" },
     progressFill: { height: 6, backgroundColor: accent.primary, borderRadius: 3 },
+    // ENG-1669 — thin strip replaces the Progress card when density is on.
+    progressStrip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: Spacing.sm,
+      paddingHorizontal: Spacing.xl,
+      marginBottom: Spacing.sm,
+    },
+    progressStripTrack: {
+      flex: 1,
+      height: 4,
+      backgroundColor: colors.inputBg,
+      borderRadius: Radius.full,
+      overflow: "hidden" as const,
+    },
+    progressStripFill: {
+      height: 4,
+      backgroundColor: accent.primary,
+      borderRadius: Radius.full,
+    },
+    progressStripCount: {
+      ...Type.caption,
+      color: colors.textSecondary,
+      fontVariant: ["tabular-nums"] as const,
+      fontWeight: "700" as const,
+    },
 
     categoryTitle: {
       ...Type.headline,
@@ -741,12 +778,37 @@ export default function ShoppingListScreen() {
   const listSubtitle = useMemo(
     () =>
       formatShoppingListSubtitle({
-        itemCount: items.length,
+        itemCount: densityV1 ? totalGroupCount : items.length,
         planStartDate,
         outOfSync: shoppingListOutOfSync,
+        omitItemCount: densityV1,
       }),
-    [items.length, planStartDate, shoppingListOutOfSync],
+    [items.length, totalGroupCount, planStartDate, shoppingListOutOfSync, densityV1],
   );
+
+  const chromeTrailing =
+    items.length > 0 ? (
+      <View style={{ flexDirection: "row", gap: Spacing.md }}>
+        <PressableScale
+          haptic="selection"
+          hitSlop={12}
+          onPress={exportList}
+          accessibilityLabel="Share shopping list"
+          accessibilityRole="button"
+        >
+          <Share2 size={22} color={colors.text} strokeWidth={1.75} />
+        </PressableScale>
+        <PressableScale
+          haptic="destructive"
+          hitSlop={12}
+          onPress={clearAll}
+          accessibilityLabel="Clear shopping list"
+          accessibilityRole="button"
+        >
+          <Trash2 size={22} color={Accent.destructive} strokeWidth={1.75} />
+        </PressableScale>
+      </View>
+    ) : null;
 
   return (
     <View
@@ -755,8 +817,15 @@ export default function ShoppingListScreen() {
     >
       <PlanTabChrome
         value="shopping"
-        title="Shopping list"
+        // ENG-1669 Mob-flat: title carries the list count (no Progress card).
+        title={
+          densityV1 && items.length > 0
+            ? `Shopping list (${totalGroupCount})`
+            : "Shopping list"
+        }
+        subtitle={densityV1 && items.length > 0 ? listSubtitle : undefined}
         shoppingUncheckedCount={uncheckedCount}
+        trailing={densityV1 ? chromeTrailing : undefined}
         onChange={(next) => {
           if (next === "plan") {
             router.replace("/(tabs)/planner" as never);
@@ -764,7 +833,7 @@ export default function ShoppingListScreen() {
         }}
       />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {items.length > 0 ? (
+        {!densityV1 && items.length > 0 ? (
           <Text
             testID="shopping-list-subtitle"
             style={{
@@ -785,20 +854,22 @@ export default function ShoppingListScreen() {
             onSynced={() => setShoppingListOutOfSync(false)}
           />
         ) : null}
-        <View style={[styles.headerRow, { justifyContent: "flex-end" }]}>
-          {items.length > 0 ? (
-            <View style={{ flexDirection: "row", gap: Spacing.md }}>
-              <Pressable hitSlop={12} onPress={exportList} accessibilityLabel="Share shopping list" accessibilityRole="button">
-                <Share2 size={22} color={colors.text} strokeWidth={1.75} />
-              </Pressable>
-              <Pressable hitSlop={12} onPress={clearAll} accessibilityLabel="Clear shopping list" accessibilityRole="button">
-                <Trash2 size={22} color={Accent.destructive} strokeWidth={1.75} />
-              </Pressable>
-            </View>
-          ) : (
-            <View style={{ width: 28 }} />
-          )}
-        </View>
+        {!densityV1 ? (
+          <View style={[styles.headerRow, { justifyContent: "flex-end" }]}>
+            {items.length > 0 ? (
+              <View style={{ flexDirection: "row", gap: Spacing.md }}>
+                <Pressable hitSlop={12} onPress={exportList} accessibilityLabel="Share shopping list" accessibilityRole="button">
+                  <Share2 size={22} color={colors.text} strokeWidth={1.75} />
+                </Pressable>
+                <Pressable hitSlop={12} onPress={clearAll} accessibilityLabel="Clear shopping list" accessibilityRole="button">
+                  <Trash2 size={22} color={Accent.destructive} strokeWidth={1.75} />
+                </Pressable>
+              </View>
+            ) : (
+              <View style={{ width: 28 }} />
+            )}
+          </View>
+        ) : null}
 
         {/* Household shared-list banner — solo users never see this. */}
         {sharedWithLabel ? (
@@ -897,24 +968,16 @@ export default function ShoppingListScreen() {
         ) : (
           <>
             <ReAnimated.View style={progressEntrance.style}>
-            {/* Flat progress card (ENG-1527 / ENG-1497) — group counts match the pill. */}
-            <View style={styles.card}>
-              <View style={styles.progressRow}>
-                <Text style={styles.progressLabel}>Progress</Text>
-                <Text style={styles.progressCount}>{checkedGroupCount}/{totalGroupCount}</Text>
-              </View>
-              <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-              </View>
-            </View>
-
-            {checkedCount > 0 && (
-              <Pressable onPress={clearChecked} style={{ alignSelf: "center", paddingVertical: 8, paddingHorizontal: Spacing.xl }}>
-                <Text style={{ ...Type.body, fontWeight: "600", color: accent.primarySolid }}>
-                  Remove {checkedCount} checked item{checkedCount !== 1 ? "s" : ""}
-                </Text>
-              </Pressable>
-            )}
+              <ShoppingProgressChrome
+                densityV1={densityV1}
+                checkedGroupCount={checkedGroupCount}
+                totalGroupCount={totalGroupCount}
+                checkedCount={checkedCount}
+                progress={progress}
+                onClearChecked={clearChecked}
+                styles={styles}
+                accentPrimarySolid={accent.primarySolid}
+              />
             </ReAnimated.View>
 
             {/* ENG-1634 — Smart suggestions (flag-gated; web parity). */}
@@ -931,216 +994,86 @@ export default function ShoppingListScreen() {
               // as they shop. Counts items in this section's groups
               // checked vs total. A group is "checked" when all its
               // items are checked (matches the row-level toggle).
+              // ENG-1669 Mob-flat density: drop per-section X/Y — the
+              // title already carries the list count.
               const sectionTotal = section.groups.length;
               const sectionChecked = section.groups.filter((g) =>
                 isShoppingGroupFullyChecked(g),
               ).length;
               return (
-                // One-card grammar (ENG-1527): flat 24px hairline card matching Today/Plan.
-                <View key={section.name} style={styles.card}>
+                <View
+                  key={section.name}
+                  style={
+                    densityV1
+                      ? {
+                          paddingHorizontal: Spacing.xl,
+                          marginBottom: Spacing.lg,
+                        }
+                      : styles.card
+                  }
+                >
                   <View
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
                       justifyContent: "space-between",
-                      // Gap 5: Spacing.md (16) so the serif header breathes above its rows
-                      // (DS §3.1 section label margin-below = lg/16).
-                      marginBottom: Spacing.md,
+                      marginBottom: densityV1 ? Spacing.sm : Spacing.md,
                     }}
                   >
-                    <Text style={styles.categoryTitle}>{section.name}</Text>
                     <Text
-                      style={{
-                        fontSize: 11,
-                        fontWeight: "700",
-                        color: colors.textSecondary,
-                        letterSpacing: 0.5,
-                        fontVariant: ["tabular-nums"],
-                      }}
-                    >
-                      {sectionChecked}/{sectionTotal}
-                    </Text>
-                  </View>
-                  {section.groups.map((group: ShoppingDisplayGroup) => {
-                    const allChecked = isShoppingGroupFullyChecked(group);
-                    const rowLabel = formatShoppingGroupLabel(group);
-                    const fromLabel = [
-                      ...new Set(
-                        group.items
-                          .flatMap((i) =>
-                            i.from.split(",").map((s) => s.trim()),
-                          )
-                          .filter(Boolean),
-                      ),
-                    ].join(", ");
-
-                    // Honeydew parity (2026-04-30): per-row check attribution
-                    // — checked + household → surface who toggled it last
-                    // (solo lists skip this, always "you").
-                    const checkedByEntries = group.items
-                      .map((i) =>
-                        (i as ShoppingItem).checkedBy ?? null,
-                      )
-                      .filter((id): id is string => Boolean(id));
-                    const uniqueCheckedBy = [...new Set(checkedByEntries)];
-                    const showAttribution =
-                      household?.household != null &&
-                      allChecked &&
-                      uniqueCheckedBy.length === 1;
-                    const attributedMember = showAttribution
-                      ? memberById.get(uniqueCheckedBy[0]!)
-                      : null;
-
-                    return (
-                      // Premium-bar audit Group J line 436 — swipe-to-delete.
-                      // Right-swipe removes every row in this display group
-                      // (single + merged duplicates); mirrors Today meals
-                      // (`TodayMealsSection.tsx:Swipeable`), same haptic.
-                      <Swipeable
-                        key={group.key}
-                        overshootRight={false}
-                        overshootLeft={false}
-                        friction={2}
-                        renderLeftActions={() => (
-                          <View style={{ flexDirection: "row", alignItems: "stretch" }}>
-                            <PressableScale
-                              haptic="confirm"
-                              onPress={() => void markGroupAsStaple(group)}
-                              style={{
-                                width: 88,
-                                backgroundColor: accent.primarySoft,
-                                justifyContent: "center",
-                                alignItems: "center",
-                              }}
-                              accessibilityRole="button"
-                              accessibilityLabel={`Always have ${rowLabel} — hide from future shopping lists`}
-                              testID={`shopping-swipe-staple-${group.key}`}
-                            >
-                              <Package size={22} color={accent.primarySolid} />
-                              <Text style={{ color: accent.primarySolid, fontSize: 11, fontWeight: "700", marginTop: 4 }}>
-                                Staple
-                              </Text>
-                            </PressableScale>
-                          </View>
-                        )}
-                        renderRightActions={() => (
-                          <View style={{ flexDirection: "row", alignItems: "stretch" }}>
-                            <PressableScale
-                              haptic="destructive"
-                              onPress={() => {
-                                for (const item of group.items) removeItem(item.id);
-                              }}
-                              style={{
-                                width: 88,
-                                backgroundColor: Accent.destructive,
-                                justifyContent: "center",
-                                alignItems: "center",
-                              }}
-                              accessibilityRole="button"
-                              accessibilityLabel={`Remove ${rowLabel} from shopping list`}
-                              testID={`shopping-swipe-delete-${group.key}`}
-                            >
-                              <Trash2 size={22} color={colors.destructiveForeground} />
-                              <Text style={{ color: colors.destructiveForeground, fontSize: 11, fontWeight: "700", marginTop: 4 }}>
-                                Delete
-                              </Text>
-                            </PressableScale>
-                          </View>
-                        )}
-                      >
-                      <Pressable
-                        style={styles.itemRow}
-                        onPress={() => {
-                          for (const item of group.items) {
-                            if (allChecked) {
-                              if (item.checked) toggleItem(item.id);
-                            } else if (!item.checked) {
-                              toggleItem(item.id);
+                      style={
+                        densityV1
+                          ? {
+                              ...Type.bodyLarge,
+                              fontWeight: "700",
+                              color: colors.text,
                             }
-                          }
-                        }}
-                        onLongPress={() => {
-                          Alert.alert(
-                            group.items.length > 1 ? "Shopping item" : rowLabel,
-                            group.items.length > 1
-                              ? `"${rowLabel}" (${group.items.length} rows)`
-                              : undefined,
-                            [
-                              { text: "Cancel", style: "cancel" },
-                              {
-                                text: "Always on hand",
-                                onPress: () => {
-                                  void markGroupAsStaple(group);
-                                },
-                              },
-                              {
-                                text: "Remove",
-                                style: "destructive",
-                                onPress: () => {
-                                  for (const item of group.items) removeItem(item.id);
-                                },
-                              },
-                            ],
-                          );
+                          : styles.categoryTitle
+                      }
+                    >
+                      {section.name}
+                    </Text>
+                    {!densityV1 ? (
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          fontWeight: "700",
+                          color: colors.textSecondary,
+                          letterSpacing: 0.5,
+                          fontVariant: ["tabular-nums"],
                         }}
                       >
-                        <View
-                          style={[
-                            styles.checkbox,
-                            allChecked && styles.checkboxChecked,
-                          ]}
-                        >
-                          {allChecked && <Check size={14} color={colors.primaryForeground} strokeWidth={3} />}
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text
-                            style={[
-                              styles.itemName,
-                              allChecked && styles.itemChecked,
-                            ]}
-                          >
-                            {rowLabel}
-                          </Text>
-                          {fromLabel ? (
-                            <Text style={styles.itemFrom}>{fromLabel}</Text>
-                          ) : null}
-                          {attributedMember ? (
-                            <View
-                              testID={`shopping-attribution-${group.key}`}
-                              style={[
-                                styles.attributionChip,
-                                { alignSelf: "flex-start" },
-                              ]}
-                            >
-                              <View
-                                style={[
-                                  styles.attributionInitials,
-                                  {
-                                    backgroundColor: householdMemberAccent(
-                                      attributedMember.index,
-                                    ),
-                                  },
-                                ]}
-                              >
-                                <Text style={styles.attributionText}>
-                                  {householdMemberInitials(
-                                    attributedMember.displayName,
-                                  )}
-                                </Text>
-                              </View>
-                              <Text style={styles.attributionLabel}>
-                                {householdMemberFirstName(
-                                  attributedMember.displayName,
-                                )}{" "}
-                                checked
-                              </Text>
-                            </View>
-                          ) : null}
-                        </View>
-                      </Pressable>
-                      </Swipeable>
-                    );
-                  })}
+                        {sectionChecked}/{sectionTotal}
+                      </Text>
+                    ) : null}
+                  </View>
+                  {section.groups.map((group: ShoppingDisplayGroup) => (
+                    <ShoppingListGroupRow
+                      key={group.key}
+                      group={group}
+                      densityV1={densityV1}
+                      householdActive={household?.household != null}
+                      memberById={memberById}
+                      accent={accent}
+                      colors={colors}
+                      styles={styles}
+                      onToggle={(g, allChecked) => {
+                        for (const item of g.items) {
+                          if (allChecked) {
+                            if (item.checked) toggleItem(item.id);
+                          } else if (!item.checked) {
+                            toggleItem(item.id);
+                          }
+                        }
+                      }}
+                      onRemove={(g) => {
+                        for (const item of g.items) removeItem(item.id);
+                      }}
+                      onMarkStaple={(g) => {
+                        void markGroupAsStaple(g);
+                      }}
+                    />
+                  ))}
                 </View>
               );
             })}
