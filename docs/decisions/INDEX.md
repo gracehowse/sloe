@@ -9,10 +9,13 @@
   Generator: scripts/generate-decisions-index.mjs (ENG-1370)
 -->
 
-353 decision docs, newest first. Generated 2026-07-22.
+357 decision docs, newest first. Generated 2026-07-23.
 
 | Date | Decision | Summary |
 |------|----------|---------|
+| 2026-07-22 | [ENG-1667 — Deterministic placeholder identity (ENG-1374 layer 2)](./2026-07-22-eng-1667-placeholder-identity.md) | Layer 2 of the imagery epic freezes **per-recipe-ID** placeholder identity: |
+| 2026-07-22 | [Web streak pip — always show at 0-day (mobile parity, ENG-1657)](./2026-07-22-eng1657-streak-pip-zero-day-web-parity.md) | **Match mobile.** Web shows the Today header `StreakPip` at 0-day streak (calm-streak posture) behind `streak_pip_zero_day_web_v1`: |
+| 2026-07-22 | [Full backlog decision pack (Wave 1 defaults)](./2026-07-22-full-backlog-decision-pack.md) | Batch the open product calls that block Waves 2–8 so agents implement against one ratified pack instead of re-asking per ticket. Defaults below are **in force for implementation** unless Grace comments an override on the… |
 | 2026-07-21 | ["Copy to another day" — replacing the instant Today-slot relog](./2026-07-21-copy-to-another-day.md) | The 2026-05-30 decision shipped a one-tap **"Log this/these again"** row under a populated Today slot that instantly re-inserted the slot's entries as fresh logs on the viewed day. It rode in flag-OFF precisely because t… |
 | 2026-07-21 | [Web core-screen page gutter — converge onto `.product-shell` (ENG-1629)](./2026-07-21-eng1629-web-gutter-convergence.md) | `Targets.tsx` and `RecipeDetail.tsx` converge their page gutter onto `.product-shell`'s composition (`src/styles/theme.css`) behind a new flag, `web_gutter_convergence_v1`: |
 | 2026-07-21 | [Log-sheet session tray — immediate-commit multi-add (ENG-1643)](./2026-07-21-log-session-tray-immediate-commit.md) | Today a multi-item meal (e.g. a 4-item dinner) costs **four full sheet-open → search → pick → confirm → close cycles**: the S13 confirmation's only forward exit closes the whole sheet (`TodayScreen.tsx` `presentLogSheetC… |

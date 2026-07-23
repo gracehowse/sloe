@@ -104,11 +104,15 @@ export function TodayDateHeader({
       </div>
     );
   }
+  // ENG-1657 — match mobile calm-streak posture: show the pip at 0-day
+  // when `streak_pip_zero_day_web_v1` is ON. Flag OFF keeps the legacy
+  // web gate (≥ 2 days only).
+  const streakPipZeroDayWeb = isFeatureEnabled("streak_pip_zero_day_web_v1");
   const showStreakPip =
     viewMode === "day" &&
     isToday &&
     typeof streakDays === "number" &&
-    streakDays >= 2;
+    (streakPipZeroDayWeb ? streakDays >= 0 : streakDays >= 2);
   const titleText =
     viewMode === "week" ? "This week" : formatDateLabel(selectedDate);
 

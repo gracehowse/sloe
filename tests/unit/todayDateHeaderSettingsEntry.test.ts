@@ -76,3 +76,17 @@ describe("TodayDateHeader — streak-reset supportive line (web, ENG-1504 mobile
     expect(trackerSrc).toMatch(/streakResetCopyVisible=\{streakJustReset\}/);
   });
 });
+
+describe("TodayDateHeader — streak pip zero-day gate (web, ENG-1657 mobile parity)", () => {
+  const headerSrc = readFileSync(
+    resolve(REPO, "src/app/components/suppr/today-date-header.tsx"),
+    "utf-8",
+  );
+
+  it("gates showStreakPip behind streak_pip_zero_day_web_v1 (OFF → ≥2 days)", () => {
+    expect(headerSrc).toContain('isFeatureEnabled("streak_pip_zero_day_web_v1")');
+    expect(headerSrc).toMatch(
+      /streakPipZeroDayWeb \? streakDays >= 0 : streakDays >= 2/,
+    );
+  });
+});

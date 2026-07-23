@@ -10,24 +10,25 @@ import { Flame, Shield } from "lucide-react";
  * Rationale (D-2026-04-27-07):
  *   "Streak shrinks to a pip; weekly recap stays as Sunday card,
  *    demoted from primary retention."
+ *   "Streaks are the laziest retention loop in tracker design — they
+ *    generate adherence guilt and don't differentiate."
  *
- * The pip is intentionally restrained. Replaces the previous streak
- * ribbon and the inline streak chip with emoji glyph. Per V-4 in the
- * production design spec, lucide `Flame` is the canonical glyph.
+ * The pip is intentionally restrained: 22pt high, lucide `Flame`
+ * glyph, tabular-nums label, no celebration. It replaces the previous
+ * streak ribbon and the inline streak chip (which carried emoji 🔥
+ * historically). Per V-4 in the production design spec, lucide `Flame`
+ * is the canonical glyph.
  *
- * Streak < 2 renders the pip in muted neutral; ≥ 2 turns primary.
- * A 0-day streak with no freeze protection renders nothing (empty-state
- * suppressed — `premium-sweep-v2-p0-t26` collapsed permanently on,
- * ENG-1651). A 0-day streak WITH freeze protection still renders.
+ * Dropping to zero or 1 day still renders the pip (so first-time users
+ * see the surface and understand what it tracks); the colour stays
+ * neutral until the streak ≥ 2. We do NOT hide a 0-day streak — the
+ * pip's persistent presence is part of the calm-streak posture.
  *
- * KNOWN WEB/MOBILE DIVERGENCE (flagged, not silently left — ENG-1651):
- * mobile's `apps/mobile/components/today/StreakPip.tsx` explicitly does
- * the opposite — it documents "we do NOT hide a 0-day streak — the
- * pip's persistent presence is part of the calm-streak posture." This
- * predates the flag collapse (the flag was always web-only), so
- * collapsing it just removed the only mechanism that could have
- * reverted web back to mobile's behavior. Whether these two should
- * actually match is an open product question, not resolved here.
+ * Host visibility: `TodayDateHeader` mounts the pip on today's day
+ * view when `streak_pip_zero_day_web_v1` is ON (ENG-1657, default-OFF)
+ * for any non-negative streak count, or when the flag is OFF only at
+ * `streakDays >= 2` (legacy web gate). The component itself always
+ * renders when mounted.
  *
  * 2026-05-12 (premium-bar audit web parity, DC8 polish):
  *   - `freezeProtected` swaps the Flame → Shield + calm slate when a
@@ -36,6 +37,8 @@ import { Flame, Shield } from "lucide-react";
  *     destination supplied by the host).
  *   - `size` lifts the pill to 28pt for headline placements (e.g.
  *     above the weekly recap card).
+ *
+ * Shape mirrored on mobile at `apps/mobile/components/today/StreakPip.tsx`.
  */
 export interface StreakPipProps {
   /** Current consecutive logging-day count. Always non-negative. */
