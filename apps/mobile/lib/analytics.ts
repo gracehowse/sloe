@@ -363,6 +363,12 @@ export function reset(): void {
  *   validation landed in this change (see
  *   docs/decisions/2026-07-19-fits-your-day-verdict-chip.md); flag-off keeps
  *   the SOLID banner as the kill switch. Keep in sync with web.
+ * - `streak_pip_zero_day_web_v1` (ENG-1657) — web Today date header
+ *   shows the streak pip at 0-day (mobile calm-streak posture). DEFAULT-OFF:
+ *   flag-off keeps the legacy ≥2-day mount gate on web; flag-on mounts the
+ *   pip for any non-negative streak count. WEB-ONLY in practice (mobile
+ *   already always renders the pip when mounted). Keep in sync with
+ *   src/lib/analytics/track.ts registry.
  * - `avatar_monogram_frost_ring_v1` (ENG-1593) — the persistent user/
  *   household identity monogram (Today header, Profile identity card) in
  *   Rule 7's serif-initial + frost-ring treatment
@@ -910,6 +916,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "meal_share_manage_v1", // ENG-1648 — Settings "My shared links" list + revoke; off = section hidden (kill switch). Web + mobile.
   "in_app_help_import_v1", // ENG-1597 — contextual "?" hints on Import→Verify→Save; off = hidden (kill switch). Web + mobile.
   "today_date_header_serif_v1", // ENG-1505 — compact date-header title converges Type.headline → Type.title (serif-24 tab-title voice, web parity); off = legacy Type.headline (kill switch). Mobile-only in practice; web already ships serif-24 un-gated. Keep in sync with src/lib/analytics/track.ts.
+  "streak_pip_zero_day_web_v1", // ENG-1657 — web Today header shows streak pip at 0-day (mobile parity); off = legacy ≥2-day gate (kill switch). WEB-ONLY. Keep in sync with src/lib/analytics/track.ts.
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

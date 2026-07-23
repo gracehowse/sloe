@@ -237,6 +237,33 @@ AI-cost or "AI broke → blank" risk to ramp around.
 | Ramp | Flip flag → 100% | One tester (Grace); no cohort split needed. |
 | Cleanup | After 2 weeks at 100% with no regression | Remove the gate, keep the default-toast `else` branch as the fallback. |
 
+### `streak_pip_zero_day_web_v1` (ENG-1657)
+
+| Property | Value |
+| --- | --- |
+| Flag ID | _create in PostHog before ramp_ |
+| Type | Boolean |
+| Platforms | Web only (mobile already shows the pip at 0-day when mounted) |
+| Owner | Grace |
+| Decision doc | [2026-07-22-eng1657-streak-pip-zero-day-web-parity](../decisions/2026-07-22-eng1657-streak-pip-zero-day-web-parity.md) |
+
+Gates whether the web Today date header mounts `StreakPip` at 0-day /
+1-day streak (mobile calm-streak posture). Flag ON → mount for any
+non-negative streak count on today's day view. Flag OFF → legacy web gate
+(`streakDays >= 2` only). The primitive always renders when mounted; only
+the header mount rule changes.
+
+Default OFF until ramped — a cold/missing client resolves
+`isFeatureEnabled("streak_pip_zero_day_web_v1")` to `false`.
+
+#### Ramp schedule
+
+| Phase | Action | Why |
+| --- | --- | --- |
+| Pre-ramp | Create the PostHog row; validate flag-on pixels on web (`web-drive`) with 0-day and 1-day fresh-user states (light + dark) | Showing a previously-hidden pip is a visual change — validate before ramp. |
+| Ramp | Internal (Grace) → 100% | One tester; no cohort split needed. |
+| Cleanup | After 2 weeks at 100% with no regression | Remove the gate + legacy ≥2-day branch; keep the row as an emergency kill switch. |
+
 ### `progress_hierarchy_v1` (ENG-1525)
 
 | Property | Value |
