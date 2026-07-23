@@ -19,6 +19,10 @@ Canonical skip list: [`scripts/storybook-coverage-skips.json`](../../scripts/sto
 ## Pipeline
 
 - Web + mobile share one Storybook (`.storybook/main.ts` → RN-web aliases + stubs).
+- Preview wraps every story in `SafeAreaProvider` with static `initialMetrics`
+  (`.storybook/stubs/safe-area-metrics.ts`); `MobileStoryThemeProvider` does the
+  same so mobile stories that call `useSafeAreaInsets` work under Vitest/RN-web
+  without nesting a metrics-less provider (that still throws).
 - PR CI: coverage ratchet → `build-storybook` → Chromatic library publish + curated snapshots → vitest.
 - Playwright Chromatic (shell E2E archives) remains a separate workflow.
 
