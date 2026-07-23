@@ -917,6 +917,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "in_app_help_import_v1", // ENG-1597 — contextual "?" hints on Import→Verify→Save; off = hidden (kill switch). Web + mobile.
   "today_date_header_serif_v1", // ENG-1505 — compact date-header title converges Type.headline → Type.title (serif-24 tab-title voice, web parity); off = legacy Type.headline (kill switch). Mobile-only in practice; web already ships serif-24 un-gated. Keep in sync with src/lib/analytics/track.ts.
   "streak_pip_zero_day_web_v1", // ENG-1657 — web Today header shows streak pip at 0-day (mobile parity); off = legacy ≥2-day gate (kill switch). WEB-ONLY. Keep in sync with src/lib/analytics/track.ts.
+  "ui_anatomy_owners_v1", // ENG-1665 — Plan-first anatomy owner migrations (SheetShell, CountBadge, StepperCircleButton on Plan surfaces); off = legacy hand-rolled chrome (kill switch). Web + mobile.
 ] as const;
 
 /** Read a PostHog feature flag synchronously. Returns `false` when

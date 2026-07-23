@@ -38,10 +38,12 @@ product roles** (provenance vs TDEE vs search-result tier) but share geometry vi
 radio → `SupprRadio`; `PlanEmptyWeekCard` → `SupprNotice`; `ServingStepper` /
 `PortionStepper` / `MobileNumberStepper` ± circles → `StepperCircleButton`.
 
-**ENG-1665 Plan-first slice (this wave):** `planner.tsx` chip-sheet grabbers →
-`SheetGrabberBar` (ENG-1662 owner). Remaining Plan hand-rolled sheets should
-migrate onto full `SheetShell` in follow-up PRs; shrink `check:anatomy` pins as
-each surface recomposes.
+**ENG-1665 Plan-first slice (this wave):** `AdjustConstraintsSheet` → `SheetShell` +
+`StepperCircleButton`; `PlanSourceSelector` count pills → `CountBadge` — all behind
+`ui_anatomy_owners_v1` (legacy hand-rolled chrome in `AdjustConstraintsSheet.legacy.tsx`
+when flag is off). `planner.tsx` chip-sheet grabbers already use `SheetGrabberBar`;
+remaining Plan hand-rolled sheets (`PlanTemplatesSheet`, chip-sheet scrims) migrate onto
+full `SheetShell` in follow-up PRs; shrink `check:anatomy` pins as each surface recomposes.
 
 **Remaining sweep:** migrate remaining hand-rolled sheet grabbers
 (~17 mobile surfaces after Plan slice) and icon-button literals to `SheetShell` /
