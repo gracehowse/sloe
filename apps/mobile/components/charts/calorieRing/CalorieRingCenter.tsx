@@ -1,6 +1,6 @@
 import { Text } from "react-native";
 import { PostHogMaskView } from "posthog-react-native";
-import { Type } from "@/constants/theme";
+import { Spacing, Type } from "@/constants/theme";
 
 export type CalorieRingCenterProps = {
   animatedCenterValue: number;
@@ -38,7 +38,7 @@ export function CalorieRingCenter({
         style={{
           ...Type.label,
           color: textColor,
-          marginTop: 1,
+          marginTop: Spacing.xs,
         }}
       >
         {centerLabel}
@@ -49,7 +49,7 @@ export function CalorieRingCenter({
             style={{
               ...Type.caption,
               color: secondaryColor,
-              marginTop: 1,
+              marginTop: Spacing.xs,
               fontVariant: ["tabular-nums"],
             }}
           >

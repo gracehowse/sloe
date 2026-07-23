@@ -62,7 +62,7 @@ export function TodayWeekScrubTooltip({
           borderColor: borderColor,
           backgroundColor: cardColor,
           minWidth: 140,
-          gap: 2,
+          gap: Spacing.xs,
         }}
       >
         <Text style={{ fontSize: 12, fontWeight: "700", color: textColor }}>{day.short}</Text>
