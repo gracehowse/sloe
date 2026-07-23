@@ -304,6 +304,18 @@
         "reason": "Skia-only"
       },
       {
+        "file": "apps/mobile/components/charts/calorieRing/CalorieRingCenter.tsx",
+        "reason": "Skia-only CalorieRing subcomponent; covered by CalorieRing owner"
+      },
+      {
+        "file": "apps/mobile/components/charts/calorieRing/CalorieRingMacroRing.tsx",
+        "reason": "Skia-only CalorieRing subcomponent; covered by CalorieRing owner"
+      },
+      {
+        "file": "apps/mobile/components/charts/calorieRing/CalorieRingSvgArcs.tsx",
+        "reason": "Skia-only CalorieRing subcomponent; covered by CalorieRing owner"
+      },
+      {
         "file": "apps/mobile/components/charts/SkiaRingArcs.tsx",
         "reason": "Skia-only"
       },
@@ -414,6 +426,10 @@
       {
         "file": "apps/mobile/components/paywall/TrialEndReminderPaywallBlock.tsx",
         "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/plan/AdjustConstraintsSheet.legacy.tsx",
+        "reason": "flag-off legacy chrome for ui_anatomy_owners_v1; SheetShell path is the owner"
       },
       {
         "file": "apps/mobile/components/plan/PlanV3Surface.tsx",
@@ -562,6 +578,14 @@
       {
         "file": "apps/mobile/components/today/TodayMealsSection.tsx",
         "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/today/TodayWeekCalorieChart.tsx",
+        "reason": "landed on main after ENG-1662 Storybook baseline; explicit skip until ENG-1666 story"
+      },
+      {
+        "file": "apps/mobile/components/today/TodayWeekScrubTooltip.tsx",
+        "reason": "landed on main after ENG-1662 Storybook baseline; explicit skip until ENG-1666 story"
       },
       {
         "file": "apps/mobile/components/today/onboarding-nudges/OnboardingNudgeBanner.tsx",
