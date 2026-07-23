@@ -17,14 +17,42 @@
 import * as React from "react";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, render } from "@testing-library/react";
 
+const { isFeatureEnabledSpy } = vi.hoisted(() => ({
+  isFeatureEnabledSpy: vi.fn((_flag: string) => false),
+}));
+
+vi.mock("../../src/lib/analytics/track", () => ({
+  track: vi.fn(),
+  isFeatureEnabled: isFeatureEnabledSpy,
+}));
+
 import { PlanSourceSelector } from "../../src/app/components/PlanSourceSelector";
+import { UI_ANATOMY_OWNERS_V1 } from "../../src/lib/uiAnatomyOwners";
 
 void React;
 
 describe("PlanSourceSelector (web, ENG-790)", () => {
+  beforeEach(() => {
+    isFeatureEnabledSpy.mockReset();
+    isFeatureEnabledSpy.mockImplementation(() => false);
+  });
+
+  it("renders CountBadge when ui_anatomy_owners_v1 is on (ENG-1665)", () => {
+    isFeatureEnabledSpy.mockImplementation((flag) => flag === UI_ANATOMY_OWNERS_V1);
+    const { getByTestId } = render(
+      <PlanSourceSelector
+        mode="library"
+        onChange={vi.fn()}
+        libraryCount={2}
+        discoverCount={5}
+      />,
+    );
+    expect(getByTestId("plan-source-count-library")).toBeTruthy();
+  });
+
   it("renders the three source rows with the right titles and counts", () => {
     const { getByText, getByLabelText } = render(
       <PlanSourceSelector

@@ -1,6 +1,9 @@
 "use client";
 
 import { SupprRadio } from "./ui/suppr-radio";
+import { CountBadge } from "./ui/count-badge";
+import { isFeatureEnabled } from "@/lib/analytics/track";
+import { UI_ANATOMY_OWNERS_V1 } from "@/lib/uiAnatomyOwners";
 import {
   type PlanSourceMode,
   PLAN_SOURCE_MODES,
@@ -9,29 +12,14 @@ import {
 } from "../../lib/planning/planSource.ts";
 
 /**
- * ENG-790 (2026-05-31) — "Plan from" source selector for the web Plan tab,
- * gated behind `plan_source_selector` at the call site
- * (`src/app/components/MealPlanner.tsx`).
- *
- * Web twin of `apps/mobile/components/plan/PlanSourceSelector.tsx`. Three
- * radio rows let the user choose where a generated plan draws recipes from:
- * their saved library, library + Suppr's discover pool (default), or
- * discovery only. Row copy + the count maths come from the shared
- * `@/lib/planning/planSource` helper so the two platforms can't drift on
- * wording or totals — the same helper also builds the pool and gates the
- * generate action, closing the pre-ENG-790 gap where web pooled saved-only
- * and mobile pooled saved+discover.
- *
- * Presentational only — the mode lives as state in `MealPlanner.tsx`; this
- * renders + reports taps. testIDs / aria mirror the mobile component so one
- * shared-shape test can cover both.
+ * ENG-790 — "Plan from" source selector for the web Plan tab.
+ * ENG-1665: count pills migrate to `CountBadge` when `ui_anatomy_owners_v1`
+ * is on; legacy inline badge when off.
  */
 export interface PlanSourceSelectorProps {
   mode: PlanSourceMode;
   onChange: (mode: PlanSourceMode) => void;
-  /** Count of recipes the user has saved (the "My library" pool). */
   libraryCount: number;
-  /** Count of discover recipes not already in the library (the "Discovery" pool). */
   discoverCount: number;
 }
 
@@ -41,6 +29,8 @@ export function PlanSourceSelector({
   libraryCount,
   discoverCount,
 }: PlanSourceSelectorProps) {
+  const anatomyOwners = isFeatureEnabled(UI_ANATOMY_OWNERS_V1);
+
   return (
     <div data-testid="plan-source-selector">
       <span className="text-[11px] uppercase tracking-[0.1em] font-bold text-muted-foreground">
@@ -74,16 +64,20 @@ export function PlanSourceSelector({
                   <span className="text-[13px] font-bold text-foreground">
                     {meta.title}
                   </span>
-                  <span
-                    className={[
-                      "rounded-full px-[7px] py-[1px] text-[11px] font-bold tabular-nums",
-                      selected
-                        ? "bg-card text-foreground"
-                        : "bg-muted text-muted-foreground",
-                    ].join(" ")}
-                  >
-                    {count}
-                  </span>
+                  {anatomyOwners ? (
+                    <CountBadge count={count} active={selected} data-testid={`plan-source-count-${m}`} />
+                  ) : (
+                    <span
+                      className={[
+                        "rounded-full px-[7px] py-[1px] text-[11px] font-bold tabular-nums",
+                        selected
+                          ? "bg-card text-foreground"
+                          : "bg-muted text-muted-foreground",
+                      ].join(" ")}
+                    >
+                      {count}
+                    </span>
+                  )}
                 </span>
                 <span className="mt-0.5 block text-[11.5px] leading-4 text-muted-foreground">
                   {empty ? meta.emptySubtitle : meta.subtitle}

@@ -760,6 +760,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "in_app_help_import_v1", // ENG-1597 — contextual "?" hints on Import→Verify→Save; off = hidden (kill switch). Web + mobile.
   "today_date_header_serif_v1", // ENG-1505 — MOBILE-ONLY: compact date-header title serif-24 (Type.title); web already ships serif-24 un-gated. Registered here for KNOWN_DEFAULT_OFF_FLAGS parity. Keep in sync with apps/mobile/lib/analytics.ts.
   "streak_pip_zero_day_web_v1", // ENG-1657 — web Today header shows streak pip at 0-day (mobile parity); off = legacy ≥2-day gate (kill switch). WEB-ONLY. Keep in sync with apps/mobile/lib/analytics.ts.
+  "ui_anatomy_owners_v1", // ENG-1665 — Plan-first anatomy owner migrations (SheetShell, CountBadge, StepperCircleButton on Plan surfaces); off = legacy hand-rolled chrome (kill switch). Web + mobile.
 ] as const;
 
 export function isFeatureEnabled(flag: string): boolean {
