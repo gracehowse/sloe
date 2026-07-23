@@ -11,6 +11,15 @@
  * Mock the clock with fake timers so TTL + window-rollover are deterministic.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// ENG-1412 — `vi.hoisted` so this `const` is initialised before `vi.mock`'s
+// factory runs (both are hoisted above the static `vendorSearchCache` import
+// below, so the mock is installed before that module's own
+// `import { serverTrack } from "@/lib/analytics/serverTrack"` resolves).
+const { mockServerTrack } = vi.hoisted(() => ({ mockServerTrack: vi.fn(async () => ({ ok: true })) }));
+vi.mock("@/lib/analytics/serverTrack", () => ({ serverTrack: mockServerTrack }));
+
+import { AnalyticsEvents } from "../../src/lib/analytics/events";
 import {
   VENDOR_QUOTAS,
   QUOTA_SAFETY_FRACTION,
@@ -31,6 +40,7 @@ beforeEach(() => {
   vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
   vi.stubEnv("UPSTASH_REDIS_REST_TOKEN", "");
   _resetVendorSearchCacheForTest();
+  mockServerTrack.mockClear();
 });
 
 afterEach(() => {
@@ -228,5 +238,72 @@ describe("account-level quota guard", () => {
     // Advance past the window — counter resets, allowed again.
     vi.setSystemTime(new Date("2026-06-11T00:00:00Z").getTime() + (windowSec + 1) * 1000);
     expect((await checkQuota("usda")).allowed).toBe(true);
+  });
+});
+
+describe("vendor_search_degraded PostHog event (ENG-1412)", () => {
+  it("does NOT fire while a vendor is still within budget", async () => {
+    await checkQuota("edamam");
+    await consumeQuota("edamam");
+    expect(mockServerTrack).not.toHaveBeenCalled();
+  });
+
+  it("fires with guard:'consume' the moment consumeQuota trips the guard, tagged with the vendor", async () => {
+    const { cap } = VENDOR_QUOTAS.fatsecret;
+    const trip = Math.floor(cap * QUOTA_SAFETY_FRACTION);
+    for (let i = 0; i < trip; i++) await consumeQuota("fatsecret");
+    expect(mockServerTrack).not.toHaveBeenCalled();
+
+    const over = await consumeQuota("fatsecret");
+    expect(over.allowed).toBe(false);
+
+    expect(mockServerTrack).toHaveBeenCalledTimes(1);
+    expect(mockServerTrack).toHaveBeenCalledWith(
+      AnalyticsEvents.vendor_search_degraded,
+      "system:vendor_quota",
+      expect.objectContaining({
+        vendor: "fatsecret",
+        reason: "quota_exhausted",
+        guard: "consume",
+        used: trip + 1,
+        cap,
+      }),
+    );
+  });
+
+  it("fires with guard:'check' when a pre-flight checkQuota rejects an already-exhausted vendor", async () => {
+    // checkQuota trips on `used >= trip` (a hair more conservative than
+    // consumeQuota's post-increment `used > trip`) — so exactly `trip` prior
+    // consumes is already enough to make the NEXT checkQuota reject.
+    const { cap } = VENDOR_QUOTAS.usda;
+    const trip = Math.floor(cap * QUOTA_SAFETY_FRACTION);
+    for (let i = 0; i < trip; i++) await consumeQuota("usda");
+    mockServerTrack.mockClear(); // drop the consumeQuota-side calls up to this point
+
+    const rejected = await checkQuota("usda");
+    expect(rejected.allowed).toBe(false);
+    expect(mockServerTrack).toHaveBeenCalledTimes(1);
+    expect(mockServerTrack).toHaveBeenCalledWith(
+      AnalyticsEvents.vendor_search_degraded,
+      "system:vendor_quota",
+      expect.objectContaining({ vendor: "usda", reason: "quota_exhausted", guard: "check" }),
+    );
+  });
+
+  it("tags every vendor correctly, not just Edamam — the audit's PRA-011 finding covered all three keyed vendors", async () => {
+    for (const vendor of ["usda", "edamam", "fatsecret", "off"] as const) {
+      mockServerTrack.mockClear();
+      _resetVendorSearchCacheForTest();
+      const { cap } = VENDOR_QUOTAS[vendor];
+      const trip = Math.floor(cap * QUOTA_SAFETY_FRACTION);
+      for (let i = 0; i < trip; i++) await consumeQuota(vendor);
+      await consumeQuota(vendor); // trips it
+
+      expect(mockServerTrack).toHaveBeenCalledWith(
+        AnalyticsEvents.vendor_search_degraded,
+        "system:vendor_quota",
+        expect.objectContaining({ vendor }),
+      );
+    }
   });
 });

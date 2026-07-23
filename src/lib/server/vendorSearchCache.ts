@@ -11,7 +11,9 @@
  * users share:
  *
  *   - Edamam free tier: 1,000 requests / DAY, account-wide.
- *   - USDA FDC standard key: ~1,000 requests / HOUR.
+ *   - USDA FDC standard key: 1,000 requests / HOUR per IP (re-verified
+ *     2026-07-22 against USDA's own published limit — see VENDOR_QUOTAS
+ *     below for the source).
  *   - FatSecret Premier Free: 10,000 requests / day (generous, but still
  *     a shared ceiling — and the OAuth token endpoint is itself metered).
  *
@@ -51,6 +53,9 @@
  * Decision doc: docs/decisions/2026-06-11-vendor-search-cache.md
  */
 
+import { AnalyticsEvents } from "@/lib/analytics/events";
+import { serverTrack } from "@/lib/analytics/serverTrack";
+
 import { __setUpstashRedisForTests, getRedis } from "./upstashClient";
 
 import { recordUpstashFailure } from "./upstashMonitoring";
@@ -70,18 +75,31 @@ export type CacheLocale = string;
  * starts hard-rejecting (which would surface as errors, not a clean skip).
  *
  * Confidence on the exact numbers: Edamam 1,000/day is documented in
- * `src/lib/edamam/client.ts:6`. USDA ~1,000/hr is the standard-key default
- * (DEMO_KEY is far lower). FatSecret Premier Free is 10,000/day. If we move
- * to a paid tier, bump the cap here — the guard logic is unchanged.
+ * `src/lib/edamam/client.ts:6`. USDA 1,000/hr per IP is confirmed against
+ * USDA's own published limit (ENG-1412, re-verified 2026-07-22): "FoodData
+ * Central currently limits the number of API requests to a default rate of
+ * 1,000 requests per hour per IP address" —
+ * https://fdc.nal.usda.gov/api-guide/ — DEMO_KEY is far lower (30/hr,
+ * 50/day) but we use a registered `USDA_FDC_API_KEY`, not DEMO_KEY, so the
+ * standard 1,000/hr applies. The configured cap already matched the
+ * documented limit exactly; no change was needed. FatSecret Premier Free is
+ * 10,000/day. If we move Edamam to a paid tier, bump `edamam.cap` below
+ * (env-free — this object is the single source of truth) — the guard logic
+ * is unchanged.
  */
 export const VENDOR_QUOTAS: Record<
   VendorId,
   { cap: number; windowSec: number; label: string }
 > = {
-  // 1,000/day account-wide free tier.
+  // 1,000/day account-wide free tier. ENG-1412: bump this `cap` (and the
+  // `label` string) the day Grace's Edamam paid-tier upgrade goes live —
+  // this is the only line that needs to change.
   edamam: { cap: 1000, windowSec: 24 * 60 * 60, label: "Edamam (1,000/day)" },
-  // ~1,000/hour standard key.
-  usda: { cap: 1000, windowSec: 60 * 60, label: "USDA FDC (~1,000/hr)" },
+  // 1,000/hour per IP — USDA's own documented default rate limit for a
+  // registered (non-DEMO_KEY) key. Re-verified 2026-07-22 against
+  // https://fdc.nal.usda.gov/api-guide/ (ENG-1412); the previously-configured
+  // value already matched.
+  usda: { cap: 1000, windowSec: 60 * 60, label: "USDA FDC (1,000/hr)" },
   // 10,000/day Premier Free.
   fatsecret: { cap: 10000, windowSec: 24 * 60 * 60, label: "FatSecret (10,000/day)" },
   // ENG-1059 — OFF has no keyed account cap, but our proxy must not hammer the
@@ -366,6 +384,33 @@ export type QuotaDecision =
   | { allowed: false; used: number; cap: number; reason: "quota_exhausted" };
 
 /**
+ * ENG-1412 — fire the PostHog dashboard signal for a tripped quota guard.
+ * Called from BOTH `checkQuota` and `consumeQuota` below whenever either
+ * returns `allowed: false`, for every vendor (not just Edamam) — this is the
+ * single chokepoint all six vendor search/detail routes call through, so no
+ * per-route wiring is needed to get full coverage.
+ *
+ * Fire-and-forget, same posture as `recordUpstashFailure`: analytics must
+ * never affect the fail-open quota decision the caller already made, and
+ * must never throw into a request path that's mid-degrade.
+ */
+function recordVendorQuotaDegraded(
+  vendor: VendorId,
+  guard: "check" | "consume",
+  decision: Extract<QuotaDecision, { allowed: false }>,
+): void {
+  void serverTrack(AnalyticsEvents.vendor_search_degraded, "system:vendor_quota", {
+    vendor,
+    reason: decision.reason,
+    used: decision.used,
+    cap: decision.cap,
+    guard,
+  }).catch(() => {
+    // Best-effort metric emission; the quota decision itself is unaffected.
+  });
+}
+
+/**
  * Check whether a vendor still has account-wide quota in the current window
  * WITHOUT consuming it. Cheap read used to decide "should I even try the
  * vendor, or skip straight to the next source?". A read failure returns
@@ -378,7 +423,9 @@ export async function checkQuota(vendor: VendorId): Promise<QuotaDecision> {
   const trip = Math.floor(cap * QUOTA_SAFETY_FRACTION);
   const used = await readQuotaCount(vendor);
   if (used >= trip) {
-    return { allowed: false, used, cap, reason: "quota_exhausted" };
+    const decision = { allowed: false, used, cap, reason: "quota_exhausted" } as const;
+    recordVendorQuotaDegraded(vendor, "check", decision);
+    return decision;
   }
   return { allowed: true, used, cap };
 }
@@ -416,7 +463,9 @@ export async function consumeQuota(vendor: VendorId): Promise<QuotaDecision> {
         await redis.expire(key, windowSec);
       }
       if (used > trip) {
-        return { allowed: false, used, cap, reason: "quota_exhausted" };
+        const decision = { allowed: false, used, cap, reason: "quota_exhausted" } as const;
+        recordVendorQuotaDegraded(vendor, "consume", decision);
+        return decision;
       }
       return { allowed: true, used, cap };
     }
@@ -431,7 +480,14 @@ export async function consumeQuota(vendor: VendorId): Promise<QuotaDecision> {
     existing.count += 1;
     store.set(key, existing);
     if (existing.count > trip) {
-      return { allowed: false, used: existing.count, cap, reason: "quota_exhausted" };
+      const decision = {
+        allowed: false,
+        used: existing.count,
+        cap,
+        reason: "quota_exhausted",
+      } as const;
+      recordVendorQuotaDegraded(vendor, "consume", decision);
+      return decision;
     }
     return { allowed: true, used: existing.count, cap };
   } catch (err) {

@@ -1274,6 +1274,29 @@ export const AnalyticsEvents = {
    *  never read by any caller) — a logged meal could vanish with no
    *  telemetry at all. Payload: `{ droppedCount, dropQueue, platform }`. */
   journal_write_queue_drop: "journal_write_queue_drop",
+  /** ENG-1412 — a food-vendor account-wide quota guard tripped
+   *  (`checkQuota` / `consumeQuota` in `src/lib/server/vendorSearchCache.ts`
+   *  returned `allowed: false`). Fires for EVERY keyed vendor (USDA,
+   *  Edamam, FatSecret; the unkeyed OFF proxy guard too), not just Edamam —
+   *  the vendor waterfall silently narrows to the next source whenever this
+   *  fires, so it's the dashboard signal that used to only exist in server
+   *  logs (`console.error` was the sole visibility before this event).
+   *  Fired server-side with distinct_id `system:vendor_quota` (mirrors
+   *  `upstash_dependency_failure`'s `system:upstash` pattern) from the
+   *  quota-guard functions themselves — the single chokepoint both search
+   *  AND detail routes for all four vendors call through, so no per-route
+   *  wiring is needed.
+   *
+   *  Payload: `{ vendor: "usda" | "edamam" | "fatsecret" | "off",
+   *  reason: "quota_exhausted", used: number, cap: number,
+   *  guard: "check" | "consume" }` — `guard` distinguishes the cheap
+   *  pre-flight rejection (`checkQuota`, the common case — skips the vendor
+   *  call entirely) from the rarer atomic-increment rejection
+   *  (`consumeQuota`, a request that raced past `checkQuota` in the same
+   *  window). Set a PostHog alert on this event (count > 0 in a rolling
+   *  window, split by `vendor`) so vendor exhaustion pages instead of
+   *  degrading silently. */
+  vendor_search_degraded: "vendor_search_degraded",
 } as const;
 
 export type AnalyticsEventName = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];
