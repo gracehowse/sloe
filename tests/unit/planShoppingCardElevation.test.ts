@@ -44,6 +44,9 @@ const MOBILE_PLANNER = read("apps/mobile/app/(tabs)/planner.tsx");
 const MOBILE_PLAN_EMPTY = read("apps/mobile/components/PlanEmptyState.tsx");
 const MOBILE_PLAN_TEMPLATES = read("apps/mobile/components/PlanTemplatesSheet.tsx");
 const MOBILE_SHOPPING = read("apps/mobile/app/shopping.tsx");
+const MOBILE_SHOPPING_CHROME = read(
+  "apps/mobile/components/shopping/ShoppingProgressChrome.tsx",
+);
 
 const CARD_ELEVATION = 'elevation="card"';
 const SOFT_VARIANT = 'useCardElevation({ variant: "soft" })';
@@ -118,9 +121,12 @@ describe("Shopping — mobile page-ground cards are FLAT (flat-card surfaces 202
   // the card fill on the cream ground is the separation.
   it("shopping cards are flat — no Elevation.cardSoft, shared flat card style", () => {
     expect(MOBILE_SHOPPING).not.toContain("...Elevation.cardSoft");
-    // The shared flat `card` style is applied to BOTH the progress card and
-    // each section card.
-    const usages = (MOBILE_SHOPPING.match(/styles\.card\b/g) ?? []).length;
+    expect(MOBILE_SHOPPING_CHROME).not.toContain("Elevation.cardSoft");
+    // The shared flat `card` style is applied to the progress card (extracted
+    // to ShoppingProgressChrome) and each section card in shopping.tsx.
+    const usages =
+      (MOBILE_SHOPPING.match(/styles\.card\b/g) ?? []).length +
+      (MOBILE_SHOPPING_CHROME.match(/styles\.card\b/g) ?? []).length;
     expect(usages).toBeGreaterThanOrEqual(2);
   });
 });

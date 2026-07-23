@@ -30,6 +30,10 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const MOBILE_SHOPPING = resolve(__dirname, "../../app/shopping.tsx");
+const MOBILE_GROUP_ROW = resolve(
+  __dirname,
+  "../../components/shopping/ShoppingListGroupRow.tsx",
+);
 const MOBILE_PLANNER = resolve(__dirname, "../../app/(tabs)/planner.tsx");
 const WEB_HOOK = resolve(
   __dirname,
@@ -38,6 +42,10 @@ const WEB_HOOK = resolve(
 const WEB_LIST = resolve(
   __dirname,
   "../../../../src/app/components/ShoppingList.tsx",
+);
+const WEB_ROW = resolve(
+  __dirname,
+  "../../../../src/app/components/shopping/ShoppingListRow.tsx",
 );
 
 describe("shopping list household scope — cross-platform parity", () => {
@@ -79,14 +87,14 @@ describe("shopping list household scope — cross-platform parity", () => {
   });
 
   it("mobile shopping renders the per-row attribution chip", () => {
-    const sql = readFileSync(MOBILE_SHOPPING, "utf8");
+    const sql = readFileSync(MOBILE_GROUP_ROW, "utf8");
     expect(sql).toMatch(/shopping-attribution-/);
     expect(sql).toMatch(/householdMemberInitials/);
     expect(sql).toMatch(/householdMemberAccent/);
   });
 
   it("web shopping renders the per-row attribution chip", () => {
-    const sql = readFileSync(WEB_LIST, "utf8");
+    const sql = readFileSync(WEB_ROW, "utf8");
     expect(sql).toMatch(/shopping-attribution-/);
     expect(sql).toMatch(/householdMemberInitials/);
     expect(sql).toMatch(/householdMemberAccent/);

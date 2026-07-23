@@ -189,10 +189,9 @@ describe("ShoppingList — Honeydew household surfacing (2026-04-30)", () => {
     // "red pepper" group.
     const chip = await screen.findByTestId(/^shopping-attribution-/);
     expect(chip).toBeInTheDocument();
-    // The chip carries the first-name label.
-    expect(chip).toHaveTextContent(/Sarah/);
-    // And the 2-letter initials inside the avatar.
+    // ENG-1669 density (default ON): initials-only chip; first name lives in title.
     expect(chip).toHaveTextContent(/SA/i);
+    expect(chip).toHaveAttribute("title", expect.stringMatching(/Sarah/));
   });
 
   it("renders the 'Shared with Sarah & Tom' banner for a 3-member household", async () => {

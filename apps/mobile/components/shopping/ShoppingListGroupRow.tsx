@@ -166,7 +166,7 @@ export function ShoppingListGroupRow({
       {showRecipeCount ? (
         <Text
           testID={`shopping-recipe-count-${group.key}`}
-          style={{ ...Type.caption, color: colors.textSecondary, marginTop: 2 }}
+          style={{ ...Type.caption, color: colors.textSecondary, marginTop: 0 }}
         >
           {recipeCountCaption}
         </Text>

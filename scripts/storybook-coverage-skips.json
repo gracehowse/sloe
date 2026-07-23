@@ -190,6 +190,10 @@
         "reason": "landed on main after ENG-1662 Storybook baseline; explicit skip until ENG-1666 story"
       },
       {
+        "file": "src/app/components/shopping/ShoppingListRow.tsx",
+        "reason": "ENG-1669 extract — covered via ShoppingList parent"
+      },
+      {
         "file": "src/app/components/shopping/ShoppingSmartSuggestions.tsx",
         "reason": "landed on main after ENG-1662 Storybook baseline; explicit skip until ENG-1666 story"
       }
@@ -514,6 +518,14 @@
       {
         "file": "apps/mobile/components/settings/WeighInReminderRow.tsx",
         "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/shopping/ShoppingListGroupRow.tsx",
+        "reason": "ENG-1669 extract — covered via ShoppingList parent"
+      },
+      {
+        "file": "apps/mobile/components/shopping/ShoppingProgressChrome.tsx",
+        "reason": "ENG-1669 extract — covered via ShoppingList parent"
       },
       {
         "file": "apps/mobile/components/shopping/ShoppingSmartSuggestions.tsx",
