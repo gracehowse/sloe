@@ -43,7 +43,7 @@ export function QuickAddTabRow({
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             accessibilityLabel={`${TAB_LABELS[t]} tab`}
-            style={{ flex: 1, paddingVertical: 6, borderRadius: Radius.sm, alignItems: "center", backgroundColor: active ? accent.primarySoft : colors.card }}
+            style={{ flex: 1, paddingVertical: 4, borderRadius: Radius.sm, alignItems: "center", backgroundColor: active ? accent.primarySoft : colors.card }}
           >
             <Text style={{ fontSize: 11, fontWeight: "700", color: active ? accent.primarySolid : colors.textSecondary }}>{TAB_LABELS[t]}</Text>
           </PressableScale>
@@ -101,11 +101,11 @@ export function QuickAddSavedMealRow({
       <SourceDot source={dominantSource} size={6} style={{ marginRight: 8 }} />
       <View style={{ flex: 1 }}>
         <Text numberOfLines={1} style={{ fontSize: 15, fontWeight: "600", color: colors.text }}>{meal.name}</Text>
-        <Text style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: 2 }}>
+        <Text style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: 0 }}>
           {itemsLabel} · {formatMacroTrailer({ calories: summary.totalCalories, protein: summary.totalProtein, carbs: summary.totalCarbs, fat: summary.totalFat })}
         </Text>
       </View>
-      <PressableScale haptic="selection" onPress={(e) => { e.stopPropagation?.(); onOpenActions(); }} hitSlop={12} accessibilityRole="button" accessibilityLabel={`More actions for ${meal.name}`} style={{ paddingHorizontal: 6 }}>
+      <PressableScale haptic="selection" onPress={(e) => { e.stopPropagation?.(); onOpenActions(); }} hitSlop={12} accessibilityRole="button" accessibilityLabel={`More actions for ${meal.name}`} style={{ paddingHorizontal: 4 }}>
         <MoreVertical size={IconSize.lg} color={colors.textSecondary} strokeWidth={2.25} />
       </PressableScale>
       <PlusCircle size={IconSize.hero} color={accent.primary} strokeWidth={2.25} />
@@ -149,16 +149,16 @@ export function QuickAddHistoryRow({
     >
       <SourceDot source={sourceKey} size={6} style={{ marginRight: 8 }} />
       <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
           <Text style={{ fontSize: 15, fontWeight: "600", color: colors.text }}>{row.recipeTitle}</Text>
           {isAi ? <Badge variant="ai" accessibilityLabel="AI estimated nutrition">AI</Badge> : null}
         </View>
-        <Text style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: 2 }}>
+        <Text style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: 0 }}>
           {formatMacroTrailer({ calories: row.calories, protein: row.protein, carbs: row.carbs, fat: row.fat })}
           {row.count > 1 ? `  ·  ${row.count}×` : ""}
         </Text>
       </View>
-      <PressableScale haptic="selection" onPress={(e) => { e.stopPropagation?.(); onToggleFavorite(); }} hitSlop={12} accessibilityRole="button" accessibilityLabel={starred ? "Unstar meal" : "Favourite this meal"} accessibilityState={{ selected: starred, disabled: pending }} style={{ paddingHorizontal: 6, opacity: pending ? 0.5 : 1 }}>
+      <PressableScale haptic="selection" onPress={(e) => { e.stopPropagation?.(); onToggleFavorite(); }} hitSlop={12} accessibilityRole="button" accessibilityLabel={starred ? "Unstar meal" : "Favourite this meal"} accessibilityState={{ selected: starred, disabled: pending }} style={{ paddingHorizontal: 4, opacity: pending ? 0.5 : 1 }}>
         <StarIcon size={22} color={starred ? Accent.warning : colors.textSecondary} fill={starred ? Accent.warning : "transparent"} strokeWidth={2.25} />
       </PressableScale>
       <PlusCircle size={IconSize.hero} color={accent.primary} strokeWidth={2.25} />

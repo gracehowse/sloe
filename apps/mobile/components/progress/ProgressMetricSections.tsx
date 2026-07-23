@@ -45,7 +45,7 @@ export function ProgressMetricCaloriesSection({ weekStats, targets, todayKey, t,
             const over = d.calories > d.targetCalories;
             const isToday = d.key === todayKey;
             return (
-              <PressableScale key={d.key} haptic="selection" onPress={() => onOpenDay(d.key)} style={{ flex: 1, alignItems: "center", gap: 6 }}>
+              <PressableScale key={d.key} haptic="selection" onPress={() => onOpenDay(d.key)} style={{ flex: 1, alignItems: "center", gap: 4 }}>
                 <Text style={{ fontSize: 10, color: t.dim, fontVariant: ["tabular-nums"] }}>
                   {d.calories > 0 ? (d.calories >= 1000 ? `${(d.calories / 1000).toFixed(1)}k` : String(d.calories)) : "—"}
                 </Text>
@@ -61,11 +61,11 @@ export function ProgressMetricCaloriesSection({ weekStats, targets, todayKey, t,
           key={`row-${d.key}`}
           haptic="selection"
           onPress={() => onOpenDay(d.key)}
-          style={{ marginTop: Spacing.sm, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, paddingHorizontal: Spacing.md, borderRadius: Radius.md, ...cardSurface }}
+          style={{ marginTop: Spacing.sm, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 12, paddingHorizontal: Spacing.md, borderRadius: Radius.md, ...cardSurface }}
         >
           <View>
             <Text style={{ fontSize: 14, fontWeight: "700", color: t.text }}>{formatLongDate(d.key)}</Text>
-            <Text style={{ ...Type.captionSmall, color: t.dim, marginTop: 2 }}>{d.label}</Text>
+            <Text style={{ ...Type.captionSmall, color: t.dim, marginTop: 0 }}>{d.label}</Text>
           </View>
           <View style={{ alignItems: "flex-end" }}>
             <Text style={{ fontSize: 16, fontWeight: "800", color: t.text, fontVariant: ["tabular-nums"] }}>{formatKcalDisplay(d.calories)} kcal</Text>
@@ -108,12 +108,12 @@ export function ProgressMetricProteinSection({ weekStats, targets, t, cardSurfac
             key={d.key}
             haptic="selection"
             onPress={() => onOpenDay(d.key)}
-            style={{ marginTop: Spacing.sm, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 14, paddingHorizontal: Spacing.md, borderRadius: Radius.md, ...cardSurface }}
+            style={{ marginTop: Spacing.sm, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 12, paddingHorizontal: Spacing.md, borderRadius: Radius.md, ...cardSurface }}
           >
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 14, fontWeight: "700", color: t.text }}>{formatLongDate(d.key)}</Text>
-              <View style={{ height: 6, borderRadius: 3, backgroundColor: t.border, marginTop: 8, overflow: "hidden" }}>
-                <View style={{ width: `${Math.min(pct, 100)}%`, height: "100%", borderRadius: 3, backgroundColor: hit ? t.green : t.amber }} />
+              <View style={{ height: 6, borderRadius: 4, backgroundColor: t.border, marginTop: 8, overflow: "hidden" }}>
+                <View style={{ width: `${Math.min(pct, 100)}%`, height: "100%", borderRadius: 4, backgroundColor: hit ? t.green : t.amber }} />
               </View>
             </View>
             <View style={{ alignItems: "flex-end", marginLeft: Spacing.md }}>
@@ -163,11 +163,11 @@ export function ProgressMetricStreakSection({
             >
               <View>
                 <Text style={{ fontSize: 14, fontWeight: "700", color: t.text }}>{formatLongDate(row.key)}</Text>
-                <Text style={{ ...Type.captionSmall, color: t.dim, marginTop: 2 }}>
+                <Text style={{ ...Type.captionSmall, color: t.dim, marginTop: 0 }}>
                   {row.mealCount} item{row.mealCount !== 1 ? "s" : ""} · {formatKcalDisplay(row.calories)} kcal
                 </Text>
               </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <CheckCircle2 size={22} color={t.green} strokeWidth={1.75} />
                 <ChevronRight size={18} color={t.dim} strokeWidth={1.75} />
               </View>

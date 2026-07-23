@@ -129,7 +129,7 @@ export function HydrationStimulantRow({
             accessibilityLabel={`${label} row more options`}
             onPress={() => setMenuOpen(true)}
             hitSlop={8}
-            style={{ padding: 2 }}
+            style={{ padding: 0 }}
           >
             <Ellipsis size={16} color={colors.textSecondary} />
           </PressableScale>
