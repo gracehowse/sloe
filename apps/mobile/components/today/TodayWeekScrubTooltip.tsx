@@ -27,8 +27,9 @@ export function TodayWeekScrubTooltip({
   const delta = Math.round(day.totals.calories - dayGoal);
   const deltaLabel =
     delta === 0 ? "On target" : delta > 0 ? `${delta} kcal over` : `${Math.abs(delta)} kcal under`;
+  // warning is fill-only (fails text contrast); warningSolid for amber TEXT.
   const deltaColor =
-    delta === 0 ? Accent.success : delta > 0 ? Accent.warning : Accent.success;
+    delta === 0 ? Accent.success : delta > 0 ? Accent.warningSolid : Accent.success;
   const colCenterPct = ((indexInWeek + 0.5) / weekLength) * 100;
   const isLeftHalf = colCenterPct < 50;
 
