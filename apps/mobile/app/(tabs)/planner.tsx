@@ -110,6 +110,7 @@ import {
   generateShoppingListFromRecipeEntriesAsync,
   shoppingListIngredientMultiplier,
 } from "@suppr/shared/planning/generateShoppingList";
+import { fetchShoppingListIngredientsByRecipeId } from "@suppr/shared/planning/shoppingListIngredientFetch";
 import {
   filterShoppingItemsByPantry,
   parsePantryStaples,
@@ -186,6 +187,7 @@ import { Toast } from "@/components/ui/Toast";
 import { useToast } from "@/hooks/useToast";
 import { alertOrToast } from "@/lib/alertOrToast";
 import { ResetPlanSheet } from "@/components/plan/ResetPlanSheet";
+import { useOpenShoppingList } from "@/hooks/useOpenShoppingList";
 import { usePlannerGenerateMenu } from "@/hooks/usePlannerGenerateMenu";
 import { usePlannerTemplates } from "@/hooks/usePlannerTemplates";
 import { useResetPlanGate } from "@/hooks/useResetPlanGate";
@@ -1999,18 +2001,7 @@ export default function PlannerScreen() {
     }
   }, [plan?.length, sloeV3Plan]);
 
-  /**
-   * F1 fix (audit 2026-04-28) — generate shopping_items rows from a
-   * given plan. Lifted out of the dead-code block below the action
-   * row so it can be called from (a) `generatePlan` after a fresh
-   * plan is set, and (b) the summary-card "Shopping list" button when
-   * the count is 0 (so a user who lands on an empty list with an
-   * active plan can rebuild without leaving the screen).
-   *
-   * Side-effects: deletes existing `shopping_items` for the user,
-   * then inserts in batches of 50. Returns `{ ok, count }` so the
-   * caller can decide whether to surface a toast.
-   */
+  /** F1 — build shopping_items from plan. Used by generatePlan + openShoppingList (ENG-1668). */
   const generateShoppingListFromPlan = useCallback(
     async (
       planForGeneration: DayPlan[],
@@ -2018,15 +2009,7 @@ export default function PlannerScreen() {
       if (!userId) return { ok: false, error: "Not signed in" };
       const allRecipes = [...savedRecipes, ...discoverRecipes];
 
-      // ENG-1040 (audit 2026-06-11 P1-5) — route through the SAME shared
-      // generator as web (`generateShoppingListFromRecipeEntriesAsync`) so
-      // quantities (portion-multiplier-scaled), categories/aisles, and
-      // non-numeric amounts match web by construction. Mobile previously
-      // counted plain recipe occurrences and IGNORED `portionMultiplier`,
-      // so a planned meal at 2× bought 2× on web but 1× on iOS — the
-      // primary surface under-buying. We resolve each meal's recipe id, map
-      // its title → id, and build portion-scaled entries (skipping leftover
-      // + placeholder slots, exactly as web does in `AppDataContext`).
+      // ENG-1040 — shared generator (portion-scaled); was under-buying vs web.
       const titleToRecipe = new Map<string, { id: string; title: string }>();
       for (const r of allRecipes) {
         if (r.id && r.title && !titleToRecipe.has(r.title)) {
@@ -2082,30 +2065,12 @@ export default function PlannerScreen() {
         ),
       ];
 
-      // Batch-fetch ingredients once and hand the shared generator a
-      // pre-built map (matches web's single `.in(recipe_id, …)` query).
-      const { data: ingredients, error: ingErr } = await supabase
-        .from("recipe_ingredients")
-        .select("name, amount, unit, recipe_id")
-        .in("recipe_id", recipeIds);
-      if (ingErr) return { ok: false, error: ingErr.message };
-      if (!ingredients || ingredients.length === 0) {
+      // ENG-1668 — UUID + seed-v2 ids (seed slugs must not hit recipe_id uuid col).
+      const { ingredientsByRecipeId, error: ingErr } =
+        await fetchShoppingListIngredientsByRecipeId(supabase, recipeIds);
+      if (ingErr) return { ok: false, error: ingErr };
+      if (ingredientsByRecipeId.size === 0) {
         return { ok: false, error: "No ingredient data on these recipes" };
-      }
-      const ingredientsByRecipeId = new Map<
-        string,
-        Array<{ name: string; amount: string; unit: string }>
-      >();
-      for (const ing of ingredients) {
-        const rid = String(ing.recipe_id ?? "");
-        if (!rid) continue;
-        const bucket = ingredientsByRecipeId.get(rid) ?? [];
-        bucket.push({
-          name: String(ing.name ?? ""),
-          amount: ing.amount != null ? String(ing.amount) : "",
-          unit: String(ing.unit ?? ""),
-        });
-        ingredientsByRecipeId.set(rid, bucket);
       }
 
       const shared = await generateShoppingListFromRecipeEntriesAsync({
@@ -2182,6 +2147,13 @@ export default function PlannerScreen() {
     },
     [userId, savedRecipes, discoverRecipes, shoppingScope, pantryStaples, planStartDate],
   );
+
+  const openShoppingList = useOpenShoppingList({
+    plan,
+    generateShoppingListFromPlan,
+    showToast: toast.showToast,
+    router,
+  });
 
   const generatePlan = useCallback(async (options?: { resetMode?: ResetPlanMode }) => {
     if (savedRecipes.length === 0 && discoverRecipes.length === 0) {
@@ -2613,7 +2585,7 @@ export default function PlannerScreen() {
         value="plan"
         onChange={(next) => {
           if (next === "shopping") {
-            router.push("/shopping" as Href);
+            openShoppingList();
           }
         }}
         trailing={
@@ -2662,7 +2634,7 @@ export default function PlannerScreen() {
             onOpenMealOptions={planV3Meal.onOpenMealOptions}
             shoppingItemCount={shoppingItemCount}
             servingCount={householdMemberCount}
-            onOpenShopping={() => router.push("/shopping" as Href)}
+            onOpenShopping={openShoppingList}
             onOpenBatchCook={() => router.push("/batch-cook" as Href)}
             batchCookSubtitle={defaultBatchCookToolSubtitle()}
             nutritionByDay={planWeekJournal}

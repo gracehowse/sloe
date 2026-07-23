@@ -112,8 +112,8 @@ import {
 import {
   generateShoppingListFromRecipeEntries,
   shoppingListIngredientMultiplier,
-  type RecipeIngredientRow,
 } from "../lib/planning/generateShoppingList.ts";
+import { fetchShoppingListIngredientsByRecipeId } from "../lib/planning/shoppingListIngredientFetch.ts";
 import {
   filterShoppingItemsByPantry,
   parsePantryStaples,
@@ -1686,31 +1686,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           .filter((id): id is string => Boolean(id)),
       ),
     ];
-    const ingredientsByRecipeId = new Map<string, RecipeIngredientRow[]>();
-    if (recipeIds.length > 0) {
-      const { data, error } = await supabase
-        .from("recipe_ingredients")
-        .select("recipe_id, name, amount, unit")
-        .in("recipe_id", recipeIds)
-        .order("created_at", { ascending: true });
-      if (error) {
-        toast.error("Could not load ingredients for your planned recipes.");
-      } else {
-        for (const row of data ?? []) {
-          const recipeId = String((row as { recipe_id: string }).recipe_id ?? "");
-          if (!recipeId) continue;
-          const bucket = ingredientsByRecipeId.get(recipeId) ?? [];
-          bucket.push({
-            name: String((row as { name: string }).name ?? ""),
-            amount:
-              (row as { amount: number | null }).amount != null
-                ? String((row as { amount: number | null }).amount)
-                : "",
-            unit: String((row as { unit: string | null }).unit ?? ""),
-          });
-          ingredientsByRecipeId.set(recipeId, bucket);
-        }
-      }
+    // ENG-1668 — seed-v2 catalogue ids are not UUIDs; resolve via shared fetch.
+    const { ingredientsByRecipeId, error: ingErr } =
+      await fetchShoppingListIngredientsByRecipeId(supabase, recipeIds);
+    if (ingErr) {
+      toast.error("Could not load ingredients for your planned recipes.");
     }
 
     const list = generateShoppingListFromRecipeEntries({

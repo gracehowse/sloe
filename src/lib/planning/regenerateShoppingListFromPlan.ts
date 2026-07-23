@@ -17,8 +17,8 @@ import { fingerprintMealPlanForShopping } from "./mealPlanFingerprint";
 import {
   generateShoppingListFromRecipeEntries,
   shoppingListIngredientMultiplier,
-  type RecipeIngredientRow,
 } from "./generateShoppingList";
+import { fetchShoppingListIngredientsByRecipeId } from "./shoppingListIngredientFetch";
 import { isMealPlanPlaceholderLikeTitle } from "../nutrition/portionMultiplier";
 import { filterShoppingItemsByPantry } from "./pantryStaples";
 import { shoppingMergeKey } from "./shoppingMergePrimitives";
@@ -266,21 +266,11 @@ export async function regenerateShoppingListFromPlan(input: {
   }
   if (entries.length === 0) return { ok: false, error: "No recipes in the current plan" };
 
-  // 5. Fetch ingredients once and generate the target list.
+  // 5. Fetch ingredients once (UUID DB + seed-v2 catalogue) and generate.
   const uniqueIds = [...new Set([...titleToIdMap.values()])];
-  const ingRes = await client
-    .from("recipe_ingredients")
-    .select("recipe_id, name, amount, unit")
-    .in("recipe_id", uniqueIds);
-  if (ingRes.error) return { ok: false, error: ingRes.error.message ?? "ingredient read failed" };
-  const ingredientsByRecipeId = new Map<string, RecipeIngredientRow[]>();
-  for (const row of ingRes.data ?? []) {
-    const rid = toStr(row.recipe_id);
-    if (!rid) continue;
-    const bucket = ingredientsByRecipeId.get(rid) ?? [];
-    bucket.push({ name: toStr(row.name), amount: toStr(row.amount), unit: toStr(row.unit) });
-    ingredientsByRecipeId.set(rid, bucket);
-  }
+  const { ingredientsByRecipeId, error: ingErr } =
+    await fetchShoppingListIngredientsByRecipeId(client, uniqueIds);
+  if (ingErr) return { ok: false, error: ingErr };
   const generatedRaw = generateShoppingListFromRecipeEntries({
     entries,
     recipeTitleToId: (title) => titleToIdMap.get(title) ?? null,
