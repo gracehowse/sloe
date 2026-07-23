@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-07-22",
+  "updated": "2026-07-23",
   "skips": {
     "web-suppr": [
       {
@@ -22,6 +22,14 @@
       {
         "file": "src/app/components/suppr/shared-meal-accept-host.tsx",
         "reason": "orchestrator"
+      },
+      {
+        "file": "src/app/components/suppr/today-hero-macro-legend.tsx",
+        "reason": "landed on main after ENG-1662 Storybook baseline; explicit skip until ENG-1666 story"
+      },
+      {
+        "file": "src/app/components/suppr/today-hero-stats-desktop.tsx",
+        "reason": "landed on main after ENG-1662 Storybook baseline; explicit skip until ENG-1666 story"
       },
       {
         "file": "src/app/components/suppr/today-household-glance-bar.tsx",
@@ -134,6 +142,10 @@
         "reason": "auth/supabase host"
       },
       {
+        "file": "src/app/components/help/ContextualHelpHint.tsx",
+        "reason": "landed on main after ENG-1662 Storybook baseline; explicit skip until ENG-1666 story"
+      },
+      {
         "file": "src/app/components/household/HouseholdInviteDialog.tsx",
         "reason": "auth/supabase host"
       },
@@ -172,6 +184,14 @@
       {
         "file": "src/app/components/progress/WeightPlateauInsight.tsx",
         "reason": "auth/supabase host"
+      },
+      {
+        "file": "src/app/components/settings/MealSharedLinksSection.tsx",
+        "reason": "landed on main after ENG-1662 Storybook baseline; explicit skip until ENG-1666 story"
+      },
+      {
+        "file": "src/app/components/shopping/ShoppingSmartSuggestions.tsx",
+        "reason": "landed on main after ENG-1662 Storybook baseline; explicit skip until ENG-1666 story"
       }
     ],
     "mobile": [
@@ -328,6 +348,10 @@
         "reason": "tiny wrapper"
       },
       {
+        "file": "apps/mobile/components/help/ContextualHelpHint.tsx",
+        "reason": "landed on main after ENG-1662 Storybook baseline; explicit skip until ENG-1666 story"
+      },
+      {
         "file": "apps/mobile/components/household/HouseholdInviteSheet.tsx",
         "reason": "auth/supabase host"
       },
@@ -456,6 +480,10 @@
         "reason": "flag-gated null"
       },
       {
+        "file": "apps/mobile/components/settings/MealSharedLinksSection.tsx",
+        "reason": "landed on main after ENG-1662 Storybook baseline; explicit skip until ENG-1666 story"
+      },
+      {
         "file": "apps/mobile/components/settings/SettingsBundleContent.tsx",
         "reason": "orchestrator"
       },
@@ -470,6 +498,14 @@
       {
         "file": "apps/mobile/components/settings/WeighInReminderRow.tsx",
         "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/shopping/ShoppingSmartSuggestions.tsx",
+        "reason": "landed on main after ENG-1662 Storybook baseline; explicit skip until ENG-1666 story"
+      },
+      {
+        "file": "apps/mobile/components/shopping/ShoppingSmartSuggestionsView.tsx",
+        "reason": "landed on main after ENG-1662 Storybook baseline; explicit skip until ENG-1666 story"
       },
       {
         "file": "apps/mobile/components/shopping/ShoppingUpdateFromPlanBanner.tsx",
@@ -518,6 +554,10 @@
       {
         "file": "apps/mobile/components/today/TodayHeaderBar.tsx",
         "reason": "orchestrator"
+      },
+      {
+        "file": "apps/mobile/components/today/TodayHeroMacroLegend.tsx",
+        "reason": "landed on main after ENG-1662 Storybook baseline; explicit skip until ENG-1666 story"
       },
       {
         "file": "apps/mobile/components/today/TodayMealsSection.tsx",
