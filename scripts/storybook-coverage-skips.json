@@ -312,6 +312,18 @@
         "reason": "Skia-only"
       },
       {
+        "file": "apps/mobile/components/charts/calorieRing/CalorieRingCenter.tsx",
+        "reason": "implementation fragment of CalorieRing; covered by parent story"
+      },
+      {
+        "file": "apps/mobile/components/charts/calorieRing/CalorieRingMacroRing.tsx",
+        "reason": "implementation fragment of CalorieRing; covered by parent story"
+      },
+      {
+        "file": "apps/mobile/components/charts/calorieRing/CalorieRingSvgArcs.tsx",
+        "reason": "implementation fragment of CalorieRing; covered by parent story"
+      },
+      {
         "file": "apps/mobile/components/consent/AnalyticsConsentPrompt.tsx",
         "reason": "non-visual"
       },
@@ -414,6 +426,10 @@
       {
         "file": "apps/mobile/components/paywall/TrialEndReminderPaywallBlock.tsx",
         "reason": "auth/supabase host"
+      },
+      {
+        "file": "apps/mobile/components/plan/AdjustConstraintsSheet.legacy.tsx",
+        "reason": "legacy flag-off surface; primary AdjustConstraintsSheet has the story"
       },
       {
         "file": "apps/mobile/components/plan/PlanV3Surface.tsx",
