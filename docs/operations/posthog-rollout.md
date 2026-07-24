@@ -237,11 +237,11 @@ AI-cost or "AI broke → blank" risk to ramp around.
 | Ramp | Flip flag → 100% | One tester (Grace); no cohort split needed. |
 | Cleanup | After 2 weeks at 100% with no regression | Remove the gate, keep the default-toast `else` branch as the fallback. |
 
-### `streak_pip_zero_day_web_v1` (ENG-1657)
+### `streak_pip_zero_day_web_v1` (ENG-1657) — moved to `REDESIGN_DEFAULT_ON`, 2026-07-24
 
 | Property | Value |
 | --- | --- |
-| Flag ID | _create in PostHog before ramp_ |
+| Flag ID | _never created in PostHog_ |
 | Type | Boolean |
 | Platforms | Web only (mobile already shows the pip at 0-day when mounted) |
 | Owner | Grace |
@@ -253,16 +253,16 @@ non-negative streak count on today's day view. Flag OFF → legacy web gate
 (`streakDays >= 2` only). The primitive always renders when mounted; only
 the header mount rule changes.
 
-Default OFF until ramped — a cold/missing client resolves
-`isFeatureEnabled("streak_pip_zero_day_web_v1")` to `false`.
-
-#### Ramp schedule
-
-| Phase | Action | Why |
-| --- | --- | --- |
-| Pre-ramp | Create the PostHog row; validate flag-on pixels on web (`web-drive`) with 0-day and 1-day fresh-user states (light + dark) | Showing a previously-hidden pip is a visual change — validate before ramp. |
-| Ramp | Internal (Grace) → 100% | One tester; no cohort split needed. |
-| Cleanup | After 2 weeks at 100% with no regression | Remove the gate + legacy ≥2-day branch; keep the row as an emergency kill switch. |
+Shipped flag-gated default-OFF on 2026-07-23 (#1070). A parallel worktree
+independently implemented the same ticket the same day as an unconditional,
+unflagged always-show change; reconciling the two (2026-07-24, Grace's
+call) moved this flag from `KNOWN_DEFAULT_OFF_FLAGS` to
+`REDESIGN_DEFAULT_ON` instead of shipping the unflagged version — same
+visible outcome, same call site (`isFeatureEnabled`, unchanged), no
+PostHog row ever needed. No further ramp; a regression would be handled by
+a follow-up commit reverting the registry move (the same "kill switch"
+convention used by every other `REDESIGN_DEFAULT_ON` flag — none of them
+wire `isFeatureDisabled` at the call site).
 
 ### `progress_hierarchy_v1` (ENG-1525)
 
