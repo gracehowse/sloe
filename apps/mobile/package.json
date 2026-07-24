@@ -109,6 +109,7 @@
     "@types/react": "~19.2.14",
     "@types/react-test-renderer": "19.1.0",
     "@vitest/coverage-istanbul": "^3.2.4",
+    "audit-ci": "^7.1.0",
     "detox": "^20.50.1",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",

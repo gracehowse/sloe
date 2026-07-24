@@ -333,43 +333,51 @@ jobs:
 
   # Soft spot 1 (2026-05-14 production-readiness audit) — npm-audit gate.
   # Runs against web root + mobile package tree separately because each
-  # has its own transitive dep set. --omit=dev skips findings on tooling
+  # has its own transitive dep set. --skip-dev skips findings on tooling
   # that ships to no user (vitest, playwright, eslint, etc.).
-  # Allow-list mechanism: docs/operations/security-allowlist.md
+  # Allow-list mechanism: audit-ci.json (root) / apps/mobile/audit-ci.json,
+  # human-readable record in docs/operations/security-allowlist.md. Unlike
+  # raw `npm audit`, audit-ci actually reads these config files, so a
+  # documented allow-list row genuinely suppresses CI (until its `expiry`
+  # date passes, at which point audit-ci fails again as a forced revisit).
   dep-audit:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+      - run: npm ci
       - name: Web — npm audit (production deps, high+ severity)
         run: |
           set +e
-          npm audit --audit-level=high --omit=dev
+          npx audit-ci --config audit-ci.json
           status=$?
           set -e
           if [ "$status" -ne 0 ]; then
             echo "::error::Web dep-audit found high or critical vulnerabilities."
             echo "::error::Fix path: 'npm audit fix' locally. If can't patch today,"
-            echo "::error::see docs/operations/security-allowlist.md to consciously defer."
+            echo "::error::add a dated entry to audit-ci.json — see docs/operations/security-allowlist.md."
             exit "$status"
           fi
+      - name: Mobile — npm ci
+        working-directory: apps/mobile
+        run: npm ci
       - name: Mobile — npm audit (production deps, high+ severity)
         working-directory: apps/mobile
         run: |
           set +e
-          npm audit --audit-level=high --omit=dev
+          npx audit-ci --config audit-ci.json
           status=$?
           set -e
           if [ "$status" -ne 0 ]; then
             echo "::error::Mobile dep-audit found high or critical vulnerabilities."
             echo "::error::Fix path: 'npm audit fix' in apps/mobile/. If can't patch today,"
-            echo "::error::see docs/operations/security-allowlist.md to consciously defer."
+            echo "::error::add a dated entry to apps/mobile/audit-ci.json — see docs/operations/security-allowlist.md."
             exit "$status"
           fi
 

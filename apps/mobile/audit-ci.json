@@ -1,0 +1,14 @@
+{
+  "$schema": "https://github.com/IBM/audit-ci/raw/main/docs/schema.json",
+  "high": true,
+  "skip-dev": true,
+  "allowlist": [
+    {
+      "GHSA-r28c-9q8g-f849": {
+        "active": true,
+        "notes": "postcss path-traversal in previous-sourcemap auto-loading, reached via expo-share-intent -> @expo/cli -> @expo/metro-config. Metro/build-tooling path only (not reachable in the shipped TestFlight binary). Fix requires a 3-major Expo SDK bump (54 -> 57) plus expo-share-intent 5 -> 8 -- deferred pending a properly scoped, sim-validated upgrade. See docs/operations/security-allowlist.md.",
+        "expiry": "2026-08-23"
+      }
+    }
+  ]
+}
