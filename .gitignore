@@ -40,9 +40,12 @@ apps/**/AGENTS.md
 # docs/runbooks/overnight-unattended-runs.md.
 .claude/overnight/
 # Marketplace-installed Claude Code skills are per-user (not tracked); our own
-# committed project skills (suppr-*) ARE tracked. CLAUDE.md is tracked too.
+# committed project skills ARE tracked, matched by brand prefix. `sloe-*` added
+# 2026-07-24 alongside the legacy `suppr-*` — the product renamed to Sloe in
+# 2026-06 and new skills carry the current name. Same intent, both allowed.
 .claude/skills/*
 !.claude/skills/suppr-*/
+!.claude/skills/sloe-*/
 # Local patch bundles / git worktrees created by tooling (machine-specific).
 .claude/patches/
 .claude/worktrees/

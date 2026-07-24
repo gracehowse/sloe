@@ -170,6 +170,70 @@ For any meaningful feature, fix, or change:
 6. Update documentation
 7. Re-audit or run release gate if appropriate
 
+## Agent roster + routing (consolidated 2026-07-24)
+
+The `.claude/agents/` fleet was cut from 37 to 10 after an audit found every single
+agent carried at least one false assertion about this codebase — a rejected nutrition
+confidence floor, three mutually incompatible radius ladders, a deleted button
+variant, a dead brand domain, five fabricated analytics event names, and 37 copies of
+an absolute path to a machine that no longer exists. Root cause: prompts *transcribed*
+truth that lived in code, and nothing gated them. Full findings:
+`docs/audits/2026-07-24-agent-fleet-audit.md`.
+
+**Two rules keep it from recurring, and they outrank roster size:**
+
+1. **No agent states a value that lives in code.** It names the source file and reads
+   it at runtime — the same discipline `check:token-scale` uses when it reads the
+   legal scale from `theme.ts`. Gated by `npm run check:agent-drift`.
+2. **No "do NOT re-flag" clauses inside agent files.** Suppressions live only in
+   `.claude/agents/_project-context.md`, so one edit retires one everywhere. Three
+   scattered clauses went stale in place and hardened into enforced blindness.
+
+**There is no orchestrator agent.** Subagents don't hold the `Agent` tool, so the two
+former orchestrators could only emit routing prose the main loop had to re-read.
+Route from here instead:
+
+| Question | Agent |
+|---|---|
+| Is it real / right / usable? | `product-review` |
+| Does it look right? Is it at the bar? Design it. | `design` |
+| Ingredient parsing, matching, confidence, portions | `nutrition-engine` |
+| Privacy, billing clarity, claims, IP/import posture | `legal-reviewer` |
+| a11y, identity dignity, body-neutral framing | `inclusive-design` |
+| Schema, migrations, state correctness | `data-integrity` |
+| Auth, RLS, secrets, webhooks, PII | `security-reviewer` |
+| Web ↔ mobile parity | `sync-enforcer` |
+| Implement it (+ tests, stories, docs) | `executor` |
+| Findings → Linear backlog | `planner` |
+
+Pick the smallest set that covers the risk. Run gates before agents — a ratchet
+answers mechanical questions deterministically and for free. Reach for an agent when
+the question needs judgement.
+
+**Agents are model-dispatched; skills are what Grace types.** The user-invocable
+entry points live in `.claude/skills/`:
+
+| Command | Does |
+|---|---|
+| `/sloe-design-critique <surface>` | Captures the real pixels, runs the design ratchets, dispatches `design` + `inclusive-design`, returns a structured critique |
+| `/sloe-art-direction <surface>` | The taste layer — pulls real Mobbin reference, runs the slop test, judges craft (type, colour, depth, data-viz, motion, imagery), names the moves. A **skill, not an agent**, because agents declare `tools:` in frontmatter and the Mobbin grant would be a connector UUID that breaks on reconnect — and because a subagent's images don't survive the return trip to the parent |
+| `/sloe-ship-check [scope]` | Runs `npm run ci`, checks the non-negotiables, routes the sign-off lenses the diff earns, returns ship / hold / conditional |
+| `/suppr-ios-sim-testing`, `/suppr-web-testing` | Drive the simulator / web app to capture pixels |
+
+`/sloe-ship-check` is where the deleted `release-gate` agent went. Its checklist rots
+as a prompt — it was blocking releases on the discontinued Notion mirror by the time
+it was audited — but works as a workflow that reads the live gates on every run.
+
+**Deleted, and why** — mechanical work the ratchets now do better (`visual-qa`,
+`design-system-enforcer`, `copy-reviewer`, `code-quality`, `premium-auditor`,
+`qa-lead`); lenses that assume a company or a user base this product doesn't have yet
+(`user-sentiment`, `feature-scout`, `competitor-intelligence`, `growth-strategist`,
+`monetisation-architect`, `analytics-engineer`, `production-readiness`,
+`journey-architect`, `brand-manager`, `docs-keeper`, `product-memory`,
+`integration-manager`, `performance-optimizer`); and the two orchestrators. If one is
+needed again, write it fresh against the current codebase rather than restoring it —
+restoring is how a stale prompt comes back.
+
 ## Nutrition-specific rules
 For ingredient matching:
 - parse ingredient
@@ -221,8 +285,9 @@ violated `feedback_visual_validation_mandatory.md` and shipped
 visual changes blind. Two complementary rules from now on:
 
 1. **Visual or structural changes ship behind a feature flag.**
-   Use `isFeatureEnabled("flag-name")` from `@/lib/analytics` on
-   web or the mobile equivalent in `apps/mobile/lib/analytics.ts`.
+   Use `isFeatureEnabled("flag-name")` from `@/lib/analytics/track` on
+   web (there is no `index.ts` barrel — `@/lib/analytics` does not
+   resolve) or the mobile equivalent in `apps/mobile/lib/analytics.ts`.
    Gate the new path, leave the old path alive in the `else`, ramp
    via PostHog dashboard. Once the flag has held 100% for two
    weeks with no regression, the gate can be removed in a follow-
