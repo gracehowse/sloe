@@ -16,7 +16,15 @@ const meta = {
       </MobileStoryThemeProvider>
     ),
   ],
-  parameters: { layout: "fullscreen" },
+  parameters: {
+    layout: "fullscreen",
+    docs: {
+      description: {
+        component:
+          "Sunday Today nudge — anatomy **Notice** (`SupprNotice` block) under `ui_anatomy_owners_v1`; legacy `SupprCard` when flag off.",
+      },
+    },
+  },
   args: { onOpen: () => undefined, onDismiss: () => undefined },
 } satisfies Meta<typeof WeeklyCheckinBanner>;
 

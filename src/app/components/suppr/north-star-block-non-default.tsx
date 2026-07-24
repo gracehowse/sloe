@@ -53,6 +53,23 @@ export function NorthStarBlockNonDefault({
   }
 
   if (kind === "new-user") {
+    const copy =
+      "Log your first meal — suggestions get smarter once we've seen you eat.";
+    if (isFeatureEnabled("ui_anatomy_owners_v1")) {
+      return (
+        <SupprNotice
+          tone="primary"
+          variant="block"
+          data-slot="north-star-new-user"
+          data-testid={testID}
+          leading={
+            <Sparkles aria-hidden width={18} height={18} className="shrink-0 text-primary-solid" />
+          }
+        >
+          <p className="text-[13px] font-semibold">{copy}</p>
+        </SupprNotice>
+      );
+    }
     return (
       <SupprCard
         elevation="card"
@@ -65,9 +82,7 @@ export function NorthStarBlockNonDefault({
       >
         <Sparkles aria-hidden width={18} height={18} className="text-primary shrink-0" />
         <div className="flex flex-1 flex-col gap-1">
-          <p className="text-[13px] font-semibold">
-            Log your first meal — suggestions get smarter once we've seen you eat.
-          </p>
+          <p className="text-[13px] font-semibold">{copy}</p>
         </div>
       </SupprCard>
     );
@@ -136,15 +151,8 @@ export function NorthStarBlockNonDefault({
   }
 
   // kind === "no-fit"
-  return (
-    <SupprCard
-      elevation="card"
-      data-slot="north-star-no-fit"
-      data-testid={testID}
-      tone="neutral"
-      padding="md"
-      className="flex flex-row items-center gap-3"
-    >
+  const noFitBody = (
+    <>
       <p className="flex-1 text-[13px] text-muted-foreground">
         Library has nothing under your remaining macros today.
       </p>
@@ -155,6 +163,30 @@ export function NorthStarBlockNonDefault({
       >
         Browse →
       </button>
+    </>
+  );
+  if (isFeatureEnabled("ui_anatomy_owners_v1")) {
+    return (
+      <SupprNotice
+        tone="neutral"
+        variant="block"
+        data-slot="north-star-no-fit"
+        data-testid={testID}
+      >
+        <div className="flex flex-row items-center gap-3">{noFitBody}</div>
+      </SupprNotice>
+    );
+  }
+  return (
+    <SupprCard
+      elevation="card"
+      data-slot="north-star-no-fit"
+      data-testid={testID}
+      tone="neutral"
+      padding="md"
+      className="flex flex-row items-center gap-3"
+    >
+      {noFitBody}
     </SupprCard>
   );
 }

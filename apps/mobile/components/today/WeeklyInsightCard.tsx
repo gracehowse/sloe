@@ -4,6 +4,7 @@ import { CircleCheck, Sparkles } from "lucide-react-native";
 import { Accent, FontWeight, IconSize, MacroColors, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { SupprNotice } from "@/components/ui/SupprNotice";
 import { isFeatureEnabled } from "@/lib/analytics";
 import {
   weeklyInsightCoachLine,
@@ -180,6 +181,32 @@ function WeeklyInsightCardImpl({
         : loggedLine);
 
   if (figmaLayout) {
+    const figmaInsight = (
+      <>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
+          <Sparkles size={13} color={accent.primarySolid} strokeWidth={1.75} />
+          <Text style={[styles.headerLabel, { color: accent.primarySolid }]}>
+            WEEKLY INSIGHT
+          </Text>
+        </View>
+        <Text style={[styles.figmaInsightBody, { color: textSecondaryColor }]}>
+          {proseBody}
+        </Text>
+      </>
+    );
+    if (isFeatureEnabled("ui_anatomy_owners_v1")) {
+      return (
+        <SupprNotice
+          tone="primary"
+          variant="inline"
+          testID="today-weekly-insight-mobile"
+          accessibilityLabel="Weekly insight"
+          style={{ marginBottom: Spacing.md }}
+        >
+          {figmaInsight}
+        </SupprNotice>
+      );
+    }
     return (
       // Fresh-eyes §3 (2026-06-10): de-carded. On the inverted material the
       // lilac slab read as the odd muddy box between white gallery cards.
@@ -190,27 +217,13 @@ function WeeklyInsightCardImpl({
         accessibilityLabel="Weekly insight"
         style={{ paddingHorizontal: Spacing.xs, gap: Spacing.xs }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: Spacing.xs }}>
-          <Sparkles size={13} color={accent.primarySolid} strokeWidth={1.75} />
-          <Text style={[styles.headerLabel, { color: accent.primarySolid }]}>
-            WEEKLY INSIGHT
-          </Text>
-        </View>
-        <Text style={[styles.figmaInsightBody, { color: textSecondaryColor }]}>
-          {proseBody}
-        </Text>
+        {figmaInsight}
       </View>
     );
   }
 
-  return (
-    // Fresh-eyes §3 (2026-06-10): de-carded typographic callout (see the
-    // figma branch above for the rationale).
-    <View
-      testID="today-weekly-insight-mobile"
-      accessibilityLabel="Weekly insight"
-      style={{ paddingHorizontal: Spacing.xs, gap: Spacing.xs }}
-    >
+  const legacyInsight = (
+    <>
       {/* Accent sparkle overline (frame: `text-clay` sparkle + uppercase;
           flag-aware → damson under Frost). */}
       <View style={styles.headerRow}>
@@ -311,6 +324,30 @@ function WeeklyInsightCardImpl({
           {weekAvgKcal != null ? " daily average." : ""}
         </Text>
       )}
+    </>
+  );
+
+  if (isFeatureEnabled("ui_anatomy_owners_v1")) {
+    return (
+      <SupprNotice
+        tone="primary"
+        variant="inline"
+        testID="today-weekly-insight-mobile"
+        accessibilityLabel="Weekly insight"
+        style={{ marginBottom: Spacing.md }}
+      >
+        {legacyInsight}
+      </SupprNotice>
+    );
+  }
+
+  return (
+    <View
+      testID="today-weekly-insight-mobile"
+      accessibilityLabel="Weekly insight"
+      style={{ paddingHorizontal: Spacing.xs, gap: Spacing.xs }}
+    >
+      {legacyInsight}
     </View>
   );
 }

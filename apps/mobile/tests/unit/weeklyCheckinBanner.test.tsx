@@ -33,7 +33,6 @@ import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render } from "@testing-library/react-native";
 
 import { WeeklyCheckinBanner } from "../../components/today/WeeklyCheckinBanner";
-import { Colors } from "../../constants/theme";
 
 void React;
 
@@ -81,17 +80,15 @@ describe("WeeklyCheckinBanner (mobile)", () => {
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
-  it("renders the outer banner as a SOFT page-ground slab (tonal lift in dark, no card-surface border)", () => {
-    // One-treatment (Grace 2026-06-09): the page-ground banner takes the soft
-    // lift. In the default DARK test theme that is a tonal lift, not a shadow —
-    // so the OUTER fill is `Colors.dark.cardElevated` (NOT the old peach tint),
-    // and the hairline rides the INNER clip, never the outer wrapper.
+  it("renders the outer banner as a SupprNotice block when anatomy owners flag is on", () => {
     const { getByTestId } = render(
       <WeeklyCheckinBanner {...baseProps} onOpen={vi.fn()} onDismiss={vi.fn()} />,
     );
-    const outer = flattenStyle(getByTestId("weekly-checkin-banner").props.style);
-    expect(outer.backgroundColor).toBe(Colors.dark.cardElevated);
-    // The outer wrapper still draws no border (the hairline is on the inner clip).
-    expect(outer.borderWidth ?? 0).toBe(0);
+    const notice = getByTestId("weekly-checkin-banner");
+    expect(notice).toBeTruthy();
+    // Default-on flag: quiet primary-soft notice chrome (not legacy SupprCard slab).
+    const flat = flattenStyle(notice.props.style);
+    expect(flat.backgroundColor).toBeDefined();
+    expect(flat.borderRadius).toBeGreaterThanOrEqual(20);
   });
 });

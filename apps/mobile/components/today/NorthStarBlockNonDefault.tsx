@@ -79,6 +79,22 @@ export function NorthStarBlockNonDefault({
   }
 
   if (kind === "new-user") {
+    const copy =
+      "Log your first meal — suggestions get smarter once we've seen you eat.";
+    if (isFeatureEnabled("ui_anatomy_owners_v1")) {
+      return (
+        <SupprNotice
+          tone="primary"
+          variant="block"
+          testID={testID ?? "north-star-new-user"}
+          leading={<Sparkles size={IconSize.lg} color={accent.primarySolid} />}
+        >
+          <Text style={[Type.body, { color: colors.text, fontWeight: "600" }]}>
+            {copy}
+          </Text>
+        </SupprNotice>
+      );
+    }
     return (
       <SupprCard
         // Recipe-tier flat (Grace 2026-06-09 one-treatment, superseded by ENG-1099 flat).
@@ -91,7 +107,7 @@ export function NorthStarBlockNonDefault({
         <Sparkles size={IconSize.lg} color={colors.text} />
         <View style={{ flex: 1 }}>
           <Text style={[Type.body, { color: colors.text, fontWeight: "600" }]}>
-            {"Log your first meal — suggestions get smarter once we've seen you eat."}
+            {copy}
           </Text>
         </View>
       </SupprCard>
@@ -162,15 +178,8 @@ export function NorthStarBlockNonDefault({
   }
 
   // kind === "no-fit"
-  return (
-    <SupprCard
-      // Recipe-tier flat (Grace 2026-06-09 one-treatment, superseded by ENG-1099 flat).
-      lift="flat"
-      testID={testID ?? "north-star-no-fit"}
-      tone="neutral"
-      padding="md"
-      innerStyle={styles.row}
-    >
+  const noFitBody = (
+    <>
       <Text style={[Type.body, { color: colors.textSecondary, flex: 1 }]}>
         Library has nothing under your remaining macros today.
       </Text>
@@ -190,6 +199,29 @@ export function NorthStarBlockNonDefault({
           Browse →
         </Text>
       </PressableScale>
+    </>
+  );
+  if (isFeatureEnabled("ui_anatomy_owners_v1")) {
+    return (
+      <SupprNotice
+        tone="neutral"
+        variant="block"
+        testID={testID ?? "north-star-no-fit"}
+      >
+        <View style={styles.row}>{noFitBody}</View>
+      </SupprNotice>
+    );
+  }
+  return (
+    <SupprCard
+      // Recipe-tier flat (Grace 2026-06-09 one-treatment, superseded by ENG-1099 flat).
+      lift="flat"
+      testID={testID ?? "north-star-no-fit"}
+      tone="neutral"
+      padding="md"
+      innerStyle={styles.row}
+    >
+      {noFitBody}
     </SupprCard>
   );
 }

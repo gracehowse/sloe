@@ -10,8 +10,16 @@ import { WeeklyCheckinBanner } from "./weekly-checkin-banner";
 const meta = {
   title: "Suppr/WeeklyCheckinBanner",
   component: WeeklyCheckinBanner,
-  tags: ["ai-generated"],
-  parameters: { layout: "padded" },
+  tags: ["autodocs"],
+  parameters: {
+    layout: "padded",
+    docs: {
+      description: {
+        component:
+          "Today weekly check-in entry — anatomy **Notice** (`SupprNotice` block) under `ui_anatomy_owners_v1`; legacy `SupprCard` when flag off.",
+      },
+    },
+  },
   args: {
     onOpen: () => {},
     onDismiss: () => {},

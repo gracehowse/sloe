@@ -18,6 +18,12 @@ const meta = {
   ],
   parameters: { layout: "fullscreen" },
   args: { kind: "over-budget", overBudgetStage: "over", overBudgetCalories: { consumed: 2350, goal: 2100 }, onBrowse: () => undefined },
+  docs: {
+    description: {
+      component:
+        "North-star non-default branches — system prompts migrate to **Notice** (`SupprNotice`) under `ui_anatomy_owners_v1`.",
+    },
+  },
 } satisfies Meta<typeof NorthStarBlockNonDefault>;
 
 export default meta;

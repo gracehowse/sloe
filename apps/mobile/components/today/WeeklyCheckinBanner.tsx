@@ -40,8 +40,10 @@ import { X } from "lucide-react-native";
 
 import { Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { SupprCard } from "@/components/ui/SupprCard";
+import { SupprNotice } from "@/components/ui/SupprNotice";
 
 export interface WeeklyCheckinBannerProps {
   textColor: string;
@@ -59,6 +61,104 @@ function WeeklyCheckinBannerImpl({
   // Secondary accent (Frost flag → damson, else clay) for the eyebrow + the
   // OPEN CTA. The nudge accent rides the content, not the (neutral) card.
   const accent = useAccent();
+
+  const eyebrow = (
+    <Text
+      style={{
+        fontSize: 10,
+        fontWeight: "700",
+        color: accent.primarySolid,
+        letterSpacing: 1,
+      }}
+    >
+      WEEKLY CHECK-IN
+    </Text>
+  );
+  const title = (
+    <Text
+      style={{
+        fontSize: 14,
+        fontWeight: "600",
+        color: textColor,
+        marginTop: 2,
+      }}
+    >
+      Your weekly check-in is ready.
+    </Text>
+  );
+  const subtitle = (
+    <Text
+      style={{
+        fontSize: 11,
+        color: textSecondaryColor,
+        marginTop: 2,
+        lineHeight: 15,
+      }}
+    >
+      See last week&rsquo;s intake, weight delta, and adjust your goal pace.
+    </Text>
+  );
+  const openButton = (
+    <SupprButton
+      variant="ghost"
+      haptic="selection"
+      accessibilityLabel="Open weekly check-in"
+      onPress={onOpen}
+      testID="weekly-checkin-banner-open"
+      style={{ paddingHorizontal: Spacing.dense, paddingVertical: Spacing.sm }}
+    >
+      <Text
+        style={{
+          fontSize: 11,
+          fontWeight: "700",
+          color: accent.primarySolid,
+          letterSpacing: 0.5,
+        }}
+      >
+        OPEN
+      </Text>
+    </SupprButton>
+  );
+  const dismissButton = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Dismiss weekly check-in banner"
+      onPress={onDismiss}
+      hitSlop={8}
+      testID="weekly-checkin-banner-dismiss"
+      style={{ padding: 4 }}
+    >
+      <X size={18} color={textSecondaryColor} />
+    </Pressable>
+  );
+
+  if (isFeatureEnabled("ui_anatomy_owners_v1")) {
+    return (
+      <SupprNotice
+        tone="primary"
+        variant="block"
+        testID="weekly-checkin-banner"
+        style={{ marginBottom: Spacing.md }}
+      >
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: Spacing.sm,
+          }}
+        >
+          <View style={{ flex: 1 }}>
+            {eyebrow}
+            {title}
+            {subtitle}
+          </View>
+          {openButton}
+          {dismissButton}
+        </View>
+      </SupprNotice>
+    );
+  }
+
   return (
     <SupprCard
       // Sits on the Today scroll ground → soft lift (one-treatment, Grace 2026-06-09).
@@ -73,75 +173,12 @@ function WeeklyCheckinBannerImpl({
       }}
     >
       <View style={{ flex: 1 }}>
-        {/* Accent eyebrow — the nudge accent now lives in the CONTENT, not a
-            card border (the slab is neutral cream like every Today card). */}
-        <Text
-          style={{
-            fontSize: 10,
-            fontWeight: "700",
-            color: accent.primarySolid,
-            letterSpacing: 1,
-          }}
-        >
-          WEEKLY CHECK-IN
-        </Text>
-        <Text
-          style={{
-            fontSize: 14,
-            fontWeight: "600",
-            color: textColor,
-            marginTop: 2,
-          }}
-        >
-          Your weekly check-in is ready.
-        </Text>
-        <Text
-          style={{
-            fontSize: 11,
-            color: textSecondaryColor,
-            marginTop: 2,
-            lineHeight: 15,
-          }}
-        >
-          See last week&rsquo;s intake, weight delta, and adjust your goal pace.
-        </Text>
+        {eyebrow}
+        {title}
+        {subtitle}
       </View>
-      {/* Button system (2026-06-12): this nudge banner opens the check-in
-          modal — a SECONDARY action (the modal owns the primary "Accept"),
-          so its CTA is a GHOST `SupprButton` (transparent, plum label, no
-          border). Supersedes the old aubergine-OUTLINE treatment. Compact
-          padding overrides the default CTA size to fit the banner row.
-          Mobile-only banner (no web mirror — web surfaces the Digest on
-          Progress instead). */}
-      <SupprButton
-        variant="ghost"
-        haptic="selection"
-        accessibilityLabel="Open weekly check-in"
-        onPress={onOpen}
-        testID="weekly-checkin-banner-open"
-        style={{ paddingHorizontal: Spacing.dense, paddingVertical: Spacing.sm }}
-      >
-        <Text
-          style={{
-            fontSize: 11,
-            fontWeight: "700",
-            color: accent.primarySolid,
-            letterSpacing: 0.5,
-          }}
-        >
-          OPEN
-        </Text>
-      </SupprButton>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Dismiss weekly check-in banner"
-        onPress={onDismiss}
-        hitSlop={8}
-        testID="weekly-checkin-banner-dismiss"
-        style={{ padding: 4 }}
-      >
-        <X size={18} color={textSecondaryColor} />
-      </Pressable>
+      {openButton}
+      {dismissButton}
     </SupprCard>
   );
 }

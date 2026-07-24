@@ -11,6 +11,7 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { SupprNotice } from "@/components/ui/SupprNotice";
 import { useHaptics } from "@/hooks/useHaptics";
 import { showSignInAlert } from "@/lib/authAlertCopy";
 import { formatMealSourceLabelForRow, parseByDayNumberMap } from "@/lib/todayScreenRows";
@@ -3800,12 +3801,26 @@ export default function TrackerScreen() {
         />
         </View>
 
-        {isOffline && (
-          <View style={styles.offlineBanner} accessibilityRole="alert">
-            <CloudOff size={14} color={accent.primary} strokeWidth={1.75} />
-            <Text style={styles.offlineBannerText}>{"Offline · syncing when you reconnect"}</Text>
-          </View>
-        )}
+        {isOffline ? (
+          isFeatureEnabled("ui_anatomy_owners_v1") ? (
+            <SupprNotice
+              tone="offline"
+              variant="pill"
+              accessibilityRole="alert"
+              testID="today-offline-notice"
+              leading={<CloudOff size={14} color={accent.primary} strokeWidth={1.75} />}
+            >
+              <Text style={[Type.caption, { fontWeight: "600", color: colors.text }]}>
+                {"Offline · syncing when you reconnect"}
+              </Text>
+            </SupprNotice>
+          ) : (
+            <View style={styles.offlineBanner} accessibilityRole="alert">
+              <CloudOff size={14} color={accent.primary} strokeWidth={1.75} />
+              <Text style={styles.offlineBannerText}>{"Offline · syncing when you reconnect"}</Text>
+            </View>
+          )
+        ) : null}
 
         {/* Error banner */}
         {loadError && (

@@ -70,6 +70,7 @@ import {
 import { normalizeJournalSlotName } from "../../lib/nutrition/journalSlot.ts";
 import { QuickAddPanel } from "./suppr/quick-add-panel";
 import { SupprButton } from "./suppr/suppr-button";
+import { SupprNotice } from "./ui/suppr-notice";
 import { CopyMealDialog } from "./suppr/copy-meal-dialog";
 import { CopySlotDialog } from "./suppr/copy-slot-dialog";
 import { DuplicateDayDialog } from "./suppr/duplicate-day-dialog";
@@ -1662,22 +1663,39 @@ export const NutritionTracker = memo(function NutritionTracker({
       ) : null}
 
       {!isOnline ? (
-        // SLOE (2026-06-07): offline is a neutral SYNC state, not a
-        // warning — so this reads in the calm clay nav-tint, parity with
-        // the mobile Today offline pill (`Accent.primary` + `colors.card`).
-        // Previously this used the amber `warning` family, which read as
-        // "something is wrong". Clay-soft border + neutral ink matches the
-        // mobile treatment and the Sloe trust posture (amber is reserved
-        // for genuine over-budget / caution signals).
-        <div
-          role="alert"
-          className="mb-4 flex items-start gap-3 rounded-card border border-primary/20 bg-primary/[0.06] px-4 py-3"
-        >
-          <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-primary-solid" aria-hidden />
-          <p className="text-sm font-semibold text-foreground">
-            {"You're offline. Changes will sync when you reconnect."}
-          </p>
-        </div>
+        isFeatureEnabled("ui_anatomy_owners_v1") ? (
+          <SupprNotice
+            tone="offline"
+            variant="pill"
+            role="alert"
+            data-testid="today-offline-notice"
+            className="mb-4"
+            leading={
+              <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-primary-solid" aria-hidden />
+            }
+          >
+            <p className="text-sm font-semibold text-foreground">
+              {"You're offline. Changes will sync when you reconnect."}
+            </p>
+          </SupprNotice>
+        ) : (
+          // SLOE (2026-06-07): offline is a neutral SYNC state, not a
+          // warning — so this reads in the calm clay nav-tint, parity with
+          // the mobile Today offline pill (`Accent.primary` + `colors.card`).
+          // Previously this used the amber `warning` family, which read as
+          // "something is wrong". Clay-soft border + neutral ink matches the
+          // mobile treatment and the Sloe trust posture (amber is reserved
+          // for genuine over-budget / caution signals).
+          <div
+            role="alert"
+            className="mb-4 flex items-start gap-3 rounded-card border border-primary/20 bg-primary/[0.06] px-4 py-3"
+          >
+            <WifiOff className="mt-0.5 h-4 w-4 shrink-0 text-primary-solid" aria-hidden />
+            <p className="text-sm font-semibold text-foreground">
+              {"You're offline. Changes will sync when you reconnect."}
+            </p>
+          </div>
+        )
       ) : null}
 
       <input

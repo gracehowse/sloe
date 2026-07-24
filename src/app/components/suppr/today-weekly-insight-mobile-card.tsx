@@ -5,6 +5,7 @@ import { TrendingUp } from "lucide-react";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { weeklyInsightCoachLine } from "../../../lib/copy/today";
 import { computeDaysOnTarget } from "../../../lib/nutrition/weekInsightBar";
+import { SupprNotice } from "../ui/suppr-notice";
 
 /**
  * Below-meals weekly insight on mobile-web — parity with
@@ -68,6 +69,32 @@ export function TodayWeeklyInsightMobileCard({
         ? `${loggedLine} ${Math.round(weekAvgKcal).toLocaleString()} kcal daily average.`
         : loggedLine);
 
+  const insightBody = (
+    <>
+      <div className="flex items-center gap-1.5">
+        <TrendingUp className="h-3.5 w-3.5 text-primary-solid" strokeWidth={2} aria-hidden />
+        <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-primary-solid">
+          Weekly insight
+        </span>
+      </div>
+      <p className="text-sm leading-relaxed text-muted-foreground">{proseBody}</p>
+    </>
+  );
+
+  if (isFeatureEnabled("ui_anatomy_owners_v1")) {
+    return (
+      <SupprNotice
+        tone="primary"
+        variant="inline"
+        data-testid="today-weekly-insight-mobile"
+        aria-label="Weekly insight"
+        className="md:hidden mb-4"
+      >
+        {insightBody}
+      </SupprNotice>
+    );
+  }
+
   return (
     // De-carded typographic callout — sits directly on the cream page ground
     // (no card chrome), mobile-web only (`md:hidden`). Mirrors the mobile
@@ -77,13 +104,7 @@ export function TodayWeeklyInsightMobileCard({
       aria-label="Weekly insight"
       className="md:hidden mb-4 px-1 flex flex-col gap-1.5"
     >
-      <div className="flex items-center gap-1.5">
-        <TrendingUp className="h-3.5 w-3.5 text-primary-solid" strokeWidth={2} aria-hidden />
-        <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-primary-solid">
-          Weekly insight
-        </span>
-      </div>
-      <p className="text-sm leading-relaxed text-muted-foreground">{proseBody}</p>
+      {insightBody}
     </div>
   );
 }
