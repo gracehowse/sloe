@@ -567,8 +567,8 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // CTA labels that currently render off-ramp or larger than the ring's own
   // centre value. DEFAULT-ON per the beta-window "always flag on" policy; off →
   // every gated surface keeps its exact pre-existing font size/family (kill
-  // switch). No Linear ticket yet — file one before flag cleanup. Keep in sync
-  // with apps/mobile/lib/analytics.ts.
+  // switch). Flag lifecycle + remaining deferrals tracked in ENG-1673. Keep
+  // in sync with apps/mobile/lib/analytics.ts.
   "type_scale_v1",
 ]);
 
@@ -734,8 +734,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  *   stat-tile numerals + CTA labels that render off-ramp or larger than the
  *   ring's centre value). MOVED to `REDESIGN_DEFAULT_ON` 2026-07-22
  *   (ship-on-for-sim practice); off keeps every gated surface's exact
- *   pre-existing size/family (kill switch). No Linear ticket yet — file one
- *   before flag cleanup. Keep in sync with `apps/mobile/lib/analytics.ts`.
+ *   pre-existing size/family (kill switch). Flag lifecycle + remaining
+ *   deferrals tracked in ENG-1673. Keep in sync with
+ *   `apps/mobile/lib/analytics.ts`.
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "logsheet_ai_method_tooltip",
