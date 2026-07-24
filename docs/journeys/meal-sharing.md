@@ -11,35 +11,35 @@ text-only share that never landed anything in the recipient's log.
 
 ## Status — read this first
 
-**Implemented behind flag, migration staged, not yet ramped.**
+**Fully shipped and live.** Meal sharing (ENG-1642), the mobile resume rail
+(ENG-1649), and the "My shared links" revoke UI (ENG-1648) have all merged.
+The rest of this doc previously described a pre-ramp state; it's now
+reconciled against what's actually live as of 2026-07-23.
 
 - `meal_share_links_v1` (`MEAL_SHARE_FLAG`, `src/lib/share/mealShareLink.ts`
-  / mobile `@suppr/shared/share/mealShareLink`) is in
-  `KNOWN_DEFAULT_OFF_FLAGS` in both `src/lib/analytics/track.ts` and
-  `apps/mobile/lib/analytics.ts` — **default off**. **The flag gates link
-  CREATION only.** Flag off = byte-identical pre-ENG-1642 behaviour for the
-  *sharer*: "Share meal" sends the existing macro-summary text only, no
-  link, no `meal_shares` row. **Redemption is deliberately un-gated on both
-  platforms** — the `/m/<token>` web landing, the `/home` post-auth resume
-  (`SharedMealAcceptHost`), and mobile's `/meal-shared` accept screen all
-  work regardless of the flag, so a link minted inside a partial ramp
-  cohort still resolves for any recipient. See the flag JSDoc in both
-  `KNOWN_DEFAULT_OFF_FLAGS` lists for the full rationale. A true security
-  kill of redemption (not just new-link creation) requires a follow-up
-  migration revoking the anon grant on `get_meal_share` — the flag alone
-  does not do this.
+  / mobile `@suppr/shared/share/mealShareLink`) **moved to
+  `REDESIGN_DEFAULT_ON` in both `src/lib/analytics/track.ts` and
+  `apps/mobile/lib/analytics.ts` on 2026-07-21** (Grace's ship-on-for-
+  sim-validation practice) — **default ON**. **The flag gates link CREATION
+  only.** On = the "Share meal" kebab mints a real `/m/<token>` link; off
+  (kill switch) = the legacy text-only share. **Redemption is un-gated on
+  both platforms regardless of the flag** — the `/m/<token>` web landing,
+  the `/home` post-auth resume (`SharedMealAcceptHost`), and mobile's
+  `/meal-shared` accept screen all work whether the flag is on or off. See
+  the flag comment in `REDESIGN_DEFAULT_ON` on both platforms for the full
+  rationale.
 - **`supabase/migrations/20260722090000_eng1642_meal_share_links.sql` (the
-  `meal_shares` table + its three RPCs) is staged but not yet applied to the
-  live DB.** It must be run via `supabase db push --linked` — Grace runs
-  this, never MCP `apply_migration` (would rewrite `schema_migrations.version`
-  to wall-clock NOW(), and this file is deliberately future-dated) — **before**
-  the flag is ramped in PostHog. The pre-ramp gate is tracked as **ENG-1650**:
-  migration apply → Playwright e2e + sim verification → ramp. Flipping the
-  flag on without the migration applied means every `create_meal_share` /
-  `get_meal_share` call fails at the RPC-not-found level; the client-side
-  fallback path (below) degrades that to the pre-existing text-only share
-  rather than a visible error, but no share link will ever actually work
-  until the migration lands.
+  `meal_shares` table + its three RPCs) is applied to the live database.**
+  The pre-ramp gate (migration apply → Playwright e2e + sim verification →
+  flag flip) is closed out — tracked as **ENG-1650**, done.
+- **The "My shared links" management UI (ENG-1648) has also shipped** —
+  `MealSharedLinksSection` mounted in Settings → Privacy on web, Settings →
+  Account on mobile — behind its own flag `meal_share_manage_v1`
+  (`KNOWN_DEFAULT_OFF_FLAGS` on both platforms, **default OFF** as of this
+  writing; off = the section is hidden, a separate kill switch from the
+  sharing flow itself). See Step 4.
+- **Mobile's signed-out resume rail (ENG-1649) has also shipped** — parity
+  with web's pending-token stash. See Step 3 and the parity table.
 - Full detail on what's implemented, by file, is in the Steps below and the
   Web ↔ mobile parity table.
 
@@ -48,7 +48,7 @@ text-only share that never landed anything in the recipient's log.
 **In scope:** sharing one logged meal from Today (web `NutritionTracker.tsx`
 / mobile `TodayMealsSection.tsx`) as a durable `/m/<token>` link, the anon-
 reachable web landing page, the signed-in/signed-out accept flows on both
-platforms, revocation, and the four new analytics events.
+platforms, revocation, and the five new analytics events.
 
 **Out of scope — go here instead:**
 - **The pre-existing text-only "Share meal" action** (macro-summary text via
@@ -335,23 +335,25 @@ mounted in `src/app/App.tsx`), `src/app/components/suppr/shared-meal-accept-dial
 `"ok"`. RLS `meal_shares_select_own` lets the owner list their rows. This
 ships in v1.
 
-**UI (ENG-1648):** Settings → Privacy **"My shared links"** (web + mobile),
+**UI (ENG-1648):** `MealSharedLinksSection` — Settings → Privacy on web
+(`src/app/components/settings/MealSharedLinksSection.tsx`), Settings →
+Account on mobile (`apps/mobile/components/settings/MealSharedLinksSection.tsx`),
 behind flag `meal_share_manage_v1` (default OFF). Expandable list of
 active / expired / revoked shares with per-row **Revoke** for active links.
 Tracks `meal_share_link_revoked`.
 
 ## Edge cases
 
-- **Migration not yet applied, flag flipped on anyway** → every
-  `create_meal_share` / `get_meal_share` call errors at the RPC layer. The
-  sharer-side fallback (Step 1) degrades this to the pre-existing
-  text-only share with no visible error — the user experience doesn't break,
-  but no link the fallback text might still reference (there is none — text
-  fallback never includes a URL) will work either. Any already-shared
-  `/m/<token>` link opened before the migration lands 404s at the RPC level;
-  the landing page's own error handling (network/RPC failure → `"invalid"`,
-  per `mealShareClient.ts`'s doc comment) means the visitor sees the generic
-  "This link isn't valid" copy, not a crash.
+- **(Historical — no longer reachable) Migration not yet applied, flag
+  flipped on anyway** → the migration is now permanently applied to
+  production, so this scenario can't recur. Kept for the record: every
+  `create_meal_share` / `get_meal_share` call would have errored at the
+  RPC layer; the sharer-side fallback (Step 1) degrades this to the
+  pre-existing text-only share with no visible error, and the landing
+  page's own error handling (network/RPC failure → `"invalid"`, per
+  `mealShareClient.ts`'s doc comment) means the visitor sees the generic
+  "This link isn't valid" copy, not a crash — so even the historical
+  failure mode degraded gracefully rather than breaking.
 - **Signed-out recipient on mobile** → resume rail now exists (ENG-1649,
   parity with web). The "Sign in to add this" CTA stashes the token
   (`storePendingMealShare`, AsyncStorage) before routing to `/login`; after
@@ -397,20 +399,21 @@ Tracks `meal_share_link_revoked`.
 
 | Area | Status |
 |---|---|
-| Flag gate (`meal_share_links_v1`, default off) | Identical scope on both — both read `KNOWN_DEFAULT_OFF_FLAGS` in their respective analytics module, and both gate CREATION only. Redemption (`/m/<token>` landing, `/home` resume, `/meal-shared`) is deliberately un-gated on both platforms — see Status above |
+| Flag gate (`meal_share_links_v1`, default ON since 2026-07-21) | Identical scope on both — both read `REDESIGN_DEFAULT_ON` in their respective analytics module, and both gate CREATION only. Redemption (`/m/<token>` landing, `/home` resume, `/meal-shared`) is un-gated on both platforms regardless of the flag — see Status above |
 | Share serialization + wire format | Identical — both call the same pure `mealShareLink.ts` (mobile via `@suppr/shared/share/mealShareLink`) |
 | Share action entry point | Same "Share meal" affordance on Today; web tries `navigator.share`/clipboard, mobile always uses the native `Share.share` sheet — platform-idiomatic, not a gap |
 | Text-only fallback (flag off / RPC fails / unserializable meal) | Identical behaviour and byte-identical to pre-ENG-1642 on both |
 | Anon-reachable preview before accept | **Diverges by design** — web has a dedicated public `/m/<token>` landing page (browsers can open a link with no app installed); mobile's `/meal-shared` route requires the app to be installed and open (there's no mobile-web equivalent), but *does* render the same anon preview once opened, gating only the final "Add to my log" write on auth. The web landing's "Open in app" link (mobile UA only) is the sole route INTO the native screen — see Step 3 |
-| Signed-out resume-after-auth | **Diverges — a real gap, not a deliberate difference.** Web stashes the pending token (`localStorage` + `?mealShare=` query fallback) and resumes automatically on `/home` after signup/login. Mobile has no equivalent — tracked as decision ticket **ENG-1649**, see Edge cases and Open product questions |
+| Signed-out resume-after-auth | **Parity achieved (ENG-1649).** Web stashes the pending token (`localStorage` + `?mealShare=` query fallback) and resumes on `/home` after signup/login. Mobile stashes via AsyncStorage and resumes via `ResumePendingMealShare` once the tab tree is fully gated (session + onboarding complete) — see Step 3 |
 | Accept UI (day/slot picker) | Same shape (slot chips + day picker + item list + totals), platform-idiomatic day-picker widget: web uses an open date input + Today/Tomorrow quick chips, mobile uses a fixed Today/Tomorrow/+2-days 3-chip row (no open date picker) |
 | Accept write path | Both write brand-new `nutrition_entries` rows via each platform's own build-row helper; both fire the same three post-write side effects (adaptive TDEE refresh, daily-target snapshot, HealthKit write — HealthKit obviously mobile-only in effect, but the call convention mirrors the manual-log path on both) |
 | Analytics | Identical event names + payload shapes on both platforms (`meal_share_link_created`, `meal_share_link_opened`, `shared_meal_logged`, `shared_meal_signup_started` — the last is web-only in practice since it's a signup-CTA event and mobile has no equivalent landing-page signup CTA) |
-| Revocation | RPC exists identically for both; **no UI on either platform** — tracked as **ENG-1648** (Step 4) |
+| Revocation | **Shipped on both (ENG-1648).** Same RPC; both platforms surface a Settings "My shared links" list with per-row Revoke, behind the shared `meal_share_manage_v1` flag (default OFF) — see Step 4 |
 
 ## Analytics
 
-Four new events. `meal_share_link_created` and the `mode: "link"` value on
+Four events for the sharing flow (ENG-1642) plus one for revocation
+(ENG-1648). `meal_share_link_created` and the `mode: "link"` value on
 `meal_share_invoked` are flag-scoped in practice (they only fire on the
 create path, which requires the flag to be on). `meal_share_link_opened`
 and `shared_meal_logged` are NOT flag-scoped — they fire on the un-gated
@@ -423,7 +426,12 @@ meal_share_link_created    { surface: string, itemCount: number }
 meal_share_link_opened     { status: MealShareStatus, authed: boolean }
 shared_meal_logged         { surface: string, itemCount: number, slot: "Breakfast" | "Lunch" | "Dinner" | "Snacks" }
 shared_meal_signup_started { surface: string }
+meal_share_link_revoked    { share_id: string }
 ```
+
+`meal_share_link_revoked` (ENG-1648) fires when the owner revokes one of
+their own links from the "My shared links" list (Step 4) — un-gated by
+`meal_share_links_v1` but only reachable while `meal_share_manage_v1` is on.
 
 `MealShareStatus` is `"ok" | "invalid" | "expired" | "revoked"`.
 `meal_share_link_opened` legitimately fires twice per web accept
@@ -452,24 +460,15 @@ event/property reference alongside the rest of the analytics catalog.
 
 ## Open product questions
 
-**Should mobile get a signed-out resume rail?** Today, a signed-out mobile
-recipient who taps "Sign in to add this" loses the pending share entirely —
-they land back on the tab bar with nothing queued, and have to re-open the
-original link/message after authenticating. Web solves this with a
-`localStorage` stash; mobile's equivalent would be `AsyncStorage` plus a
-drain-on-launch check (mirroring the web pattern), which wasn't built in v1.
-Whether this asymmetry is worth closing depends on how often a signed-out
-recipient actually exists on mobile — most mobile shares arrive to someone
-who already has the app installed (implying they likely have an account),
-whereas the web `/m/<token>` landing is the more plausible entry point for a
-genuinely new user (no app required to view it). Tracked as the decision
-ticket **ENG-1649**.
+~~**Should mobile get a signed-out resume rail?**~~ Resolved — built in
+**ENG-1649** (parity with web's stash-and-resume). See Step 3 and the
+parity table.
 
-**Should the "my shared links" management UI (list + revoke) ship in v1.1,
-or wait for signal that anyone wants to revoke a link?** The RPC exists;
-the UI doesn't. Tracked as **ENG-1648** rather than scope-crept into v1.
+~~**Should the "my shared links" management UI (list + revoke) ship in
+v1.1, or wait for signal that anyone wants to revoke a link?**~~ Resolved —
+shipped in **ENG-1648** rather than waiting for a usage signal. See Step 4.
 
-**Is a rate-limited or migration-not-applied share worth a visible error to
+**Is a rate-limited share worth a visible error to
 the sharer**, rather than the current silent degrade to text-only? The
 current choice (never block a share outright, degrade gracefully) optimizes
 for "the user's immediate action always succeeds in some form," at the cost
@@ -487,5 +486,5 @@ that trade-off needs revisiting once real usage data exists is open.
 - [`docs/journeys/food-tracking.md`](./food-tracking.md) — the Daily
   Logging Loop this journey branches off of and returns to.
 - `supabase/migrations/20260722090000_eng1642_meal_share_links.sql` — the
-  staged, not-yet-applied migration; see its header comment for the full
+  applied migration; see its header comment for the full
   constraints/privacy-posture rationale.
