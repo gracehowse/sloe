@@ -88,7 +88,7 @@ describe("Today one-treatment elevation (Grace 2026-06-09)", () => {
     "components/today/TodayDashboardMacroBars.tsx",
     // WeeklyInsightCard removed 2026-06-10 — de-carded into a typographic
     // callout (fresh-eyes §3); pinned separately below.
-    "components/HydrationStimulantsCard.tsx",
+    "components/hydration/HydrationStimulantsCardParts.tsx",
   ];
 
   it.each(TODAY_SOFT_PAGE_GROUND_SURFACES)(

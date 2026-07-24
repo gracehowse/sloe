@@ -61,7 +61,7 @@ describe("resting cards CONSOLIDATED onto <SupprCard> (2026-06-04)", () => {
     "components/today/TodayMealsSection.tsx",
     "components/today/TodayDashboardMacroBars.tsx",
     "components/today/TodayFirstMealEmptyState.tsx",
-    "components/HydrationStimulantsCard.tsx",
+    "components/hydration/HydrationStimulantsCardParts.tsx",
     "components/progress/TrajectoryCard.tsx",
     "components/progress/TrendSummaryCard.tsx",
     "components/progress/DigestStoryCard.tsx",
@@ -77,7 +77,7 @@ describe("resting cards CONSOLIDATED onto <SupprCard> (2026-06-04)", () => {
   // the resting-card chrome moved into the shell. HydrationStimulants keeps
   // EXACTLY ONE: its reset-menu *modal* (a floating dialog over a scrim, not a
   // resting card on the page), checked separately below.
-  it.each(MIGRATED.filter((f) => !f.includes("HydrationStimulantsCard")))(
+  it.each(MIGRATED.filter((f) => !f.includes("HydrationStimulantsCardParts")))(
     "%s no longer hand-rolls the `useBorder ? 1 : 0` resting border",
     (relPath) => {
       expect(read(relPath)).not.toMatch(/useBorder\s*\?\s*1\s*:\s*0/);
@@ -85,10 +85,7 @@ describe("resting cards CONSOLIDATED onto <SupprCard> (2026-06-04)", () => {
   );
 
   it("HydrationStimulantsCard keeps EXACTLY ONE heavy `useBorder ? 1 : 0` — its reset-menu modal", () => {
-    // The SloeCard resting shell is now <SupprCard> (asserted above). The only
-    // heavy form left is the reset-menu dialog; if a resting card ever regresses
-    // here, this count climbs to 2 and fails.
-    const heavy = read("components/HydrationStimulantsCard.tsx").match(
+    const heavy = read("components/hydration/HydrationStimulantsCardParts.tsx").match(
       /useBorder\s*\?\s*1\s*:\s*0/g,
     );
     expect(heavy).not.toBeNull();
@@ -184,7 +181,7 @@ describe("Sloe structural dividers — hairline, not a 1pt rule (still hand-roll
   });
 
   it("HydrationStimulantsCard stacked-row divider is hairline", () => {
-    const src = read("components/HydrationStimulantsCard.tsx");
+    const src = read("components/hydration/HydrationStimulantsCardParts.tsx");
     expect(src).toMatch(
       /borderTopWidth:\s*topBorder\s*\?\s*StyleSheet\.hairlineWidth\s*:\s*0/,
     );

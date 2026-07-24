@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, ScrollView, Text, View } from "react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft, CheckCircle2, ChevronRight } from "lucide-react-native";
+import { ArrowLeft } from "lucide-react-native";
 import { formatMacro, formatKcalDisplay } from "@suppr/nutrition-core/formatMacro";
+import {
+  ProgressMetricCaloriesSection,
+  ProgressMetricProteinSection,
+  ProgressMetricStreakSection,
+} from "@/components/progress/ProgressMetricSections";
 
 import { useAuth } from "@/context/auth";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -27,11 +33,6 @@ const DEFAULT_TARGETS = {
 };
 
 type Metric = "calories" | "protein" | "streak";
-
-function formatLongDate(dateStr: string): string {
-  const d = new Date(dateStr + "T12:00:00");
-  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-}
 
 export default function ProgressMetricDetailScreen() {
   const { metric: metricParam } = useLocalSearchParams<{ metric?: string | string[] }>();
@@ -286,9 +287,9 @@ export default function ProgressMetricDetailScreen() {
           marginBottom: Spacing.md,
         }}
       >
-        <Pressable onPress={goBack} hitSlop={12}>
+        <PressableScale haptic="selection" onPress={goBack} hitSlop={12}>
           <ArrowLeft size={22} color={t.text} strokeWidth={1.75} />
-        </Pressable>
+        </PressableScale>
         {/* ENG-822 (2026-05-31 design-director review): calmed the header.
             Was a shouty saturated-blue, ALL-CAPS, letter-spaced (2px) banner
             ("CALORIES THIS WEEK") that the review flagged as the loudest,
@@ -311,195 +312,37 @@ export default function ProgressMetricDetailScreen() {
       <Text style={{ fontSize: 14, color: t.sub, lineHeight: 20 }}>{subtitle}</Text>
 
       {metric === "calories" && (
-        <>
-          <View style={{ marginTop: Spacing.lg, borderRadius: Radius.lg, padding: Spacing.lg, ...cardSurface }}>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: t.text, marginBottom: Spacing.md }}>Daily intake</Text>
-            <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8, height: 120 }}>
-              {weekStats.days.map((d) => {
-                const maxCal = Math.max(targets.calories, ...weekStats.days.map((x) => x.calories), 1);
-                const barH = maxCal > 0 ? Math.max(6, (d.calories / (maxCal * 1.15)) * 88) : 6;
-                // F-2 — over/under judged against each day's own target.
-                const over = d.calories > d.targetCalories;
-                const isToday = d.key === todayKey;
-                return (
-                  <Pressable key={d.key} onPress={() => openDay(d.key)} style={{ flex: 1, alignItems: "center", gap: 6 }}>
-                    <Text style={{ fontSize: 10, color: t.dim, fontVariant: ["tabular-nums"] }}>
-                      {d.calories > 0 ? (d.calories >= 1000 ? `${(d.calories / 1000).toFixed(1)}k` : String(d.calories)) : "—"}
-                    </Text>
-                    <View
-                      style={{
-                        width: "100%",
-                        height: barH,
-                        borderRadius: 6,
-                        // Audit 2026-05-12 (premium-bar DC10): bars now follow
-                        // the calorie-ring 3-state rule — empty = border tint
-                        // (no judgment), logged-and-under = success green,
-                        // logged-and-over = destructive red. Previously over
-                        // used `t.amber` which collapsed under/over into the
-                        // same warning hue on dark backgrounds.
-                        backgroundColor: d.calories === 0 ? t.border : over ? t.red : t.green,
-                        opacity: isToday ? 1 : 0.85,
-                      }}
-                    />
-                    <Text style={{ fontSize: 11, fontWeight: isToday ? "800" : "600", color: isToday ? t.accent : t.dim }}>{d.label}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            {/* 2026-05-07 ui-critic F8: removed "Tap a day to open it on Today."
-                trailing helper. The day rows below are visibly tappable
-                (Pressable + chevron), so the affordance speaks for itself
-                — same fix shape as the meal-nutrition footer cleanup. */}
-          </View>
-
-          {weekStats.days.map((d) => (
-            <Pressable
-              key={`row-${d.key}`}
-              onPress={() => openDay(d.key)}
-              style={{
-                marginTop: Spacing.sm,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
-                paddingVertical: 14,
-                paddingHorizontal: Spacing.md,
-                borderRadius: Radius.md,
-                ...cardSurface,
-              }}
-            >
-              <View>
-                <Text style={{ fontSize: 14, fontWeight: "700", color: t.text }}>{formatLongDate(d.key)}</Text>
-                <Text style={{ ...Type.captionSmall, color: t.dim, marginTop: 2 }}>{d.label}</Text>
-              </View>
-              <View style={{ alignItems: "flex-end" }}>
-                <Text style={{ fontSize: 16, fontWeight: "800", color: t.text, fontVariant: ["tabular-nums"] }}>
-                  {formatKcalDisplay(d.calories)} kcal
-                </Text>
-                <Text style={{ fontSize: 11, color: d.calories > 0 ? t.sub : t.dim }}>
-                  {/* F-2 — % of goal uses each day's frozen target. Past
-                      days without a snapshot (pre-migration) use the
-                      current target and get an "(approx)" tag so the
-                      user knows the comparison is retroactive. */}
-                  {d.calories > 0
-                    ? `${Math.round((d.calories / Math.max(d.targetCalories, 1)) * 100)}% of goal${!d.isSnapshot && d.key !== todayKey ? " (approx)" : ""}`
-                    : "Nothing logged"}
-                </Text>
-              </View>
-              <ChevronRight size={18} color={t.dim} strokeWidth={1.75} />
-            </Pressable>
-          ))}
-        </>
+        <ProgressMetricCaloriesSection
+          weekStats={weekStats}
+          targets={targets}
+          todayKey={todayKey}
+          t={t}
+          cardSurface={cardSurface}
+          onOpenDay={openDay}
+        />
       )}
 
       {metric === "protein" && (
-        <>
-          <View style={{ marginTop: Spacing.lg, flexDirection: "row", gap: Spacing.md }}>
-            <View style={{ flex: 1, padding: Spacing.md, borderRadius: Radius.md, ...cardSurface }}>
-              <Text style={{ fontSize: 11, color: t.dim, fontWeight: "600" }}>AVG / DAY</Text>
-              {/* SLOE Phase 0: big stat numerals read in Newsreader serif. */}
-              <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 22, color: t.protein, marginTop: 4, fontVariant: ["tabular-nums"] }}>
-                {weekStats.avgProtein}
-                <Text style={{ fontFamily: FontFamily.sansBold, fontSize: 14, fontWeight: "800" }}>g</Text>
-              </Text>
-            </View>
-            <View style={{ flex: 1, padding: Spacing.md, borderRadius: Radius.md, ...cardSurface }}>
-              <Text style={{ fontSize: 11, color: t.dim, fontWeight: "600" }}>ON TARGET</Text>
-              <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 22, color: t.accent, marginTop: 4, fontVariant: ["tabular-nums"] }}>
-                {weekStats.proteinOnTarget}/7
-              </Text>
-            </View>
-          </View>
-          <Text style={{ ...Type.captionSmall, color: t.sub, marginTop: Spacing.md, lineHeight: 18 }}>
-            Weekly protein adherence vs goal: {weekStats.proteinAdherence}%. Carbs {weekStats.carbsAdherence}% · Fat {weekStats.fatAdherence}%
-          </Text>
-
-          {weekStats.days.map((d) => {
-            // F-2 — per-day protein target.
-            const dayProteinTarget = d.targetProtein > 0 ? d.targetProtein : targets.protein;
-            const hit = dayProteinTarget > 0 && d.protein >= dayProteinTarget * 0.9;
-            const pct = dayProteinTarget > 0 ? Math.round((d.protein / dayProteinTarget) * 100) : 0;
-            return (
-              <Pressable
-                key={d.key}
-                onPress={() => openDay(d.key)}
-                style={{
-                  marginTop: Spacing.sm,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  paddingVertical: 14,
-                  paddingHorizontal: Spacing.md,
-                  borderRadius: Radius.md,
-                  ...cardSurface,
-                }}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: "700", color: t.text }}>{formatLongDate(d.key)}</Text>
-                  <View style={{ height: 6, borderRadius: 3, backgroundColor: t.border, marginTop: 8, overflow: "hidden" }}>
-                    <View style={{ width: `${Math.min(pct, 100)}%`, height: "100%", borderRadius: 3, backgroundColor: hit ? t.green : t.amber }} />
-                  </View>
-                </View>
-                <View style={{ alignItems: "flex-end", marginLeft: Spacing.md }}>
-                  <Text style={{ fontSize: 15, fontWeight: "800", color: t.protein, fontVariant: ["tabular-nums"] }}>{Math.round(d.protein)}g</Text>
-                  <Text style={{ fontSize: 11, color: hit ? t.green : t.dim }}>{hit ? "On target" : `${pct}% of goal`}</Text>
-                </View>
-                <ChevronRight size={18} color={t.dim} strokeWidth={1.75} style={{ marginLeft: 8 }} />
-              </Pressable>
-            );
-          })}
-        </>
+        <ProgressMetricProteinSection
+          weekStats={weekStats}
+          targets={targets}
+          todayKey={todayKey}
+          t={t}
+          cardSurface={cardSurface}
+          onOpenDay={openDay}
+        />
       )}
 
       {metric === "streak" && (
-        <>
-          {/* 2026-05-07 ui-critic F11: hide the giant `0` headline when
-              there's no streak yet — the empty-state copy below carries
-              the message on its own. A 36/900 zero with "consecutive
-              logging days" reads as a placeholder, not a stat. */}
-          {streakDays > 0 ? (
-            <View style={{ marginTop: Spacing.lg, padding: Spacing.lg, borderRadius: Radius.lg, ...cardSurface }}>
-              {/* SLOE Phase 0: streak hero numeral reads in Newsreader serif. */}
-              <Text style={{ fontFamily: FontFamily.serifRegular, fontSize: 36, color: t.accent, fontVariant: ["tabular-nums"] }}>{streakDays}</Text>
-              <Text style={{ fontSize: 14, fontWeight: "600", color: t.text, marginTop: 4 }}>consecutive logging day{streakDays !== 1 ? "s" : ""}</Text>
-            </View>
-          ) : null}
-
-          {streakDaysDetail.length === 0 ? (
-            <Text style={{ fontSize: 14, color: t.sub, marginTop: Spacing.lg }}>Log a meal on Today to start a streak.</Text>
-          ) : (
-            <>
-              <Text style={{ fontSize: 13, fontWeight: "700", color: t.text, marginTop: Spacing.lg }}>Days in this streak</Text>
-              {streakDaysDetail.map((row) => (
-                <Pressable
-                  key={row.key}
-                  onPress={() => openDay(row.key)}
-                  style={{
-                    marginTop: Spacing.sm,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    paddingVertical: 12,
-                    paddingHorizontal: Spacing.md,
-                    borderRadius: Radius.md,
-                    ...cardSurface,
-                  }}
-                >
-                  <View>
-                    <Text style={{ fontSize: 14, fontWeight: "700", color: t.text }}>{formatLongDate(row.key)}</Text>
-                    <Text style={{ ...Type.captionSmall, color: t.dim, marginTop: 2 }}>
-                      {row.mealCount} item{row.mealCount !== 1 ? "s" : ""} · {formatKcalDisplay(row.calories)} kcal
-                    </Text>
-                  </View>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <CheckCircle2 size={22} color={t.green} strokeWidth={1.75} />
-                    <ChevronRight size={18} color={t.dim} strokeWidth={1.75} />
-                  </View>
-                </Pressable>
-              ))}
-            </>
-          )}
-        </>
+        <ProgressMetricStreakSection
+          streakDays={streakDays}
+          streakDaysDetail={streakDaysDetail}
+          t={t}
+          cardSurface={cardSurface}
+          onOpenDay={openDay}
+        />
       )}
+
     </ScrollView>
   );
 }

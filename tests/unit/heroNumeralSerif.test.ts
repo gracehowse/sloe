@@ -158,7 +158,8 @@ describe("SLOE hero numerals — mobile reads serif (Newsreader)", () => {
   });
 
   it("progress-metric stat numerals are serif", () => {
-    const src = read("apps/mobile/app/progress-metric.tsx");
+    // ENG-1565: numeral Text nodes live in ProgressMetricSections extract.
+    const src = `${read("apps/mobile/app/progress-metric.tsx")}\n${read("apps/mobile/components/progress/ProgressMetricSections.tsx")}`;
     expect(src).toContain(SERIF_MOBILE);
   });
 

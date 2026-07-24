@@ -80,18 +80,19 @@ describe("QuickAdd / SavedMeals trust posture wiring (file-source pins)", () => 
   });
 
   it("mobile QuickAddPanel imports SourceDot + mapMealSourceToDot", () => {
-    const src = read("apps/mobile/components/QuickAddPanel.tsx");
+    // ENG-1565: row chrome lives in QuickAddPanelRows extract.
+    const src = `${read("apps/mobile/components/QuickAddPanel.tsx")}\n${read("apps/mobile/components/quick-add/QuickAddPanelRows.tsx")}`;
     expect(src).toMatch(/import\s*\{\s*SourceDot\s*\}\s*from/);
     expect(src).toMatch(/import\s*\{\s*mapMealSourceToDot\s*\}\s*from/);
   });
 
   it("mobile QuickAddPanel imports dominantSavedMealSource (saved-meal row)", () => {
-    const src = read("apps/mobile/components/QuickAddPanel.tsx");
+    const src = `${read("apps/mobile/components/QuickAddPanel.tsx")}\n${read("apps/mobile/components/quick-add/QuickAddPanelRows.tsx")}`;
     expect(src).toMatch(/dominantSavedMealSource/);
   });
 
   it("mobile QuickAddPanel renders SourceDot at size=6 (favourites + saved rows)", () => {
-    const src = read("apps/mobile/components/QuickAddPanel.tsx");
+    const src = `${read("apps/mobile/components/QuickAddPanel.tsx")}\n${read("apps/mobile/components/quick-add/QuickAddPanelRows.tsx")}`;
     // Both paths render a SourceDot; assert at least 2 occurrences.
     const matches = src.match(/<SourceDot[\s\S]*?size=\{6\}/g) ?? [];
     expect(matches.length).toBeGreaterThanOrEqual(2);

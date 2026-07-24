@@ -226,7 +226,7 @@ describe("iOS overflow-clip fix lives in the shared <SupprCard> shell", () => {
   // THROUGH <SupprCard>, not re-roll a clip+shadow pair. (The recurring-drift
   // fix: the clip can never be re-introduced per-card again.)
   const MIGRATED_SURFACES = [
-    "components/HydrationStimulantsCard.tsx", // SloeCard → SupprCard
+    "components/hydration/HydrationStimulantsCardParts.tsx", // SloeCard → SupprCard
     "components/today/TodayHeroRing.tsx",
     "components/today/TodayPlannedMealsCard.tsx",
     "components/today/TodayMealsSection.tsx", // per-slot + quick-add cards

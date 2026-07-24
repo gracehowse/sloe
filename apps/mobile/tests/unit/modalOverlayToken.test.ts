@@ -28,7 +28,7 @@ const FILES = [
   // (rgba(0,0,0,0.4)) backdrops on these to the shared scrim token.
   "../../components/PortionPicker.tsx",
   "../../components/recap/GoalPaceEditorSheet.tsx",
-  "../../components/HydrationStimulantsCard.tsx",
+  "../../components/hydration/HydrationStimulantsCardParts.tsx",
 ] as const;
 
 describe("MODAL_OVERLAY_SCRIM (ENG-1013)", () => {

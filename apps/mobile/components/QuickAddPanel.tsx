@@ -3,27 +3,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Pressable,
   ScrollView,
-  Text,
   View,
   type ViewStyle,
 } from "react-native";
+import {
+  QuickAddHistoryRow,
+  QuickAddSavedMealRow,
+  QuickAddTabRow,
+} from "@/components/quick-add/QuickAddPanelRows";
 import {
   Bookmark,
   Clock,
   History,
   LogIn,
-  MoreVertical,
-  PlusCircle,
   Star as StarIcon,
 } from "lucide-react-native";
-import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Spacing } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
 import { useCardElevation } from "@/hooks/useCardElevation";
 import { useThemeColors } from "@/hooks/use-theme-colors";
-import Badge from "@/components/Badge";
-import { SourceDot } from "@/components/ui/SourceDot";
 import {
   computeFrequentMeals,
   computeRecentMeals,
@@ -41,7 +40,6 @@ import {
   type FavoriteFood,
   type FavoriteFoodInput,
 } from "@suppr/nutrition-core/favoriteFoods";
-import { formatMacroTrailer } from "@suppr/nutrition-core/macroFormat";
 import {
   deleteSavedMeal,
   incrementLogCount,
@@ -50,10 +48,7 @@ import {
   type SavedMeal,
   type SavedMealItem,
 } from "@suppr/nutrition-core/savedMeals";
-import {
-  dominantSavedMealSource,
-  summariseSavedMeal,
-} from "@suppr/nutrition-core/savedMealsLogic";
+import { summariseSavedMeal } from "@suppr/nutrition-core/savedMealsLogic";
 import { track } from "@/lib/analytics";
 import { showSignInAlert, signInToMessage } from "@/lib/authAlertCopy";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
@@ -538,51 +533,7 @@ export function QuickAddPanel({
 
   return (
     <View style={style}>
-      {/* Tab row */}
-      <View
-        style={{
-          flexDirection: "row",
-          gap: Spacing.xs,
-          paddingHorizontal: Spacing.xl,
-          paddingBottom: Spacing.sm,
-        }}
-        accessibilityRole="tablist"
-      >
-        {(Object.keys(TAB_LABELS) as Tab[]).map((t) => {
-          const active = tab === t;
-          const label = TAB_LABELS[t];
-          return (
-            <Pressable
-              key={t}
-              onPress={() => setTab(t)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-              accessibilityLabel={`${label} tab`}
-              style={{
-                flex: 1,
-                paddingVertical: 6,
-                borderRadius: Radius.sm,
-                alignItems: "center",
-                // Sloe treatment system (2026-06-08): filter pill selected
-                // = aubergine soft-tint (primarySoft) + primarySolid label,
-                // NOT a solid fill; unselected = off-white (colors.card)
-                // + textSecondary. Mirror of web QuickAddPanel.
-                backgroundColor: active ? accent.primarySoft : colors.card,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: "700",
-                  color: active ? accent.primarySolid : colors.textSecondary,
-                }}
-              >
-                {label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <QuickAddTabRow tab={tab} onSelectTab={setTab} colors={colors} accent={accent} />
 
       {tab === "saved" ? (
         <ScrollView
@@ -624,77 +575,20 @@ export function QuickAddPanel({
               )} grams, carbs ${Math.round(summary.totalCarbs)} grams, fat ${Math.round(
                 summary.totalFat,
               )} grams`;
-              // Trust posture (audit 2026-04-30 round-2 fix #B7) —
-              // dominant source across the meal's items. See
-              // `dominantSavedMealSource` (shared lib).
-              const dominantSource = dominantSavedMealSource(meal);
               return (
-                <Pressable
+                <QuickAddSavedMealRow
                   key={meal.id}
-                  onPress={() => handleLogSaved(meal)}
-                  onLongPress={() => openActions(meal)}
-                  disabled={pending || summary.itemCount === 0}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Log ${meal.name} to ${slotLabel}. ${summaryLabel}. Long-press for more actions.`}
-                  style={{
-                    backgroundColor: cardElevation.liftBg ?? colors.card,
-                    // Audit M6 (2026-04-18): card-shell list rows align to
-                    // Radius.lg (mobile convention, matches web rounded-card).
-                    borderRadius: Radius.xl,
-                    padding: Spacing.md,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    borderWidth: cardElevation.useBorder ? 1 : 0,
-                    borderColor: colors.border,
-                    opacity: pending ? 0.6 : 1,
-                    ...(cardElevation.shadowStyle ?? {}),
-                  }}
-                >
-                  <SourceDot
-                    source={dominantSource}
-                    size={6}
-                    style={{ marginRight: 8 }}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      numberOfLines={1}
-                      style={{ fontSize: 15, fontWeight: "600", color: colors.text }}
-                    >
-                      {meal.name}
-                    </Text>
-                    <Text
-                      style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: 2 }}
-                    >
-                      {itemsLabel} · {formatMacroTrailer({
-                        calories: summary.totalCalories,
-                        protein: summary.totalProtein,
-                        carbs: summary.totalCarbs,
-                        fat: summary.totalFat,
-                      })}
-                    </Text>
-                  </View>
-                  <Pressable
-                    onPress={(e) => {
-                      e.stopPropagation?.();
-                      openActions(meal);
-                    }}
-                    hitSlop={12}
-                    accessibilityRole="button"
-                    accessibilityLabel={`More actions for ${meal.name}`}
-                    style={{ paddingHorizontal: 6 }}
-                  >
-                    <MoreVertical
-                      size={IconSize.lg}
-                      color={colors.textSecondary}
-                      strokeWidth={2.25}
-                    />
-                  </Pressable>
-                  <PlusCircle
-                    size={IconSize.hero}
-                    color={accent.primary}
-                    strokeWidth={2.25}
-                  />
-                </Pressable>
+                  meal={meal}
+                  summary={summary}
+                  slotLabel={slotLabel}
+                  summaryLabel={summaryLabel}
+                  pending={pending}
+                  colors={colors}
+                  accent={accent}
+                  cardElevation={cardElevation}
+                  onLog={() => handleLogSaved(meal)}
+                  onOpenActions={() => openActions(meal)}
+                />
               );
             })}
         </ScrollView>
@@ -722,91 +616,20 @@ export function QuickAddPanel({
           {rows.map((row, idx) => {
             const starred = Boolean(row.favoriteId);
             const pending = pendingKeys.has(favoriteKey(row.recipeTitle, row.calories));
-            const isAi = isAiSourcedFoodHistoryItem(row);
-            // Trust posture (audit 2026-04-30 round-2 fix #B7) —
-            // surface the row's source via canonical dot. Falls back
-            // to "manual" when no source metadata exists.
-            const sourceKey = mapMealSourceToDot(row.source ?? null);
             return (
-              <Pressable
+              <QuickAddHistoryRow
                 key={`${row.recipeTitle}-${row.calories}-${idx}`}
-                style={{
-                  backgroundColor: cardElevation.liftBg ?? colors.card,
-                  // Audit M6 (2026-04-18): card-shell list rows align to
-                  // Radius.lg (mobile convention, matches web rounded-card).
-                  borderRadius: Radius.xl,
-                  padding: Spacing.md,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  borderWidth: cardElevation.useBorder ? 1 : 0,
-                  borderColor: colors.border,
-                  ...(cardElevation.shadowStyle ?? {}),
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={`Log ${row.recipeTitle} to ${activeSlot}`}
-                onPress={() => onLog(row)}
-              >
-                <SourceDot source={sourceKey} size={6} style={{ marginRight: 8 }} />
-                <View style={{ flex: 1 }}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 6,
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <Text
-                      style={{ fontSize: 15, fontWeight: "600", color: colors.text }}
-                    >
-                      {row.recipeTitle}
-                    </Text>
-                    {isAi && (
-                      <Badge variant="ai" accessibilityLabel="AI estimated nutrition">
-                        AI
-                      </Badge>
-                    )}
-                  </View>
-                  <Text
-                    style={{
-                      ...Type.captionSmall,
-                      color: colors.textSecondary,
-                      marginTop: 2,
-                    }}
-                  >
-                    {formatMacroTrailer({
-                      calories: row.calories,
-                      protein: row.protein,
-                      carbs: row.carbs,
-                      fat: row.fat,
-                    })}
-                    {row.count > 1 ? `  ·  ${row.count}×` : ""}
-                  </Text>
-                </View>
-                <Pressable
-                  onPress={(e) => {
-                    e.stopPropagation?.();
-                    toggleFavorite(row);
-                  }}
-                  hitSlop={12}
-                  accessibilityRole="button"
-                  accessibilityLabel={starred ? "Unstar meal" : "Favourite this meal"}
-                  accessibilityState={{ selected: starred, disabled: pending }}
-                  style={{ paddingHorizontal: 6, opacity: pending ? 0.5 : 1 }}
-                >
-                  <StarIcon
-                    size={22}
-                    color={starred ? Accent.warning : colors.textSecondary}
-                    fill={starred ? Accent.warning : "transparent"}
-                    strokeWidth={2.25}
-                  />
-                </Pressable>
-                <PlusCircle
-                  size={IconSize.hero}
-                  color={accent.primary}
-                  strokeWidth={2.25}
-                />
-              </Pressable>
+                row={row}
+                idx={idx}
+                activeSlot={activeSlot}
+                starred={starred}
+                pending={pending}
+                colors={colors}
+                accent={accent}
+                cardElevation={cardElevation}
+                onLog={() => onLog(row)}
+                onToggleFavorite={() => toggleFavorite(row)}
+              />
             );
           })}
         </ScrollView>

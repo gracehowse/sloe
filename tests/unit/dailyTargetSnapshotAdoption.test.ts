@@ -57,6 +57,10 @@ const MOBILE_PROGRESS_METRIC = resolve(
   __dirname,
   "../../apps/mobile/app/progress-metric.tsx",
 );
+const MOBILE_PROGRESS_METRIC_SECTIONS = resolve(
+  __dirname,
+  "../../apps/mobile/components/progress/ProgressMetricSections.tsx",
+);
 const WEB_PROGRESS = resolve(
   __dirname,
   "../../src/app/components/ProgressDashboard.tsx",
@@ -160,7 +164,8 @@ describe("daily target snapshot — read-side callers", () => {
   });
 
   it("mobile per-day % of goal cannot reintroduce `d.calories / targets.calories`", () => {
-    const src = read(MOBILE_PROGRESS_METRIC);
+    // ENG-1565: the per-day % math lives in ProgressMetricSections (extract).
+    const src = `${read(MOBILE_PROGRESS_METRIC)}\n${read(MOBILE_PROGRESS_METRIC_SECTIONS)}`;
     expect(src).toMatch(/d\.targetCalories/);
     expect(src).not.toMatch(/d\.calories \/ targets\.calories\) \* 100/);
   });
