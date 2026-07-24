@@ -36,7 +36,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Recipe metadata editor — title, servings, meal types, times, instructions. Save hits Supabase (not exercised in Storybook).",
+          "Recipe metadata editor — title, servings, meal types, times, instructions. Save writes to the database (not exercised in Storybook).",
       },
     },
   },
