@@ -1,456 +1,387 @@
-# Suppr — Shared Project Context
+# Sloe — Shared Agent Context
 
-**Audience:** every specialist agent in `.claude/agents/`. Read this file as step zero of any review or execution. It exists so agents stop rediscovering the same hard-won context per turn.
+**Audience:** every agent in `.claude/agents/`. Read this file as step zero of any
+review or execution.
 
-**Status:** living document. When a fact below changes, update it in one place — never duplicate context into individual agent files.
+**last-reviewed:** 2026-07-24
 
 ---
 
-## What Suppr is
+## THE PRIME RULE — read values, never restate them
 
-A recipe + nutrition platform shipping as **one product across web and mobile**:
-- Web app: `suppr.app` (authenticated product), `suppr.club` (marketing/landing where applicable)
-- Mobile app: iOS-only via TestFlight (Android config is vestigial Expo template, never built)
-- Single canonical onboarding lives at `/onboarding`; `/onboarding-v2` is a thin redirect kept for backwards compat (rename completed 2026-04-30)
+This file, and every agent file, is **forbidden from stating a value that lives in
+code.** Name the file; read it at runtime.
 
-The product is a **macro-tracker spine** with recipes, planning, and nutrition correctness as differentiators.
+A prompt that copies the radius ladder out of the theme is wrong the moment someone
+adds a token — and three agents stayed wrong for two months, with three mutually
+incompatible ladders between them, before the 2026-07-24 audit caught it. A prompt
+that says "read `Radius` from `apps/mobile/constants/theme.ts`" can never drift.
+
+| You need | Read it from |
+|---|---|
+| Spacing / radius / type ramp / colour tokens (mobile) | `apps/mobile/constants/theme.ts` |
+| Colour tokens (web) | `src/styles/theme.css` |
+| Button variants | `apps/mobile/components/ui/SupprButton.tsx` |
+| Nutrition confidence floors | `src/lib/nutrition/verifyConfidencePolicy.ts` |
+| AI free-text logging buckets | `src/lib/nutrition/aiLogging.ts` |
+| Event taxonomy | `src/lib/analytics/events.ts` |
+| Mobile tab labels | `apps/mobile/app/(tabs)/_layout.tsx` |
+| Landing / pricing claims | `src/lib/landing/content.ts` |
+| Type roles | `docs/ux/redesign/v3/DESIGN-CONSTITUTION.md` (Rule 5) |
+
+Enforced by `npm run check:agent-drift` — an agent file containing a hardcoded
+value that also exists in `theme.ts`, or citing a path/script that doesn't
+resolve, fails CI.
+
+---
+
+## What Sloe is
+
+A recipe + nutrition platform shipping as **one product across web and mobile**.
+
+- **Brand name: Sloe.** Domain **`getsloe.com`**. (Renamed 2026-06-09, commit
+  `19bbff72`. Internal identifiers — package name `suppr`, `@suppr/*` scope,
+  bundle `com.supprclub.supprapp`, expo slug/scheme — deliberately unchanged;
+  renaming them is churn. **User-facing copy and agent output say Sloe.**)
+- Web: Next.js 15 App Router. Mobile: Expo / React Native, **iOS-only** via
+  TestFlight (Android config is vestigial — never flag it as a parity gap).
+- Canonical onboarding at `/onboarding`; `/onboarding-v2` is a back-compat redirect.
+
+The product is a **macro-tracker spine** with recipes, planning, and nutrition
+correctness as differentiators.
 
 ---
 
 ## Strategic direction (locked 2026-04-27)
 
-17 ratified decisions; the load-bearing ones every agent must respect:
-- **4 tabs** in mobile (Today / Plan / Recipes / Progress — Profile/Settings collapsed into Progress; canonical label is "Progress", testID stays `tab-you` for Maestro)
-- **Free + Pro** (no third tier)
-- **Canonical Today** is the home and the spine; everything else is a branch off it
-- **"What to eat next"** is the north-star moment — the question the product answers better than any competitor
-- **Single Log sheet** for all logging (not per-meal pop-ups)
-- **Macro-tracker first**, recipes/planning second — recipes serve the macro spine, not the other way round
-
-Detail: `project_strategic_direction_2026-04-27.md` in user memory.
+- **4 mobile tabs** — read the labels from `apps/mobile/app/(tabs)/_layout.tsx`.
+  File names and testIDs intentionally differ from labels (the Progress tab keeps
+  testID `tab-you` for Maestro stability) — not drift.
+- **Free + Pro** only. No third tier.
+- **Today is the home and the spine**; everything else branches off it.
+- **"What to eat next"** is the north-star moment.
+- **Single Log sheet** for all logging.
+- **Macro-tracker first**, recipes/planning second.
 
 ---
 
-## Canonical competitor set (use these — never substitute generics)
+## Canonical competitor set
 
-Eight named competitors, in three groups:
+Read `docs/competitor-set-and-mfp-exodus-2026-05-03.md` — it is the single source
+of truth and explicitly says "do not restate divergently." Do not restate the set
+here or in your own file.
 
-**Mass-market trackers (the exodus targets):**
-- **MyFitnessPal** — mass exodus 2026-05-03 driven by feature removals + paywalling. **This is the priority capture moment.** Refugees are the highest-value cohort right now.
-- **Lose It!**
-- **Cronometer** (power users)
-- **MacroFactor** (premium tracker tier)
+Two facts agents kept getting wrong, both settled under ENG-1112 (2026-06-20):
+- **Cal AI is not an independent competitor.** MyFitnessPal acquired it (closed
+  Dec 2025); it was pulled from the App Store Apr 2026. Treat it as part of the
+  MFP profile.
+- The **MFP-exodus capture window** is time-boxed in that doc. Check its stated
+  status before asserting the exodus is live — it is not permanent context.
 
-**AI-image trackers (the noisy newcomers):**
-- **Cal AI** — calorie-from-photo flagship; high-marketing, accuracy-questionable
-
-**Recipe + planning side:**
-- **Paprika** (paid recipe manager)
-- **Recime**
-- **Honeydew**
-
-**Rule:** if your output references "tracking apps in general" without naming at least three of these by behaviour, you have failed. The canonical 8 is the answer to "who are we competing against today?"
-
-Multi-category context (creator, discovery, monetisation patterns) still applies for `competitor-intelligence` — but the 8 above are the always-on baseline.
+Deeper offline corpus, unwired until now — use it before claiming you lack data:
+`docs/competitor-intelligence-report.md`, `docs/competitor_feature_catalog_scout.md`,
+`docs/competitor_feature_catalog_sentiment.md`,
+`docs/research/2026-06-08-competitor-teardown-summary.md`.
 
 ---
 
 ## Trust posture — non-negotiable
 
-- **Nutrition is always estimated.** "Estimated", "based on", "approximate" — never absolute. No "this meal contains X calories." Always "estimated X kcal."
-- **Health claims are forbidden.** Suppr is a tool, not a clinician. No prescriptive language ("eat this to feel better", "lose 5kg in a month").
-- **Confidence is visible.** Low-confidence nutrition matches must be flagged or rejected. Never silently fill numbers.
-- **Pricing is region-aware.** Currency, tax, disclosure all vary by region. Single-currency hardcoded pricing (£ today on some surfaces) is a bug vs intent.
-- **UK/EU consumer VAT applies from £1/€1** regardless of Cayman entity status. Prices on UK/EU surfaces must be VAT-inclusive. Stripe Tax in inclusive mode until consumer-VAT registration resolves.
+- **Nutrition is always estimated.** "Estimated", "approximate" — never absolute.
+- **Health claims are forbidden.** Sloe is a tool, not a clinician. Partially
+  gated by `npm run check:nutrition-claims` (a banned-phrase list — it catches the
+  crude cases only; judgment still required).
+- **Confidence is visible.** Low-confidence matches are flagged, never silently
+  filled. The mechanism is flag-and-review, not a blocking prompt — see Nutrition.
+- **Pricing is region-aware.** UK/EU consumer VAT applies from £1/€1; prices
+  VAT-inclusive on those surfaces.
 
 ---
 
-## Calorie ring colour mapping (red carve-out RETIRED 2026-07-01)
+## Design craft contract
 
-Over-budget is **uniformly amber product-wide** — the 2026-04 "calorie ring over = destructive red" carve-out was retired by Grace on 2026-07-01 (sweep decision #2, `docs/decisions/2026-07-01-sweep-decisions.md`; implemented ENG-1296). Rationale: diet-culture exhaustion — "red numbers, guilt cycles" is the #1 refugee complaint; MacroFactor's no-red posture. Do **not** re-enforce red in any future conformance pass.
+Falsifiable checks, censused before any verdict. Adopted 2026-06-09 because
+impressionistic reviews kept passing surfaces Grace then faulted.
 
-| State | Colour |
+**The canonical scales live in `apps/mobile/constants/theme.ts`. Read them.** Do not
+restate them in a finding — cite the token name and the file.
+
+- **Census before verdict.** A tier/quality verdict requires a value-level census
+  first (file:line from code, or capture + measured px), listing every off-scale
+  instance with confidence + severity. Coverage is the reviewing agent's job;
+  filtering happens at aggregation, never at detection. A verdict without the
+  census is invalid.
+- **Verdict-grade capture walls** must include scrolled states, key sheets/modals,
+  dark mode, and a populated account. Top-of-screen captures of a sparse account do
+  not support a verdict.
+- **Near-duplicate rule.** The same element rendered two subtly-different ways is
+  always a finding: make them identical, or make them deliberately different and
+  documented. "Multiple styles fighting" is the canonical Sloe failure mode.
+- **Interaction-state completeness.** Every interactive element ships pressed
+  (mobile, `PressableScale` with correct haptic weight) / hover + `:focus-visible` +
+  active (web), plus disabled, plus loading on async commits. Silent success and
+  silent failure are findings, not polish.
+- **Write-time discipline.** Prevention beats review — see "UI write discipline" in
+  root `CLAUDE.md`. Review sweeps catch residue; they are not the system.
+
+**Calibration — the editorial-warm convergence.** Cream + serif + warm-accent is now
+the default look of AI-generated UI. The look alone no longer reads premium. Premium
+is earned in layers a template can't fake: photography, ring/data-viz craft, motion,
+haptics, measured spacing rhythm. Never accept "cream + serif present, therefore
+premium."
+
+**Decisions are challengeable (Grace's standing mandate, 2026-06-10).** A documented
+decision suppresses **re-filing the same settled finding** — it does not suppress a
+**new, evidence-backed challenge**, including to Grace's own decisions. A challenge
+must be named and evidenced, and routed to Grace as a decision item. Never silently
+implement against a decision; never silently respect one the evidence now undermines.
+Locked components stay locked pending her call — challenging is flagging, not
+rebuilding.
+
+---
+
+## Review craft — how every reviewing agent reports
+
+Defined once here; agents reference it and never redefine it.
+
+### Severity — one ladder, product-wide
+
+| | Meaning |
 |---|---|
-| Empty / not yet logged today | gradient (brand) |
-| Logged + under budget | success green (`--success` token) |
-| Logged + over budget | amber warning family — arc `--ring-over-a/b` (warning-solid → warning), numeral `--accent-warning-solid` / `overBudgetFg` |
+| **BLOCK** | Do not ship. Data loss, security exposure, legal exposure, a false nutrition number reaching a user, or a broken core flow. |
+| **P0** | Ship-blocking for this change. Breaks the surface's own purpose. |
+| **P1** | Costs trust or comprehension. Silent failure, an expectation mismatch a normal person hits, a parity break a user would notice. |
+| **P2** | Craft debt. Off-ladder value, near-duplicate treatment, missing non-critical state. |
+| **P3** | Nit. Worth recording, not worth blocking on. |
 
-Both mobile and web use this mapping. Destructive red is errors and dangerous actions **only**.
+Attach **confidence** (`high` / `med` / `low`) to any finding you could not fully
+verify. A `low`-confidence finding is still worth filing — say what would settle it.
 
----
+### Report what is working, not only what is broken
 
-## Screen file size limit
+Every review names **what to preserve** before what to fix. Two reasons, and the
+second matters more:
 
-Screen-level files (`app/(tabs)/*.tsx`, `app/*.tsx` on mobile; page-level components on web) must stay under **400 lines**. When a screen file approaches this limit:
+1. Grace needs to know what not to break — a wall of failures with no signal about
+   what's load-bearing is how good work gets refactored away.
+2. **An agent that only reports problems will invent them.** If your honest read is
+   that a surface is strong, say so and file fewer findings. Volume is not rigour.
+   "Nothing above P2 here" is a valid, valuable result.
 
-1. Extract hooks into a co-located `use<Screen>.ts` (composition root pattern — see ENG-619 for the canonical example).
-2. Extract sub-sections into `components/<screen>/` with one component per file.
-3. Keep the screen file as a thin composition shell: imports, layout, data wiring.
+### Match the stage
 
-Files over 400 lines signal that state, layout, and logic are tangled. The limit is enforced by the **line-count ratchet** `npm run check:screen-budget` (`scripts/check-screen-line-budget.mjs`, wired into `npm run ci` + CI; ENG-717). It scans web `src/app/components` + `app` and mobile `apps/mobile/app` + `apps/mobile/components` `.tsx` files. The current offenders are pinned at their line count in `scripts/screen-line-budget.json` (a path → max-lines allow-list) and may **only shrink** — an allow-listed file that grows past its pin, or any new file that crosses 400 lines, fails CI. As you shrink a pinned file, re-pin it lower with `npm run check:screen-budget:write`; once it drops to ≤400 it leaves the allow-list and is held to the hard limit. (The ratchet scopes to `.tsx` screen/component surfaces — `app/api/**` route handlers are `.ts` and not screens, so they're out of scope by design.)
+Ask what stage the work is at, or infer it and say which you assumed.
 
----
+- **Exploration** — judge the direction and the concept. Do not file P2 craft debt on
+  a sketch; it wastes the round.
+- **Refinement** — full craft rigour, censuses, states, edges.
+- **Pre-ship** — BLOCK/P0 only, plus anything that costs trust. Be decisive: name the
+  ship/hold call rather than handing back a list.
 
-## Prototype carryover rules
+### Degrade gracefully
 
-The Claude Design bundles at `docs/ux/claude-design-bundles/{prototype,onboarding}` are the **design language reference**. Not a mandate.
-
-- **Reference, not mandate.** Mix and match. Where live is stronger, keep live. Adopt selectively.
-- **Three-bucket audit format** for any prototype-driven redesign:
-  - **Keep from live** — items the live screen has that the prototype doesn't (per item: Keep or Remove, with rationale)
-  - **Adopt from prototype** — items the prototype has that live doesn't (per item: Adopt as-is / Adopt with modifications / Skip, with rationale)
-  - **Swap in place** — items present on both (per item: which version wins, with rationale)
-- **Icons must be exact.** Use `lucide-react-native` on mobile; cross-reference the bundle before substituting an SF Symbol.
-- **Tokens flip project-wide** (carryover rules — these are NOT screen-level decisions): macro colour map, over-budget = amber (uniformly, incl. the calorie ring — red retired 2026-07-01), sodium = orange (never destructive), background tone, sidebar 248, ring track = `var(--ring-bg)`.
-- **No hardcoded Tailwind hexes** (`#ef4444`, `#f87171`, etc.) — use semantic tokens.
-
----
-
-## Design craft contract (adopted 2026-06-09)
-
-Method adopted from the logic behind the Claude Design prototypes (the system
-prompt that generated `docs/ux/claude-design-bundles/` — public reconstruction:
-github.com/Trystan-SA/claude-design-system-prompt). Adopted because the fleet's
-impressionistic reviews repeatedly passed surfaces Grace then faulted for
-spacing and consistency. Falsifiable checks, censused before any verdict,
-enforced at write time as well as review time.
-
-### Canonical scales — the only legal values
-
-- **Spacing:** 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 (12 = `Spacing.dense`,
-  adopted 2026-06-10 ENG-1012) (`Spacing`,
-  `apps/mobile/constants/theme.ts`; same rhythm on web). An 18px padding or
-  10px gap is a bug even if it "looks fine". **Enforced by two spacing-scale
-  ratchets:** `npm run check:spacing-scale` (`scripts/check-spacing-scale.mjs`,
-  ENG-1007; in `npm run ci` + CI): scans mobile `.tsx`, reads the legal scale
-  from `theme.ts`, pins per-file off-scale counts in
-  `scripts/spacing-budget.json` (only-shrink). Re-pin with
-  `npm run check:spacing-scale:write`. And `npm run check:web-spacing-scale`
-  (`scripts/check-web-spacing-scale.mjs`, ENG-1592 — the web leg ENG-1007's
-  own code comment promised and never built until 2026-07-21; also in
-  `npm run ci` + CI): scans web `src/app` + `app` `.tsx` for off-scale
-  Tailwind `p-*/m-*/gap-*` spacing (arbitrary `[Npx]` brackets AND
-  off-scale numeric steps, mapped step→px via Tailwind's `step * 4px`
-  convention), reads the same legal scale, pins per-file counts in
-  `scripts/web-spacing-budget.json` (only-shrink; 264 files / 1037
-  instances at the 2026-07-21 baseline). Re-pin with
-  `npm run check:web-spacing-scale:write`.
-- **Radius:** 4 / 6 / 8 / 12 / full (`Radius` — 2026-05-22 lock; bigger reads
-  "kids' tablet"). Off-scale `borderRadius` literals are caught by the token
-  ratchet (below).
-- **Type:** the `Type` ramp on mobile; type-scale-gated classes on web
-  (25-snap gate, green). **Enforced by the mobile type-scale ratchet**
-  `npm run check:type-scale-mobile` (`scripts/check-type-scale-mobile.mjs`,
-  ENG-1002; in `npm run ci` + CI): scans mobile `.tsx`, flags raw `fontSize: N`
-  literals off the `Type` ramp (read at runtime from `theme.ts`, unioned with a
-  micro 8–10 + display 36+ band that mirrors the web `check:type-scale` bands),
-  pins per-file off-ramp counts in `scripts/type-scale-mobile-budget.json`
-  (only-shrink). Re-pin with `npm run check:type-scale-mobile:write`.
-- **Type roles (adopted 2026-07-17, ENG-1525 build S9 — Grace's ruling):** a
-  size ramp alone does not prevent typographic chaos — the S8 prototype review
-  proved same-role elements can diverge in weight/colour/family while every
-  size is "legal" ("every font is a different size, weight, colour — there are
-  no rules or logic"). So sizes are necessary but not sufficient: **every text
-  node maps to exactly one role**, and a treatment not in this table does not
-  exist. Canonical source: `docs/ux/redesign/v3/DESIGN-CONSTITUTION.md` Rule 5;
-  app implementations bind roles to theme tokens (`Type` on mobile, the
-  type-scale classes on web), never to literals.
-
-  | Role | Spec | Job |
-  |---|---|---|
-  | `display` | serif 46/500, tnum | THE hero numeral, one per screen (full-screen sheets count as screens). The only numeral that may wear state colour |
-  | `stat` | serif 28/500, tnum, ink | card-headline numerals, one per card. Sibling stats NEVER differ in colour — state lives in a pill/dot |
-  | `stat-sm` | serif 20/500, tnum, ink | in-card trios/grids (Eaten/Goal/Left), macro-ring numerals, day totals |
-  | `title` | serif 33/500, ink | page titles, full-screen sheet headlines |
-  | `content` | serif 18–22/500, ink | dish names (18 floor), verdict sentences, editorial statements |
-  | `label` | sans 11/700, caps, .1em, tertiary grey | ALL structural labels — section heads, overlines, column heads, axis words, stat sublabels. ONE variant only |
-  | `body` | sans 15/400, ink | row titles, primary sentences. At most ONE 600 emphasis phrase per verdict sentence |
-  | `support` | sans 13/400, secondary grey | descriptive sublines, "of 151g", unit suffixes, meta |
-  | `caption` | sans 12/400, tertiary grey | timestamps, footnotes, provenance. Chart micro-text 9–11 exempt |
-  | `interactive` | sans 13–15/600, control kit | buttons, links, chips, tabs — the ONLY other home of sans-600 |
-  | `accent` | serif italic 15/400 | quotes, citations, recipe attributions |
-
-  Three hard corollaries: **sans-600/700 lives only in `label` and
-  `interactive`** (plus the single body emphasis phrase); **numerals are ink**
-  except the one `display` per screen, semantic bar/arc fills, and macro
-  tokens (`46P 12C 9F` strips at 12/600/macro-hue — the one sanctioned
-  coloured-numeral register); **serif appears only at role sizes** (46 / 33 /
-  28 / 20 / 18–22 / accent 15). Ratified glyph exemptions: avatar monograms,
-  the recap story tier (84/40). Review-time census: audit ROLES (same-job
-  elements rendered identically), not just ramp membership.
-- **Colour:** every value traces to a semantic token (`theme.ts` /
-  `src/styles/theme.css`). A literal hex in a component is a finding.
-  **Enforced by the token-scale ratchet** `npm run check:token-scale`
-  (`scripts/check-token-scale.mjs`, ENG-1007; in `npm run ci` + CI): flags raw
-  6-digit hexes, raw Tailwind palette colour classes, and off-scale
-  `borderRadius` across web + mobile `.tsx`; pins per-file counts in
-  `scripts/token-budget.json` (only-shrink). 3-digit `#000`/`#fff` are not
-  matched (Apple Sign-In brand carve-out). Re-pin with
-  `npm run check:token-scale:write`.
-- **Elevation:** one-card treatment — page-ground = soft lift, nested = flat
-  (`docs/decisions/2026-06-09-one-card-treatment-soft-elevation.md`).
-
-  Both ratchets keep a sibling `allow` map (full-file carve-out → required
-  rationale string). A rationale-less carve-out is itself a CI failure — no
-  silent carve-outs. Currently empty: the per-file pins cover the legacy
-  baseline and the Apple-brand hexes are out of pattern.
-
-### Census before verdict (review-time rule)
-
-A review may only issue a tier/quality verdict AFTER producing value-level
-censuses — spacing, colour, radius, type — listing **every** off-scale /
-off-token instance (file:line from code, or capture + measured px). Report
-every violation including uncertain and low-severity ones, each with
-confidence + severity. **Coverage is the reviewing agent's job; filtering
-happens at aggregation — never at detection.** A tier verdict without the
-census attached is invalid.
-
-Verdict-grade capture walls must include scrolled states, key sheets/modals,
-dark mode, and a populated account. Top-of-screen captures of a sparse account
-do not support a verdict (this exact gap produced a disputed "Premium" call on
-2026-06-09).
-
-### Near-duplicate rule (consistency)
-
-The same element rendered two subtly-different ways — chips, pills, rows,
-section headers, dividers, icon sizes, radii, card paddings — is always a
-finding: **either make them identical or make them deliberately different and
-documented.** "Multiple styles fighting" is the canonical Suppr failure mode;
-hunt it explicitly, screen-by-screen pairs included.
-
-### Interaction-state completeness
-
-Every interactive element ships its full state set:
-
-- **Mobile:** pressed (`PressableScale` with the correct `haptic` weight),
-  disabled, loading on async commits (disable + progress — no double-submit).
-- **Web:** hover, `:focus-visible` (never remove the ring without replacement),
-  active, disabled, loading.
-
-Silent success and silent failure after a user action are findings, not polish.
-
-### Write-time discipline
-
-Prevention beats review: whoever writes UI code (Claude or Cursor) follows the
-scales and token rule at write time — see "UI write discipline" in root
-`CLAUDE.md` and `apps/mobile/CLAUDE.md`. Review sweeps catch the residue; they
-are not the system.
-
-### Calibration note — the editorial-warm convergence
-
-Cream + serif + warm-accent editorial is now the default look of AI-generated
-UI (the Claude Design prompt itself flags the `#F4F1EA`-family + serif-display
-+ terracotta combination as today's purple-gradient). The look alone no longer
-reads premium. Premium is earned in the layers a template can't fake:
-photography, ring/data-viz craft, motion, haptics, measured spacing rhythm.
-Judge those hardest; never accept "cream + serif present, therefore premium."
-
-**The warm-editorial direction itself is under active challenge (Grace,
-2026-06-10)** — see the direction-question note in
-`docs/planning/sloe-polish-handoff-2026-06-09.md`. Do not treat "it matches
-the committed direction" as a defence against a slop-convergence finding.
-
-### Decisions are challengeable (Grace's standing mandate, 2026-06-10)
-
-A documented decision or carve-out suppresses **re-filing the same settled
-finding** — it does NOT suppress a **new, evidence-backed challenge**. Grace:
-"Even though I've made decisions, I don't want the app to look like AI slop —
-if my design decisions are going to make it look like that we need to
-challenge." This includes her own decisions and the warm-editorial direction.
-
-Rules of engagement:
-- A challenge must be **named and evidenced** (which decision, what changed —
-  e.g. convergence references, rendered comparisons), never "I'd have chosen
-  differently."
-- Route the challenge **to Grace as a decision item** — never silently
-  implement against a decision, and never silently respect a decision the
-  evidence now undermines. Both silences are failures.
-- Locked components stay locked **pending her call** — challenging is
-  flagging, not unilaterally rebuilding.
+Say what you could not check and why, rather than working around it silently. If a
+connector you'd use is unavailable — Linear, PostHog, a design-reference MCP, the
+simulator — name it, state what it would have told you, and mark the affected
+findings `low` confidence. Never present an inference as a verified result, and never
+fabricate a number you could not measure.
 
 ---
 
-## Cross-platform parity rules
+## The canonical prototype
 
-**Default:** web and mobile must match in feature presence, flow shape, naming, microcopy, event names, states.
+**`docs/ux/redesign/v3/Sloe-App.html` is canonical** (Grace, 2026-06-24), with type
+law in `docs/ux/redesign/v3/DESIGN-CONSTITUTION.md`. Conformance runs under ENG-1247.
 
-**Documented intentional divergences (do NOT flag as drift):**
-- **Onboarding step count** — web N/13 vs mobile N/12 (mobile refresh-plan step). Intentional.
-- **iOS-only build target** — Android config is vestigial; not a parity gap.
-- **Calorie-ring colour map** — empty=gradient, under=success green, over=amber warning family (red carve-out retired 2026-07-01, ENG-1296 — over-budget is amber product-wide).
-- **Stripe (web) vs IAP (mobile)** billing rails — entitlements reconcile in `profiles.user_tier`.
-- **Apple Health / Apple Sign-In** — mobile-first/native; web has manual equivalents.
-- **Today dark surface tone** — mobile `#0a0a0f` vs web `#101014` (platform-native depth).
-- **"Sign in with Apple" button colours** — the black (`#000`) fill + white (`#fff`) logo/text on `apps/mobile/components/onboarding/steps/signup.tsx` and `apps/mobile/app/login.tsx` are **Apple HIG brand-mandated**, not theme tokens. These literal hexes are a deliberate carve-out — do NOT migrate them onto `Accent`/`Colors` tokens or re-file them in colour censuses (ENG-1013, 2026-06-10).
+**The Figma is dead as a source of truth.** `docs/ux/redesign/figma-*` is historical
+record only — do not file Figma-conformance work.
 
-**RETIRED 2026-05-25 (now converging to parity — no longer carve-outs):** pricing default → unify monthly (ENG-698); move-meal → web `/planner` (ENG-699); Recipe Go Public → mobile (ENG-700); onboarding Welcome copy → fresh pass (ENG-697); Discover IA → converge to web layout (ENG-695). See `docs/decisions/2026-05-25-sweep-parity-ia-pricing-resolutions.md`.
-
-**Implication:** every meaningful UI decision Grace makes on mobile must land on the equivalent web surface in the same commit, *unless* the change is on the documented carve-out list above.
+`docs/ux/claude-design-bundles/` is **historical**. It encodes a dark-first,
+Inter-only, blue/magenta system the product has left behind. Do not audit against it.
 
 ---
 
-## Voice & communication rules
+## Enforcement gates — what is already automated
 
-**For agent output, copy, microcopy, and chat replies:**
+`npm run ci` runs these. **Before filing a finding a gate already covers, run the
+gate.** A hand census that contradicts a ratchet is a bug in the census.
 
-- **Plain English.** No internal jargon (T-numbers, "infra", "harness", flag IDs without context). Translate dense specialist output before handing it back.
-- **One recommendation + one tradeoff** is the default response shape for exploratory questions.
-- **Never offer quick/temp fixes as options.** Propose the long-term fix directly, name its cost, ship it.
-- **Prefer most correct over quickest.** When presenting cheap-vs-correct paths, recommend the correct one explicitly.
-- **No diet-culture shaming, no toxic gamification.** Body-neutral, supportive, adult tone.
-- **Past days = past tense; current/live data = present tense.** "You ate 1,800 kcal yesterday" / "You're at 1,200 kcal today."
+| Gate | Covers |
+|---|---|
+| `check:spacing-scale` / `check:web-spacing-scale` | off-scale spacing (mobile / web) |
+| `check:token-scale` | raw hexes, `rgb()` literals, Tailwind palette classes, off-scale radius, alpha concats, web accent slash-opacity |
+| `check:web-radius` | web `rounded-[Npx]` brackets |
+| `check:type-scale` / `check:type-scale-mobile` | off-ramp type (web / mobile) |
+| `check:pressable-feedback` | raw feedbackless `<Pressable>` |
+| `check:anatomy` | container chrome declared outside owner dirs |
+| `check:storybook-coverage` | missing sibling stories |
+| `check:copy-voice` | copy voice discipline (no "!", no praise, no vendor) |
+| `check:nutrition-claims` | absolute health/nutrition claims |
+| `check:screen-budget` | files over 400 lines |
+| `check:jsx-text-node`, `check:date-key`, `check:mobile-shared-imports`, `check:migrations:static`, `check:posthog-proxy`, `check:redesign-foundation-touch`, `check:today-captures` | as named |
+| `check:agent-drift` | **this file and every agent file** |
+
+Most are **only-shrink ratchets**: legacy offenders are pinned in
+`scripts/*-budget.json` and may only decrease. Re-pin a legitimately-shrunk file
+with the matching `:write` script.
+
+**Not gated — these need human/agent judgment:** accessibility (no a11y gate exists;
+web has `tests/e2e/utils/a11y.ts` + axe, mobile has none), legal posture beyond the
+banned-phrase list, flow/naming parity, nutrition domain correctness, product
+judgment.
+
+---
+
+## Storybook + Chromatic — non-negotiable (2026-07-22)
+
+Every visual `.tsx` under `src/app/components/**` and `apps/mobile/components/**`
+ships a sibling `*.stories.tsx` **in the same PR**. Skips require a row in
+`scripts/storybook-coverage-skips.json`. Changing a component's look or states means
+updating its stories in the same change. Inventory:
+`docs/design/2026-07-22-storybook-coverage-matrix.md`.
+
+---
+
+## Cross-platform parity
+
+**Default:** web and mobile match in feature presence, flow shape, naming,
+microcopy, event names, states.
+
+**Documented intentional divergences — do NOT flag as drift:**
+- Onboarding step count (web N/13 vs mobile N/12 — mobile refresh-plan step)
+- iOS-only build target (Android config vestigial)
+- Stripe (web) vs IAP (mobile) rails; entitlements reconcile in `profiles.user_tier`
+- Apple Health / Apple Sign-In — mobile-native; web has manual equivalents
+- Today dark surface tone differs by platform (platform-native depth)
+- **Apple Sign-In button colours** — black fill + white logo are Apple HIG
+  brand-mandated (`apps/mobile/components/onboarding/steps/signup.tsx`,
+  `apps/mobile/app/login.tsx`). Deliberate literal-hex carve-out (ENG-1013); do not
+  migrate to tokens or re-file in colour censuses.
+
+**Suppressions live here and only here.** If a finding should not be re-filed, it
+belongs in this list — never as a "do NOT re-flag" clause inside an agent file. Three
+such clauses went stale in place and became enforced blindness; one edit here retires
+a suppression everywhere.
+
+**Retired suppressions (these are now live findings again):** billing-period default
+divergence (unified monthly, ENG-698); move-meal (ENG-699); Recipe Go Public
+(ENG-700); onboarding Welcome copy (ENG-697); Discover IA (ENG-695). The calorie-ring
+red carve-out is retired — over-budget is amber product-wide (ENG-1296, 2026-07-01);
+**do not re-enforce red in any conformance pass.**
+
+---
+
+## Voice & communication
+
+- **Plain English.** No internal jargon, flag IDs without context, or T-numbers.
+- **One recommendation + one tradeoff** for exploratory questions.
+- **Never offer quick/temp fixes as options.** Propose the correct fix, name its cost.
+- **No diet-culture shaming, no toxic gamification.** Body-neutral, adult tone.
+- **Past days = past tense; current data = present tense.**
 
 ---
 
 ## Workflow non-negotiables (from `CLAUDE.md`)
 
-- Web ↔ mobile must stay in sync at all times.
-- No feature is complete without: implementation + tests + docs + cross-platform review.
-- Cap of 8 open PRs in flight (raised from 3, 2026-07-15). Rebase before push every push. Run `npm run ci` before push.
-- Visual validation is mandatory: before/after screenshots on web AND mobile attached to the PR. Verify visuals BEFORE commit + push.
-- Never apply Supabase migrations via MCP `apply_migration` for tracked files. Use `supabase db push --linked`.
-- Notion mirroring: when a feature ships, a decision is resolved, or roadmap state changes, mirror to Notion in the same turn.
+- Web ↔ mobile stay in sync at all times.
+- No feature complete without implementation + tests + **Storybook stories** + docs +
+  cross-platform review.
+- Cap of 8 open PRs. Rebase before every push. Run `npm run ci` before push.
+- Visual validation is mandatory: before/after captures on web AND mobile.
+- Never apply Supabase migrations via MCP `apply_migration` for tracked files — stage
+  the SQL and ask Grace to run `supabase db push --linked`.
+- **Notion mirroring is discontinued (2026-06-28).** Do not mirror anything to Notion.
+  Repo + Linear are canonical. Any instruction to "mirror to Notion" is void.
+- **No silent deferrals.** A deferral is a fix now, a Linear issue referenced in the
+  comment, or an explicit "intentionally <reason> — not a gap". Never a bare TODO.
 
 ---
 
-## Solo-tester reality
+## Solo-founder reality
 
-Grace is the only TestFlight tester until she says otherwise. Scope cohort thinking to **N=1**:
-- Don't over-engineer for "users" who don't exist yet.
-- Don't pitch hypothetical Android bugs as real bugs (no Android target).
-- Treat Grace's lived behaviour as the ground-truth signal — not synthetic personas.
+Grace is the only TestFlight tester until she says otherwise. Scope cohort thinking
+to **N=1**: don't over-engineer for users who don't exist yet, don't pitch
+hypothetical Android bugs, and treat Grace's lived behaviour as ground truth over
+synthetic personas.
 
----
-
-## Repo map (Suppr-native reference for every agent)
-
-### Top-level
-- `app/` — Next.js 15 web app (App Router). Public landing under `app/(landing)/`; product pages under `app/account`, `app/pricing`, `app/roadmap`, `app/onboarding`, `app/recipe`, `app/checkout`, `app/help`, `app/dmca`, `app/privacy`, `app/licences`.
-- `apps/mobile/` — Expo / React Native. Tab routes at `apps/mobile/app/(tabs)/`. Stack screens (cook, paywall, fasting, create-recipe, etc.) at `apps/mobile/app/`.
-- `src/` — shared web library code (everything imported by the web app)
-- `supabase/migrations/` — 113+ tracked SQL migrations (apply via `supabase db push --linked`, never via MCP `apply_migration`)
-- `tests/` — web Vitest (`tests/unit/`) + Playwright e2e (`tests/e2e/`)
-- `apps/mobile/__tests__/` — mobile Vitest
-- `apps/mobile/.maestro/` — mobile e2e (Maestro)
-- `docs/` — product, decisions, journeys, integrations, api, design, planning
-- `scripts/` — CLI tooling (CI checks, e2e preflight, RevenueCat smoke, TestFlight feedback fetch, migration drift)
-
-### Canonical web surfaces
-- `app/page.tsx` + `app/(landing)/LandingPage.tsx` — public `/`
-- `app/pricing/page.tsx` — public `/pricing`
-- `app/roadmap/page.tsx` — public `/roadmap`
-- `app/onboarding/` — canonical onboarding (rename completed 2026-04-30); `/onboarding-v2` is a thin redirect kept for backwards compat
-
-### Canonical mobile surfaces
-- `apps/mobile/app/(tabs)/index.tsx` — Today
-- `apps/mobile/app/(tabs)/planner.tsx` — Plan
-- `apps/mobile/app/(tabs)/library.tsx` — Recipes
-- `apps/mobile/app/(tabs)/progress.tsx` — Progress (the 4th bottom tab, label "Progress"; Profile/Settings collapsed in). `more.tsx` also exists as a secondary route, not the bottom-tab label.
-
-(User-facing tab labels per the 2026-05-19 IA: **Today / Plan / Recipes / Progress**. File names and labels intentionally differ — e.g. the Progress tab keeps testID `tab-you` for Maestro stability — don't flag this as drift.)
-
-### Landing SSOT
-- `src/lib/landing/content.ts` — single source of truth for all landing/pricing/roadmap claims. Re-exports algorithm constants (`adaptiveTdee.ts` thresholds, `FREE_SAVE_LIMIT`, etc.) so marketing copy never hardcodes numbers.
-- `src/lib/landing/nutritionSources.ts` — `NUTRITION_SOURCES` declaration (mobile-importable, no `@/` aliases)
-- `tests/unit/landingParity.test.tsx` — pins rendered marketing copy against the SSOT; **must not be silenced**
-- `docs/product/landing-maintenance.md` — maintenance guide
-
-### Nutrition spine
-- `src/lib/nutrition/` — 100+ modules; the engine of the product. Notable:
-  - `verifyIngredients.ts` — ingredient verification pipeline core
-  - `adaptiveTdee.ts` — TDEE thresholds (`MIN_LOGGING_DAYS`, `MIN_WEIGH_INS`)
-  - `measureToGrams.ts` — count-to-weight normalisation
-  - `verifyConfidencePolicy.ts` — confidence scoring policy
-  - `mealPlanAlgo.ts` — plan-tab algorithm
-  - `northStarSuggestion.ts` — "what to eat next" suggestion logic
-  - `recipeFitPercent.ts` — recipe fit scoring
-  - `digest.ts` / `digestStory.ts` / `weeklyRecap.ts` — progress narratives
-- `apps/mobile/lib/nutrition/` mirrors / re-uses these where mobile is RN-native
-
-### Analytics
-- `src/lib/analytics/events.ts` — canonical event taxonomy (web)
-- `src/lib/analytics/track.ts` — client emit wrapper
-- `src/lib/analytics/serverTrack.ts` — server emit wrapper
-- `src/lib/analytics/firstLog.ts` — first-log activation tracking
-- PostHog is the analytics backend (Project: "Default project", id 389168, org "Suppr")
-
-### Generated types (DO NOT hand-edit)
-- `src/lib/supabase/database.types.ts` — generated via `npm run db:types` and copied to `apps/mobile/lib/database.types.ts`. Both files must stay in sync; `db:types` script handles the copy.
+This bounds several lenses: retention cohorts, sentiment mining, and scale-readiness
+questions are mostly **not** answerable today. Say so rather than fabricating numbers.
 
 ---
 
-## Tech stack & build
+## Seeing the product — you must capture, never ask
 
-- **Web:** Next.js 15 (App Router, Turbopack dev, React Server Components), TypeScript strict, Tailwind, shadcn/ui-style primitives in `src/components/`
-- **Mobile:** Expo SDK / React Native, expo-router file-based routing, lucide-react-native icons, RevenueCat SDK
-- **Data:** Supabase (Postgres + Auth + RLS + Edge Functions). Project id `fnfgxsignmuepshbebrl` (production)
-- **Testing:** Vitest (web + mobile), Playwright (web e2e), Maestro (mobile e2e)
-- **Lint/format:** ESLint flat config (`eslint.config.mjs`), `--max-warnings 500` ratchet
-- **CI:** `npm run ci` = `verify-production-env + typecheck + lint + test + build + mobile lint/typecheck/test/e2e:verify-suite`
-- **Pre-push hook:** typecheck + lint + migration static check (`scripts/git-hooks/`)
-- **Hosting:** Vercel (web), TestFlight (iOS)
-- **Error monitoring:** Sentry (web client/edge/server: `sentry.client.config.ts` etc.)
+**Never ask Grace to paste or drag screenshots.** Drive it yourself and Read the PNG.
 
----
+- **iOS simulator:** load the **`suppr-ios-sim-testing`** skill.
+- **Web / mobile-web:** load the **`suppr-web-testing`** skill (`scripts/web-drive.mjs`;
+  probes `127.0.0.1:3000`, not `localhost`).
+- Mobile capture tour: `npm run test:screens:tour` — **only exists in
+  `apps/mobile/package.json`**, so run it from `apps/mobile/`.
+- Existing capture walls: `docs/ux/captures/`, `apps/mobile/screenshots/baseline/`,
+  `apps/mobile/screenshots/agent/`.
 
-## Third-party integrations (current footprint)
-
-| Service | Use | Where |
-|---|---|---|
-| **Supabase** | Auth, Postgres, RLS, Edge Functions | `src/lib/supabase/`, `apps/mobile/lib/supabase.ts`, `supabase/` |
-| **Stripe** | Web subscriptions | `app/checkout/`, `app/api/stripe/`, `src/lib/stripe/` |
-| **RevenueCat** | iOS subscriptions (App Store billing) | `apps/mobile/lib/revenuecat/`, `scripts/test-revenuecat-replay.mjs` |
-| **FatSecret** | Branded foods + autocomplete | `src/lib/nutrition/fatsecret*`, `scripts/backfill-fatsecret-premier.mjs` |
-| **OpenFoodFacts** | Branded foods (ODbL — see `docs/decisions/2026-04-19-off-odbl-architecture.md`) | nutrition pipeline |
-| **USDA** | Generic foods | `src/lib/nutrition/usdaNormalize.ts` |
-| **Sentry** | Error monitoring | `sentry.*.config.ts` |
-| **PostHog** | Product analytics | `src/lib/analytics/`, mobile equivalents |
-| **Resend** | Transactional email (likely — verify before claiming) | `src/lib/email/` |
-| **App Store Connect** | TestFlight feedback fetch | `scripts/fetch-testflight-feedback.mjs` |
-
-For each integration, agents must enforce: signature verification on webhooks, idempotency on writes that affect billing or nutrition state, retries with bounded backoff + jitter, schema validation on responses, fallback or graceful degradation on critical-path integrations.
+Do not claim a visual pass from the ARIA tree or from code alone.
 
 ---
 
-## Pricing posture (current)
+## Repo map
 
-- **Free + Pro** tier structure (locked 2026-04-27 strategic direction — no third tier)
-- Pricing copy in `src/lib/landing/content.ts` (`PRICING_TIERS`)
-- Web `/pricing` + mobile paywall both default **monthly** (unified 2026-05-25, ENG-698; pricing-default-divergence doc RETIRED — verify IAP trial SKU)
-- Region-aware required: currency, tax, disclosure all vary
-- UK/EU consumer VAT applies from £1/€1 — prices VAT-inclusive on those surfaces; Stripe Tax in inclusive mode
-- Web billing → Stripe direct; mobile billing → RevenueCat / App Store
-- Documented decision logs:
-  - `docs/decisions/2026-04-19-pricing-v1.md`
-  - `docs/decisions/2026-04-19-pricing-default-billing-period-divergence.md`
-  - `docs/decisions/2026-04-19-renewal-disclosure-rewrite.md`
-  - `docs/decisions/2026-04-19-shopping-list-tier-gating.md`
-  - `docs/decisions/2026-04-19-voice-logging-pro-only-server-enforced.md`
-  - `docs/decisions/2026-04-19-billing-architecture-pattern-a.md`
+- `app/` — Next.js web app. Landing at `app/(landing)/`; product pages under
+  `app/account`, `app/pricing`, `app/roadmap`, `app/onboarding`, `app/recipe`,
+  `app/checkout`, `app/help`, `app/dmca`, `app/privacy`, `app/terms`, `app/licences`.
+- `apps/mobile/` — Expo / RN. Tabs at `apps/mobile/app/(tabs)/`; stack screens at
+  `apps/mobile/app/`.
+- `src/` — shared web library code.
+- `src/lib/nutrition/` — 100+ modules, the engine of the product.
+- `src/lib/analytics/` — `events.ts` (taxonomy), `track.ts`, `serverTrack.ts`,
+  `firstLog.ts`. Mobile equivalent is `apps/mobile/lib/analytics.ts` (a file).
+- `src/lib/landing/content.ts` — SSOT for all landing/pricing/roadmap claims;
+  pinned by `tests/unit/landingParity.test.tsx` (must not be silenced).
+- `supabase/migrations/` — tracked SQL; apply via `supabase db push --linked`.
+- `tests/` — web Vitest (`tests/unit/`) + Playwright e2e (`tests/e2e/`).
+  Web unit config is `vitest.unit.config.ts` (`vitest.config.ts` is Storybook).
+- `apps/mobile/tests/` — mobile Vitest. `apps/mobile/.maestro/` — mobile e2e.
+- `docs/decisions/YYYY-MM-DD-<slug>.md` — every meaningful decision. **Check here
+  first** before resolving a question; write a new file when one lands.
+- Generated, never hand-edit: `src/lib/supabase/database.types.ts` +
+  `apps/mobile/lib/database.types.ts` (`npm run db:types`).
+
+**Tech:** Next.js 15 / TypeScript strict / Tailwind / shadcn-style primitives;
+Expo + expo-router + lucide-react-native + RevenueCat; Supabase (Postgres, Auth, RLS,
+Edge Functions); Vitest + Playwright + Maestro; Vercel + TestFlight; Sentry
+(`instrumentation-client.ts`, `sentry.edge.config.ts`, `sentry.server.config.ts`);
+PostHog (project "Sloe", id 389168 — a PostHog MCP is connected and queryable).
+
+**Integrations:** Supabase, Stripe (web billing), RevenueCat (iOS billing),
+FatSecret + OpenFoodFacts + USDA (food data), Sentry, PostHog, Resend (email),
+App Store Connect (TestFlight feedback). For each, enforce: webhook signature
+verification, idempotency on billing/nutrition writes, bounded retries with jitter,
+response schema validation, graceful degradation on critical paths.
 
 ---
 
-## Event taxonomy (canonical conventions)
+## Linear
 
-- **Naming:** `snake_case`, `verb_object` (e.g. `recipe_imported`, `paywall_viewed`, `meal_logged`)
-- **Same name on web and mobile.** No platform suffixes.
-- Activation events live in `src/lib/analytics/firstLog.ts` (first-log moment is the activation north-star)
-- Privacy class is mandatory per event (PII / non-PII / sensitive). Never put raw PII in event properties.
-- Recipe import / nutrition calculation events carry `confidence_bucket`, never raw confidence floats
-- See `src/lib/analytics/events.ts` for the full taxonomy
+Linear is the canonical task list. Full workflow: `docs/planning/linear-agent-workflow.md`.
 
----
-
-## Decisions log
-
-Every meaningful product decision lives in `docs/decisions/YYYY-MM-DD-<slug>.md`. Agents resolving a question should:
-- check `docs/decisions/` first to see if it's already settled
-- when a new decision lands, write `docs/decisions/<today>-<slug>.md` AND mirror to Notion (per CLAUDE.md mirror rules)
+- **Claude directs and reviews; Cursor + Codex implement and QA.** QA findings triage
+  through Claude — never Cursor↔Codex directly.
+- **assignee** = accountable human (Grace). **delegate** = Cursor or Codex only.
+  **Claude is labels-only (`agent/claude`) and is never a delegate.**
+- Branch `agent/<agent>/<linear-id>-short-name`. PR open → move ticket to **In Review**.
+- Closing issues or moving state may require a project **state** update
+  (`save_project`) and **status update posts** (`save_status_update`). Don't post
+  empty updates.
+- Initiative/project inventory lives in `CLAUDE.md` — read it there, don't restate it.
 
 ---
 
-## How agents should reference this file
+## How agents use this file
 
-- Read this file at the start of any review or execution that touches user-visible product surfaces, copy, design, parity, pricing, or competitor framing.
-- When a fact here is wrong or outdated, **edit this file** rather than drifting silently in your own output.
-- When your specialist work generates a project-wide rule (e.g. a new intentional divergence, a new override), propose adding it here.
+- Read it at the start of any review or execution touching product surfaces, copy,
+  design, parity, pricing, nutrition, or competitor framing.
+- **When a fact here is wrong, edit this file** rather than drifting in your own
+  output — and never copy a fact from here into your own agent file. Duplication is
+  how the 2026-07-24 audit found eleven contradictions.
+- When your work generates a project-wide rule or suppression, add it here.
