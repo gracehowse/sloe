@@ -9,6 +9,13 @@
         "notes": "postcss path-traversal in previous-sourcemap auto-loading, reached via expo-share-intent -> @expo/cli -> @expo/metro-config. Metro/build-tooling path only (not reachable in the shipped TestFlight binary). Fix requires a 3-major Expo SDK bump (54 -> 57) plus expo-share-intent 5 -> 8 -- deferred pending a properly scoped, sim-validated upgrade. See docs/operations/security-allowlist.md.",
         "expiry": "2026-08-23"
       }
+    },
+    {
+      "GHSA-mh99-v99m-4gvg": {
+        "active": true,
+        "notes": "brace-expansion unbounded-expansion DoS. The v5 line IS patched here — the override moved 5.0.7 -> 5.0.8 in this change, which is what cleared the web tree entirely. What remains is the 1.x/2.x maintenance lines (1.1.16, 2.1.2), which the advisory range '<=5.0.7' sweeps up by plain semver; upstream shipped no backport for them (5.0.8 landed 2026-07-23, the maintenance releases 2026-07-08). Affected copies sit under @expo/cli, @expo/metro-config, expo-share-intent's plugin chain, glob/minimatch and test-exclude — Metro/Babel/glob tooling that never ships in the TestFlight binary and only ever expands this repo's own file globs, so there is no untrusted-input path. Forcing @1/@2 to 5.0.8 was evaluated and rejected: consumers request ^1.1.7 / ^2.0.x, making it a major jump across the whole mobile build toolchain to fix a non-exploitable build-tool DoS. Real fix is the same Expo SDK 54 -> 57 bump the postcss row above is waiting on. See docs/operations/security-allowlist.md.",
+        "expiry": "2026-08-23"
+      }
     }
   ]
 }
