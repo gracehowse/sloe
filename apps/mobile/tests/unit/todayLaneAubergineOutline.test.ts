@@ -104,7 +104,10 @@ describe("Today lane — aubergine OUTLINE primary CTAs", () => {
   it("Edit-meal 'Save changes' is an outline; Delete stays destructive red", () => {
     expect(EDIT_MEAL).toMatch(/v2\.saveBtn,\s*\{\s*borderColor:\s*accent\.primarySolid/);
     expect(EDIT_MEAL).not.toMatch(/saveBtn:\s*\{[^}]*backgroundColor:\s*accent\.primary,/);
-    expect(EDIT_MEAL).toMatch(/Accent\.destructive/); // Delete unchanged
+    const deleteLabels = EDIT_MEAL.match(
+      /<Text style=\{\{\s*color:\s*Accent\.destructive,\s*\.\.\.Type\.button\s*\}\}>Delete<\/Text>/g,
+    );
+    expect(deleteLabels).toHaveLength(2);
   });
 
   it("Complete-day modal 'View my progress' is a SOLID primary SupprButton (its sole CTA)", () => {
