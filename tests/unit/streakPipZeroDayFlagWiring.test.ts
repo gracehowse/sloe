@@ -1,8 +1,10 @@
 /**
  * ENG-1657 — web Today header shows the streak pip at 0-day (mobile
- * calm-streak posture) behind `streak_pip_zero_day_web_v1` (default-OFF).
- * Flag OFF keeps the legacy ≥2-day mount gate; flag ON mounts for any
- * non-negative streak count.
+ * calm-streak posture) behind `streak_pip_zero_day_web_v1`. Flag OFF keeps
+ * the legacy ≥2-day mount gate; flag ON mounts for any non-negative streak
+ * count. MOVED to `REDESIGN_DEFAULT_ON` 2026-07-24 (default-ON, PostHog row
+ * kept as the kill switch) — see the flag's JSDoc bullet in
+ * src/lib/analytics/track.ts for the reconciliation note.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -52,16 +54,23 @@ describe("ENG-1657 — streak pip zero-day web parity flag", () => {
     );
   });
 
-  it("registers default-OFF on both platforms (web-only in practice)", () => {
+  it("registers default-ON on both platforms via REDESIGN_DEFAULT_ON (web-only in practice)", () => {
     expect(WEB_TRACK).toContain(`"${FLAG}"`);
     expect(MOBILE_ANALYTICS).toContain(`"${FLAG}"`);
 
-    const defaultOnStart = WEB_TRACK.indexOf("const REDESIGN_DEFAULT_ON");
-    const defaultOnBlock = WEB_TRACK.slice(
-      defaultOnStart,
-      WEB_TRACK.indexOf("]);", defaultOnStart),
+    const webDefaultOnStart = WEB_TRACK.indexOf("const REDESIGN_DEFAULT_ON");
+    const webDefaultOnBlock = WEB_TRACK.slice(
+      webDefaultOnStart,
+      WEB_TRACK.indexOf("]);", webDefaultOnStart),
     );
-    expect(defaultOnBlock).not.toContain(FLAG);
+    expect(webDefaultOnBlock).toContain(FLAG);
+
+    const mobileDefaultOnStart = MOBILE_ANALYTICS.indexOf("const REDESIGN_DEFAULT_ON");
+    const mobileDefaultOnBlock = MOBILE_ANALYTICS.slice(
+      mobileDefaultOnStart,
+      MOBILE_ANALYTICS.indexOf("]);", mobileDefaultOnStart),
+    );
+    expect(mobileDefaultOnBlock).toContain(FLAG);
 
     const webOff = parseBlock(WEB_TRACK, "KNOWN_DEFAULT_OFF_FLAGS = [", "] as const;");
     const mobileOff = parseBlock(
@@ -69,8 +78,8 @@ describe("ENG-1657 — streak pip zero-day web parity flag", () => {
       "KNOWN_DEFAULT_OFF_FLAGS = [",
       "] as const;",
     );
-    expect(webOff.has(FLAG)).toBe(true);
-    expect(mobileOff.has(FLAG)).toBe(true);
+    expect(webOff.has(FLAG)).toBe(false);
+    expect(mobileOff.has(FLAG)).toBe(false);
     expect([...webOff].sort()).toEqual([...mobileOff].sort());
   });
 });
