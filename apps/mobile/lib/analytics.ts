@@ -757,9 +757,9 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // rest of the `Type` ramp on card-hero / stat-tile numerals + CTA labels
   // that currently render off-ramp or larger than the ring's own centre value.
   // DEFAULT-ON per the beta-window "always flag on" policy; off → every gated
-  // surface keeps its exact pre-existing font size/family (kill switch). No
-  // Linear ticket yet — file one before flag cleanup. Keep in sync with
-  // src/lib/analytics/track.ts.
+  // surface keeps its exact pre-existing font size/family (kill switch).
+  // Flag lifecycle + remaining deferrals tracked in ENG-1673. Keep in sync
+  // with src/lib/analytics/track.ts.
   "type_scale_v1",
 ]);
 
@@ -905,7 +905,8 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
  * 2026-06-30): `progress_plateau_insight_v1` (ENG-954), `weigh_in_reminder_v1`
  * (ENG-955), `portion_fit_hint_v1` (ENG-854); `import_magic_moment`
  * (ENG-728) + `paywall_trajectory_chart_v1` (ENG-969); and `type_scale_v1`
- * (ENG-1002 — the whole-app font-family + size consistency gate).
+ * (the whole-app font-family + size consistency gate — no origin ticket;
+ * flag lifecycle + deferrals tracked in ENG-1673).
  */
 export const KNOWN_DEFAULT_OFF_FLAGS = [
   "logsheet_ai_method_tooltip",
