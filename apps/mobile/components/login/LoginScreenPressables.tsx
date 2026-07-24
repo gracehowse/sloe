@@ -169,8 +169,8 @@ export function LoginSubmitButton({
       <Text style={styles.btnText}>
         {busy
           ? isSignUp
-            ? "Creating account..."
-            : "Signing in..."
+            ? "Creating account…"
+            : "Signing in…"
           : isSignUp
             ? "Create Account"
             : "Sign In"}

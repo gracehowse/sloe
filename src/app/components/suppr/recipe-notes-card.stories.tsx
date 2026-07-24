@@ -14,7 +14,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Personal notes + star rating card on recipe detail — debounced autosave to Supabase.",
+          "Personal notes + star rating card on recipe detail — debounced autosave to the database.",
       },
     },
   },

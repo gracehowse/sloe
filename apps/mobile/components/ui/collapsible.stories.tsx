@@ -21,7 +21,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Expo-template collapsible section — tap the heading to reveal nested content. Lightweight show/hide for settings-style lists.",
+          "Collapsible section — tap the heading to reveal nested content. Lightweight show/hide for settings-style lists.",
       },
     },
   },
