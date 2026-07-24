@@ -421,6 +421,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
   // nothing to reorder there). The card JSX is extracted to `importCard` so it
   // renders at exactly one position (no duplication, testID count unchanged).
   const importAboveCarousels = isFeatureEnabled("discover_import_above_carousels_v1");
+  const uniformClusterCards = isFeatureEnabled("design_consistency_v1");
   // Import slab extracted to `DiscoverImportCard` (ENG-1225 #14 screen-budget);
   // rendered at exactly one position so the testID count is unchanged.
   const importCard = <DiscoverImportCard onOpenImport={openImport} />;
@@ -469,8 +470,8 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             className="flex-1 min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
           />
           {searchQuery ? (
-            <button type="button" onClick={() => setSearchQuery("")} className="text-muted-foreground hover:text-foreground">
-              <Icons.close className="w-4 h-4" />
+            <button type="button" aria-label="Clear search" onClick={() => setSearchQuery("")} className="rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+              <Icons.close className="w-4 h-4" aria-hidden />
             </button>
           ) : null}
         </div>
@@ -529,10 +530,10 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   role="button"
                   tabIndex={0}
                   onClick={() => onViewTracker?.()}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onViewTracker?.(); }}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onViewTracker?.(); } }}
                   padding="md"
                   radius="lg"
-                  className="shrink-0 w-44 text-left hover:bg-muted transition-colors cursor-pointer"
+                  className="shrink-0 w-44 text-left hover:bg-muted transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                   title={m.label}
                 >
                   {m.brand ? (
@@ -605,8 +606,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             <DiscoverCollections recipes={recipes} onSelectCategory={setCategory} />
           </>
         ) : null}
-        {/* Wave 4 (2026-05-02) — cuisine cluster carousels when no search/filter
-            narrows the feed. Mobile parity: discover.tsx. */}
+        {/* Wave 4 (2026-05-02) — cuisine cluster carousels when no search/filter narrows the feed. Mobile parity: discover.tsx. */}
         {showClusterCarousels ? (
           <div data-testid="discover-cluster-carousels" className="mt-6 space-y-10">
             {SEED_CLUSTERS.map((cluster) => {
@@ -627,7 +627,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                         const kcal = Math.round(recipe.calories);
                         const protein = Math.round(recipe.protein);
                         const timeLabel = formatTotalRecipeDuration(recipe.prepTimeMin, recipe.cookTimeMin); // ENG-1617: total, not cook alone
-                        const isHero = idx === 0;
+                        const isHero = idx === 0 && !uniformClusterCards; // flag ON ⇒ one card size per shelf (mobile parity)
                         return (
                           <button
                             key={`cluster-${recipe.id}`}
@@ -639,7 +639,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                               protein,
                               timeLabel,
                             })}
-                            className={`group shrink-0 snap-start text-left rounded-card-lg overflow-hidden relative cursor-pointer hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out ${isHero ? "w-[280px] md:w-[320px]" : "w-[200px] md:w-[240px]"}`}
+                            className={`group shrink-0 snap-start text-left rounded-card-lg overflow-hidden relative cursor-pointer hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${isHero ? "w-[280px] md:w-[320px]" : "w-[200px] md:w-[240px]"}`}
                           >
                             <div className="relative overflow-hidden" style={{ aspectRatio: isHero ? "3 / 4" : "4 / 5" }}>
                               <DiscoverRecipeImage
@@ -717,7 +717,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   data-testid={`discover-recipe-slab-${recipe.id}`}
                   onClick={() => setSelectedRecipe(recipe)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") setSelectedRecipe(recipe);
+                    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedRecipe(recipe); }
                   }}
                   aria-label={recipeCardAccessibilityLabel({
                     title: recipe.title,
@@ -731,7 +731,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                   radius="lg"
                   elevation="card"
                   border={false}
-                  className="group overflow-hidden text-left cursor-pointer transition-all"
+                  className="group overflow-hidden text-left cursor-pointer transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 >
                   <div className="relative overflow-hidden" style={{ aspectRatio: recipe.image ? "16 / 10" : "8 / 1" }}>
                     <DiscoverRecipeImage
@@ -761,7 +761,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                           <span
                             role="link"
                             tabIndex={0}
-                            className="hover:text-foreground hover:underline cursor-pointer"
+                            className="rounded-sm hover:text-foreground hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                             onClick={(e) => { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); }}
                             onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); } }}
                           >
@@ -848,7 +848,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                       fat,
                       timeLabel,
                     })}
-                    className="group text-left rounded-card-lg overflow-hidden cursor-pointer w-full relative hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out"
+                    className="group text-left rounded-card-lg overflow-hidden cursor-pointer w-full relative hover:shadow-lg hover:shadow-black/10 hover:-translate-y-0.5 transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                   >
                     <div className="relative overflow-hidden" style={{ aspectRatio: recipe.image ? "3 / 4" : "8 / 1" }}>
                       <DiscoverRecipeImage
@@ -875,7 +875,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                               <span
                                 role="link"
                                 tabIndex={0}
-                                className="hover:text-white hover:underline cursor-pointer"
+                                className="rounded-sm hover:text-white hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                 onClick={(e) => { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); }}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); } }}
                               >
@@ -947,7 +947,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                           carbs,
                           timeLabel,
                         })}
-                        className={`w-full flex items-center gap-3 p-3 text-left hover:bg-muted/40 transition-colors ${idx > 0 ? "border-t border-border" : ""}`}
+                        className={`w-full flex items-center gap-3 p-3 text-left hover:bg-muted/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset ${idx > 0 ? "border-t border-border" : ""}`}
                       >
                         <DiscoverRecipeImage
                           id={recipe.id}
@@ -966,7 +966,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                               <span
                                 role="link"
                                 tabIndex={0}
-                                className="hover:text-primary-solid hover:underline cursor-pointer"
+                                className="rounded-sm hover:text-primary-solid hover:underline cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                 onClick={(e) => { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); }}
                                 onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); router.push(`/creator/${recipe.creatorId}`); } }}
                               >
@@ -1020,7 +1020,7 @@ export const DiscoverFeed = memo(function DiscoverFeed({
                 // (`border-[1.5px] border-primary-solid`) — the empty-results
                 // card has no solid primary, so this reads as a quiet ghost,
                 // never a stray outline competing for attention.
-                className="inline-flex items-center gap-1.5 rounded-full bg-transparent px-4 py-2 text-sm font-semibold text-primary-solid hover:bg-primary/5 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-full bg-transparent px-4 py-2 text-sm font-semibold text-primary-solid hover:bg-primary/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
                 Reset filters
               </button>
@@ -1050,8 +1050,8 @@ export const DiscoverFeed = memo(function DiscoverFeed({
             window.history.pushState({}, "", url.toString());
             window.dispatchEvent(new PopStateEvent("popstate"));
           }}
-          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.click(); }}
-          className="mx-4 mt-3 rounded-card-lg border border-border bg-card p-4 flex items-center gap-3 cursor-pointer hover:bg-muted/40 transition-colors card-elevated"
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }}
+          className="mx-4 mt-3 rounded-card-lg border border-border bg-card p-4 flex items-center gap-3 cursor-pointer hover:bg-muted/40 transition-colors card-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
           <IconBox size="lg" tone="success">
             <Icons.save />

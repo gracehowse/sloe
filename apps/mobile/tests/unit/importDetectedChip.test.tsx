@@ -11,6 +11,17 @@ import { ImportDetectedChip } from "../../components/import/ImportDetectedChip";
 vi.mock("@/context/theme", () => ({
   useAccent: () => ({ primarySoft: "#eee", primarySolid: "#3b2a4d" }),
 }));
+// ImportDetectedChip additionally reads colors.card/text/textSecondary/success
+// via useThemeColors (introduced by the 2026-07-23 v3 row layout) — mock it
+// directly rather than the @/context/theme useTheme() it wraps.
+vi.mock("@/hooks/use-theme-colors", () => ({
+  useThemeColors: () => ({
+    card: "#ffffff",
+    text: "#111111",
+    textSecondary: "#555555",
+    success: "#5B7A5C",
+  }),
+}));
 
 void React;
 

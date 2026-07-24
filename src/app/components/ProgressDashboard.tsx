@@ -1081,36 +1081,41 @@ function ProgressDashboardContent() {
   // ENG-822 — canonical SupprCard owns elevation; no local card classes.
 
   const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
-  const progressCalendarButton = (
+  // `design_consistency_v1` (2026-07-24) — chrome unification. Every
+  // `unifiedChrome ? … : …` below keeps the prior path as the kill switch.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
+  // Header action = LOG WEIGHT. Always routed to the weight tracker, but wore
+  // a CALENDAR glyph on web while mobile wore scales — one slot, two implied
+  // actions; iOS leads. The ‹ › period control already carries the date range.
+  // testid keeps the historic slot name (mobile's scales button shares it).
+  const progressHeaderAction = (
     <button
       type="button"
       data-testid="progress-calendar-button"
-      aria-label="Open calendar"
+      aria-label={unifiedChrome ? "Log weight" : "Open calendar"}
       onClick={() => router.replace("/home?view=weight-tracker")}
       className={consistencyChrome ? "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-foreground hover:bg-[var(--background-secondary)] transition-colors" : "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-foreground hover:bg-muted/40 transition-colors"}
     >
-      <Icons.calendar className="h-4 w-4" aria-hidden />
+      {unifiedChrome ? <Icons.scale className="h-4 w-4" aria-hidden /> : <Icons.calendar className="h-4 w-4" aria-hidden />}
     </button>
   );
 
-  const progressDesktopHeader = (
+  // Desktop header. Under the flag `ScreenChrome` serves EVERY breakpoint
+  // (`scope="all"`), retiring the two hand-rolled desktop twins this file
+  // carried — this one and the Suspense fallback's copy, each re-implementing
+  // the same eyebrow + serif title + chip and drifting from the primitive.
+  // The `else` below is the kill-switch path (v3 prototype ENG-1247 node 4946:
+  // "Your trends" overline above the serif title; no Figma-era subtitle).
+  const progressDesktopHeader = unifiedChrome ? null : (
     <div className="hidden md:flex mb-6 items-start justify-between gap-3">
       <div>
-        {/* v3 prototype (ENG-1247, node 4946): "Your trends" overline above
-            the serif "Progress" title. Supersedes the Figma-era subtitle. */}
-        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-foreground-tertiary mb-1">
-          Your trends
-        </p>
-        <h1
-          data-testid="progress-header"
-          className={consistencyChrome ? "page-title text-foreground-brand" : "font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"}
-        >
-          Progress
-        </h1>
+        <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-foreground-tertiary mb-1">Your trends</p>
+        <h1 data-testid="progress-header" className={consistencyChrome ? "page-title text-foreground-brand" : "font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"}>Progress</h1>
       </div>
-      {progressCalendarButton}
+      {progressHeaderAction}
     </div>
   );
+  const chromeScope = unifiedChrome ? "all" : "mobile";
 
   if (!authedUserId) {
     return (
@@ -1123,22 +1128,22 @@ function ProgressDashboardContent() {
   if (loading) {
     // 2026-04-20 prototype port: the pinned "Loading progress…" line
     // looked broken when supabase was slow. Now we paint the real
-    // header chrome (overline + title + calendar button) + a
+    // header chrome (overline + title + header action) + a
     // disabled-look range picker + a 2x2 skeleton grid so the user
     // sees the screen is alive and laying out. When `loading` flips
     // the existing post-load tree mounts without a layout jump.
-    const progressLoadingCalendar = (
+    const progressLoadingAction = (
       <span
         aria-hidden
         className={consistencyChrome ? "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted opacity-60" : "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card opacity-60"}
       >
-        <Icons.calendar className="h-4 w-4 text-muted-foreground" />
+        {unifiedChrome ? <Icons.scale className="h-4 w-4 text-muted-foreground" /> : <Icons.calendar className="h-4 w-4 text-muted-foreground" />}
       </span>
     );
 
     return (
       <>
-        <ProgressTabChrome overline="Your trends" trailing={progressLoadingCalendar} />
+        <ProgressTabChrome overline="Your trends" scope={chromeScope} trailing={progressLoadingAction} />
       <div
         className="product-shell py-pm-6"
         data-testid="progress-loading-skeleton"
@@ -1198,58 +1203,60 @@ function ProgressDashboardContent() {
 
   return (
     <>
-      <ProgressTabChrome overline="Your trends" trailing={progressCalendarButton} />
+      <ProgressTabChrome overline="Your trends" scope={chromeScope} trailing={progressHeaderAction} />
     <div className="product-shell py-pm-6">
       {progressDesktopHeader}
 
-      {/* HouseholdBar — 2026-04-20 prototype port. Appears immediately
-          under the header on Progress (mirrors mobile Plan/Progress
-          + web Plan). Renders nothing for solo users. */}
-      <HouseholdBar />
+      {/* HouseholdBar — nothing for solo users. Under the flag it moves DOWN
+          the page (sibling render above the Activity section): household
+          management was the first thing the eye landed on opening a trends
+          screen. Mirror: mobile `(tabs)/progress.tsx`. */}
+      {unifiedChrome ? null : <HouseholdBar />}
 
-      {/* ── Sloe Figma 492:2 — frame layout (single production path) ──
-          Order: range toggle → THIS WEEK insight (lilac) → AVERAGE
-          ADHERENCE → weight card → AVG/TDEE/DEFICIT triad → DAILY
-          CALORIES → on-target ribbon. Every previously-wired surface
-          (maintenance, journey, steps, body fat, streak freezes, week
-          digest, weight-surface opt-out, milestone) is preserved below
-          the frame's above-fold story. No migration flags, no duplicate
-          components, no alternate versions. */}
+      {/* ── Sloe Figma 492:2 — frame layout ──────────────────────────────
+          Legacy (kill-switch) order below: range toggle → THIS WEEK insight →
+          AVERAGE ADHERENCE → weight card → AVG/TDEE/DEFICIT triad → DAILY
+          CALORIES → on-target ribbon; `progress_hierarchy_v1` supersedes it
+          with the 5-section composer. Every previously-wired surface
+          (maintenance, journey, steps, body fat, streak freezes, week digest,
+          weight-surface opt-out, milestone) is preserved below the above-fold
+          story on both branches.
 
-      {/* 1. TIME PERIOD — Apple Health range grammar (ENG-1030): D / W / M /
+          1. TIME PERIOD — Apple Health range grammar (ENG-1030): D / W / M /
           6M / Y segments + ‹ label › paging. Default = current week. Drives
           the range stats below + the weight/steps chart windows. Mirror of
           the mobile `ProgressPeriodControl`; shared period model. */}
       <div className="mb-4">
-        <ProgressPeriodControl
-          period={period}
-          weekStart={weekStartDay}
-          onChange={setPeriod}
-        />
+        <ProgressPeriodControl period={period} weekStart={weekStartDay} onChange={setPeriod} />
       </div>
 
-      {/* 2. THIS WEEK insight card (lilac wash + sparkle). Engine-led
-          commentary; the StoryGate placeholder shares the same wash until
-          the user crosses the 3-day data floor (geometry matches so the
-          slot doesn't jump). Authority: D-2026-04-27-12 (always-on TDEE)
-          + D-2026-04-27-17 (Progress is a story).
-
-          prevWeekTdee / avgIntakeOnLossWeeks: the weekly aggregate stream
-          isn't persisted yet, so the commentary collapses to steady /
-          calibrating — documented data gap (deferred: see ENG-741 weekly
-          aggregate stream), never faked. */}
+      {/* 2. THIS WEEK insight card. Engine-led commentary; the StoryGate
+          placeholder twins its geometry until the user crosses the 3-day data
+          floor. Authority: D-2026-04-27-12 (always-on TDEE) + D-2026-04-27-17
+          (Progress is a story). prevWeekTdee / avgIntakeOnLossWeeks: the weekly
+          aggregate stream isn't persisted, so the commentary collapses to
+          steady / calibrating — documented data gap (deferred: see ENG-741
+          weekly aggregate stream), never faked. */}
       {(() => {
         const daysLogged = weekStatsBundle.daysWithFood;
         if (!hasEnoughDataForStory(daysLogged)) {
+          // Duplicate-label dedupe (2026-07-24): the gate's THIS WEEK eyebrow sat
+          // directly on top of §2's "This week" overline — two consecutive cards,
+          // same title, both saying "not enough yet" ("Almost there" over "2 of 7
+          // days on target"). §2 carries the week's real state, per-day bars and
+          // its own thin-data line, so the gate is the redundant half. Rule on both
+          // platforms: suppress the gate exactly when §2 has a story — the same
+          // `Object.keys(byDay).length > 0` guard mobile puts on its `week` prop, so
+          // a first-run user with nothing logged still gets the gate on BOTH
+          // surfaces, not an empty §2 on web. Flag off → gate as before.
+          if (unifiedChrome && hierarchyV1Enabled && Object.keys(nutritionByDay).length > 0) return null;
           return (
             <div className="mb-4">
+              {/* Any logged day in the journal store → new-week copy, not
+                  cold-start copy (mirror of mobile; fresh-eyes P0-2). */}
               <ProgressStoryGate
                 daysLogged={daysLogged}
-                // Any logged day in the journal store → new-week copy, not
-                // cold-start copy (mirror of mobile; fresh-eyes P0-2).
-                hasHistory={Object.keys(nutritionByDay).some(
-                  (k) => (nutritionByDay[k] ?? []).length > 0,
-                )}
+                hasHistory={Object.keys(nutritionByDay).some((k) => (nutritionByDay[k] ?? []).length > 0)}
               />
             </div>
           );
@@ -1291,25 +1298,13 @@ function ProgressDashboardContent() {
         // §2 pins to the CURRENT week regardless of the period control (the
         // period drives §1's chart window + §3's averaging window instead).
         const currentWeekWin = periodWindow(DEFAULT_PERIOD, weekStartDay, new Date());
-        const weekCaloriesStats = buildCaloriesRangeStatsForWindow(
-          nutritionByDay,
-          nutritionTargets.calories,
-          currentWeekWin,
-        );
-        const weekMacroStats = buildMacroAdherenceRangeStatsForWindow(
-          nutritionByDay,
-          targets,
-          currentWeekWin,
-        );
+        const weekCaloriesStats = buildCaloriesRangeStatsForWindow(nutritionByDay, nutritionTargets.calories, currentWeekWin);
+        const weekMacroStats = buildMacroAdherenceRangeStatsForWindow(nutritionByDay, targets, currentWeekWin);
         // §3 thin-data progress — the SAME honest-progress helper the legacy
         // Maintenance card computes (ENG-1189 gate parity).
         const hierarchyAdaptiveProgress = computeAdaptiveDataProgressFromMeals({
-          mealsByDay: nutritionByDay,
-          weightByDay: weightKgByDay,
-          sex: profileSexCached,
-          weightKg: weightKg ?? null,
-          heightCm: profileHeightCmCached,
-          age: profileAgeCached,
+          mealsByDay: nutritionByDay, weightByDay: weightKgByDay, sex: profileSexCached,
+          weightKg: weightKg ?? null, heightCm: profileHeightCmCached, age: profileAgeCached,
         });
         // Quiet §3 sparkline from the week's frozen per-day maintenance
         // snapshots (same `daily_targets` map the calorie bars read).
@@ -2336,6 +2331,10 @@ function ProgressDashboardContent() {
       </>
       )}
 
+      {/* HouseholdBar, relocated: below the week summary + weight story,
+          above activity. Mirror: mobile `(tabs)/progress.tsx`. */}
+      {unifiedChrome ? <div className="mb-4"><HouseholdBar /></div> : null}
+
       {/* Activity feeding maintenance — v3 read-only AppleHealthCard behind
           `web_apple_health_card` (parity with mobile), else the legacy manual
           Steps + Body-Fat inputs. Extracted to a child so this pinned host
@@ -2432,35 +2431,35 @@ function WeightTrendOnlyCardWeb({
  * `loading` skeleton once `ProgressDashboardContent` mounts.
  */
 function ProgressSuspenseFallback() {
-  const calendarPlaceholder = (
-    <span
-      aria-hidden
-      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card opacity-60"
-    >
-      <Icons.calendar className="h-4 w-4 text-muted-foreground" />
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
+  const actionPlaceholder = (
+    <span aria-hidden className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card opacity-60">
+      {unifiedChrome ? <Icons.scale className="h-4 w-4 text-muted-foreground" /> : <Icons.calendar className="h-4 w-4 text-muted-foreground" />}
     </span>
   );
 
+  // Under the flag the desktop-only twin below is retired: `scope="all"` IS
+  // the header at every breakpoint, so the fallback and the loaded screen
+  // paint the same chrome instead of two hand-rolled approximations of it
+  // (this copy had drifted to the pre-ENG-1577 `text-3xl` title).
+  if (unifiedChrome) {
+    return (
+      <div data-testid="progress-suspense-fallback">
+        <ProgressTabChrome overline="Your trends" scope="all" trailing={actionPlaceholder} />
+      </div>
+    );
+  }
+
   return (
     <>
-      <ProgressTabChrome overline="Your trends" trailing={calendarPlaceholder} />
-      <div
-        className="hidden md:block product-shell py-pm-6"
-        data-testid="progress-suspense-fallback"
-      >
+      <ProgressTabChrome overline="Your trends" trailing={actionPlaceholder} />
+      <div className="hidden md:block product-shell py-pm-6" data-testid="progress-suspense-fallback">
         <div className="mb-6 flex items-start justify-between gap-3">
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-foreground-tertiary mb-1">
-              Your trends
-            </p>
-            <h1
-              data-testid="progress-header"
-              className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"
-            >
-              Progress
-            </h1>
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-foreground-tertiary mb-1">Your trends</p>
+            <h1 data-testid="progress-header" className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand">Progress</h1>
           </div>
-          {calendarPlaceholder}
+          {actionPlaceholder}
         </div>
       </div>
     </>

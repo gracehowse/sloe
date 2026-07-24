@@ -26,7 +26,7 @@ export function RecipeMethodSteps({
     return (
       <View style={{ gap: Spacing.sm }} testID="recipe-method-section">
         <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" }}>
-          <Text style={{ ...Type.title, color: colors.navPrimary }}>Method</Text>
+          <Text style={{ ...Type.label, color: colors.textTertiary }}>Method</Text>
           {stepCountNote ? (
             <Text style={{ ...Type.caption, color: colors.textTertiary }}>{stepCountNote}</Text>
           ) : null}
@@ -47,11 +47,11 @@ export function RecipeMethodSteps({
               <Text
                 style={{
                   fontFamily: FontFamily.serifRegular,
-                  fontSize: 24,
-                  lineHeight: 26,
-                  fontWeight: "500",
-                  color: Accent.primarySoft,
-                  width: 30,
+                  fontSize: 28,
+                  lineHeight: 30,
+                  fontWeight: "400",
+                  color: Accent.frost,
+                  width: 36,
                   fontVariant: ["tabular-nums"],
                 }}
                 accessibilityElementsHidden

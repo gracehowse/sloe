@@ -116,7 +116,7 @@
      Ladder stays monotonic: card #FFFFFF > page #F7F6FA > grouped #F5F4F7 >
      secondary #F1F0F4. Cream (`--background-marketing`) stays marketing-only.
      Mirrors mobile Colors.light. */
-  --background: #F7F6FA;            /* whisper-cool plum-white app canvas (ENG-1316) */
+  --background: #FBFAF6;            /* Warm Oat ground (Grace 2026-07-24 — reverses the 2026-07-23 pure-white canvas) */
   --background-secondary: #F1F0F4; /* recessed cool plum-grey (tracks, wells) */
   --background-grouped: #F5F4F7;   /* faint cool-plum grouped ground (NOT beige) */
   --background-marketing: #FBF8F3; /* Oat — marketing / landing / paywall ONLY */
@@ -176,6 +176,11 @@
      Flat-card law holds: the tint IS the separation, just louder. */
   --accent-primary-soft-strong: rgba(91, 59, 110, 0.2);
   --accent-primary-ring: rgba(91, 59, 110, 0.24);
+  /** Clay — the second Sloe brand hue (plum / clay / sage / amber / damson /
+   *  teal palette). Bare brand-hue accent for surfaces that want "clay" as a
+   *  colour, not one of the role-specific aliases that happen to reuse this
+   *  hex (`--macro-sodium`, `--stimulant-alcohol`). Same value as those. */
+  --accent-clay: #C8794E;
   /** Avatar gradient accent — the pink `color-mix` endpoint in the
    *  identity-card avatar gradient (Settings header card). Same value in
    *  light + dark (a fixed brand accent, not theme-resolved). The S5
@@ -198,6 +203,7 @@
   --primary-foreground: var(--accent-primary-foreground);
   --primary-solid: var(--accent-primary-solid);
   --primary-soft: var(--accent-primary-soft);
+  --primary-soft-strong: var(--accent-primary-soft-strong);
   /** Sloe-Deep onboarding brand screen (ENG-1247) — the fixed deep-plum
    *  welcome ground + radial bloom + frost text. A fixed brand identity
    *  (same in light + dark; the screen does not theme-resolve), mirroring
@@ -566,11 +572,14 @@
   --accent-primary-soft: rgba(154, 123, 170, 0.18);
   --accent-primary-soft-strong: rgba(154, 123, 170, 0.28); /* ENG-1087 hero import slab */
   --accent-primary-ring: rgba(154, 123, 170, 0.30);
+  /** Clay dark — mirrors mobile `Accent.sodium`/dark macro-sodium (#D89A6E). */
+  --accent-clay: #D89A6E;
 
   --primary: var(--accent-primary);
   --primary-foreground: var(--accent-primary-foreground);
   --primary-solid: var(--accent-primary-solid);
   --primary-soft: var(--accent-primary-soft);
+  --primary-soft-strong: var(--accent-primary-soft-strong);
   --secondary: var(--background-secondary);
   --secondary-foreground: var(--foreground);
   --muted: #241C2E;              /* v3 dark frost — chips / pressed fill */
@@ -846,6 +855,13 @@
      already used the class). Mapping it here makes `bg-primary-soft` /
      `text-primary-soft` real Tailwind utilities, matching `--color-primary-solid`. */
   --color-primary-soft: var(--primary-soft);
+  /* Same story one step up the soft ramp (design-consistency pass 2026-07-24):
+     `--accent-primary-soft-strong` existed but had no `@theme` mapping, so
+     `bg-primary-soft-strong` generated no utility and rendered TRANSPARENT —
+     the identical latent bug called out for `soft` just above. The day-strip
+     selected disc needs the 20% step (12% desaturates to grey over Warm Oat),
+     so map it properly rather than reaching for an off-token literal. */
+  --color-primary-soft-strong: var(--primary-soft-strong);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);

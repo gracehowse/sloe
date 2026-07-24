@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, LayoutChangeEvent, Text, View } from "react-native";
+import { FlatList, LayoutChangeEvent, Text, type TextStyle, View } from "react-native";
 import { Calendar, ChevronLeft, ChevronRight, Snowflake } from "lucide-react-native";
 
 import { Accent, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useAccent } from "@/context/theme";
+import { useThemeColors } from "@/hooks/use-theme-colors";
 import {
   addDaysLocal,
   clampJournalDate,
@@ -14,6 +15,7 @@ import {
 import { dateKeyFromDate } from "@/lib/nutritionJournal";
 import { dayStripIndicatorStyle } from "@suppr/shared/today/dayStripIndicator";
 import { weekdayInitials } from "@suppr/shared/today/weekdayLabels";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { PressableScale } from "@/components/ui/PressableScale";
 
 type Props = {
@@ -33,6 +35,11 @@ type Props = {
   onOpenCalendar: () => void;
   textColor: string;
   secondaryColor: string;
+  /** Muted tertiary tone (2026-07-24) — the day-letter label + the future-day
+   *  "not yet" number tint. Falls back to the theme's own `textTertiary` when
+   *  the host doesn't pass it (e.g. the week-mode strip in `TodayScreen`), so
+   *  the future tint is never silently downgraded to the secondary tone. */
+  tertiaryColor?: string;
 };
 
 function weekIndexContaining(d: Date, weekStarts: Date[]): number {
@@ -54,11 +61,31 @@ export default function DayStrip({
   onOpenCalendar,
   textColor,
   secondaryColor,
+  tertiaryColor,
 }: Props) {
   // Secondary accent (Frost flag → damson, else clay) for the selected/today
   // day pip + the "Today" jump label + calendar glyph. The "sage" logged-day
   // marker stays `Accent.success` (held).
   const accent = useAccent();
+  const colors = useThemeColors();
+  // design_consistency_v1 — ring selection + single-meaning dot + future tint.
+  // Flag OFF restores the 2026-06-24 v3 filled-cell treatment VERBATIM (see the
+  // shared decision module), so the flag is a true kill switch rather than a
+  // hybrid with no selection affordance. Every visual delta below is gated.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
+  const tertiaryInk = tertiaryColor ?? colors.textTertiary;
+  // Type comes from the ramp on both paths. Under the flag the day letter takes
+  // `Type.statLabel` and the numeral `Type.navTitle` — byte-identical to the
+  // sibling week strip (`PlanWeekStripV3`), which is the point of the pass.
+  const letterStyle: TextStyle = unifiedChrome ? Type.statLabel : Type.label;
+  // Memoised: the legacy branch builds a fresh object, which would otherwise
+  // change `renderWeekPage`'s identity every render and re-render every tile.
+  const numberStyle: TextStyle = useMemo(
+    () => (unifiedChrome ? Type.navTitle : { ...Type.headline, fontSize: 16, lineHeight: 20 }),
+    [unifiedChrome],
+  );
+  const chevronColor = unifiedChrome ? tertiaryInk : secondaryColor;
+  const chevronStroke = unifiedChrome ? 1.75 : 2;
   const flatRef = useRef<FlatList<Date>>(null);
   // ENG-1008 (2026-06-10): only user-initiated swipes may write `selectedDate`
   // back from scroll position. Programmatic `scrollToOffset` calls (the align
@@ -156,27 +183,46 @@ export default function DayStrip({
           const hasLogs = loggedDays.has(dk);
           const isProtected = protectedDateKeys?.has(dk) ?? false;
           const outOfRange = date.getTime() < min.getTime() || date.getTime() > max.getTime();
-          // v3 prototype `.day-cell` treatment (ENG-1247, 2026-06-24): the
-          // SELECTED day fills the whole cell with plum + white letter/date/dot
-          // (the prototype's `.is-sel` — supersedes the 2026-06-10 soft-tint
-          // pill); today-not-selected = accent number; logged = sage dot. The
-          // state→treatment rule lives in the pure `dayStripIndicator` helper so
-          // the component and its unit test share one source of truth.
-          const { dotKind, dotColor, numberColor, isActive, selectedFill, cellBg } = dayStripIndicatorStyle(
-            { isSelected, isToday, hasLogs },
-            { accent: accent.primary, sage: Accent.success, text: textColor, onAccent: accent.primaryForeground },
+          const isFuture = dk > todayDk;
+          // Every visual channel resolves in the shared `dayStripIndicatorStyle`
+          // so this component and web `DayStrip` cannot drift, and the unit test
+          // pins the same decision that renders. Under design_consistency_v1:
+          // RING = selection, NUMBER tone = temporal state, DOT = has-data.
+          const {
+            dotKind, numberColor, dotColor, selectedRing, selectedFill,
+            numberTone, cellBg, dimFutureCell,
+          } = dayStripIndicatorStyle(
+            { isSelected, isToday, hasLogs, isFuture, unifiedChrome },
+            {
+              accent: accent.primary,
+              sage: Accent.success,
+              text: textColor,
+              secondary: secondaryColor,
+              // "Not yet", not "unavailable" — a future day steps its number
+              // to the tertiary ink tint instead of fading the whole cell.
+              tertiary: tertiaryInk,
+              // Empty dot = the FAINT border hairline tone, never
+              // `textTertiary` (a mid-grey that read as a hard dot on all
+              // seven days). The pre-flag strip had no empty slot at all.
+              emptyDot: unifiedChrome ? colors.border : "transparent",
+              onAccent: accent.primaryForeground,
+            },
           );
-          // Selected day-LETTER demoted to 70% white (prototype `.is-sel .dc-dow`
-          // rgba(255,255,255,.7) + web `text-primary-foreground/70`); the day
-          // NUMBER stays full white, so the letter doesn't read as loud. (ENG-1247 S1)
-          // ENG-1572 exempt: foreground-text opacity on a filled pill, not a
-          // border or tint — no clean named-token equivalent, stays as alpha.
-          const labelColor = selectedFill ? accent.primaryForeground + "B3" : secondaryColor;
+          // Legacy `.is-sel` demoted the day LETTER to 70% white so it didn't
+          // read as loud beside the full-white numeral. ENG-1572 exempt:
+          // foreground-text opacity on a filled pill, not a border or tint.
+          const letterColor = unifiedChrome
+            ? tertiaryInk
+            : selectedFill
+              ? accent.primaryForeground + "B3"
+              : secondaryColor;
           return (
             <PressableScale
               key={`${dateKeyFromDate(weekStart)}-${dk}`}
               haptic="selection"
               onPress={() => onSelectDate(clampJournalDate(date))}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
               accessibilityLabel={isProtected ? `Freeze used on ${dk}` : undefined}
               style={{
                 flex: 1,
@@ -184,35 +230,54 @@ export default function DayStrip({
                 gap: Spacing.xs,
                 paddingVertical: 8,
                 marginHorizontal: 1,
-                // v3 `.is-sel`: the WHOLE cell fills plum (Radius.xl=12, the
-                // on-scale neighbour of the prototype's 14px).
                 borderRadius: Radius.xl,
+                // Legacy v3 `.is-sel` floods the whole cell; "transparent"
+                // under the flag, where the ring contains instead.
                 backgroundColor: cellBg,
-                opacity: outOfRange ? 0.35 : 1,
+                // Out-of-range days genuinely are unavailable, so they keep the
+                // fade. `dimFutureCell` is legacy-path only (flag OFF).
+                opacity: outOfRange ? 0.35 : dimFutureCell ? 0.42 : 1,
               }}
             >
-              <Text
-                // headers census 2026-06-10: day-axis label → Type.label (11px;
-                // census kept the canonical step over a private 10px density size).
-                style={{ ...Type.label, color: labelColor }}
-              >
-                {label}
-              </Text>
+              <Text style={{ ...letterStyle, color: letterColor }}>{label}</Text>
+              {/* Selection is a soft plum DISC behind the numeral, not a hairline
+                  rounded rectangle.
+                  A 1px grey rounded-rect around a number reads as a focused text
+                  input or a spreadsheet cell — an affordance, not a state — and
+                  it carried no brand colour at all. The disc is circular, which
+                  is this app's signature geometry (the hero ring, the avatar
+                  chip, the FAB, the macro dots), and it is tinted, so "selected"
+                  is said in plum rather than in border-grey.
+                  Sized 28pt so seven cells still fit the pager on a 375pt
+                  screen, and filled rather than stroked so selecting can never
+                  shift layout (no border box to occupy). */}
               <View
+                testID={selectedRing ? "daystrip-selected-ring" : undefined}
                 style={{
                   position: "relative",
                   minWidth: 28,
                   height: 28,
                   alignItems: "center",
                   justifyContent: "center",
+                  borderRadius: Radius.full,
+                  // SoftStrong (20%), not Soft (12%): at 12% over the Warm Oat
+                  // ground the disc desaturates to a grey smudge and reads as
+                  // chrome rather than as a plum state. 20% is the sanctioned
+                  // step up and is the lightest value where the tint still
+                  // reads as brand colour.
+                  backgroundColor:
+                    unifiedChrome && selectedRing ? accent.primarySoftStrong : "transparent",
                 }}
               >
                 <Text
                   style={{
-                    ...Type.headline,
-                    fontSize: 16,
-                    lineHeight: 20,
-                    fontWeight: isActive || selectedFill ? "700" : "600",
+                    ...numberStyle,
+                    // Legacy carried selection/today in WEIGHT, not a ring.
+                    fontWeight: unifiedChrome
+                      ? numberStyle.fontWeight
+                      : selectedFill || numberTone === "today"
+                        ? "700"
+                        : "600",
                     color: numberColor,
                     fontVariant: ["tabular-nums"],
                   }}
@@ -252,7 +317,7 @@ export default function DayStrip({
         })}
       </View>
     ),
-    [pagerW, dowLabels, selectedDk, todayDk, loggedDays, protectedDateKeys, min, max, textColor, secondaryColor, onSelectDate, accent],
+    [pagerW, dowLabels, selectedDk, todayDk, loggedDays, protectedDateKeys, min, max, textColor, secondaryColor, tertiaryInk, colors.border, unifiedChrome, letterStyle, numberStyle, onSelectDate, accent],
   );
 
   // v3 prototype `.day-strip` (ENG-1247): ‹ › week chevrons flank the pager;
@@ -273,7 +338,7 @@ export default function DayStrip({
           hitSlop={8}
           style={{ padding: 6, opacity: prevDisabled ? 0.3 : 1 }}
         >
-          <ChevronLeft size={IconSize.lg} color={secondaryColor} strokeWidth={2} />
+          <ChevronLeft size={IconSize.lg} color={chevronColor} strokeWidth={chevronStroke} />
         </PressableScale>
         <View testID="daystrip-pager" style={{ flex: 1 }} onLayout={onPagerLayout}>
           {pagerW > 0 ? (
@@ -320,7 +385,7 @@ export default function DayStrip({
           hitSlop={8}
           style={{ padding: 6, opacity: nextDisabled ? 0.3 : 1 }}
         >
-          <ChevronRight size={IconSize.lg} color={secondaryColor} strokeWidth={2} />
+          <ChevronRight size={IconSize.lg} color={chevronColor} strokeWidth={chevronStroke} />
         </PressableScale>
         <PressableScale
           haptic="selection"

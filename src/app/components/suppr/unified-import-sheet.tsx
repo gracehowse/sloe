@@ -134,7 +134,7 @@ export function UnifiedImportSheet({ open, onOpenChange, initialText }: UnifiedI
             <ImportDetectedChip input={text} />
           ) : v3 ? (
             <div data-testid="unified-import-samples">
-              <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-2 px-0.5">
+              <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-2">
                 Or try an example
               </p>
               <div className="flex flex-wrap gap-2">
@@ -147,7 +147,7 @@ export function UnifiedImportSheet({ open, onOpenChange, initialText }: UnifiedI
                       setText(sample.value);
                       if (hint) setHint(null);
                     }}
-                    className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors"
+                    className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs font-semibold text-foreground hover:bg-muted/40 transition-colors"
                   >
                     {sample.label}
                   </button>

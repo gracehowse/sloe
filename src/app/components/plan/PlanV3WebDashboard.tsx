@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Flame, ShoppingCart, Sparkles } from "lucide-react";
 
 import { ALL_MEAL_SLOTS } from "@/lib/nutrition/mealPlanAlgo";
 import { isFeatureEnabled } from "@/lib/analytics/track";
@@ -21,6 +20,14 @@ import {
   PlanHouseholdBannerV3,
   type PlanHouseholdBannerV3Props,
 } from "./PlanHouseholdBannerV3";
+import { PlanGhostWeekGrid } from "../suppr/plan-empty-week-grid";
+import { PlanV3WebRail } from "./PlanV3WebRail";
+import {
+  WEEKDAY_LONG,
+  useOpenSlots,
+  useWeekStats,
+  type WeekStat,
+} from "./usePlanV3WebDashboardStats";
 
 /**
  * PlanV3WebDashboard — the Sloe v3 Plan DESKTOP dashboard (ENG-1225 gap #13).
@@ -38,16 +45,6 @@ import {
  * completeness) and the shopping card shows the live item/serving counts — no
  * fabricated suggestions. Web mirror has no mobile twin (mobile is phone-only).
  */
-const WEEKDAY_LONG = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-] as const;
-
 export interface PlanV3WebDashboardProps {
   plan: DayPlan[];
   targetKcal: number;
@@ -71,44 +68,6 @@ export interface PlanV3WebDashboardProps {
   nutritionByDay?: PlanJournalByDay;
 }
 
-type WeekStat = { value: string; label: string };
-
-/** Derive the week-health stat strip from the real plan (planned days, the
- *  week's average calories + protein over planned days, and the daily target). */
-function useWeekStats(plan: DayPlan[], targetKcal: number): WeekStat[] {
-  return React.useMemo(() => {
-    const plannedDays = plan.filter((d) =>
-      d.meals.some((m) => !m.isPlaceholder),
-    );
-    const n = plannedDays.length;
-    const avg = (pick: (d: DayPlan) => number) =>
-      n === 0 ? 0 : Math.round(plannedDays.reduce((s, d) => s + pick(d), 0) / n);
-    return [
-      { value: `${n}/7`, label: "Days planned" },
-      // ENG-1533 — comma-format kcal so it matches the "1,856" used everywhere
-      // else (was raw String() → "1856").
-      { value: avg((d) => d.totals?.calories ?? 0).toLocaleString(), label: "Avg cal" },
-      { value: `${avg((d) => d.totals?.protein ?? 0)}g`, label: "Avg protein" },
-      { value: targetKcal.toLocaleString(), label: "Daily target" },
-    ];
-  }, [plan, targetKcal]);
-}
-
-/** Open dinner/lunch/etc. slots, grouped into a single grounded nudge. */
-function useOpenSlots(plan: DayPlan[], weekDates: Date[]) {
-  return React.useMemo(() => {
-    const openDays: string[] = [];
-    plan.forEach((day, i) => {
-      const hasOpen = day.meals.some((m) => m.isPlaceholder);
-      if (hasOpen) {
-        const d = weekDates[i];
-        openDays.push(d ? (WEEKDAY_LONG[d.getDay()] ?? "A day") : "A day");
-      }
-    });
-    return openDays;
-  }, [plan, weekDates]);
-}
-
 function StatStrip({ stats }: { stats: WeekStat[] }) {
   return (
     // Nested stat band inside the Plan dashboard — 12px inner standard
@@ -124,123 +83,6 @@ function StatStrip({ stats }: { stats: WeekStat[] }) {
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-function InsightCard({
-  openDays,
-  onGenerate,
-}: {
-  /** Non-empty — the card only renders when there are open slots to nudge. */
-  openDays: string[];
-  onGenerate: () => void;
-}) {
-  // A single honest, plan-derived nudge to finish the week. When the week is
-  // already complete the host hides this card (the verdict header confirms the
-  // success; the shopping card carries the next action) — no invented advice.
-  const headline =
-    openDays.length === 1
-      ? `${openDays[0]} still needs a meal`
-      : `${openDays.length} days still need a meal`;
-  return (
-    <div className="rounded-card-lg border border-border bg-card p-4">
-      <div className="flex items-center gap-2">
-        <span
-          className="grid size-7 shrink-0 place-items-center rounded-full"
-          style={{ backgroundColor: "var(--accent-primary-soft)" }}
-          aria-hidden
-        >
-          <Sparkles
-            className="size-3.5"
-            style={{ color: "var(--primary)" }}
-            strokeWidth={2}
-          />
-        </span>
-        <h3 className="text-[13px] font-semibold text-foreground">This week</h3>
-      </div>
-      <p className="mt-2 text-[13px] font-semibold text-foreground">{headline}</p>
-      <p className="mt-1 text-[11px] leading-relaxed text-foreground-tertiary">
-        Let Sloe fill the open slots around your targets, or add meals yourself.
-      </p>
-      <button
-        type="button"
-        onClick={onGenerate}
-        className="mt-3 h-9 w-full rounded-full bg-primary text-[13px] font-semibold text-primary-foreground transition-[transform,opacity] hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:scale-[0.99]"
-      >
-        Fill the open slots
-      </button>
-    </div>
-  );
-}
-
-function BatchCookCard({
-  subtitle,
-  onOpenBatchCook,
-}: {
-  subtitle: string;
-  onOpenBatchCook: () => void;
-}) {
-  return (
-    <div className="rounded-card-lg border border-border bg-card p-4">
-      <div className="flex items-center gap-2">
-        <span
-          className="grid size-7 shrink-0 place-items-center rounded-full"
-          style={{ backgroundColor: "var(--background-secondary)" }}
-          aria-hidden
-        >
-          <Flame className="size-3.5 text-foreground" strokeWidth={1.9} />
-        </span>
-        <h3 className="text-[13px] font-semibold text-foreground">Batch cook</h3>
-      </div>
-      <p className="mt-2 text-[11px] text-foreground-tertiary">{subtitle}</p>
-      <button
-        type="button"
-        onClick={onOpenBatchCook}
-        className="mt-3 h-9 w-fit px-4 rounded-full border border-border bg-card text-[13px] font-semibold text-foreground transition-[background-color] hover:bg-[var(--background-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-      >
-        Plan a batch
-      </button>
-    </div>
-  );
-}
-
-function ShoppingCard({
-  itemCount,
-  servingCount,
-  onOpenShopping,
-}: {
-  itemCount: number;
-  servingCount: number;
-  onOpenShopping: () => void;
-}) {
-  return (
-    <div className="rounded-card-lg border border-border bg-card p-4">
-      <div className="flex items-center gap-2">
-        <span
-          className="grid size-7 shrink-0 place-items-center rounded-full"
-          style={{ backgroundColor: "var(--background-secondary)" }}
-          aria-hidden
-        >
-          <ShoppingCart
-            className="size-3.5 text-foreground"
-            strokeWidth={1.9}
-          />
-        </span>
-        <h3 className="text-[13px] font-semibold text-foreground">Shopping list</h3>
-      </div>
-      <p className="mt-2 text-[11px] text-foreground-tertiary">
-        {itemCount > 0
-          ? `${itemCount} item${itemCount === 1 ? "" : "s"} · for ${servingCount > 1 ? `${servingCount} people` : "you"}`
-          : "Your shopping list builds from the week's recipes."}
-      </p>
-      <button
-        type="button"
-        onClick={onOpenShopping}
-        className="mt-3 h-9 w-fit px-4 rounded-full border border-border bg-card text-[13px] font-semibold text-foreground transition-[background-color] hover:bg-[var(--background-secondary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-      >
-        Open shopping list
-      </button>
     </div>
   );
 }
@@ -285,6 +127,18 @@ export function PlanV3WebDashboard({
         })),
       ),
     );
+
+  // Design-consistency pass 2026-07-24. The desktop empty Plan was the worst
+  // instance of the problem: a top-anchored invitation card followed by ~700px
+  // of nothing, with no picture of what "Generate this week" produces. The
+  // ghosted week draws that shape at full width; the header's Sparkles chip
+  // stands down because the card's filled CTA already fires `onGenerate`.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
+  // The slots the generator will actually fill — the plan's own slot count.
+  const ghostSlots = React.useMemo(
+    () => ALL_MEAL_SLOTS.slice(0, Math.max(1, plan[0]?.meals.length ?? 3)),
+    [plan],
+  );
   return (
     <div>
       <PlanHeaderV3
@@ -293,6 +147,7 @@ export function PlanV3WebDashboard({
         onGenerate={onGenerate}
         onAdjust={onAdjust}
         onTemplates={onTemplates}
+        showGenerate={!(unifiedChrome && weekIsEmpty)}
       />
       {!weekIsEmpty ? <StatStrip stats={stats} /> : null}
       {household ? (
@@ -302,11 +157,16 @@ export function PlanV3WebDashboard({
       ) : null}
 
       {weekIsEmpty ? (
-        <PlanEmptyWeekCard
-          onGenerate={onGenerate}
-          isGenerating={isGenerating}
-          onAddMealsAsYouGo={() => onAddToSlot(0, 0)}
-        />
+        <>
+          <PlanEmptyWeekCard
+            onGenerate={onGenerate}
+            isGenerating={isGenerating}
+            onAddMealsAsYouGo={() => onAddToSlot(0, 0)}
+          />
+          {unifiedChrome ? (
+            <PlanGhostWeekGrid weekDates={weekDates} slots={ghostSlots} />
+          ) : null}
+        </>
       ) : (
       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
         {/* Left: the whole week stacked — each day a header + its meal cards. */}
@@ -375,18 +235,16 @@ export function PlanV3WebDashboard({
           })}
         </div>
 
-        {/* Right rail: grounded insight + shopping. Sticks while the week scrolls. */}
-        <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
-          {openDays.length > 0 ? (
-            <InsightCard openDays={openDays} onGenerate={onGenerate} />
-          ) : null}
-          <BatchCookCard subtitle={batchCookSubtitle} onOpenBatchCook={onOpenBatchCook} />
-          <ShoppingCard
-            itemCount={shoppingItemCount}
-            servingCount={servingCount}
-            onOpenShopping={onOpenShopping}
-          />
-        </aside>
+        {/* Right rail: grounded insight + batch cook + shopping. */}
+        <PlanV3WebRail
+          openDays={openDays}
+          onGenerate={onGenerate}
+          batchCookSubtitle={batchCookSubtitle}
+          onOpenBatchCook={onOpenBatchCook}
+          shoppingItemCount={shoppingItemCount}
+          servingCount={servingCount}
+          onOpenShopping={onOpenShopping}
+        />
       </div>
       )}
     </div>

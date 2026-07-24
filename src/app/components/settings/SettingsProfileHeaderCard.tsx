@@ -1,5 +1,10 @@
+"use client";
+
 import Link from "next/link";
+import { isFeatureEnabled } from "@/lib/analytics/track";
+import { formatSettingsProfileSubline } from "@/lib/settings/settingsProfileStats";
 import { Icons } from "../ui/icons";
+import { AvatarDisc } from "../ui/avatar-disc";
 import { SupprCard } from "../ui/suppr-card";
 
 export interface SettingsProfileHeaderCardProps {
@@ -11,23 +16,39 @@ export interface SettingsProfileHeaderCardProps {
 }
 
 /**
- * Settings profile header card — Group G IA Batch C (2026-04-29). Avatar +
- * display name + tier pill + email + "Edit profile" link to /profile.
+ * Settings account card — the ONE place web Settings states who you are and
+ * which plan you're on.
  *
- * Extracted from `Settings.tsx` (ENG-1458) — that file's line-budget pin
- * had no headroom for the narrow-width fix below, and this card is a
- * clean, self-contained unit (Group G IA Batch C already scoped it as
- * one visual block).
+ * Design-consistency pass (2026-07-24, `design_consistency_v1`): Settings used
+ * to state plan status FOUR times above the fold — this card's tier pill, the
+ * standalone Sloe Pro banner, the "Your plan" card's pill, and (below the fold)
+ * SubscriptionCard — and printed the email twice (here and in "Your plan").
+ * The unified path collapses the identity block to avatar + name +
+ * "email · Free plan" on ONE subline, exactly matching the mobile Settings
+ * profile row (`SettingsBundleContent`), and hands every plan ACTION to
+ * SubscriptionCard (mobile: the Membership card). The subline string comes from
+ * the shared `formatSettingsProfileSubline` helper both platforms use, so the
+ * two surfaces can't drift apart again.
+ *
+ * Avatar: the shared `AvatarDisc` identity disc — the same flat damson chip the
+ * Today header, sidebar, pricing header, and Profile monogram render (S5 avatar
+ * ruling, ENG-1375). The 56px inline `linear-gradient` + `boxShadow` this card
+ * used to hand-roll was the last gradient consumer AND the only drop-shadowed
+ * avatar in the app; the shadow also contradicted the flat-card ruling
+ * (ENG-1497). It survives in the flag-OFF branch as the kill switch.
+ *
+ * Flag-OFF (kill switch) keeps the pre-pass rendering verbatim: gradient
+ * avatar, tier pill, separate email line, and the ENG-1458 narrow-width
+ * double-name reflow.
  *
  * ENG-1458 — at ≤400px (`sm:` breakpoint) the single-row layout (avatar +
  * name/pill/email column + Edit-profile button) overflowed: the name
  * truncated to a few characters, the "Free plan" pill wrapped inside
  * itself, the email truncated hard, and "View plans" wrapping was reported
- * alongside it. Fix: stack vertically below `sm:` — avatar, full-width
- * name (never truncated — it's the user's own name), pill, email, then a
- * full-width Edit-profile row — and reassemble into the original single
- * row at `sm:` and above. `whitespace-nowrap` on the pill so "Free plan"
- * can never wrap into itself again at any width.
+ * alongside it. Fix: stack vertically below `sm:` and reassemble into the
+ * original single row at `sm:` and above. The unified path keeps that
+ * behaviour with ONE name element (`sm:truncate` — wraps rather than clips
+ * below `sm:`, truncates once there's a row to truncate inside).
  */
 export function SettingsProfileHeaderCard({
   avatarInitial,
@@ -36,7 +57,10 @@ export function SettingsProfileHeaderCard({
   userTier,
   authEmail,
 }: SettingsProfileHeaderCardProps) {
-  const avatar = (
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
+  const avatarFrostRingV1 = isFeatureEnabled("avatar_monogram_frost_ring_v1");
+
+  const legacyAvatar = (
     <div
       aria-hidden
       className="w-14 h-14 rounded-full grid place-items-center text-lg font-bold text-white shrink-0"
@@ -72,6 +96,52 @@ export function SettingsProfileHeaderCard({
     </Link>
   );
 
+  if (unifiedChrome) {
+    // Web Settings has no saved-recipe / streak counts plumbed in (mobile
+    // reads them from `profileData`), so stats are `hidden` here and the
+    // subline is "email · Free plan" — the identical shape mobile renders for
+    // a user with no stats yet.
+    const subline = formatSettingsProfileSubline(
+      { email: authEmail, planLabel: `${tierLabel} plan` },
+      { mode: "hidden" },
+    );
+
+    return (
+      <SupprCard
+        data-testid="settings-profile-header-card"
+        padding="xl"
+        className="mb-6 flex flex-col sm:flex-row sm:items-center gap-4"
+      >
+        <div className="flex items-center gap-4 min-w-0 sm:flex-1">
+          <AvatarDisc
+            initial={avatarInitial}
+            size={52}
+            treatment={avatarFrostRingV1 ? "frostRing" : "legacy"}
+          />
+          <div className="min-w-0 flex-1">
+            {/* Sloe DS (Figma 09 Settings `335:2`): the user's name is an
+                editorial identity header — Newsreader serif, plum ink. */}
+            <p className="font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand leading-tight sm:truncate">
+              {displayLabel}
+            </p>
+            {/* Two lines before it clips, matching mobile's
+                `numberOfLines={2}` on the same subline — a long email plus
+                the plan label overflows one line at narrow widths, and
+                clipping the plan the card exists to state is the one thing
+                this line must not do. */}
+            <p
+              data-testid="settings-profile-subline"
+              className="mt-1 text-xs text-muted-foreground line-clamp-2"
+            >
+              {subline}
+            </p>
+          </div>
+        </div>
+        {editProfileLink}
+      </SupprCard>
+    );
+  }
+
   return (
     <SupprCard
       data-testid="settings-profile-header-card"
@@ -79,7 +149,7 @@ export function SettingsProfileHeaderCard({
       className="mb-6 flex flex-col sm:flex-row sm:items-center gap-4"
     >
       <div className="flex items-center gap-4 sm:contents">
-        {avatar}
+        {legacyAvatar}
         {/* Name is full-width and never truncates below `sm:` — it's the
             user's own name, the one thing this card must never clip. */}
         <p className="sm:hidden font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand leading-tight flex-1 min-w-0">
@@ -87,10 +157,6 @@ export function SettingsProfileHeaderCard({
         </p>
       </div>
       <div className="flex-1 min-w-0">
-        {/* Sloe DS (Figma 09 Settings `335:2`): the user's name is an
-            editorial identity header — Newsreader serif, plum ink. Hidden
-            here below `sm:` (rendered full-width above instead) so it
-            never competes for width with the avatar + pill + email stack. */}
         <p className="hidden sm:block font-[family-name:var(--font-headline)] text-xl font-medium text-foreground-brand leading-tight truncate">
           {displayLabel}
         </p>

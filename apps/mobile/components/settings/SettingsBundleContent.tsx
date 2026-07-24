@@ -69,6 +69,8 @@ import { Accent, FontFamily, MacroColors, MacroColorsDark, Radius, Spacing, Type
 import { useAccent, useResolvedScheme } from "@/context/theme";
 import { CARD_RADIUS, SHEET_RADIUS, TILE_RADIUS } from "@/components/ui/SupprCard";
 import { SupprButton } from "@/components/ui/SupprButton";
+import { PressableScale } from "@/components/ui/PressableScale";
+import { GradientAvatar } from "@/components/GradientAvatar";
 import { SegmentedTrack } from "@/components/ui/SegmentedTrack";
 import { WeighInReminderRow } from "@/components/settings/WeighInReminderRow";
 import { WeeklyRecapPushPicker } from "@/components/settings/WeeklyRecapPushPicker";
@@ -381,6 +383,8 @@ export function SettingsBundleContent({ context }: { context: Context }) {
   // Recipes/Streak use the same flat page-ground card grammar as Settings.
   const statTileElevation = useCardElevation();
   const semanticStatRoles = isFeatureEnabled("semantic_stat_roles_v1");
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
+  const avatarFrostRingV1 = isFeatureEnabled("avatar_monogram_frost_ring_v1");
   const userId = session?.user?.id ?? null;
 
   const [profileData, setProfileData] = useState<{
@@ -1360,80 +1364,75 @@ export function SettingsBundleContent({ context }: { context: Context }) {
 
   return (
     <>
-      {/* Profile row — Sloe DS (Figma 09 Settings `335:2`): plum filled
-          circle avatar (white serif initial) + name in Newsreader serif
-          + plan label ("Free plan" / "Pro plan") in grey, sitting
-          directly on the white page (no card chrome). The whole row taps
-          through to /profile (the full editor). Tier is shown as the
-          plan-label line, not a pill — the frame leads with identity,
-          not a status marker. */}
-      <Pressable
+      {/* Profile row — Sloe DS (Figma 09 Settings `335:2`): plum circle avatar
+          + name in Newsreader serif + the "email · plan" subline, sitting
+          directly on the page (no card chrome). Taps through to /profile (the
+          full editor). Tier is stated ONCE, as that plan label rather than a
+          pill — the frame leads with identity, not a status marker. Web twin:
+          `settings/SettingsProfileHeaderCard.tsx`. */}
+      <PressableScale
         testID="settings-profile-row"
+        haptic="selection"
         accessibilityRole="button"
         accessibilityLabel="Edit profile"
         onPress={() => router.push("/profile" as any)}
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: 16,
-          paddingVertical: 8,
-          marginTop: 4,
-        }}
+        style={{ flexDirection: "row", alignItems: "center", gap: Spacing.md, paddingVertical: Spacing.sm, marginTop: Spacing.xs }}
       >
-        <View
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            backgroundColor: colors.navPrimary,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: FontFamily.serifSemibold,
-              fontSize: 22,
-              fontWeight: "600",
-              color: colors.primaryForeground,
-            }}
-          >
-            {avatarInitial}
-          </Text>
-        </View>
+        {unifiedChrome ? (
+          // The ONE identity chip — the flat damson disc the Today header
+          // renders (S5 avatar ruling, ENG-1375). Was a hand-rolled 56px
+          // `colors.navPrimary` circle: a fourth avatar treatment in the app,
+          // in a different plum from the most-seen one.
+          <GradientAvatar
+            size={52}
+            initial={avatarInitial}
+            fontSize={18}
+            fill={Accent.purple}
+            gradientIdSuffix="settings-profile"
+            treatment={avatarFrostRingV1 ? "frostRing" : "legacy"}
+          />
+        ) : (
+          <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.navPrimary, alignItems: "center", justifyContent: "center" }}>
+            <Text style={{ fontFamily: FontFamily.serifSemibold, fontSize: 22, fontWeight: "600", color: colors.primaryForeground }}>
+              {avatarInitial}
+            </Text>
+          </View>
+        )}
         <View style={{ flex: 1 }}>
           <Text
-            style={{
-              fontFamily: FontFamily.serifSemibold,
-              fontSize: 24,
-              lineHeight: 28,
-              fontWeight: "600",
-              color: colors.text,
-              letterSpacing: -0.3,
-            }}
+            style={{ fontFamily: FontFamily.serifSemibold, fontSize: 24, lineHeight: 28, fontWeight: "600", color: colors.text, letterSpacing: -0.3 }}
             numberOfLines={1}
           >
             {displayName}
           </Text>
+          {/* v3 prototype: "email · plan" (ENG-1247). A lone Recipes or Streak
+              stat folds inline here, not a full-width orphan tile (ENG-1614). */}
           <Text
             testID="settings-profile-subline"
             style={{ fontSize: 14, color: colors.textSecondary, marginTop: 2 }}
             numberOfLines={2}
           >
-            {/* v3 prototype: "email · plan" (ENG-1247). A lone Recipes or
-                Streak stat folds inline here instead of a full-width orphan
-                tile (ENG-1614). */}
             {profileSubline}
           </Text>
         </View>
-      </Pressable>
+      </PressableScale>
 
-      <SettingsSloeProBanner
-        isPro={profileData.userTier === "pro"}
-        onUpgrade={() => {
-          router.push("/paywall?from=settings" as any);
-        }}
-      />
+      {/* Design-consistency pass (2026-07-24): the standalone Sloe Pro banner
+          duplicated the Membership card's upgrade row — same sparkle, same
+          "Sloe Pro" framing, same `/paywall?from=settings` — two rows below
+          the plan label the subline above already states. The Membership row
+          wins (it carries the value copy and groups with Manage subscription +
+          promo redemption); the banner is kill-switch-only now. Web mirror:
+          the banner + "Your plan" card drop out of `Settings.tsx`, leaving the
+          account card + SubscriptionCard. */}
+      {unifiedChrome ? null : (
+        <SettingsSloeProBanner
+          isPro={profileData.userTier === "pro"}
+          onUpgrade={() => {
+            router.push("/paywall?from=settings" as any);
+          }}
+        />
+      )}
 
       {profileStatsPresentation.mode === "tiles" ? (
         <SettingsProfileStatsTiles
@@ -1530,65 +1529,40 @@ export function SettingsBundleContent({ context }: { context: Context }) {
           subscription (base/pro) → promo-code input (always). */}
       <SectionHeading title="Membership" />
       <SettingsCard testID="settings-card-membership">
+        {/* THE upgrade CTA on Settings since the design-consistency pass
+            (2026-07-24) — the standalone Sloe Pro banner above used to fire
+            the same `/paywall?from=settings` route. `confirm` haptic: it
+            leaves the screen for a paid flow. */}
         {profileData.userTier !== "pro" ? (
-          <Pressable
+          <PressableScale
             testID="settings-bundle-upgrade-row"
+            haptic="confirm"
             onPress={() => router.push("/paywall?from=settings" as any)}
             accessibilityRole="button"
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 12,
-              paddingVertical: 14,
-              paddingHorizontal: 14,
-            }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14, paddingHorizontal: 14 }}
           >
-            <View
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: Radius.full,
-                backgroundColor: accent.primarySoft,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
+            <View style={{ width: 36, height: 36, borderRadius: Radius.full, backgroundColor: accent.primarySoft, alignItems: "center", justifyContent: "center" }}>
               <Sparkles size={18} color={accent.primary} strokeWidth={1.75} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text
-                style={{
-                  fontSize: 14,
-                  fontWeight: "700",
-                  color: colors.text,
-                }}
-              >
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.text }}>
                 {profileData.userTier === "free"
                   ? "Upgrade your plan"
                   : "Upgrade to Pro"}
               </Text>
-              <Text
-                style={{
-                  ...Type.captionSmall,
-                  color: colors.textSecondary,
-                  marginTop: 2,
-                }}
-              >
+              <Text style={{ ...Type.captionSmall, color: colors.textSecondary, marginTop: 2 }}>
                 {profileData.userTier === "free"
                   ? "Unlimited recipes, multi-day plans, and AI logging"
                   : "Unlock AI photo and voice logging with Pro"}
               </Text>
             </View>
-            <ChevronRight
-              size={16}
-              color={colors.textTertiary}
-              strokeWidth={1.75}
-            />
-          </Pressable>
+            <ChevronRight size={16} color={colors.textTertiary} strokeWidth={1.75} />
+          </PressableScale>
         ) : null}
         {profileData.userTier !== "free" ? (
-          <Pressable
+          <PressableScale
             testID="settings-manage-subscription-row"
+            haptic="selection"
             onPress={() => void handleManageSubscription()}
             accessibilityRole="button"
             accessibilityLabel="Manage subscription"
@@ -1598,39 +1572,18 @@ export function SettingsBundleContent({ context }: { context: Context }) {
               gap: 12,
               paddingVertical: 14,
               paddingHorizontal: 14,
-              borderTopWidth:
-                profileData.userTier !== "pro" ? 1 : 0,
+              borderTopWidth: profileData.userTier !== "pro" ? 1 : 0,
               borderTopColor: colors.cardBorder,
             }}
           >
-            <View
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: Radius.full,
-                backgroundColor: accent.primarySoft,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
+            <View style={{ width: 36, height: 36, borderRadius: Radius.full, backgroundColor: accent.primarySoft, alignItems: "center", justifyContent: "center" }}>
               <Sparkles size={18} color={accent.primary} strokeWidth={1.75} />
             </View>
-            <Text
-              style={{
-                flex: 1,
-                fontSize: 14,
-                fontWeight: "600",
-                color: colors.text,
-              }}
-            >
+            <Text style={{ flex: 1, fontSize: 14, fontWeight: "600", color: colors.text }}>
               Manage subscription
             </Text>
-            <ChevronRight
-              size={16}
-              color={colors.textTertiary}
-              strokeWidth={1.75}
-            />
-          </Pressable>
+            <ChevronRight size={16} color={colors.textTertiary} strokeWidth={1.75} />
+          </PressableScale>
         ) : null}
         {/* Promo-code redemption — testers + creator codes. Sits
             beneath both upgrade / manage rows so it's reachable

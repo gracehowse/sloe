@@ -610,7 +610,7 @@ export const Colors = {
     // card #FFFFFF > background #F7F6FA > grouped #F5F4F7 > secondary
     // #F1F0F4. Splash/icon ground stays #FBF8F3 in app.json
     // (brandIconSplash.test.ts pins it). ↔ web theme.css --background.
-    background: '#F7F6FA',          // whisper-cool plum-white canvas (ENG-1316)
+    background: '#FBFAF6',          // Warm Oat ground (Grace 2026-07-24 — reverses the 2026-07-23 pure-white canvas)
     backgroundSecondary: '#F1F0F4', // recessed cool plum-grey (tracks, wells)
     backgroundGrouped: '#F5F4F7',   // faint cool-plum grouped ground (NOT beige)
     card: '#FFFFFF',                // white card — lift via Elevation.cardSoft
@@ -943,6 +943,22 @@ export const Type = {
     lineHeight: 14,
     fontWeight: '700' as const,
     letterSpacing: 0.88, // 11 * 0.08em
+    textTransform: 'uppercase' as const,
+  },
+  /** THE page-chrome eyebrow — 11/600/0.12em ink caps, paired with a faint
+   *  `border` hairline rule running to the margin. Promoted from the Today
+   *  serif hero (Grace's exact spec, 2026-07-24) to the shared ramp in the
+   *  design-consistency pass so `ScreenSectionChrome` and `TodayGreetingHero`
+   *  stop hand-rolling the same values. Quieter than `label` (600 not 700) and
+   *  wider-tracked (1.32 not 0.88) — it reads as an editorial kicker, not a
+   *  warning. Web twin: `text-[11px] font-semibold uppercase tracking-[0.12em]
+   *  text-foreground` + `flex-1 h-px bg-border`. */
+  eyebrow: {
+    fontFamily: FontFamily.sansSemibold,
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '600' as const,
+    letterSpacing: 1.32, // 11 * 0.12em
     textTransform: 'uppercase' as const,
   },
   caption: { fontFamily: FontFamily.sansMedium, fontSize: 11, lineHeight: 14, fontWeight: '500' as const, letterSpacing: 0 },

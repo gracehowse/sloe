@@ -1,20 +1,11 @@
 /**
  * Recipe detail — ingredient TEXT rows (ENG-1611, prototype `.rd-ing`).
- * Flag-ON sibling of `RecipeIngredientGrid` (which stays byte-intact for
- * the flag-OFF path): one row per ingredient — name left, dotted leader,
- * scaled quantity right, per-row SourceDot (D-2026-04-27-16 provenance,
- * incl. the AI-estimated sparkle) after the quantity. Tier stays in the
- * a11y label + the tap-through info sheet, exactly as the grid had it.
- * Web parity: `src/app/components/suppr/recipe-ingredient-text-rows.tsx`.
- *
- * The leader is a 1px-high View with a full dotted border (RN doesn't
- * render single-side dotted borders on iOS; a full border on a 1px-high
- * clipped View reads as one dotted rule).
+ * Section head: Type.label "Ingredients" + servings stepper when wired.
  */
 import { StyleSheet, Text, View } from "react-native";
+import { Minus, Plus } from "lucide-react-native";
 
-import { FontFamily, Spacing, Type } from "@/constants/theme";
-import { CARD_RADIUS } from "@/components/ui/SupprCard";
+import { FontFamily, Radius, Spacing, Type } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { decodeEntities } from "@/lib/decodeEntities";
@@ -35,6 +26,10 @@ export function RecipeIngredientRows({
   onIngredientPress,
   onViewAll,
   expanded,
+  canDecrease,
+  canIncrease,
+  onDecrease,
+  onIncrease,
 }: {
   ingredients: RecipeGridIngredient[];
   forServings: number;
@@ -42,20 +37,71 @@ export function RecipeIngredientRows({
   onIngredientPress: (index: number) => void;
   onViewAll: () => void;
   expanded: boolean;
+  canDecrease?: boolean;
+  canIncrease?: boolean;
+  onDecrease?: () => void;
+  onIncrease?: () => void;
 }) {
   const colors = useThemeColors();
   if (ingredients.length === 0) return null;
 
   const shown = expanded ? ingredients : ingredients.slice(0, GRID_PREVIEW_COUNT);
   const hiddenCount = ingredients.length - shown.length;
+  const showServingsStepper =
+    typeof onDecrease === "function" && typeof onIncrease === "function";
+
+  const roundBtn = (enabled: boolean) => ({
+    width: 32,
+    height: 32,
+    borderRadius: Radius.full,
+    backgroundColor: colors.backgroundSecondary,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    justifyContent: "center" as const,
+    alignItems: "center" as const,
+    opacity: enabled ? 1 : 0.4,
+  });
 
   return (
     <View style={{ gap: Spacing.md }} testID="recipe-ingredients-section">
       <View style={styles.headerRow}>
-        <Text style={{ ...Type.title, color: colors.navPrimary }}>Ingredients</Text>
-        <Text style={{ fontFamily: FontFamily.sansRegular, fontSize: 14, color: colors.textSecondary }}>
-          For {forServings} serving{forServings === 1 ? "" : "s"}
-        </Text>
+        <Text style={{ ...Type.label, color: colors.textTertiary }}>Ingredients</Text>
+        {showServingsStepper ? (
+          <View style={styles.servStep} testID="recipe-ingredients-servings-stepper">
+            <PressableScale
+              onPress={onDecrease}
+              disabled={canDecrease === false}
+              accessibilityRole="button"
+              accessibilityLabel="Decrease servings"
+              testID="recipe-view-servings-minus"
+              style={roundBtn(canDecrease !== false)}
+            >
+              <Minus size={15} color={colors.text} />
+            </PressableScale>
+            <Text
+              style={[styles.servValue, { color: colors.navPrimary }]}
+              testID="recipe-view-servings-value"
+              accessibilityLiveRegion="polite"
+              accessibilityLabel={`${forServings} servings`}
+            >
+              {forServings}
+            </Text>
+            <PressableScale
+              onPress={onIncrease}
+              disabled={canIncrease === false}
+              accessibilityRole="button"
+              accessibilityLabel="Increase servings"
+              testID="recipe-view-servings-plus"
+              style={roundBtn(canIncrease !== false)}
+            >
+              <Plus size={15} color={colors.text} />
+            </PressableScale>
+          </View>
+        ) : (
+          <Text style={{ fontFamily: FontFamily.sansRegular, fontSize: 14, color: colors.textSecondary }}>
+            For {forServings} serving{forServings === 1 ? "" : "s"}
+          </Text>
+        )}
       </View>
 
       <View testID="recipe-ingredient-rows">
@@ -136,34 +182,46 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "baseline",
+    alignItems: "center",
+    gap: Spacing.md,
+  },
+  servStep: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.dense,
+  },
+  servValue: {
+    minWidth: 24,
+    textAlign: "center",
+    fontFamily: FontFamily.serifRegular,
+    fontSize: 20,
+    fontWeight: "400",
+    fontVariant: ["tabular-nums"],
   },
   row: {
     flexDirection: "row",
-    alignItems: "baseline",
+    alignItems: "center",
     gap: Spacing.sm,
-    paddingVertical: Spacing.dense,
+    paddingVertical: Spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    minHeight: 44,
   },
-  rowLast: {
-    borderBottomWidth: 0,
-  },
-  rowName: {
-    flexShrink: 1,
-    maxWidth: "70%",
-  },
+  rowLast: { borderBottomWidth: 0 },
+  rowName: { flexShrink: 1, maxWidth: "55%" },
   leader: {
     flex: 1,
     height: 1,
     borderWidth: 1,
     borderStyle: "dotted",
+    marginHorizontal: 4,
     overflow: "hidden",
-    transform: [{ translateY: -3 }],
+    alignSelf: "center",
   },
   viewAll: {
-    borderRadius: CARD_RADIUS,
-    borderWidth: 1,
-    paddingVertical: Spacing.dense,
+    alignSelf: "stretch",
     alignItems: "center",
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
   },
 });

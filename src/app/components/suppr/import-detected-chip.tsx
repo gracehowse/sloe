@@ -66,7 +66,7 @@ export function ImportDetectedChip({
             Detected: {result.label}
           </span>
           {subline ? (
-            <span className="mt-0.5 block text-xs text-muted-foreground">{subline}</span>
+            <span className="block text-xs text-muted-foreground">{subline}</span>
           ) : null}
         </span>
         <Check size={17} className="shrink-0 text-success" aria-hidden />
@@ -80,7 +80,7 @@ export function ImportDetectedChip({
       data-variant="pill"
       data-kind={result.kind}
       className={[
-        "inline-flex items-center gap-1.5 rounded-full bg-primary-soft px-3 py-1 text-[13px] font-medium text-primary-solid",
+        "inline-flex items-center gap-1 rounded-full bg-primary-soft px-3 py-1 text-[13px] font-medium text-primary-solid",
         className,
       ]
         .filter(Boolean)

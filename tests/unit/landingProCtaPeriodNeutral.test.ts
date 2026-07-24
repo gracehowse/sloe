@@ -13,15 +13,25 @@
  * (src/app/components/onboarding/steps/upgrade.tsx + the mobile mirror)
  * and are intentionally NOT covered here — they already land on a
  * trial-default paywall (ENG-1241 / legal C2) and remain correct.
+ *
+ * Scans the whole `app/(landing)` route group, not `LandingPage.tsx` alone.
+ * The Pro pricing card this test is named for lives in `Pricing.tsx`, and the
+ * design-consistency pass (2026-07-24) moved the shared sign-up label into
+ * `landingLinks.ts` (`SIGNUP_CTA_LABEL`) — reading one file meant the guard
+ * had drifted off its own subject.
  */
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const LANDING_PATH = resolve(__dirname, "../../app/(landing)/LandingPage.tsx");
+const LANDING_DIR = resolve(__dirname, "../../app/(landing)");
 
 describe("landing page — ENG-1489 period-neutral Pro CTA", () => {
-  const src = readFileSync(LANDING_PATH, "utf8");
+  const src = readdirSync(LANDING_DIR)
+    .filter((f) => f.endsWith(".tsx") || f.endsWith(".ts"))
+    .sort()
+    .map((f) => readFileSync(join(LANDING_DIR, f), "utf8"))
+    .join("\n");
 
   it('no landing CTA claims "Start free trial" (the card leads with the no-trial monthly price)', () => {
     expect(src).not.toContain("Start free trial");

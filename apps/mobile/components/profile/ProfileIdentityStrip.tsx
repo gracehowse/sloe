@@ -47,6 +47,12 @@ function ProfileIdentityStripImpl({
   // apps/mobile/lib/analytics.ts flag note). Flag-off leaves this
   // monogram exactly as-is (accent.primarySolid).
   const avatarFrostRingV1 = isFeatureEnabled("avatar_monogram_frost_ring_v1");
+  // Design-consistency pass (default-ON; the `else` of each branch is the kill
+  // switch). Mirrors the editorial block: ONE identity-avatar treatment (the
+  // Today header's damson chip, not a second plum), and the tier stated once —
+  // in an accent badge, not the palette's most inert grey-lilac.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
+  const identityMeta = `${isPro ? "Pro" : "Free"}${joinedLabel ? ` · ${joinedLabel}` : ""}`;
 
   return (
     <View style={{ gap: Spacing.md }}>
@@ -61,6 +67,15 @@ function ProfileIdentityStripImpl({
             textColor={colors.primaryForeground}
             treatment="frostRing"
           />
+        ) : unifiedChrome ? (
+          <GradientAvatar
+            size={48}
+            initial={monogramInitial}
+            fontSize={Type.title.fontSize}
+            gradientIdSuffix="profile-identity-strip-monogram"
+            fill={Accent.purple}
+            textColor={colors.primaryForeground}
+          />
         ) : (
           <View style={styles.monogram} accessible={false}>
             <Text style={styles.monogramInitial}>{monogramInitial}</Text>
@@ -70,14 +85,21 @@ function ProfileIdentityStripImpl({
           <Text style={styles.identityName} numberOfLines={1}>
             {displayName.trim() || "Your profile"}
           </Text>
-          <Text style={styles.identityMeta} numberOfLines={1}>
-            {isPro ? "Pro" : "Free"}
-            {joinedLabel ? ` · ${joinedLabel}` : ""}
-          </Text>
+          {/* Tier is stated ONCE: the Pro badge owns it for Pro, this subline
+              owns it for everyone else. */}
+          {unifiedChrome && isPro ? (
+            joinedLabel ? (
+              <Text style={styles.identityMeta} numberOfLines={1}>{joinedLabel}</Text>
+            ) : null
+          ) : (
+            <Text style={styles.identityMeta} numberOfLines={1}>{identityMeta}</Text>
+          )}
         </View>
         {isPro ? (
-          <View style={styles.tierPill}>
-            <Text style={styles.tierPillText}>Pro</Text>
+          <View style={[styles.tierPill, unifiedChrome ? styles.tierPillAccent : null]}>
+            <Text style={[styles.tierPillText, unifiedChrome ? styles.tierPillTextAccent : null]}>
+              Pro
+            </Text>
           </View>
         ) : null}
       </View>
@@ -145,6 +167,10 @@ function makeStyles(
       backgroundColor: accent.primarySoft,
     },
     tierPillText: { ...Type.label, color: accent.primarySolid },
+    // Damson = THE Pro/achievement slot (theme.ts `Accent.purple`); white label
+    // on it clears AA and matches the identity disc beside it.
+    tierPillAccent: { paddingHorizontal: Spacing.dense, backgroundColor: Accent.purple },
+    tierPillTextAccent: { color: Accent.primaryForeground },
     statsStrip: { flexDirection: "row", gap: Spacing.md },
     statTile: {
       flex: 1,

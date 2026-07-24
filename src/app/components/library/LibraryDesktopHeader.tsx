@@ -26,16 +26,36 @@ export interface LibraryDesktopHeaderProps {
  */
 export function LibraryDesktopHeader({ recipeCount, sortLabel }: LibraryDesktopHeaderProps) {
   const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
+  // Design-consistency pass (2026-07-24) — the "Cook" overline rendered
+  // 11/700/0.1em in `--foreground-tertiary`, its own variant of a label the
+  // app now renders one way: 11/600/0.12em FULL INK plus a hairline rule to
+  // the margin (the treatment `ScreenChrome` / `ScreenSectionChrome` ship, and
+  // the one the mobile-web twin `suppr/recipes-tab-chrome.tsx` gets from
+  // `ScreenChrome`). Without this, the same Cookbook screen showed one eyebrow
+  // on phone and a different one on desktop.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
   return (
     <div className="hidden md:flex items-start justify-between gap-4 mb-6">
-      <div>
-        <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
-          Cook
-        </div>
+      <div className="min-w-0 flex-1">
+        {unifiedChrome ? (
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground">
+              Cook
+            </span>
+            <span className="flex-1 h-px bg-border" />
+          </div>
+        ) : (
+          <div className="text-[11px] font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
+            Cook
+          </div>
+        )}
         <h1
-          className={consistencyChrome
-            ? "mt-0.5 page-title text-foreground-brand"
-            : "mt-0.5 font-[family-name:var(--font-headline)] text-[24px] font-medium text-foreground -tracking-[0.02em]"}
+          className={[
+            unifiedChrome ? "mt-1" : "mt-0.5",
+            consistencyChrome
+              ? "page-title text-foreground-brand"
+              : "font-[family-name:var(--font-headline)] text-[24px] font-medium text-foreground -tracking-[0.02em]",
+          ].join(" ")}
           data-testid="library-desktop-title"
         >
           Your kitchen

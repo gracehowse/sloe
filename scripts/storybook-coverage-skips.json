@@ -138,6 +138,10 @@
         "reason": "auth/supabase host"
       },
       {
+        "file": "src/app/components/creator/CreatorProfileFollowRow.tsx",
+        "reason": "auth/supabase host — a flag-gated className wrapper that renders CreatorFollowButton and nothing else; the button returns null until supabase.auth.getSession() yields a session, which the Storybook supabase stub never does, so every story would snapshot an empty frame. Covered visually by the mobile creator profile stories; re-story it if the follow CTA ever renders unauthenticated."
+      },
+      {
         "file": "src/app/components/food-search/FoodSearchPanel.tsx",
         "reason": "auth/supabase host"
       },
@@ -188,10 +192,6 @@
       {
         "file": "src/app/components/settings/MealSharedLinksSection.tsx",
         "reason": "landed on main after ENG-1662 Storybook baseline; explicit skip until ENG-1666 story"
-      },
-      {
-        "file": "src/app/components/shopping/ShoppingListRow.tsx",
-        "reason": "ENG-1669 extract — covered via ShoppingList parent"
       },
       {
         "file": "src/app/components/shopping/ShoppingSmartSuggestions.tsx",

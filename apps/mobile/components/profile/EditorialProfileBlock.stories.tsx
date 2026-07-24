@@ -34,7 +34,15 @@ const meta = {
   component: EditorialProfileBlock,
   tags: ["autodocs"],
   decorators: [mobileStoryFrame],
-  parameters: { layout: "fullscreen" },
+  parameters: {
+    layout: "fullscreen",
+    docs: {
+      description: {
+        component:
+          "The Profile block: identity → labelled streak pips → milestones → saved-recipe grid. Under `design_consistency_v1` the tier is stated once with an accent Pro badge, the streak row gains weekday letters so the pips are readable rather than decorative, milestones lead with the actionable one, and the empty saved-recipes copy ships a real ghost 'Browse Discover' CTA via `onBrowseDiscover` instead of naming a destination with no way to reach it. Ghost, because the screen's one filled CTA is Upgrade. Web twin: src/app/components/profile/EditorialProfileBlock.tsx.",
+      },
+    },
+  },
 } satisfies Meta<typeof EditorialProfileBlock>;
 
 export default meta;
@@ -59,6 +67,8 @@ export const Populated: Story = {
   },
 };
 
+/** Fresh free account — the empty grid ships the ghost "Browse Discover"
+ *  escape hatch the copy promises. Parity with the web story. */
 export const EmptyFreeAccount: Story = {
   args: {
     displayName: "Sam",
@@ -71,5 +81,28 @@ export const EmptyFreeAccount: Story = {
     recipeCount: 0,
     onOpenRecipe: () => undefined,
     onSeeAllRecipes: () => undefined,
+    onBrowseDiscover: () => undefined,
+  },
+};
+
+/**
+ * The same empty state with `onBrowseDiscover` omitted — the pre-consistency
+ * dead end, where the copy named Discover and offered no way there. Kept as
+ * the visible contrast for the kill-switch path.
+ */
+export const EmptyWithoutDiscoverCta: Story = {
+  args: {
+    ...EmptyFreeAccount.args,
+    onBrowseDiscover: undefined,
+  },
+};
+
+/** Non-Pro footer with the single primary Upgrade CTA. */
+export const FreeWithUpgradeCta: Story = {
+  args: {
+    ...EmptyFreeAccount.args,
+    displayName: "Grace",
+    monogramInitial: "G",
+    onUpgrade: () => undefined,
   },
 };

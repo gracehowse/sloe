@@ -14,17 +14,18 @@ import {
   type ShoppingDisplayGroup,
 } from "../../lib/planning/shoppingDisplayGroups.ts";
 import { ShoppingListRow } from "./shopping/ShoppingListRow.tsx";
+import { ScreenChrome } from "./suppr/screen-chrome.tsx";
 import { sortShoppingCategories } from "../../lib/planning/shoppingAisleOrder.ts";
 import { withNormalizedShoppingFields } from "../../lib/planning/normalizeShoppingIngredientRow.ts";
 import { formatShoppingListSubtitle } from "../../lib/planning/shoppingListMeta.ts";
+import {
+  formatShoppingProgressSubtitle,
+  formatShoppingWeekEyebrow,
+} from "../../lib/planning/shoppingListDisplay.ts";
 import { appendPantryStaple } from "../../lib/planning/pantryStaples.ts";
-import {
-  getMyHousehold,
-  type HouseholdData,
-} from "../../lib/household/householdClient.ts";
-import {
-  householdMemberFirstName,
-} from "../../lib/household/memberAccents.ts";
+import { getMyHousehold, type HouseholdData } from "../../lib/household/householdClient.ts";
+import { householdMemberFirstName } from "../../lib/household/memberAccents.ts";
+import { SupprButton } from "./suppr/suppr-button.tsx";
 import type { UserTier } from "../../types/recipe.ts";
 
 interface ShoppingListProps {
@@ -34,10 +35,9 @@ interface ShoppingListProps {
 }
 
 /**
- * Web Shopping list — prototype `WebShopping` layout + F3 hybrid lifecycle
+ * Web Shopping list — F3 hybrid lifecycle
  * (`docs/decisions/2026-04-28-shopping-list-web-parity-hybrid.md`), household
- * shared-list banner (2026-04-30), ENG-1527 update-from-plan, ENG-1634 smart
- * suggestions. Persists via `useAppData` realtime.
+ * banner (2026-04-30), ENG-1527 update-from-plan, ENG-1634 smart suggestions.
  */
 export const ShoppingList = memo(function ShoppingList({
   userTier: _userTier,
@@ -60,9 +60,11 @@ export const ShoppingList = memo(function ShoppingList({
 
   // ENG-1669 — in-store scan density (default ON; PostHog kill switch).
   const densityV1 = isFeatureEnabled("shopping_list_density_v1");
+  // Design-consistency pass (2026-07-24) — ONE `ScreenChrome` at every
+  // breakpoint, retiring the `hidden md:block` desktop-only title block.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
 
-  // Resolve member metadata once, only when in a household. Used for
-  // the "Shared with Sarah & Tom" banner + per-row attribution chip.
+  // Member metadata (household only) — banner + per-row attribution chip.
   const [household, setHousehold] = useState<HouseholdData | null>(null);
   useEffect(() => {
     if (!userId || !activeHouseholdId) {
@@ -126,30 +128,27 @@ export const ShoppingList = memo(function ShoppingList({
     [categories, shoppingItems],
   );
 
-  const totalItemCount = useMemo(
-    () => categorySections.reduce((n, s) => n + s.groups.length, 0),
-    [categorySections],
+  const totalItemCount = categorySections.reduce((n, s) => n + s.groups.length, 0);
+  const checkedCount = categorySections.reduce(
+    (n, s) => n + s.groups.filter((g) => isShoppingGroupFullyChecked(g)).length,
+    0,
   );
 
-  const checkedCount = useMemo(
-    () =>
-      categorySections.reduce(
-        (n, s) => n + s.groups.filter((g) => isShoppingGroupFullyChecked(g)).length,
-        0,
-      ),
-    [categorySections],
-  );
+  // Kill-switch subtitle (pre-unification copy).
+  const subtitle = formatShoppingListSubtitle({
+    itemCount: totalItemCount,
+    planStartDate: shoppingListPlanStartDate,
+    outOfSync: shoppingListOutOfSync,
+    omitItemCount: densityV1,
+  });
 
-  const subtitle = useMemo(
-    () =>
-      formatShoppingListSubtitle({
-        itemCount: totalItemCount,
-        planStartDate: shoppingListPlanStartDate,
-        outOfSync: shoppingListOutOfSync,
-        omitItemCount: densityV1,
-      }),
-    [totalItemCount, shoppingListPlanStartDate, shoppingListOutOfSync, densityV1],
-  );
+  // Chrome meta, shared with mobile: plan week as eyebrow, progress as subtitle.
+  const weekEyebrow = formatShoppingWeekEyebrow(shoppingListPlanStartDate);
+  const progressSubtitle = formatShoppingProgressSubtitle({
+    checkedCount,
+    totalCount: totalItemCount,
+    outOfSync: shoppingListOutOfSync,
+  });
 
   const toggleGroupChecked = (group: ShoppingDisplayGroup) => {
     const allChecked = isShoppingGroupFullyChecked(group);
@@ -178,16 +177,45 @@ export const ShoppingList = memo(function ShoppingList({
     [pantryStaples, removeShoppingItem, savePantryStaples],
   );
 
+  const rowsFor = (section: { groups: ShoppingDisplayGroup[] }) => (
+    <ul className="flex flex-col">
+      {section.groups.map((group) => (
+        <ShoppingListRow
+          key={group.key}
+          group={group}
+          densityV1={densityV1}
+          activeHouseholdId={activeHouseholdId}
+          memberById={memberById}
+          onToggle={toggleGroupChecked}
+          onRemove={removeGroup}
+          onMarkStaple={(g) => {
+            void markGroupAsStaple(g);
+          }}
+        />
+      ))}
+    </ul>
+  );
+
   const handleClearChecked = () => {
     if (checkedCount === 0) return;
     setShoppingItems((prev) => prev.filter((item) => !item.checked));
   };
 
   return (
-    <div className="product-shell py-pm-6 space-y-5">
-      {/* Honeydew parity banner — visible only when in a household.
-          Renders above the title so the user sees who they're shopping
-          with before scanning the list. Hidden for solo users. */}
+    <>
+      {unifiedChrome ? (
+        <ScreenChrome
+          scope="all"
+          overline={weekEyebrow}
+          title="Shopping list"
+          subtitle={progressSubtitle ?? undefined}
+          testID="shopping-screen-chrome"
+          overlineTestID="shopping-list-eyebrow"
+          titleTestID="shopping-list-title"
+        />
+      ) : null}
+      <div className="product-shell py-pm-6 space-y-5">
+      {/* Honeydew parity banner — household only, above the list. */}
       {sharedWithLabel ? (
         <button
           type="button"
@@ -205,9 +233,9 @@ export const ShoppingList = memo(function ShoppingList({
         </button>
       ) : null}
 
+      {/* Kill-switch path: the desktop-only twin `ScreenChrome` retired. */}
+      {unifiedChrome ? null : (
       <div className="hidden md:block">
-      {/* ENG-1669 Mob-flat: title carries list count; drop redundant Progress
-          chrome below. Flag-off keeps the serif Shopping list landmark. */}
       <h1
         className="font-[family-name:var(--font-headline)] text-3xl font-medium tracking-tight text-foreground-brand"
         style={{ margin: "0 0 4px" }}
@@ -224,6 +252,7 @@ export const ShoppingList = memo(function ShoppingList({
         {subtitle}
       </p>
       </div>
+      )}
 
       {/* ENG-1527 — non-destructive "Update from plan" when the list is stale. */}
       {shoppingListOutOfSync && totalItemCount > 0 && isFeatureEnabled("shopping_update_from_plan_v1") ? (
@@ -291,9 +320,7 @@ export const ShoppingList = memo(function ShoppingList({
       {totalItemCount === 0 ? (
         <SupprCard
           // One card grammar (ENG-1497 / ENG-1499): page-ground cards are FLAT
-          // + hairline at the 24px `--radius-card-lg` corner. `elevation="card"`
-          // resolves to the flat `.card-slab`; `radius="xl"` → 24px (the retired
-          // 16px tier now maps to the one card corner).
+          // + hairline at the 24px `--radius-card-lg` corner (`.card-slab`).
           elevation="card"
           padding="none"
           radius="xl"
@@ -303,24 +330,28 @@ export const ShoppingList = memo(function ShoppingList({
           <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-xl bg-primary/[0.08]">
             <Icons.shopping className="h-6 w-6 text-primary" aria-hidden />
           </div>
-          {/* Sloe DS (289:2) — empty-state headline in Newsreader serif plum. */}
           <p className="font-[family-name:var(--font-headline)] text-[18px] font-medium text-foreground-brand mb-1.5">
             Your shopping list builds itself
           </p>
           <p className="text-[13px] text-muted-foreground max-w-xs mx-auto leading-relaxed">
             Plan your meals for the week and we&apos;ll gather every ingredient into one list, grouped by aisle.
           </p>
-          {_onNavigate ? (
+          {_onNavigate ? (unifiedChrome ? (
+            /* The hand-rolled 1.5px outline pill was a third variant the system
+               does not have, and disagreed with mobile's ghost empty-state CTA. */
+            <SupprButton variant="ghost" className="mt-5" onClick={() => _onNavigate("plan")}>
+              Start planning
+            </SupprButton>
+          ) : (
             <button
               type="button"
               onClick={() => _onNavigate("plan")}
-              /* Sloe treatment §1: primary inline CTA = aubergine OUTLINE
-                 (transparent fill, 1.5px primarySolid border + label). */
+              /* Kill-switch path: the retired Sloe-§1 aubergine OUTLINE pill. */
               className="mt-5 inline-flex items-center gap-1.5 rounded-lg bg-transparent border-[1.5px] border-primary-solid px-5 py-2.5 text-sm font-bold text-primary-solid hover:bg-primary/5 transition-colors"
             >
               Start planning
             </button>
-          ) : null}
+          )) : null}
         </SupprCard>
       ) : (
         <div
@@ -342,31 +373,15 @@ export const ShoppingList = memo(function ShoppingList({
                   <h2 className="text-[15px] font-bold tracking-tight text-foreground mb-2">
                     {section.name}
                   </h2>
-                  <ul className="flex flex-col">
-                    {section.groups.map((group) => (
-                      <ShoppingListRow
-                        key={group.key}
-                        group={group}
-                        densityV1={densityV1}
-                        activeHouseholdId={activeHouseholdId}
-                        memberById={memberById}
-                        onToggle={toggleGroupChecked}
-                        onRemove={removeGroup}
-                        onMarkStaple={(g) => {
-                          void markGroupAsStaple(g);
-                        }}
-                      />
-                    ))}
-                  </ul>
+                  {rowsFor(section)}
                 </section>
               );
             }
             return (
             <SupprCard
               key={section.name}
-              // One card grammar (ENG-1497 / ENG-1499): each aisle/category card
-              // sits page-ground → FLAT + hairline at the 24px card corner
-              // (`.card-slab`), matching the mobile shopping section cards.
+              // One card grammar (ENG-1497 / ENG-1499): page-ground aisle card →
+              // FLAT + hairline at the 24px corner, matching mobile.
               elevation="card"
               padding="none"
               radius="xl"
@@ -376,9 +391,7 @@ export const ShoppingList = memo(function ShoppingList({
                 className="flex items-center justify-between"
                 style={{ marginBottom: 10 }}
               >
-                {/* Gap 8 (parity): promote section header to Newsreader serif to match
-                    mobile's Type.headline treatment (DS §2.3 + plan.md §3.9
-                    'serif group headers'). Drops the ALL-CAPS eyebrow pattern. */}
+                {/* Gap 8 (parity): Newsreader serif, matching mobile Type.headline. */}
                 <p className="font-[family-name:var(--font-headline)] text-[18px] font-medium tracking-tight text-foreground-secondary">
                   {section.name}
                 </p>
@@ -389,27 +402,13 @@ export const ShoppingList = memo(function ShoppingList({
                   {sectionChecked}/{sectionTotal}
                 </span>
               </div>
-              <ul className="flex flex-col">
-                {section.groups.map((group) => (
-                  <ShoppingListRow
-                    key={group.key}
-                    group={group}
-                    densityV1={densityV1}
-                    activeHouseholdId={activeHouseholdId}
-                    memberById={memberById}
-                    onToggle={toggleGroupChecked}
-                    onRemove={removeGroup}
-                    onMarkStaple={(g) => {
-                      void markGroupAsStaple(g);
-                    }}
-                  />
-                ))}
-              </ul>
+              {rowsFor(section)}
             </SupprCard>
             );
           })}
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 });

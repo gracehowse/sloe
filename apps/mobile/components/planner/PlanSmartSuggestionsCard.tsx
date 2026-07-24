@@ -1,9 +1,10 @@
 import { useCallback } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { Sparkles } from "lucide-react-native";
 import type { SmartSuggestion } from "@suppr/shared/planning/smartSuggestions";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
+import { PressableScale } from "@/components/ui/PressableScale";
 import { SupprButton } from "@/components/ui/SupprButton";
 import { CARD_RADIUS } from "@/components/ui/SupprCard";
 import { useThemeColors } from "@/hooks/use-theme-colors";
@@ -77,19 +78,29 @@ export function PlanSmartSuggestionsCard({
                 },
               ]}
             >
-              <View style={styles.rowMain}>
-                <Pressable
-                  onPress={() => router.push(`/recipe/${s.recipe.id}` as Href)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Open ${s.recipe.title}`}
+              {/* Design-consistency pass (2026-07-24): this was a raw
+                  feedbackless RN Pressable wrapping the title alone — no pressed
+                  state, and a two-lines-of-text tap target beside a dead row
+                  body. The `check:pressable-feedback` ratchet could not see it:
+                  the file imports SupprButton, which trips the script's
+                  "mid-migration, treat as having feedback" file-level escape. It
+                  needed a human catch. Now the whole main column is the target
+                  and it scales + fires selection haptics like every other row in
+                  the app. Save stays a separate control in `rowAside`, so
+                  nothing nests. */}
+              <PressableScale
+                haptic="selection"
+                onPress={() => router.push(`/recipe/${s.recipe.id}` as Href)}
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${s.recipe.title}`}
+                style={styles.rowMain}
+              >
+                <Text
+                  style={[Type.captionStrong, { color: colors.text }]}
+                  numberOfLines={2}
                 >
-                  <Text
-                    style={[Type.captionStrong, { color: colors.text }]}
-                    numberOfLines={2}
-                  >
-                    {s.recipe.title}
-                  </Text>
-                </Pressable>
+                  {s.recipe.title}
+                </Text>
                 <Text
                   style={[Type.caption, { color: colors.textSecondary, marginTop: Spacing.xs }]}
                   numberOfLines={2}
@@ -97,7 +108,7 @@ export function PlanSmartSuggestionsCard({
                   Also uses {overlap}
                   {extra}
                 </Text>
-              </View>
+              </PressableScale>
               <View style={styles.rowAside}>
                 <Text style={[Type.caption, { color: colors.textSecondary, fontVariant: ["tabular-nums"] }]}>
                   {Math.round(s.recipe.calories)} kcal

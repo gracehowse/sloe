@@ -183,7 +183,7 @@ export default function CreatorProfileScreen() {
       contentContainerStyle={{ paddingTop: insets.top + Spacing.sm, paddingBottom: insets.bottom + Spacing.xl }}
       showsVerticalScrollIndicator={false}
     >
-      <PressableScale haptic="light" onPress={() => router.back()} hitSlop={12} style={styles.backHit}>
+      <PressableScale haptic="selection" onPress={() => router.back()} hitSlop={12} style={styles.backHit}>
         <ChevronLeft size={24} color={colors.text} />
       </PressableScale>
 
@@ -210,7 +210,7 @@ export default function CreatorProfileScreen() {
 
       {showFollow ? (
         <PressableScale
-          haptic="light"
+          haptic="selection"
           onPress={onToggleFollow}
           disabled={followBusy}
           style={[
@@ -292,7 +292,7 @@ export default function CreatorProfileScreen() {
       {recipes.length > 0 && hasMore ? (
         <View style={styles.loadMoreWrap}>
           <PressableScale
-            haptic="light"
+            haptic="selection"
             onPress={onLoadMore}
             disabled={loadingMore}
             style={[styles.loadMoreBtn, loadingMore ? { opacity: 0.6 } : null]}

@@ -12,11 +12,20 @@ import {
   tabBarOuterHeight,
 } from "@/hooks/useTabBarClearance";
 import { useThemeColors } from "@/hooks/use-theme-colors";
+import { isFeatureEnabled } from "@/lib/analytics";
 import { Radius } from "@/constants/theme";
 
 import { LogTabBarButton } from "./LogTabBarButton";
 
-/** Liquid-glass pill — IG/NC° reference: heavy blur, low wash, light rim, soft lift. */
+/**
+ * Liquid-glass pill — IG/NC° reference: heavy blur, low wash, light rim, soft lift.
+ *
+ * KILL-SWITCH PATH (`design_consistency_v1` off). The 0.32/0.42 wash is the
+ * treatment the 2026-07-24 design-consistency drive faulted: on Recipes, food
+ * photography scrolls straight under the bar and a third-opacity wash lets it
+ * through, dropping the inactive "Today"/"Plan" labels to near-illegible over a
+ * bright plate. Kept intact so the flag can roll back; see `tabBarGlass()`.
+ */
 const TAB_BAR_GLASS = {
   light: {
     blurIntensity: 72,
@@ -35,6 +44,57 @@ const TAB_BAR_GLASS = {
     shadowOpacity: 0.22,
   },
 } as const;
+
+/**
+ * Design-consistency pass (2026-07-24), behind `design_consistency_v1`.
+ *
+ * The bar floats OVER scroll content, so its ground is whatever the user
+ * happens to be scrolling — a bright food photo on Recipes, a cream card on
+ * Today. The legacy config made the pill's contrast a function of that content,
+ * which is the one property a persistent navigation chrome must not have.
+ *
+ * The fix is the MATERIAL, not the fill. The legacy failure was
+ * `systemUltraThinMaterial` at intensity 72: too little blur, so sharp
+ * high-frequency photo detail survived directly behind the labels and the
+ * inactive ink fell apart over a bright plate. `systemThickMaterial` at 100
+ * removes that detail, leaving a smooth low-frequency field — which is what lets
+ * the wash stay genuinely translucent.
+ *
+ * Wash sits at 0.55/0.60, NOT the near-opaque 0.92 an earlier pass reached for.
+ * Grace's reference apps (MyFitnessPal, Natural Cycles) are both visibly
+ * see-through — text and colour bleed softly through the pill — and that soft
+ * bleed is the point of the treatment. An opaque pill is just a card with
+ * rounded ends; the glass identity comes from letting the content register
+ * underneath while the blur guarantees it never competes with the labels.
+ *
+ * Wash + rim come from `colors.card` / `colors.border` rather than the literal
+ * white/plum of the legacy config — one surface language with the cards the
+ * pill sits above.
+ */
+function tabBarGlass(
+  colors: ReturnType<typeof useThemeColors>,
+  isDark: boolean,
+): {
+  blurIntensity: number;
+  tint: "systemChromeMaterialLight" | "systemChromeMaterialDark";
+  washColor: string;
+  washOpacity: number;
+  borderColor: string;
+  shadowOpacity: number;
+} {
+  return {
+    blurIntensity: 100,
+    tint: isDark ? "systemThickMaterialDark" : "systemThickMaterialLight",
+    washColor: colors.card,
+    // The MATERIAL carries legibility; the wash only tints. Stacking a heavy
+    // wash on top of `systemThickMaterial` at 100 lands back at opaque —
+    // especially over Sloe's near-white ground, where a white wash has nothing
+    // to contrast against and the pill reads as a plain card. Keep this LOW.
+    washOpacity: isDark ? 0.3 : 0.22,
+    borderColor: colors.border,
+    shadowOpacity: isDark ? 0.28 : 0.12,
+  };
+}
 
 /**
  * SupprTabBar — custom bottom tab bar that renders the four primary
@@ -85,7 +145,20 @@ export function SupprTabBar({
   const safeInsets = useSafeAreaInsets();
   const router = useRouter();
   const isDark = resolved === "dark";
-  const glass = isDark ? TAB_BAR_GLASS.dark : TAB_BAR_GLASS.light;
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
+  const glass = unifiedChrome
+    ? tabBarGlass(colors, isDark)
+    : isDark
+      ? TAB_BAR_GLASS.dark
+      : TAB_BAR_GLASS.light;
+  // Inactive tab ink. `tabIconDefault` (#9B93A3 light) measures 2.96:1 on the
+  // card fill — under the 4.5:1 body floor even once the ground is opaque, so
+  // the photography bug was masking a second, always-on legibility failure at
+  // the 10.5pt label size. The unified path reads `textSecondary` (#655C6E →
+  // 6.3:1 light, #B8B0C4 on the dark card), the token this bar's labels should
+  // have used all along: still visibly quieter than the selected accent, so the
+  // active/inactive hierarchy is intact. Kill switch keeps the old grey.
+  const inactiveTint = unifiedChrome ? colors.textSecondary : colors.tabIconDefault;
   const outerHeight = tabBarOuterHeight(safeInsets.bottom);
   const bottomLift = safeInsets.bottom + TAB_BAR_METRICS.bottomGap;
 
@@ -222,7 +295,7 @@ export function SupprTabBar({
                 navigation.emit({ type: "tabLongPress", target: route.key });
               };
 
-              const tintColor = isFocused ? activeTint : colors.tabIconDefault;
+              const tintColor = isFocused ? activeTint : inactiveTint;
               const label =
                 typeof options.tabBarLabel === "string"
                   ? options.tabBarLabel
@@ -271,7 +344,15 @@ export function SupprTabBar({
                       <Text
                         style={{
                           fontSize: 10.5,
-                          fontWeight: "600",
+                          // Raising the inactive ink to `textSecondary` narrows
+                          // the selected/unselected value gap (was #9B93A3 →
+                          // #3B2A4D, now #655C6E → #3B2A4D). Weight carries the
+                          // difference the colour no longer has to: the selected
+                          // label goes 700 alongside the icon's existing
+                          // translateY(-1)/scale(1.06) lift. Fixing the
+                          // selected state this way, rather than walking the
+                          // inactive ink back, keeps all four labels legible.
+                          fontWeight: unifiedChrome && isFocused ? "700" : "600",
                           color: tintColor,
                         }}
                         numberOfLines={1}

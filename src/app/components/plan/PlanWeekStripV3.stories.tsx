@@ -24,7 +24,15 @@ const meta = {
   title: "Plan/PlanWeekStripV3",
   component: PlanWeekStripV3,
   tags: ["autodocs"],
-  parameters: { layout: "centered" },
+  parameters: {
+    layout: "centered",
+    docs: {
+      description: {
+        component:
+          "The Plan week strip: 7 cells of day letter + date numeral + a 3-state status ring (full = sage / part = amber / empty = hollow outline), with navigation folded in. The 2026-07-24 pass removed the plum cell fill so Plan matches Today's DayStrip, and the status ring now keeps its real colour whether or not the day is selected — status is status, not a selection channel. Today (when not selected) tints its letter the brand accent. Mobile twin: apps/mobile/components/plan/PlanWeekStripV3.tsx.",
+      },
+    },
+  },
   decorators: [(Story) => <PlanMobileFrame><Story /></PlanMobileFrame>],
   args: {
     days: stripDays,
@@ -44,4 +52,18 @@ export const TodaySelected: Story = {
 
 export const MondaySelected: Story = {
   args: { selectedKey: "0" },
+};
+
+/** A fully planned week — seven sage rings, the "nothing to fix" read. */
+export const FullyPlannedWeek: Story = {
+  args: {
+    days: stripDays.map((d) => ({ ...d, status: "full" as const })),
+  },
+};
+
+/** An empty week — seven hollow outlines, the state the empty-week card sits under. */
+export const EmptyWeek: Story = {
+  args: {
+    days: stripDays.map((d) => ({ ...d, status: "empty" as const })),
+  },
 };

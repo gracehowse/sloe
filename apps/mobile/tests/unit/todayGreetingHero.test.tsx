@@ -37,16 +37,19 @@ describe("TodayGreetingHero (ENG-1609)", () => {
     expect(queryByTestId("today-hero-greeting")).toBeNull();
   });
 
-  it("shows the TODAY eyebrow + day name/short date on today's date", () => {
+  it("shows the TODAY eyebrow + day name/short date merged onto one line on today's date", () => {
     const selectedDate = new Date(2026, 6, 20); // 2026-07-20 (Monday)
-    const { getByTestId, getByText } = render(
+    const { getByTestId, getByText, queryByTestId } = render(
       <TodayGreetingHero viewMode="day" isToday selectedDate={selectedDate} />,
     );
     expect(getByText("TODAY")).toBeTruthy();
-    expect(getByTestId("today-hero-greeting").props.children).toBe(todayDayName(selectedDate));
-    expect(getByTestId("today-hero-greeting-subline").props.children).toBe(
-      todayShortDate(selectedDate),
+    // 2026-07-24 (Grace): day name + date merge onto ONE serif line on
+    // today — no separate subline element (that's past-day-only now).
+    // En-space (` `) separator — matches web's NutritionTracker hero.
+    expect(getByTestId("today-hero-greeting").props.children).toBe(
+      `${todayDayName(selectedDate)} ${todayShortDate(selectedDate)}`,
     );
+    expect(queryByTestId("today-hero-greeting-subline")).toBeNull();
   });
 
   it("hides the TODAY eyebrow on a historic day and shows the long-date headline", () => {

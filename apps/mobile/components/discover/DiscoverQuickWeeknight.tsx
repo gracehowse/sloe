@@ -39,6 +39,16 @@ export function DiscoverQuickWeeknight({
   const photographicFirstViewEnabled = isFeatureEnabled(
     "discover_photographic_first_view_v1",
   );
+  // Design-consistency pass (2026-07-24), two fixes on this card — web twin:
+  // `src/app/components/suppr/discover-quick-weeknight.tsx`.
+  //  1. The cook time was printed TWICE — once as a pill on the photo and
+  //     again in the meta line just below. The meta line is the shared
+  //     recipe-card treatment (`library/RecipeCardWide`,
+  //     `library/FeaturedHero` both read "{kcal} kcal · {protein}g protein ·
+  //     {mins} min"), so the pill is the redundant one. Drop it.
+  //  2. The protein figure rendered bare ("40g"), the only unlabelled datum
+  //     in any recipe meta line in the product. Label it.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
   const quick = useMemo(() => deriveQuickWeeknight(recipes), [recipes]);
   const hiddenAtPlacement =
     (placement === "first" && !photographicFirstViewEnabled) ||
@@ -62,7 +72,9 @@ export function DiscoverQuickWeeknight({
           const mins = totalRecipeDurationMin(r.prepTimeMin, r.cookTimeMin);
           const meta = [
             r.calories > 0 ? `${Math.round(r.calories)} kcal` : null,
-            r.protein > 0 ? `${Math.round(r.protein)}g` : null,
+            r.protein > 0
+              ? `${Math.round(r.protein)}g${unifiedChrome ? " protein" : ""}`
+              : null,
             mins != null ? `${mins} min` : null,
           ]
             .filter(Boolean)
@@ -105,7 +117,7 @@ export function DiscoverQuickWeeknight({
                     style={styles.tintIcon}
                   />
                 )}
-                {mins != null ? (
+                {!unifiedChrome && mins != null ? (
                   <View style={[styles.timePill, { backgroundColor: colors.card }]}>
                     <Text style={[styles.timePillText, { color: colors.text }]}>{mins} min</Text>
                   </View>

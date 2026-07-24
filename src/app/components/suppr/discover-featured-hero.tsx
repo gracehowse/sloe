@@ -80,6 +80,14 @@ export function DiscoverFeaturedHeroCard({
   onOpenRecipe,
   onOpenCreator,
 }: DiscoverFeaturedHeroCardProps) {
+  // Design-consistency pass (2026-07-24) — this eyebrow was a third variant
+  // (11/600/0.04em in plum `--primary-solid`) of a label the app now renders
+  // one way: 11/600/0.12em FULL INK plus a hairline rule to the margin, the
+  // treatment promoted from the Today hero and shared by `ScreenChrome` /
+  // `ScreenSectionChrome`. It matters here specifically: "Trending this week"
+  // is also the marketing landing rail's heading, so this is the same label on
+  // two surfaces one click apart.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
   const kcal = Math.round(recipe.calories);
   const protein = Math.round(recipe.protein);
   // ENG-1617 — total (prep + cook), not cook alone.
@@ -127,9 +135,18 @@ export function DiscoverFeaturedHeroCard({
           />
         </div>
         <div className="flex flex-col justify-center p-8">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-primary-solid">
-            Trending this week
-          </p>
+          {unifiedChrome ? (
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground">
+                Trending this week
+              </span>
+              <span className="flex-1 h-px bg-border" />
+            </div>
+          ) : (
+            <p className="text-[11px] font-semibold uppercase tracking-[0.04em] text-primary-solid">
+              Trending this week
+            </p>
+          )}
           <h2 className="mt-3 font-[family-name:var(--font-headline)] text-[28px] font-medium leading-[1.1] text-foreground line-clamp-2">
             {recipe.title}
           </h2>

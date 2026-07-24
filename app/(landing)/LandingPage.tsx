@@ -2,41 +2,25 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { useTheme } from "next-themes";
-import {
-  ArrowRight,
-  Bookmark,
-  ChevronLeft,
-  ChevronRight,
-  CircleCheck,
-  Laptop,
-  Moon,
-  Sun,
-  Target,
-  TrendingDown,
-} from "lucide-react";
+import { ArrowRight, CircleCheck, Target, TrendingDown } from "lucide-react";
 import { isFeatureEnabled } from "../../src/lib/analytics/track.ts";
 import {
   HERO_CURRENT,
   HERO_HYBRID,
   SLOE_DIFFERENCE_BULLETS,
   SLOE_HOW_IT_WORKS,
-  TRENDING_RECIPES,
+  SLOE_TAGLINE,
 } from "../../src/lib/landing/sloeLandingContent.ts";
-import { FatSecretBadge } from "../../src/app/components/ui/FatSecretBadge";
+import { LandingFooter, LandingHeader } from "./LandingChrome.tsx";
+import { TrendingRail } from "./TrendingRail.tsx";
+import {
+  DISCOVER_HREF,
+  SIGNIN_HREF,
+  SIGNUP_CTA_LABEL,
+  SIGNUP_HREF,
+} from "./landingLinks.ts";
 import { Pricing } from "./Pricing.tsx";
 import "./landing.css";
-
-const NAV_LINKS = [
-  { href: "/discover", label: "Recipes" },
-  { href: "#how", label: "How it works" },
-  { href: "#pricing", label: "Pricing" },
-] as const;
-
-const SIGNUP_HREF = "/onboarding";
-const SIGNIN_HREF = "/login";
-const DISCOVER_HREF = "/discover";
 
 // ENG-1441 — both server-read + passed down from `app/page.tsx` (route stays static; see `usePricingRegionNotice.ts`). Both default `false`.
 export function LandingPage({ stripeTaxEnabled = false, eurPricingReady = false }: { stripeTaxEnabled?: boolean; eurPricingReady?: boolean }) {
@@ -44,7 +28,7 @@ export function LandingPage({ stripeTaxEnabled = false, eurPricingReady = false 
     <div className="lp-root" id="lp-top">
       <LandingHeader />
       <Hero />
-      <Trending />
+      <TrendingRail />
       <Difference />
       <HowItWorks />
       <CrossDevice />
@@ -55,99 +39,32 @@ export function LandingPage({ stripeTaxEnabled = false, eurPricingReady = false 
   );
 }
 
-function SloeWordmark({ className = "" }: { className?: string }) {
-  // ENG-1247: the splash logotype SVG (public/sloe-wordmark.svg) as a recolorable
-  // CSS mask. Empty element; aria-label carries the proper-noun brand name.
-  return <span className={`lp-wordmark ${className}`.trim()} role="img" aria-label="Sloe" />;
-}
-
-function LandingHeader() {
-  return (
-    <header className="lp-nav">
-      <div className="lp-nav-inner">
-        <Link className="lp-brand" href="#lp-top">
-          <SloeWordmark />
-        </Link>
-        <nav className="lp-nav-links" aria-label="Primary">
-          {NAV_LINKS.map((l) =>
-            l.href.startsWith("#") ? (
-              <a key={l.href} href={l.href}>
-                {l.label}
-              </a>
-            ) : (
-              <Link key={l.href} href={l.href}>
-                {l.label}
-              </Link>
-            ),
-          )}
-        </nav>
-        <div className="lp-nav-right">
-          <ThemeToggle />
-          <Link className="lp-btn lp-btn-text lp-btn-sm" href={SIGNIN_HREF}>
-            Log in
-          </Link>
-          <Link className="lp-btn lp-btn-primary lp-btn-sm" href={SIGNUP_HREF}>
-            Get started
-          </Link>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-function ThemeToggle() {
-  const { theme, setTheme, resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
-  const active: "light" | "dark" | "system" = !mounted
-    ? "system"
-    : theme === "light" || theme === "dark" || theme === "system"
-      ? theme
-      : ((resolvedTheme as "light" | "dark") ?? "system");
-
-  return (
-    <div className="lp-theme-toggle" role="group" aria-label="Theme">
-      <button
-        type="button"
-        aria-label="Light"
-        aria-pressed={active === "light"}
-        onClick={() => setTheme("light")}
-      >
-        <Sun width={14} height={14} aria-hidden />
-      </button>
-      <button
-        type="button"
-        aria-label="System"
-        aria-pressed={active === "system"}
-        onClick={() => setTheme("system")}
-      >
-        <Laptop width={14} height={14} aria-hidden />
-      </button>
-      <button
-        type="button"
-        aria-label="Dark"
-        aria-pressed={active === "dark"}
-        onClick={() => setTheme("dark")}
-      >
-        <Moon width={14} height={14} aria-hidden />
-      </button>
-    </div>
-  );
-}
-
 function Hero() {
   // D-07 (ENG-1204): hybrid positioning leads with the tracker + "what to
   // eat next" coaching promise and demotes the import hook to the wedge
-  // line. Gated behind `landing_hero_hybrid_v1` (default OFF — see
-  // `src/lib/analytics/track.ts`); the current recipe-first hero stays
-  // live in the flag-off path until the flag ramps to 100%.
+  // line. Gated behind `landing_hero_hybrid_v1` (default ON — see
+  // `src/lib/analytics/track.ts`); the recipe-first LEAD stays live in the
+  // flag-off path as the kill switch. Both variants now share the settled
+  // tagline HEADLINE (`SLOE_TAGLINE`) — see the TAGLINE note in
+  // `sloeLandingContent.ts`; only the lead differs.
   const hero = isFeatureEnabled("landing_hero_hybrid_v1") ? HERO_HYBRID : HERO_CURRENT;
+  // Design-consistency pass (2026-07-24):
+  //  · one filled CTA above the fold — "Browse recipes" drops from an
+  //    outlined button (a variant the design system does not have) to ghost;
+  //  · the hero's "Already cooking with Sloe? Log in" was the SECOND log-in
+  //    entry above the fold, so it goes and the nav one becomes the single
+  //    sign-in door (kept visible at phone widths — see landing.css);
+  //  · the headline reads in ONE ink. Line 1 was `--foreground-tertiary`
+  //    grey — it passes contrast, but grey reads as secondary/disabled while
+  //    carrying half the promise. Every other front door (onboarding welcome,
+  //    /login, /pricing, the final CTA below) renders this tagline in full
+  //    ink with italic "Still" as the only emphasis. Match them.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
   return (
     <section className="lp-hero">
       <div className="lp-wrap lp-hero-inner">
         <p className="lp-eyebrow-center">{hero.eyebrow}</p>
-        <h1 className="lp-h-hero">
+        <h1 className={unifiedChrome ? "lp-h-hero lp-h-hero--unified" : "lp-h-hero"}>
           <span className="lp-h-hero-muted">{hero.headline.pre.trim()}</span>
           <br />
           <span className="lp-h-hero-strong">
@@ -158,70 +75,28 @@ function Hero() {
         <p className="lp-lead-center">{hero.lead}</p>
         <div className="lp-hero-ctas">
           <Link className="lp-btn lp-btn-primary lp-btn-lg" href={SIGNUP_HREF}>
-            Get the app
+            {unifiedChrome ? SIGNUP_CTA_LABEL : "Get the app"}
           </Link>
-          <Link className="lp-btn lp-btn-outline lp-btn-lg" href={DISCOVER_HREF}>
+          <Link
+            className={
+              unifiedChrome
+                ? "lp-btn lp-btn-ghost lp-btn-lg"
+                : "lp-btn lp-btn-outline lp-btn-lg"
+            }
+            href={DISCOVER_HREF}
+          >
             Browse recipes
             <ArrowRight width={16} height={16} aria-hidden />
           </Link>
         </div>
-        <p className="lp-hero-login">
-          Already cooking with Sloe?{" "}
-          <Link href={SIGNIN_HREF} className="lp-link-underline">
-            Log in
-          </Link>
-        </p>
-      </div>
-    </section>
-  );
-}
-
-function Trending() {
-  const railRef = useRef<HTMLDivElement>(null);
-
-  const scroll = (dir: -1 | 1) => {
-    const el = railRef.current;
-    if (!el) return;
-    el.scrollBy({ left: dir * 310, behavior: "smooth" });
-  };
-
-  return (
-    <section className="lp-section lp-trending">
-      <div className="lp-wrap">
-        <div className="lp-trending-head">
-          <h2 className="lp-h-section">
-            Trending <em>this week</em>
-          </h2>
-          <div className="lp-trending-nav">
-            <button type="button" className="lp-icon-btn" aria-label="Scroll left" onClick={() => scroll(-1)}>
-              <ChevronLeft width={18} height={18} aria-hidden />
-            </button>
-            <button type="button" className="lp-icon-btn" aria-label="Scroll right" onClick={() => scroll(1)}>
-              <ChevronRight width={18} height={18} aria-hidden />
-            </button>
-          </div>
-        </div>
-        <div className="lp-trending-rail" ref={railRef} tabIndex={0} role="region" aria-label="Trending recipes">
-          {TRENDING_RECIPES.map((recipe) => (
-            <Link
-              className="lp-recipe-card"
-              key={recipe.title}
-              href={recipe.href}
-              aria-label={`${recipe.title} by ${recipe.author}`}
-            >
-              <div className="lp-recipe-card-top">
-                <h3>{recipe.title}</h3>
-                <Bookmark width={17} height={17} aria-hidden className="lp-recipe-bookmark" />
-              </div>
-              <div className="lp-recipe-img">
-                <Image src={recipe.image} alt="" width={258} height={258} />
-              </div>
-              <p className="lp-recipe-author">
-                By <span>{recipe.author}</span>
-              </p>
+        {unifiedChrome ? null : (
+          <p className="lp-hero-login">
+            Already cooking with Sloe?{" "}
+            <Link href={SIGNIN_HREF} className="lp-link-underline">
+              Log in
             </Link>
-          ))}
-        </div>
+          </p>
+        )}
       </div>
     </section>
   );
@@ -360,93 +235,26 @@ function CrossDevice() {
 }
 
 function FinalCta() {
+  // Same tagline record the hero renders, so the two can never drift apart
+  // again — this block used to hard-code the words while the hero read them
+  // from a flag-selected variant.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
   return (
     <section className="lp-section lp-final-cta">
       <div className="lp-wrap lp-final-cta-inner">
         <h2 className="lp-h-final">
-          Cook what you love.
+          {SLOE_TAGLINE.pre.trim()}
           <br />
-          <em>Still</em> reach your goals.
+          <em>{SLOE_TAGLINE.em}</em>
+          {SLOE_TAGLINE.post}
         </h2>
         <p className="lp-lead-center">
           Join the people fitting the food they love into the life they want.
         </p>
         <Link className="lp-btn lp-btn-primary lp-btn-lg" href={SIGNUP_HREF}>
-          Get the app — it&apos;s free
+          {unifiedChrome ? `${SIGNUP_CTA_LABEL} — it's free` : "Get the app — it's free"}
         </Link>
       </div>
     </section>
-  );
-}
-
-function LandingFooter() {
-  return (
-    <footer className="lp-footer">
-      <div className="lp-wrap">
-        <div className="lp-footer-grid">
-          <div className="lp-footer-brand">
-            <SloeWordmark className="lp-wordmark-footer" />
-            <p>The recipe + nutrition app for people who love food and have goals.</p>
-          </div>
-          <div className="lp-footer-cols">
-            <div className="lp-footer-col">
-              <h4>Product</h4>
-              <ul>
-                <li>
-                  <Link href="/discover">Recipes</Link>
-                </li>
-                <li>
-                  <a href="#how">How it works</a>
-                </li>
-                <li>
-                  <a href="#pricing">Pricing</a>
-                </li>
-                <li>
-                  <Link href={SIGNUP_HREF}>Download</Link>
-                </li>
-              </ul>
-            </div>
-            <div className="lp-footer-col">
-              <h4>Company</h4>
-              <ul>
-                <li>
-                  <Link href="/help">Help centre</Link>
-                </li>
-                <li>
-                  <Link href="/whats-new">What&apos;s new</Link>
-                </li>
-                <li>
-                  <Link href="/roadmap">Roadmap</Link>
-                </li>
-              </ul>
-            </div>
-            <div className="lp-footer-col">
-              <h4>Legal</h4>
-              <ul>
-                <li>
-                  <Link href="/privacy">Privacy</Link>
-                </li>
-                <li>
-                  <Link href="/terms">Terms</Link>
-                </li>
-                <li>
-                  <a href="mailto:support@getsloe.com">Contact</a>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-        <div className="lp-f-attribution">
-          <FatSecretBadge variant="badge" />
-        </div>
-        <div className="lp-footer-bottom">
-          <div>© {new Date().getFullYear()} Sloe · Made for people who love food.</div>
-          <div className="lp-footer-legal">
-            <Link href="/privacy">Privacy</Link>
-            <Link href="/terms">Terms</Link>
-          </div>
-        </div>
-      </div>
-    </footer>
   );
 }

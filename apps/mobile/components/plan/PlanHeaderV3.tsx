@@ -1,8 +1,10 @@
 import { StyleSheet, Text, View } from "react-native";
 import { Bookmark, Sparkles, SlidersHorizontal } from "lucide-react-native";
+import type { LucideIcon } from "lucide-react-native";
 
+import { IconButton } from "@/components/ui/IconButton";
 import { PressableScale } from "@/components/ui/PressableScale";
-import { Accent, Elevation, Radius, Spacing, Type } from "@/constants/theme";
+import { Accent, Elevation, IconSize, Radius, Spacing, Type } from "@/constants/theme";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { isFeatureEnabled } from "@/lib/analytics";
 import type { PlanWeekVerdict } from "@suppr/shared/planning/planWeekStatus";
@@ -12,10 +14,19 @@ import type { PlanWeekVerdict } from "@suppr/shared/planning/planWeekStatus";
  *
  * Parity twin of the prototype (`docs/ux/redesign/v3/Sloe-App.html` Plan
  * screen ~L4707–4721): the date-range overline + "Your plan" serif title with
- * three quiet action buttons (generate / adjust / templates), then a verdict
+ * quiet round action buttons (generate / adjust / templates), then a verdict
  * row — a tone dot + "On track — N of M days on target" headline + "{M−N} days need
  * a meal or swap" nudge. The verdict comes from {@link PlanWeekVerdict}
  * (`computePlanWeekVerdict`), so completeness logic stays shared web↔mobile.
+ *
+ * Design-consistency pass (2026-07-24), behind `design_consistency_v1`:
+ *   - the overline uses the canonical `Type.eyebrow` ink caps;
+ *   - the hand-rolled action chassis becomes the shared `IconButton` 40px
+ *     muted chip (ENG-1662 anatomy owner), so Plan stops being the one
+ *     surface with white rounded-square card buttons;
+ *   - `showGenerate` retires the Sparkles chip while the empty-week card is
+ *     up — that card's own "Generate this week" owns the action, and two
+ *     controls firing one handler is redundancy, not affordance.
  *
  * Presentational only — the host computes the date label + verdict and owns the
  * generate/adjust/templates handlers. Behind the `sloe_v3_plan` flag.
@@ -28,8 +39,16 @@ export interface PlanHeaderV3Props {
   onGenerate: () => void;
   onAdjust: () => void;
   onTemplates: () => void;
+  /** Show the Sparkles generate chip. Hosts pass `false` while the empty-week
+   *  card is showing — it already carries "Generate this week" as its one
+   *  filled CTA. Defaults to `true` (a populated week has no other generate
+   *  affordance). */
+  showGenerate?: boolean;
 }
 
+/** Legacy (kill-switch) button chassis — the white rounded-square card fork
+ *  and its `primary_screen_chrome_v1` circular variant. Retired visually by
+ *  `design_consistency_v1`, kept alive so the flag can roll back. */
 function ActButton({
   label,
   onPress,
@@ -64,22 +83,76 @@ function ActButton({
   );
 }
 
+function HeaderAction({
+  label,
+  icon: Icon,
+  glyph,
+  onPress,
+  unifiedChrome,
+  consistencyChrome,
+}: {
+  label: string;
+  icon: LucideIcon;
+  /** Legacy glyph size — the unified path uses the shared 16px chip glyph. */
+  glyph: number;
+  onPress: () => void;
+  unifiedChrome: boolean;
+  consistencyChrome: boolean;
+}) {
+  const colors = useThemeColors();
+  if (unifiedChrome) {
+    return (
+      <IconButton
+        icon={Icon}
+        size="lg"
+        variant="muted"
+        accessibilityLabel={label}
+        onPress={onPress}
+        iconSize={IconSize.base}
+        iconStrokeWidth={1.9}
+      />
+    );
+  }
+  return (
+    <ActButton
+      label={label}
+      onPress={onPress}
+      bg={colors.card}
+      consistencyChrome={consistencyChrome}
+    >
+      <Icon size={glyph} color={colors.text} strokeWidth={1.9} />
+    </ActButton>
+  );
+}
+
 export function PlanHeaderV3({
   dateRangeLabel,
   verdict,
   onGenerate,
   onAdjust,
   onTemplates,
+  showGenerate = true,
 }: PlanHeaderV3Props) {
   const colors = useThemeColors();
   const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
   return (
     <View style={styles.container}>
       <View style={styles.row}>
         <View style={styles.titleCol}>
-          <Text style={[styles.overline, { color: colors.textTertiary }]}>
-            {dateRangeLabel.toUpperCase()}
-          </Text>
+          {unifiedChrome ? (
+            // Design-consistency pass 2026-07-24 — the canonical eyebrow shared
+            // with ScreenSectionChrome / TodayGreetingHero. No rule here: the
+            // action chips sit on this optical line and the rule would run
+            // straight into them.
+            <Text style={[styles.overlineUnified, { color: colors.text }]}>
+              {dateRangeLabel.toUpperCase()}
+            </Text>
+          ) : (
+            <Text style={[styles.overline, { color: colors.textTertiary }]}>
+              {dateRangeLabel.toUpperCase()}
+            </Text>
+          )}
           <Text
             style={[
               consistencyChrome ? styles.pageTitle : styles.title,
@@ -90,15 +163,32 @@ export function PlanHeaderV3({
           </Text>
         </View>
         <View style={styles.acts}>
-          <ActButton label="Generate week" onPress={onGenerate} bg={colors.card} consistencyChrome={consistencyChrome}>
-            <Sparkles size={17} color={colors.text} strokeWidth={1.9} />
-          </ActButton>
-          <ActButton label="Adjust constraints" onPress={onAdjust} bg={colors.card} consistencyChrome={consistencyChrome}>
-            <SlidersHorizontal size={17} color={colors.text} strokeWidth={1.9} />
-          </ActButton>
-          <ActButton label="Templates" onPress={onTemplates} bg={colors.card} consistencyChrome={consistencyChrome}>
-            <Bookmark size={16} color={colors.text} strokeWidth={1.9} />
-          </ActButton>
+          {showGenerate ? (
+            <HeaderAction
+              label="Generate week"
+              icon={Sparkles}
+              glyph={17}
+              onPress={onGenerate}
+              unifiedChrome={unifiedChrome}
+              consistencyChrome={consistencyChrome}
+            />
+          ) : null}
+          <HeaderAction
+            label="Adjust constraints"
+            icon={SlidersHorizontal}
+            glyph={17}
+            onPress={onAdjust}
+            unifiedChrome={unifiedChrome}
+            consistencyChrome={consistencyChrome}
+          />
+          <HeaderAction
+            label="Templates"
+            icon={Bookmark}
+            glyph={IconSize.base}
+            onPress={onTemplates}
+            unifiedChrome={unifiedChrome}
+            consistencyChrome={consistencyChrome}
+          />
         </View>
       </View>
 
@@ -139,6 +229,7 @@ const styles = StyleSheet.create({
   },
   titleCol: { flexShrink: 1, minWidth: 0 },
   overline: { ...Type.statLabel },
+  overlineUnified: { ...Type.eyebrow },
   title: { ...Type.screenTitle, marginTop: 3 },
   pageTitle: { ...Type.pageTitle, marginTop: Spacing.xs },
   acts: { flexDirection: "row", alignItems: "center", gap: 4 },

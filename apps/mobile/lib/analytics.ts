@@ -404,6 +404,14 @@ export function reset(): void {
  *  `isFeatureDisabled`. Keep in sync with the same set in
  *  `src/lib/analytics/track.ts` (web). */
 const REDESIGN_DEFAULT_ON = new Set<string>([
+  // Design-consistency pass (2026-07-24, Grace). One flag covering the whole
+  // whole-app critique remediation: the canonical eyebrow (11/600/0.12em ink +
+  // hairline rule, promoted from the Today hero) applied through
+  // ScreenSectionChrome, Today/create-recipe migrated onto it, the day-strip
+  // selection ring, Settings plan-status dedupe, Create leading with the form,
+  // and the Shopping header + row layout. Default-ON; off → every previous
+  // treatment (kill switch). Keep in sync with src/lib/analytics/track.ts.
+  "design_consistency_v1",
   // ENG-1642 — the real shareable meal-link create/accept flow. DEFAULT-ON
   // per Grace's ship-on-for-sim-validation practice (2026-07-21): the flag
   // gates link CREATION only, so on = Today's "Share meal" mints a
@@ -564,7 +572,6 @@ const REDESIGN_DEFAULT_ON = new Set<string>([
   // showcase (kill switch). Keep in sync with src/lib/analytics/track.ts.
   "sloe_v3_profile",
   "mfp_tracker_reassurance_v1",
-  "today_hero_decard_v3",
   "today_quickadd_recents_v3",
   "eng1247_section_a_v1",
   "weekly_recap_detail_v1",
@@ -931,6 +938,7 @@ export const KNOWN_DEFAULT_OFF_FLAGS = [
   "web_gutter_convergence_v1", // ENG-1629 — converges web Targets.tsx/RecipeDetail.tsx page gutters onto .product-shell. WEB-ONLY: mobile has no Tailwind product-shell equivalent; registered here only for the web ↔ mobile KNOWN_DEFAULT_OFF_FLAGS discoverability parity.
   "onboarding_terminal_paywall_v1", // ENG-1459 — terminal onboarding is the full paywall (no stacked trial ask); off = legacy trial page + dialog/route (kill switch). Web + mobile.
   // `today_hero_cluster_v3` — MOVED to REDESIGN_DEFAULT_ON 2026-07-23 (prototype gap audit).
+  "today_hero_decard_v3", // ENG-1247's bare hero read as no card at all on the live sim (white-on-white, zero separation) — Grace reversed the decard direction 2026-07-24; off = carded hero (kill switch, was default-on since prototype gap audit).
   // `today_section_rhythm_v1` — MOVED to REDESIGN_DEFAULT_ON 2026-07-23 (prototype gap audit).
   // `today_hero_macro_legend_v1` — MOVED to REDESIGN_DEFAULT_ON 2026-07-23 (prototype gap audit).
   // `smart_suggestions_v1` (ENG-1634) — MOVED to REDESIGN_DEFAULT_ON 2026-07-22.

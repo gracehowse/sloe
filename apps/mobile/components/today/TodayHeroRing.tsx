@@ -352,9 +352,12 @@ function TodayHeroRingImpl({
   }
 
   return (
-    // Carded hero (Grace 2026-06-04 shared <SupprCard>; recipe-tier flat-on-cream).
+    // Carded hero (Grace 2026-06-04 shared <SupprCard>). `lift="soft"` (2026-07-24,
+    // Grace) so the hero renders the same hairline-bordered white card as the
+    // macro-bars/tiles card directly below it — `lift="flat"` has no border and
+    // no fill contrast against the white page ground, so it read as no card at all.
     <SupprCard
-      lift="flat"
+      lift="soft"
       padding="md"
       innerStyle={{ alignItems: "center", gap: Layout.todayScrollGap }}
     >

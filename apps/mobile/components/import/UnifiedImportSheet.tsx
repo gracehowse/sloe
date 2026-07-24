@@ -270,7 +270,7 @@ export function UnifiedImportSheet({
 
             {v3 ? (
               <PressableScale
-                haptic="light"
+                haptic="selection"
                 onPress={onChooseFile}
                 accessibilityRole="button"
                 accessibilityLabel="Choose a file"

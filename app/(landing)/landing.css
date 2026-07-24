@@ -117,6 +117,17 @@
   color: var(--lp-ink);
 }
 
+/* design_consistency_v1 (2026-07-24) — the tagline reads in ONE ink at every
+   front door. The two-tone hero split line 1 into `--lp-ink-faint`, which
+   passes contrast but reads as secondary/disabled while carrying half the
+   promise; the onboarding welcome, /login, /pricing and the landing final CTA
+   all render the same words in full ink with italic "Still" as the only
+   emphasis. `.lp-h-hero-strong` is unchanged — it is already full ink — so the
+   two spans simply converge. */
+.lp-h-hero--unified .lp-h-hero-muted {
+  color: var(--lp-ink);
+}
+
 .lp-h-section {
   font-family: var(--font-headline);
   font-size: clamp(1.875rem, 4vw, 2.25rem);
@@ -194,6 +205,12 @@
   transform: translateY(-1px);
 }
 
+/* Still used by the Pricing section's Free-column CTA (`Pricing.tsx`) and by
+   the design_consistency_v1 kill-switch hero. Above the fold it is retired:
+   the CTA system is `primary | ghost` on both platforms (SupprButton) — there
+   is no outline variant, and an outlined "Browse recipes" beside a filled
+   "Get started" read as a second, competing primary. New landing CTAs use
+   `.lp-btn-ghost`. */
 .lp-btn-outline {
   background: var(--lp-bg);
   color: var(--lp-ink);
@@ -202,6 +219,26 @@
 
 .lp-btn-outline:hover {
   background: var(--lp-panel);
+}
+
+/* The landing's expression of the shared ghost CTA: no fill, no border, full
+   ink, a tonal wash on hover. Matches `SupprButton variant="ghost"` on web +
+   mobile so the marketing site and the app speak the same button language. */
+.lp-btn-ghost {
+  background: transparent;
+  color: var(--lp-ink);
+  border-color: transparent;
+}
+
+.lp-btn-ghost:hover {
+  background: var(--lp-panel);
+}
+
+.lp-btn-ghost:focus-visible,
+.lp-btn-primary:focus-visible,
+.lp-btn-text:focus-visible {
+  outline: 2px solid var(--lp-clay);
+  outline-offset: 2px;
 }
 
 .lp-btn-text {
@@ -337,6 +374,40 @@
   .lp-nav-right .lp-btn-text {
     display: none;
   }
+  /* design_consistency_v1 — the hero's "Already cooking with Sloe? Log in"
+     duplicate is gone, so the nav "Log in" is the ONLY sign-in door above the
+     fold and must survive the phone-width hide above. (Flag-off still hides it
+     because the hero duplicate is still there to catch returning users.) */
+  .lp-nav--unified .lp-nav-right .lp-btn-text {
+    display: inline-flex;
+  }
+  /* The relocated footer toggle is not nav clutter, so the phone hide above —
+     written when the toggle only ever lived in the nav — must not reach it. */
+  .lp-footer .lp-theme-toggle {
+    display: inline-flex;
+  }
+}
+
+/* Footer variant of the theme toggle (design_consistency_v1 relocation). The
+   footer paints on `--lp-footer-bg` (inverted ink), so the nav's
+   panel/border/ink values would render as a pale block on a dark ground. */
+.lp-footer .lp-theme-toggle {
+  background: transparent;
+  border-color: color-mix(in oklab, var(--lp-footer-strong) 22%, transparent);
+}
+
+.lp-footer .lp-theme-toggle button {
+  color: var(--lp-footer-fg);
+}
+
+.lp-footer .lp-theme-toggle button:hover {
+  color: var(--lp-footer-strong);
+}
+
+.lp-footer .lp-theme-toggle button[aria-pressed="true"] {
+  background: color-mix(in oklab, var(--lp-footer-strong) 14%, transparent);
+  color: var(--lp-footer-strong);
+  box-shadow: none;
 }
 
 /* Hero */
@@ -474,6 +545,33 @@
 
 .lp-recipe-author span {
   color: var(--lp-ink-soft);
+}
+
+/* design_consistency_v1 (2026-07-24) — the in-app recipe-card composition,
+   applied to the marketing rail: IMAGE → title → meta, the order every
+   in-app surface uses (Discover grid, Cookbook grid, `RecipeCardWide`,
+   `discover-quick-weeknight`). The legacy rule set above (`.lp-recipe-card-top`,
+   `.lp-recipe-bookmark`, and `.lp-recipe-img`'s symmetric 16px margins) still
+   serves the flag-off card, which keeps title-above-image + the bookmark. */
+.lp-recipe-card--stacked .lp-recipe-img {
+  margin: 0 0 12px;
+}
+
+.lp-recipe-card--stacked h3 {
+  /* Two-line clamp, as `library/RecipeCardWide` does — the title now sits in
+     the flow under the photo, so an unusually long one would otherwise stretch
+     one card taller than the rest of the rail. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.lp-recipe-card--stacked .lp-recipe-author {
+  /* The legacy card pushes the byline to the card floor with `margin: auto`
+     because the photo sits between title and byline. Stacked, the byline is
+     the meta line directly under the title — same as every in-app card. */
+  margin: 4px 0 0;
 }
 
 /* Panels */
@@ -911,6 +1009,7 @@
 
 .lp-footer-legal {
   display: flex;
+  align-items: center;
   gap: 20px;
 }
 

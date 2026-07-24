@@ -1099,6 +1099,11 @@ export default function ProgressScreen() {
   const chartsEntrance = useEntranceAnimation({ delay: 80 });
   const detailsEntrance = useEntranceAnimation({ delay: 160 });
 
+  // `design_consistency_v1` (2026-07-24) — chrome/layout unification; each
+  // `unifiedChrome ? … : …` keeps the prior path as the kill switch. The header
+  // action already IS log-weight here; web followed iOS onto the same glyph.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
+
   const progressLogWeightButton = (
     <Pressable
       testID="progress-calendar-button"
@@ -1106,15 +1111,11 @@ export default function ProgressScreen() {
       accessibilityLabel="Log weight"
       onPress={() => setLogWeightOpen(true)}
       style={({ pressed }) => [{
-        width: consistencyChrome ? 40 : 36,
-        height: consistencyChrome ? 40 : 36,
-        borderRadius: Radius.full,
+        width: consistencyChrome ? 40 : 36, height: consistencyChrome ? 40 : 36,
+        borderRadius: Radius.full, borderColor: t.border,
         backgroundColor: consistencyChrome ? colors.backgroundSecondary : t.elevated,
         borderWidth: consistencyChrome ? 0 : 1,
-        borderColor: t.border,
-        alignItems: "center",
-        justifyContent: "center",
-        opacity: pressed ? 0.7 : 1,
+        alignItems: "center", justifyContent: "center", opacity: pressed ? 0.7 : 1,
       }]}
     >
       <Scale size={16} color={t.text} strokeWidth={1.75} />
@@ -1238,42 +1239,37 @@ export default function ProgressScreen() {
       contentContainerStyle={progressScrollStyle}
       keyboardShouldPersistTaps="handled"
     >
-      {/* HouseholdBar — 2026-04-20 prototype port. Appears between
-          the header and the range-picker pills for household users;
-          hidden otherwise (mirror of `screens-mobile.jsx` L580). */}
-      <HouseholdBar />
+      {/* HouseholdBar — hidden for solo users. Under `design_consistency_v1` it
+          moves DOWN the page (sibling render in the details block below):
+          household management was the first thing the eye landed on opening a
+          trends screen. Mirror: web. */}
+      {unifiedChrome ? null : <HouseholdBar />}
 
-      {/* ── Sloe Figma 492:2 — single production layout (web + mobile
-          parity). Order: range toggle → THIS WEEK insight (lilac) →
+      {/* ── Sloe Figma 492:2 — single production layout (web + mobile parity).
+          Legacy (kill-switch) order below: range toggle → THIS WEEK insight →
           AVERAGE ADHERENCE → weight card (Trend/Scale + stat row + log) →
-          AVG/TDEE/DEFICIT triad → DAILY CALORIES → on-target ribbon. Every
-          previously-wired surface (Apple Health, adaptive maintenance,
-          journey/projection, week digest) is preserved below the frame's
-          above-fold story. No feature flags, no duplicate components, no
-          alternate versions — this is THE layout. */}
+          AVG/TDEE/DEFICIT triad → DAILY CALORIES → on-target ribbon;
+          `progress_hierarchy_v1` supersedes it with the 5-section composer.
+          Every previously-wired surface (Apple Health, adaptive maintenance,
+          journey/projection, week digest) is preserved below the above-fold
+          story on both branches.
 
-      {/* 1. TIME PERIOD — Apple Health range grammar (ENG-1030): D / W / M /
+          1. TIME PERIOD — Apple Health range grammar (ENG-1030): D / W / M /
           6M / Y segments + ‹ label › paging. Default = current week. Drives
           every range stat below + the weight/calorie chart windows. Mirror of
-          the web `ProgressPeriodControl`; shared period model so the two
-          surfaces compute identical windows + labels. */}
-      {/* gap: Spacing.lg (20) keeps the picker→THIS WEEK seam on the SAME
-          page rhythm as every other inter-card gap (the scroll container and
-          the charts/details wrappers all use Spacing.lg). Without it the
-          picker abutted the card at ~5pt while the body breathed at 20pt —
-          the cramped top Grace flagged (rhythm sweep 2026-06-10). */}
-      <ReAnimated.View style={[heroEntrance.style, { gap: Spacing.lg }]}>
-      <ProgressPeriodControl
-        period={period}
-        weekStart={weekStartDay}
-        onChange={setPeriod}
-      />
+          the web `ProgressPeriodControl`; one shared period model.
 
-      {/* 2. THIS WEEK insight card (lilac wash + sparkle). Engine-led
-          commentary; the StoryGate placeholder shares the same lilac wash
-          until the user crosses the 3-day data floor (geometry matches so
-          the slot doesn't jump). On `trends_only` the direction tile still
-          renders above so opt-out users keep a weight signal. */}
+          gap: Spacing.lg (20) keeps the picker→THIS WEEK seam on the SAME page
+          rhythm as every other inter-card gap (the scroll container and the
+          charts/details wrappers all use Spacing.lg). Without it the picker
+          abutted the card at ~5pt (rhythm sweep 2026-06-10). */}
+      <ReAnimated.View style={[heroEntrance.style, { gap: Spacing.lg }]}>
+      <ProgressPeriodControl period={period} weekStart={weekStartDay} onChange={setPeriod} />
+
+      {/* 2. THIS WEEK insight card. Engine-led commentary; the StoryGate
+          placeholder twins its geometry until the user crosses the 3-day data
+          floor. On `trends_only` the direction tile still renders above so
+          opt-out users keep a weight signal. */}
       {!hierarchyV1Enabled && effectiveWeightSurfaceMode === "trends_only" && (
         <WeightTrendOnlyCard weekDeltaKg={weightRange.weekDeltaKg} windowLabel={periodWindowLabel} theme={t} />
       )}
@@ -1296,16 +1292,18 @@ export default function ProgressScreen() {
             loggingDays: weekStats.daysWithFood,
           })}
         />
-      ) : (
-        <ProgressStoryGate
-          daysLogged={weekStats.daysWithFood}
-          // Any logged day in the journal store (not range-scoped) → the
-          // copy uses new-week framing instead of cold-start framing, so
-          // this card can't claim "log a meal to start" while the
-          // range-scoped adherence card below shows real data
-          // (fresh-eyes 2026-06-10 P0-2 resolution).
-          hasHistory={Object.keys(byDay).some((k) => (byDay[k] ?? []).length > 0)}
-        />
+      ) : unifiedChrome && hierarchyV1Enabled && hasData ? null : (
+        // Duplicate-label dedupe (2026-07-24): the gate's THIS WEEK eyebrow sat
+        // directly on top of §2's "This week" overline — two consecutive cards,
+        // same title, both saying "not enough yet" ("Almost there" over "2 of 7
+        // days on target"). §2 carries the week's real state, per-day bars and
+        // its own thin-data line, so the gate is the redundant half. Rule on both
+        // platforms: suppress it exactly when §2 renders — here `hasData`, the
+        // condition guarding the `week` prop below (web renders §2 always). No
+        // data → §2 absent, the gate keeps cold start. hasHistory: any logged day
+        // in the journal store → new-week framing, never "log a meal to start"
+        // next to real range data (fresh-eyes 2026-06-10 P0-2 resolution).
+        <ProgressStoryGate daysLogged={weekStats.daysWithFood} hasHistory={Object.keys(byDay).some((k) => (byDay[k] ?? []).length > 0)} />
       )}
       </ReAnimated.View>
 
@@ -1608,6 +1606,8 @@ export default function ProgressScreen() {
       </ReAnimated.View>
 
       <ReAnimated.View style={[detailsEntrance.style, { gap: Spacing.lg }]}>
+      {/* HouseholdBar, relocated: below the week summary + weight story. */}
+      {unifiedChrome ? <HouseholdBar /> : null}
       {!hasData ? (
         <View style={[{ padding: 24, borderRadius: CARD_RADIUS, backgroundColor: cardElevation.liftBg ?? t.elevated, borderWidth: cardElevation.useBorder ? 1 : 0, borderColor: t.border, alignItems: "center", gap: Spacing.md }, cardElevation.shadowStyle]}>
           <IconBox soft={t.accentSoft} size={40}>

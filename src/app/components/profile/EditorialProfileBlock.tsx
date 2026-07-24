@@ -1,13 +1,14 @@
 "use client";
 
 import { memo } from "react";
-import { Check, ChevronRight, Circle, Flame, Shield } from "lucide-react";
+import { Check, ChevronRight, Circle, Flame, Shield, Snowflake } from "lucide-react";
 import { AvatarDisc } from "../ui/avatar-disc";
 import { RecipeHeroFallback } from "../suppr/RecipeHeroFallback";
 import { SupprButton } from "../suppr/suppr-button";
 import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
 import { recipeUnderlayColor } from "../../../lib/recipe/recipeHeroFallback";
 import { useFallbackScheme } from "../../../lib/theme/useFallbackScheme";
+import { weekdayInitials } from "../../../lib/today/weekdayLabels.ts";
 import {
   type EditorialProfileBlockModel,
   type StreakDotState,
@@ -41,6 +42,9 @@ export interface EditorialProfileBlockProps {
   onOpenRecipe: (recipeId: string) => void;
   /** "See all" → the recipe library. */
   onSeeAllRecipes: () => void;
+  /** Empty-state escape hatch → Discover. Without it the "Browse Discover to
+   *  start your collection" copy is a dead end (design-consistency pass). */
+  onBrowseDiscover?: () => void;
   /** ENG-1641 — single primary Upgrade CTA for non-Pro (footer). */
   onUpgrade?: () => void;
 }
@@ -54,6 +58,30 @@ const DOT_CLASSES: Record<StreakDotState, string> = {
   logged: "bg-success-solid",
   frozen: "bg-muted-foreground/40",
   missed: "bg-muted",
+};
+
+/** Sunday-first initials are indexed 0=Sunday — exactly `Date.getDay()`'s
+ *  ordering — so the pip labels and the Today day strip read one source. */
+const WEEKDAY_INITIALS = weekdayInitials("sunday");
+
+/** Weekday initial for a `YYYY-MM-DD` key (local date, no UTC shift). */
+function weekdayInitialFor(dateKey: string): string {
+  const [y, m, d] = dateKey.split("-").map((n) => parseInt(n, 10));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return "";
+  return WEEKDAY_INITIALS[new Date(y, (m ?? 1) - 1, d ?? 1).getDay()] ?? "";
+}
+
+/** "3- and 7-day reached" / "3-, 7- and 30-day reached" / "3-day reached".
+ *  Mobile twin: `apps/mobile/components/profile/EditorialProfileBlock.tsx`. */
+export function formatReachedSummary(days: readonly number[]): string | null {
+  if (days.length === 0) return null;
+  if (days.length === 1) return `${days[0]}-day reached`;
+  const head = days.slice(0, -1).map((d) => `${d}-`);
+  return `${head.join(", ")} and ${days[days.length - 1]}-day reached`;
+}
+
+const DOT_STATE_WORDS: Record<StreakDotState, string> = {
+  logged: "logged", frozen: "freeze used", missed: "not logged",
 };
 
 /**
@@ -78,6 +106,7 @@ function EditorialProfileBlockImpl({
   recipeCount,
   onOpenRecipe,
   onSeeAllRecipes,
+  onBrowseDiscover,
   onUpgrade,
 }: EditorialProfileBlockProps) {
   const gridRecipes = recipes.slice(0, RECIPE_GRID_LIMIT);
@@ -87,15 +116,40 @@ function EditorialProfileBlockImpl({
   // default-OFF (see src/lib/analytics/track.ts flag note).
   const avatarFrostRingV1 = isFeatureEnabled("avatar_monogram_frost_ring_v1");
   const glossOn = isFeatureEnabled("onboarding_jargon_gloss_v1");
+  // Design-consistency pass (default-ON; every branch keeps its old path in
+  // the `else` as the kill switch). Four fixes: tier stated once + accent Pro
+  // badge, a labelled binary streak-pip row, actionable-first milestones, and
+  // a real Discover CTA on the empty saved-recipes state.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
+
+  // Tier is stated ONCE: the Pro badge owns it for Pro, the subline owns it
+  // for everyone else (a "Free" badge would read as a penalty marker).
+  const tierAndJoined = `${tierLabel}${joinedLabel ? ` · ${joinedLabel}` : ""}`;
+  const identityMeta = unifiedChrome && isPro ? joinedLabel : tierAndJoined;
+
+  // Milestones lead with the only actionable row. Reached landmarks collapse
+  // into one quiet summary line instead of two greyed rows above the target.
+  const reachedSummary = unifiedChrome
+    ? formatReachedSummary(model.milestones.filter((m) => m.achieved).map((m) => m.days))
+    : null;
+  const pending = model.milestones.filter((m) => !m.achieved);
+  const orderedMilestones = unifiedChrome
+    ? [...pending.filter((m) => m.next), ...pending.filter((m) => !m.next)]
+    : model.milestones;
+
+  // The pip row answers exactly ONE question — "did I log that day?" — over a
+  // named 7-day window, so it can never be mistaken for the streak count.
+  const pipAriaLabel = `Last ${model.dots.length} days: ${model.dots
+    .map((d) => `${weekdayInitialFor(d.dateKey)} ${DOT_STATE_WORDS[d.state]}`)
+    .join(", ")}`;
 
   return (
     <div className="flex flex-col gap-4" data-testid="editorial-profile-block">
-      {/* Identity — monogram + name + tier·joined + tier pill. */}
-      {/* m8: p-4/gap-4 (16px) to match the sibling cards + the mobile value
-          (was off-scale p-3.5/gap-3.5). */}
+      {/* Identity — monogram + name + tier·joined + tier pill. m8: p-4/gap-4
+          (16px) matches the sibling cards + mobile (was off-scale p-3.5). S5
+          avatar ruling (2026-07-10, ENG-1375): the ad-hoc bg-primary monogram →
+          the ONE solid-damson identity disc (`AvatarDisc`). */}
       <div className="flex items-center gap-4 rounded-xl bg-card p-4 card-slab">
-        {/* S5 avatar ruling (2026-07-10, ENG-1375): the ad-hoc bg-primary
-            monogram → the ONE solid-damson identity disc (`AvatarDisc`). */}
         <AvatarDisc
           initial={monogramInitial}
           size={52}
@@ -105,13 +159,23 @@ function EditorialProfileBlockImpl({
           <p className="truncate font-[family-name:var(--font-headline)] text-lg font-medium leading-tight text-foreground">
             {displayName.trim() ? displayName : "Your profile"}
           </p>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {tierLabel}
-            {joinedLabel ? ` · ${joinedLabel}` : ""}
-          </p>
+          {identityMeta ? (
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">{identityMeta}</p>
+          ) : null}
         </div>
         {isPro ? (
-          <span className="shrink-0 rounded-full bg-primary/15 px-2.5 py-1 text-[11px] font-bold tracking-wide text-primary-solid">
+          // Damson is THE achievement/Pro slot — a paid badge must not be the
+          // card's quietest chip. Fill = `--avatar-identity`, the scheme-CONSTANT
+          // damson the disc beside it uses (mobile twin: `Accent.purple`) — NOT
+          // theme-resolved `--accent-win`, which lightens to #9A7BAA in dark,
+          // fails AA under white (3.63:1), and reads as a second damson.
+          <span
+            className={
+              unifiedChrome
+                ? "shrink-0 rounded-full bg-[color:var(--avatar-identity)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-white"
+                : "shrink-0 rounded-full bg-primary/15 px-2.5 py-1 text-[11px] font-bold tracking-wide text-primary-solid"
+            }
+          >
             {tierLabel}
           </span>
         ) : null}
@@ -131,22 +195,57 @@ function EditorialProfileBlockImpl({
             </span>
           ) : null}
         </div>
-        <div
-          className="flex items-center gap-2"
-          role="img"
-          aria-label={`Last ${model.dots.length} days: ${model.dots
-            .map((d) => d.state)
-            .join(", ")}`}
-        >
-          {model.dots.map((dot) => (
-            <span
-              key={dot.dateKey}
-              className={`h-2.5 w-2.5 rounded-full ${DOT_CLASSES[dot.state]} ${
-                dot.isToday ? "ring-2 ring-primary/40 ring-offset-1 ring-offset-card" : ""
-              }`}
-            />
-          ))}
-        </div>
+        {unifiedChrome ? (
+          // Labelled binary pip row. The old row mixed three dot colours with a
+          // grey halo on today (an idiom used nowhere else) under a "Best streak
+          // 12 days" line seven pips can't express. Now: a NAMED window, weekday
+          // letters, logged-vs-not dots, and the day strip's own idioms — ink
+          // density marks today, freeze days keep the snowflake. Gaps mirror
+          // mobile's card rhythm (12 throughout), not an ad-hoc 8.
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground">
+                Last 7 days
+              </span>
+              <span className="flex-1 h-px bg-border" />
+            </div>
+            <div className="flex items-start" role="img" aria-label={pipAriaLabel}>
+              {model.dots.map((dot) => (
+                <div key={dot.dateKey} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+                  <span
+                    className={`text-[11px] font-normal uppercase tracking-[0.1em] leading-none ${
+                      dot.isToday ? "text-foreground" : "text-foreground-tertiary"
+                    }`}
+                  >
+                    {weekdayInitialFor(dot.dateKey)}
+                  </span>
+                  <span className="flex h-3 items-center justify-center" aria-hidden>
+                    {dot.state === "frozen" ? (
+                      <Snowflake className="h-3 w-3 text-[color:var(--macro-water)]" />
+                    ) : (
+                      <span
+                        className={`block h-2.5 w-2.5 rounded-full ${
+                          dot.state === "logged" ? "bg-success-solid" : "bg-border"
+                        }`}
+                      />
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2" role="img" aria-label={pipAriaLabel}>
+            {model.dots.map((dot) => (
+              <span
+                key={dot.dateKey}
+                className={`h-2.5 w-2.5 rounded-full ${DOT_CLASSES[dot.state]} ${
+                  dot.isToday ? "ring-2 ring-primary/40 ring-offset-1 ring-offset-card" : ""
+                }`}
+              />
+            ))}
+          </div>
+        )}
         <p className="text-[11px] text-muted-foreground">
           Best streak {model.bestStreak} day{model.bestStreak === 1 ? "" : "s"}
           {freezeCount > 0
@@ -155,17 +254,23 @@ function EditorialProfileBlockImpl({
         </p>
       </div>
 
-      {/* Milestones — list of streak landmarks with achieved / next state. */}
+      {/* Milestones — the actionable "Next up" target leads; reached landmarks
+          collapse into the one quiet summary line below the list. */}
       <div className="flex flex-col gap-2 rounded-xl bg-card p-4 card-slab">
         <p className="text-sm font-semibold text-foreground">Milestones</p>
+        {unifiedChrome && orderedMilestones.length === 0 ? (
+          <p className="text-[13px] font-semibold text-foreground">Every milestone reached</p>
+        ) : null}
         <ul className="flex flex-col gap-2">
-          {model.milestones.map((m) => (
+          {orderedMilestones.map((m) => (
             <li key={m.days} className="flex items-center gap-3">
               <span
                 className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${
                   m.achieved
                     ? "bg-success/15 text-success"
-                    : "bg-muted text-muted-foreground"
+                    : unifiedChrome && m.next
+                      ? "bg-primary-soft text-primary-solid"
+                      : "bg-muted text-muted-foreground"
                 }`}
                 aria-hidden
               >
@@ -177,7 +282,9 @@ function EditorialProfileBlockImpl({
               </span>
               <span
                 className={`flex-1 text-[13px] ${
-                  m.achieved ? "font-semibold text-foreground" : "text-muted-foreground"
+                  m.achieved || (unifiedChrome && m.next)
+                    ? "font-semibold text-foreground"
+                    : "text-muted-foreground"
                 }`}
               >
                 {m.days}-day streak
@@ -190,6 +297,11 @@ function EditorialProfileBlockImpl({
             </li>
           ))}
         </ul>
+        {reachedSummary ? (
+          <p className="text-[11px] text-muted-foreground" data-testid="editorial-profile-reached">
+            {reachedSummary}
+          </p>
+        ) : null}
       </div>
 
       {/* Recipe grid — saved recipes preview (already-loaded rows). */}
@@ -209,9 +321,24 @@ function EditorialProfileBlockImpl({
           ) : null}
         </div>
         {gridRecipes.length === 0 ? (
-          <p className="text-[13px] text-muted-foreground">
-            Recipes you save land here. Browse Discover to start your collection.
-          </p>
+          // The copy tells the user to browse Discover — so the card ships the
+          // way there. Ghost, because the screen's one filled CTA is Upgrade.
+          <div className="flex flex-col items-start gap-2">
+            <p className="text-[13px] text-muted-foreground">
+              Recipes you save land here. Browse Discover to start your collection.
+            </p>
+            {unifiedChrome && onBrowseDiscover ? (
+              <SupprButton
+                variant="ghost"
+                size="sm"
+                onClick={onBrowseDiscover}
+                aria-label="Browse Discover to find recipes to save"
+                data-testid="editorial-profile-browse-discover"
+              >
+                Browse Discover
+              </SupprButton>
+            ) : null}
+          </div>
         ) : (
           <div className="grid grid-cols-3 gap-2">
             {gridRecipes.map((recipe) => (

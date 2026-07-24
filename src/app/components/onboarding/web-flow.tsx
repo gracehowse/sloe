@@ -14,7 +14,7 @@ import { type UserProfile } from "@/types/profile";
 import { CONVERSION_FUNNEL_FLAG, WHY_NOW_FLAG, useOnboarding } from "./context";
 import { isFeatureEnabled } from "@/lib/analytics/track";
 import { STEP_COMPONENTS } from "./steps";
-import { NARRATIVE } from "./narrative";
+import { NarrativeBody } from "./narrative";
 import { STEP_IDS, canAdvance as canAdvanceStep } from "@/lib/onboarding/state";
 import { OnboardingSegmentedProgress } from "./onboarding-segmented-progress";
 import {
@@ -398,8 +398,6 @@ export function WebFlow() {
     );
   }
 
-  const narrative = NARRATIVE[currentStepId];
-
   return (
     <div className="h-screen w-full bg-background text-foreground flex flex-col overflow-hidden">
       {/* Top bar — brand + progress.
@@ -430,7 +428,9 @@ export function WebFlow() {
           768px the desktop split returns (Grace 2026-04-20). */}
       <BodyContainer>
         <div className="flex-1 grid grid-cols-1 md:grid-cols-[1.1fr_1fr] min-h-0 overflow-hidden h-full">
-        {/* Narrative column — hidden on mobile viewports. */}
+        {/* Narrative column — hidden on mobile viewports. This file owns the
+            column's layout (gradient, per-step fade, breakpoint); its typographic
+            content is `NarrativeBody`, next to the copy it renders. */}
         <div
           key={`narr-${displayIndex}`}
           className="hidden md:flex relative overflow-hidden flex-col justify-center px-16 py-14"
@@ -440,40 +440,7 @@ export function WebFlow() {
             animation: "v2NarrativeFade 400ms cubic-bezier(0.22,1,0.36,1)",
           }}
         >
-          {narrative && (
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-foreground-tertiary mb-4">
-                {narrative.eyebrow}
-              </div>
-              {/* Sloe reskin (Figma onboarding parity 2026-06-07): the
-                  narrative headline reads in plum Newsreader serif to
-                  match the editorial warm-coaching direction. Eyebrow
-                  drops the clay tint to muted ink (clay = CTA only). */}
-              <h1
-                className="font-[family-name:var(--font-headline)] text-[44px] font-normal tracking-tight text-foreground-brand m-0 mb-4 leading-[1.08] max-w-[520px]"
-                style={{
-                  letterSpacing: "-0.02em",
-                  textWrap: "balance",
-                  whiteSpace: "pre-line",
-                } as React.CSSProperties}
-              >
-                {narrative.head}
-              </h1>
-              {narrative.body && (
-                <p
-                  className="text-base text-muted-foreground m-0 leading-relaxed max-w-[440px]"
-                  style={{ textWrap: "pretty" } as React.CSSProperties}
-                >
-                  {narrative.body}
-                </p>
-              )}
-              {narrative.extra && (
-                <div className="mt-8">
-                  {narrative.extra({ state, targets })}
-                </div>
-              )}
-            </div>
-          )}
+          <NarrativeBody stepId={currentStepId} state={state} targets={targets} />
         </div>
 
         {/* Interactive card column. Reveal opts out of the inner card

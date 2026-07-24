@@ -152,6 +152,7 @@ function TodayDateHeaderImpl({
           onOpenCalendar={onOpenCalendar}
           textColor={textColor}
           secondaryColor={textSecondaryColor}
+          tertiaryColor={textTertiaryColor}
         />
         {isToday && streakResetCopyVisible ? (
           <Text style={{ ...Type.caption, color: textSecondaryColor }} numberOfLines={2}>
@@ -379,6 +380,7 @@ function TodayDateHeaderImpl({
           onOpenCalendar={onOpenCalendar}
           textColor={textColor}
           secondaryColor={textSecondaryColor}
+          tertiaryColor={textTertiaryColor}
         />
       )}
       {viewMode === "day" && isToday && streakResetCopyVisible && (

@@ -25,6 +25,10 @@ import {
   SHOPPING_LIST_PLAN_START_STORAGE_KEY,
 } from "@suppr/shared/planning/shoppingListMeta";
 import {
+  formatShoppingProgressSubtitle,
+  formatShoppingWeekRange,
+} from "@suppr/shared/planning/shoppingListDisplay";
+import {
   appendPantryStaple,
   parsePantryStaples,
 } from "@suppr/shared/planning/pantryStaples";
@@ -60,7 +64,6 @@ import { useEntranceAnimation } from "@/hooks/useEntranceAnimation";
 import ReAnimated from "react-native-reanimated";
 import { useThemeColors } from "@/hooks/use-theme-colors";
 import { useCardElevation } from "@/hooks/useCardElevation";
-import { useSafeBack } from "@/hooks/use-safe-back";
 import { readActiveCloudMealPlanSlotId } from "@/lib/activeMealPlanSlot";
 import { PlanTabChrome } from "@/components/tabs/PlanTabChrome";
 import { ShoppingLoadingSkeleton } from "@/components/shopping/ShoppingLoadingSkeleton";
@@ -112,20 +115,19 @@ export default function ShoppingListScreen() {
   // Page-ground card grammar (ENG-1497 / ENG-1527): flat + hairline in light,
   // tonal lift + hairline in dark — shared with Plan / Progress / Today.
   const cardElevation = useCardElevation({ variant: "soft" });
-  // Secondary accent (Frost flag → damson, else clay) for the progress count +
-  // fill, checked checkboxes, primary CTAs, household icon, and empty-state
-  // cart glyph. Threaded into the memoised StyleSheet via the dep array below.
-  // Destructive actions keep `Accent.destructive`.
+  // Secondary accent (Frost → damson, else clay) for progress, checkboxes,
+  // CTAs and the empty-state glyph. Destructive keeps `Accent.destructive`.
   const accent = useAccent();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const goBack = useSafeBack("/(tabs)/planner");
   const { session } = useAuth();
   const userId = session?.user?.id ?? null;
   const haptics = useHaptics();
 
   // ENG-1669 — in-store scan density (default ON; PostHog kill switch).
   const densityV1 = isFeatureEnabled("shopping_list_density_v1");
+  // Design-consistency pass (2026-07-24) — unified header meta (web parity).
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
 
   const progressEntrance = useEntranceAnimation({ delay: 0 });
   const listEntrance = useEntranceAnimation({ delay: 80 });
@@ -165,9 +167,8 @@ export default function ShoppingListScreen() {
     }, []),
   );
 
-  // Step 1 — resolve household once on mount so we know the scope before
-  // we read (avoids a flicker where solo items load and then the
-  // household items replace them).
+  // Resolve household before the first read so solo items never flash and
+  // then get replaced by household items.
   useEffect(() => {
     if (!userId) {
       setHousehold(null);
@@ -369,9 +370,8 @@ export default function ShoppingListScreen() {
     };
   }, [userId, scope, loadItems]);
 
-  // Real-time subscription. Step 4 — items added/checked/removed by
-  // another household member propagate within ~1s. Solo users still
-  // benefit from cross-device sync (e.g. iPhone + iPad).
+  // Real-time subscription — household edits propagate within ~1s; solo
+  // users get cross-device sync.
   useEffect(() => {
     if (!scope) return;
     const filter = shoppingScopeRealtimeFilter(scope);
@@ -597,11 +597,7 @@ export default function ShoppingListScreen() {
     },
 
     // Page-ground card — ONE card grammar (ENG-1497 / ENG-1527, 2026-07-11):
-    // the 24px `Radius.card` corner + flat-plus-hairline treatment shared with
-    // Plan / Progress / Today. `useCardElevation({ variant: "soft" })` gives no
-    // shadow + a hairline border in light, tonal lift + hairline in dark; the
-    // border + card-vs-ground fill contrast carry the separation. Was the
-    // retired `Radius.xl` (12) flat-borderless slab.
+    // 24px `Radius.card` + flat-plus-hairline, shared with Plan/Progress/Today.
     card: {
       backgroundColor: cardElevation.liftBg ?? colors.card,
       borderRadius: Radius.card,
@@ -664,8 +660,7 @@ export default function ShoppingListScreen() {
       height: 22,
       borderRadius: 11,
       borderWidth: 1.5,
-      // Gap 6: use border token instead of tabIconDefault so the unchecked
-      // circle reads as a calm hairline, not a heavy cold ring (DS §3.9).
+      // Gap 6: border token — a calm hairline, not a cold ring (DS §3.9).
       borderColor: colors.border,
       justifyContent: "center",
       alignItems: "center",
@@ -673,8 +668,7 @@ export default function ShoppingListScreen() {
     checkboxChecked: { backgroundColor: accent.primary, borderColor: accent.primary },
     itemName: { ...Type.body, color: colors.text },
     itemChecked: { ...Type.bodyMuted, textDecorationLine: "line-through", color: colors.tabIconDefault },
-    // Gap 12: use Type.caption token (Inter 11pt/medium) and textSecondary colour
-    // so recipe provenance is legible, not a whisper (DS §2.2 label-secondary).
+    // Gap 12: Type.caption + textSecondary — provenance legible, not a whisper.
     itemFrom: { ...Type.caption, color: colors.textSecondary, marginTop: 2 },
 
     // Honeydew parity (2026-04-30) — household sync banner.
@@ -729,13 +723,9 @@ export default function ShoppingListScreen() {
     },
   }), [colors, accent, cardElevation.useBorder, cardElevation.liftBg]);
 
-  // 2026-04-30 (#2): badge + progress reflect *grouped* rows so counts
-  // match on-screen groups (web parity).
-  // 2026-05-12 (premium-bar audit J2 — aisle ordering): sort sections
-  // in the order a real shopper walks through a supermarket so the
-  // user can scan top-down without backtracking. Categories not in
-  // the canonical order land at the end alphabetically. Mirrors the
-  // pattern used by AnyList / OurGroceries.
+  // 2026-04-30 (#2): counts reflect *grouped* rows (web parity).
+  // 2026-05-12 (premium-bar audit J2): aisle order = supermarket walk order;
+  // unknown categories land at the end alphabetically (AnyList / OurGroceries).
   const groupedSections = useMemo(() => {
     const orderedCats = sortShoppingCategories(items.map((i) => i.category));
     return orderedCats.map((category) => ({
@@ -761,9 +751,7 @@ export default function ShoppingListScreen() {
   const progress = totalGroupCount > 0 ? checkedGroupCount / totalGroupCount : 0;
   const uncheckedCount = totalGroupCount - checkedGroupCount;
 
-  // Honeydew parity copy: "Shared with Sarah & Tom" — joined first
-  // names of every member that isn't the caller. Falls back to "your
-  // household" if name resolution turns up empty.
+  // Honeydew parity copy: "Shared with Sarah & Tom" (joined first names).
   const sharedWithLabel = useMemo(() => {
     if (!household?.household || !userId) return null;
     const others = (household.members ?? [])
@@ -785,6 +773,21 @@ export default function ShoppingListScreen() {
       }),
     [items.length, totalGroupCount, planStartDate, shoppingListOutOfSync, densityV1],
   );
+
+  // Web renders the plan week as the canonical eyebrow above the title. On the
+  // Plan tab the overline slot is pinned null by ruling (`PlanTabChrome`,
+  // 2026-05-22 — "no redundant PLAN overline"), so the week range rides in the
+  // subtitle instead: the same information, one composition step apart, and the
+  // correct shape while that ruling stands.
+  const chromeSubtitle = useMemo(() => {
+    const progressLine = formatShoppingProgressSubtitle({
+      checkedCount: checkedGroupCount,
+      totalCount: totalGroupCount,
+      outOfSync: shoppingListOutOfSync,
+    });
+    if (!progressLine) return null;
+    return `${formatShoppingWeekRange(planStartDate)} · ${progressLine}`;
+  }, [checkedGroupCount, totalGroupCount, shoppingListOutOfSync, planStartDate]);
 
   const chromeTrailing =
     items.length > 0 ? (
@@ -817,13 +820,21 @@ export default function ShoppingListScreen() {
     >
       <PlanTabChrome
         value="shopping"
-        // ENG-1669 Mob-flat: title carries the list count (no Progress card).
+        // ENG-1669 Mob-flat: title carried the list count. Under the unified
+        // header that count moves into the subtitle as checked/total — the
+        // number a shopper actually reads mid-aisle.
         title={
-          densityV1 && items.length > 0
+          !unifiedChrome && densityV1 && items.length > 0
             ? `Shopping list (${totalGroupCount})`
             : "Shopping list"
         }
-        subtitle={densityV1 && items.length > 0 ? listSubtitle : undefined}
+        subtitle={
+          unifiedChrome
+            ? (chromeSubtitle ?? undefined)
+            : densityV1 && items.length > 0
+              ? listSubtitle
+              : undefined
+        }
         shoppingUncheckedCount={uncheckedCount}
         trailing={densityV1 ? chromeTrailing : undefined}
         onChange={(next) => {
@@ -890,18 +901,13 @@ export default function ShoppingListScreen() {
         ) : null}
 
         {loading ? (
-          // ENG-768 — deeplink cold-open loading state. Flag ON → skeleton
-          // silhouette of the loaded list (progress card + grouped section
-          // cards), matching the Progress tab's tile treatment; OFF → the
-          // legacy centred spinner (byte-identical to pre-ENG-768). Ramp via
-          // the `deeplink_skeletons` PostHog flag.
+          // ENG-768 — deeplink cold-open state: flag ON → list skeleton;
+          // OFF → the legacy centred spinner. Ramp via `deeplink_skeletons`.
           isFeatureEnabled("deeplink_skeletons") ? (
             <ShoppingLoadingSkeleton />
           ) : (
-            // E4 (2026-05-11 visual sweep): the bare spinner gave no
-            // context — looked like a frozen screen. Add a "Loading…"
-            // caption so the user knows something's happening, matching
-            // the Discover + Library load-state pattern.
+            // E4 (2026-05-11 visual sweep): caption the spinner so it does
+            // not read as a frozen screen (Discover + Library pattern).
             <View style={styles.centered}>
               <ActivityIndicator size="large" color={accent.primary} />
               <Text
@@ -916,13 +922,7 @@ export default function ShoppingListScreen() {
             </View>
           )
         ) : items.length === 0 ? (
-          // 2026-05-23 — empty state rebuilt. Was a bordered card with
-          // a serif headline + body + big primary CTA pill, all wrapped
-          // in chrome that pushed content down behind a huge top gap.
-          // Now a centered, calm column at the top of the surface:
-          // small cart glyph, sans-serif headline matching the rest of
-          // the app, one quiet body line, and a ghost link CTA. No card
-          // surface — the empty page is the empty state.
+          // 2026-05-23 — empty state: calm centred column, no card surface.
           <View style={{ alignItems: "center", paddingTop: Spacing.lg, paddingHorizontal: Spacing.xl }}>
             <View style={{
               width: 44,
@@ -935,9 +935,7 @@ export default function ShoppingListScreen() {
             }}>
               <ShoppingCart size={22} color={accent.primary} strokeWidth={1.75} />
             </View>
-            {/* Gap 9: sync empty-state copy to web's warmer headline ("Your shopping
-                list builds itself" per ShoppingList.tsx) so the voice is consistent
-                across platforms. */}
+            {/* Gap 9: headline synced to web's (ShoppingList.tsx) — one voice. */}
             <Text style={{ ...Type.headline, color: colors.text, textAlign: "center" }}>
               Your shopping list builds itself
             </Text>
@@ -953,17 +951,19 @@ export default function ShoppingListScreen() {
             >
               Plan your meals for the week and we&apos;ll gather every ingredient into one list, grouped by aisle.
             </Text>
-            <Pressable
+            {/* Ghost CTA — press feedback + haptic, and web's ghost-button label. */}
+            <PressableScale
+              haptic="selection"
               onPress={() => router.push("/(tabs)/planner")}
               accessibilityRole="button"
-              accessibilityLabel="Go to planning"
+              accessibilityLabel={unifiedChrome ? "Start planning" : "Go to planning"}
               hitSlop={8}
-              style={{ marginTop: Spacing.md, paddingVertical: 6, paddingHorizontal: 8 }}
+              style={{ marginTop: Spacing.md, paddingVertical: Spacing.xs, paddingHorizontal: Spacing.sm }}
             >
               <Text style={{ ...Type.body, fontWeight: "600", color: accent.primarySolid }}>
-                Go to plan →
+                {unifiedChrome ? "Start planning" : "Go to plan →"}
               </Text>
-            </Pressable>
+            </PressableScale>
           </View>
         ) : (
           <>
@@ -989,13 +989,9 @@ export default function ShoppingListScreen() {
 
             <ReAnimated.View style={listEntrance.style}>
             {groupedSections.map((section) => {
-              // 2026-04-30 audit visual-qa P1 #8: section-level
-              // progress so the user feels each category complete
-              // as they shop. Counts items in this section's groups
-              // checked vs total. A group is "checked" when all its
-              // items are checked (matches the row-level toggle).
-              // ENG-1669 Mob-flat density: drop per-section X/Y — the
-              // title already carries the list count.
+              // 2026-04-30 audit visual-qa P1 #8: section-level progress
+              // (a group counts as checked when all its items are).
+              // ENG-1669 Mob-flat density drops the per-section X/Y.
               const sectionTotal = section.groups.length;
               const sectionChecked = section.groups.filter((g) =>
                 isShoppingGroupFullyChecked(g),

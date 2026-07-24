@@ -75,6 +75,7 @@ import {
 import {
   HERO_CURRENT,
   HERO_HYBRID,
+  SLOE_TAGLINE,
 } from "../../src/lib/landing/sloeLandingContent";
 
 beforeEach(() => {
@@ -120,7 +121,7 @@ describe("landing page — hero positioning flag (ENG-1204, D-07 HYBRID)", () =>
     };
   }
 
-  it("flag OFF renders the legacy recipe-first hero (kill switch)", () => {
+  it("flag OFF renders the recipe-first LEAD (kill switch)", () => {
     isFeatureEnabledMock.mockImplementation((flag: string) =>
       flag === "landing_hero_hybrid_v1" ? false : realFlagImpl.current(flag),
     );
@@ -129,20 +130,58 @@ describe("landing page — hero positioning flag (ENG-1204, D-07 HYBRID)", () =>
     expect(headline).toContain(HERO_CURRENT.headline.em);
     expect(headline).toContain(HERO_CURRENT.headline.post.trim());
     expect(lead).toBe(HERO_CURRENT.lead);
-    expect(headline).not.toContain(HERO_HYBRID.headline.pre.trim());
+    // The variant that differs is the LEAD, not the headline — see the
+    // tagline pin below.
+    expect(lead).not.toBe(HERO_HYBRID.lead);
   });
 
-  it("flag ON (default) renders the hybrid tracker/coaching headline + import wedge line", () => {
+  it("flag ON (default) keeps the tracker/coaching + import wedge LEAD", () => {
     const { headline, lead } = heroText();
-    // Headline leads with the tracker + "what to eat next" coaching promise.
     expect(headline).toContain(HERO_HYBRID.headline.pre.trim());
     expect(headline).toContain(HERO_HYBRID.headline.em);
     expect(headline).toContain(HERO_HYBRID.headline.post.trim());
-    // Lead keeps the import hook as the supporting wedge line.
+    // Lead carries the tracker + "what to eat next" coaching promise and keeps
+    // the import hook as the supporting wedge line.
     expect(lead).toBe(HERO_HYBRID.lead);
+    expect(lead.toLowerCase()).toContain("tells you what to eat next");
     expect(lead.toLowerCase()).toContain("tiktok or reel");
-    // The current recipe-first headline must NOT appear on the flag-on path.
-    expect(headline).not.toContain(HERO_CURRENT.headline.pre.trim());
+  });
+
+  /**
+   * Design-consistency pass (2026-07-24) — Grace's call: ONE tagline at both
+   * front doors. The hybrid hero used to headline "Know what to eat next. Hit
+   * your macros anyway." while the onboarding welcome greeted the same visitor
+   * with "Cook what you love. Still reach your goals." — two promises, one
+   * product. The headline is no longer part of the D-07 experiment; only the
+   * lead is. These pins are what stops a future variant re-forking it.
+   */
+  describe("landing hero — settled tagline at both front doors", () => {
+    it("both hero variants headline the shared tagline", () => {
+      for (const variant of [HERO_CURRENT, HERO_HYBRID]) {
+        expect(variant.headline).toEqual(SLOE_TAGLINE);
+      }
+    });
+
+    it("renders the tagline in the hero regardless of the positioning flag", () => {
+      for (const hybridOn of [true, false]) {
+        isFeatureEnabledMock.mockImplementation((flag: string) =>
+          flag === "landing_hero_hybrid_v1" ? hybridOn : realFlagImpl.current(flag),
+        );
+        const { headline } = heroText();
+        expect(headline, `hybrid=${hybridOn}`).toContain(SLOE_TAGLINE.pre.trim());
+        expect(headline, `hybrid=${hybridOn}`).toContain(SLOE_TAGLINE.em);
+        expect(headline, `hybrid=${hybridOn}`).toContain(SLOE_TAGLINE.post.trim());
+      }
+    });
+
+    it("matches the onboarding welcome step's tagline verbatim", () => {
+      const welcomeSource = readFileSync(
+        join(process.cwd(), "src/app/components/onboarding/steps/welcome.tsx"),
+        "utf8",
+      );
+      const tagline = `${SLOE_TAGLINE.pre}${SLOE_TAGLINE.em}${SLOE_TAGLINE.post}`;
+      expect(welcomeSource).toContain(tagline);
+    });
   });
 
   it("only reads the landing_hero_hybrid_v1 flag for the hero gate", () => {
@@ -167,6 +206,103 @@ describe("landing page — hero positioning flag (ENG-1204, D-07 HYBRID)", () =>
         expect(blob, `${claim} in hero variant`).not.toContain(claim);
       }
     }
+  });
+});
+
+/**
+ * Design-consistency pass (2026-07-24) — the landing was the loudest
+ * cross-surface break in the product:
+ *   · the "Trending this week" rail composed a recipe card TITLE-above-image
+ *     with a bookmark, while every in-app surface composes image → title →
+ *     meta;
+ *   · four competing entry points sat above the fold (two filled CTAs, an
+ *     outlined third, and "Log in" twice) plus a settings-tier theme toggle
+ *     carrying nav-level weight.
+ * These pin the fixed shape; the `design_consistency_v1` kill switch restores
+ * the old one, so each case asserts both branches where the branch differs.
+ */
+describe("landing page — cross-surface card + CTA alignment (design_consistency_v1)", () => {
+  function withConsistency(on: boolean) {
+    isFeatureEnabledMock.mockImplementation((flag: string) =>
+      flag === "design_consistency_v1" ? on : realFlagImpl.current(flag),
+    );
+    return render(<LandingPage />).container;
+  }
+
+  it("composes trending cards image → title → meta, matching the in-app grid", () => {
+    const container = withConsistency(true);
+    const card = container.querySelector(".lp-recipe-card");
+    expect(card, "a trending card").toBeTruthy();
+    const parts = Array.from(card!.children).map((el) => el.tagName.toLowerCase());
+    // Image tile, then the recipe name, then the byline — the same order as
+    // `library/RecipeCardWide` and the Discover grid.
+    expect(parts).toEqual(["div", "h3", "p"]);
+    expect(card!.querySelector(".lp-recipe-img")).toBe(card!.children[0]);
+  });
+
+  it("drops the bookmark affordance nothing on the rail can perform", () => {
+    expect(withConsistency(true).querySelector(".lp-recipe-bookmark")).toBeNull();
+    // Kill switch keeps the legacy title-above-image card + its bookmark.
+    expect(withConsistency(false).querySelector(".lp-recipe-bookmark")).toBeTruthy();
+  });
+
+  it("leaves exactly one filled CTA above the fold", () => {
+    const container = withConsistency(true);
+    const hero = container.querySelector(".lp-hero");
+    const nav = container.querySelector(".lp-nav");
+    const filledAboveFold = [
+      ...Array.from(nav?.querySelectorAll(".lp-btn-primary") ?? []),
+      ...Array.from(hero?.querySelectorAll(".lp-btn-primary") ?? []),
+    ];
+    expect(filledAboveFold).toHaveLength(1);
+    expect(filledAboveFold[0].closest(".lp-hero"), "the filled CTA is the hero's").toBeTruthy();
+  });
+
+  it("renders Browse recipes as ghost — the system has no outline variant", () => {
+    const container = withConsistency(true);
+    const browse = Array.from(container.querySelectorAll("a")).find((a) =>
+      /browse recipes/i.test(a.textContent ?? ""),
+    );
+    expect(browse?.className).toContain("lp-btn-ghost");
+    // Nothing above the fold may still be outlined. (The Pricing section's
+    // Free-column CTA further down the page is still `.lp-btn-outline` — a
+    // separate surface, tracked outside this pass.)
+    expect(container.querySelector(".lp-hero .lp-btn-outline")).toBeNull();
+    expect(container.querySelector(".lp-nav .lp-btn-outline")).toBeNull();
+  });
+
+  it("uses one sign-up label at every door, and never the App Store framing", () => {
+    const container = withConsistency(true);
+    const signupLabels = Array.from(container.querySelectorAll('a[href="/onboarding"]'))
+      .map((a) => (a.textContent ?? "").trim())
+      .filter((t) => t.length > 0 && t !== "Download");
+    expect(signupLabels.length).toBeGreaterThan(1);
+    for (const label of signupLabels) {
+      expect(label.startsWith("Get started"), `sign-up label "${label}"`).toBe(true);
+    }
+    // `/onboarding` is the web flow — "Get the app" promised a hand-off that
+    // does not happen.
+    expect(container.textContent ?? "").not.toContain("Get the app");
+  });
+
+  it("offers a single log-in entry above the fold", () => {
+    const container = withConsistency(true);
+    const aboveFold = [container.querySelector(".lp-nav"), container.querySelector(".lp-hero")];
+    const loginLinks = aboveFold.flatMap((root) =>
+      Array.from(root?.querySelectorAll('a[href="/login"]') ?? []),
+    );
+    expect(loginLinks).toHaveLength(1);
+    expect(loginLinks[0].closest(".lp-nav"), "the survivor is the nav one").toBeTruthy();
+  });
+
+  it("moves the theme toggle out of the primary nav into the footer", () => {
+    const on = withConsistency(true);
+    expect(on.querySelector(".lp-nav .lp-theme-toggle")).toBeNull();
+    expect(on.querySelector(".lp-footer .lp-theme-toggle")).toBeTruthy();
+    // Kill switch: back in the nav, absent from the footer.
+    const off = withConsistency(false);
+    expect(off.querySelector(".lp-nav .lp-theme-toggle")).toBeTruthy();
+    expect(off.querySelector(".lp-footer .lp-theme-toggle")).toBeNull();
   });
 });
 

@@ -672,7 +672,7 @@ export default function ProfileScreen() {
             recipes={editorialRecipes}
             recipeCount={recipeCount}
             onOpenRecipe={(id) => router.push(`/recipe/${id}`)}
-            onSeeAllRecipes={() => router.push("/(tabs)/library")}
+            onSeeAllRecipes={() => router.push("/(tabs)/library")} onBrowseDiscover={() => router.push("/(tabs)/discover")}
             onUpgrade={userTier === "pro" ? undefined : () => router.push("/paywall?from=profile")}
           />
         ) : profileShowcaseV1 ? (

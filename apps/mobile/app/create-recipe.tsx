@@ -26,6 +26,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Barcode,
   Camera,
+  ChevronLeft,
   CircleCheck,
   CircleX,
   ClipboardList,
@@ -33,6 +34,8 @@ import {
   Plus,
   Search,
 } from "lucide-react-native";
+import { PressableScale } from "@/components/ui/PressableScale";
+import { ScreenSectionChrome } from "@/components/suppr/screen-section-chrome";
 import { useHaptics } from "@/hooks/useHaptics";
 import { decode } from "base64-arraybuffer";
 
@@ -225,6 +228,9 @@ export default function CreateRecipeScreen() {
   // Pure token swaps (serif title, on-scale spacing, lucide icons, radius bumps,
   // eyebrow recolour) and the footer-overlap bug fix are NOT gated.
   const redesignOn = isFeatureEnabled("recipes_redesign_v1");
+  // design_consistency_v1 — shared `ScreenSectionChrome` (canonical eyebrow +
+  // page title) instead of this screen's Cancel bar, which stays as kill switch.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
   const { session } = useAuth();
   const userId = session?.user?.id;
   // 2026-05-12 (premium-bar audit #8): CreateRecipeActionSheet routes
@@ -848,6 +854,14 @@ export default function CreateRecipeScreen() {
       borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border,
     },
     backText: { color: colors.text, fontSize: 17, fontWeight: "600" },
+    // Same element, same treatment: the only other `ScreenSectionChrome`
+    // `leading` slot (settings.tsx) — and its web twin `SettingsPageChrome` —
+    // is a 40pt `backgroundSecondary` disc, so a bare chevron here would fork
+    // the back control on a consistency pass.
+    chromeBack: {
+      width: 40, height: 40, borderRadius: Radius.full, alignItems: "center",
+      justifyContent: "center", backgroundColor: colors.backgroundSecondary,
+    },
     // Gap 2 (sev 5): real Fraunces/Newsreader display title (Type.title is the
     // serif token wired to the loaded Newsreader face). Replaces the 13pt Inter
     // 800 / letterSpacing 3 eyebrow that read as a caption, not a screen H1.
@@ -967,28 +981,18 @@ export default function CreateRecipeScreen() {
     },
     modalBackdrop: { flex: 1, backgroundColor: MODAL_OVERLAY_SCRIM, justifyContent: "flex-end" },
     modalCard: {
-      backgroundColor: colors.background,
-      borderTopLeftRadius: SHEET_RADIUS,
-      borderTopRightRadius: SHEET_RADIUS,
-      paddingHorizontal: Spacing.xl,
-      paddingTop: Spacing.lg,
-      paddingBottom: Spacing.xl,
-      gap: Spacing.md,
-      maxHeight: "88%",
+      backgroundColor: colors.background, maxHeight: "88%",
+      borderTopLeftRadius: SHEET_RADIUS, borderTopRightRadius: SHEET_RADIUS,
+      paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg,
+      paddingBottom: Spacing.xl, gap: Spacing.md,
     },
     pasteInput: {
-      minHeight: 160,
-      textAlignVertical: "top" as const,
-      backgroundColor: colors.card,
-      borderRadius: Radius.xl,
-      borderWidth: 1,
-      borderColor: colors.border,
-      padding: Spacing.md,
-      color: colors.text,
-      ...Type.bodyLarge,
+      minHeight: 160, textAlignVertical: "top" as const,
+      backgroundColor: colors.card, borderRadius: Radius.xl,
+      borderWidth: 1, borderColor: colors.border,
+      padding: Spacing.md, color: colors.text, ...Type.bodyLarge,
     },
-    modalActions: { flexDirection: "row", gap: Spacing.sm, justifyContent: "flex-end" },
-    modalBtn: { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.lg, borderRadius: Radius.xl },
+    modalActions: { flexDirection: "row", gap: Spacing.sm, justifyContent: "flex-end", alignItems: "center" },
     publishRow: {
       flexDirection: "row", alignItems: "center", gap: Spacing.md,
       backgroundColor: colors.card, borderRadius: Radius.xl,
@@ -1002,19 +1006,35 @@ export default function CreateRecipeScreen() {
       style={[styles.container, { paddingTop: insets.top }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      {/* 2026-04-26 polish: pre-fix this strip carried "Cancel" (Title case)
-          AND "CREATE" (uppercase) AND a bottom "Save Recipe" button — three
-          competing affordances. Two were duplicates of the same submit
-          action. Now: Cancel left, screen title centered, no top-right
-          submit. The bottom-of-form Save Recipe button is the single
-          submit affordance, matching every other form in the app. */}
-      <View style={styles.topBar}>
-        <Pressable onPress={goBackOrCancel} hitSlop={12}>
-          <Text style={styles.backText}>Cancel</Text>
-        </Pressable>
-        <Text style={styles.topTitle}>New recipe</Text>
-        <View style={{ width: 50 }} />
-      </View>
+      {/* Chrome. This screen hand-rolled a centred Cancel/title strip that shared
+          nothing with the app; now the same `ScreenSectionChrome` as Settings. */}
+      {unifiedChrome ? (
+        <ScreenSectionChrome
+          overline="Recipes"
+          title="New recipe"
+          testID="create-recipe-chrome"
+          leading={
+            <PressableScale
+              haptic="selection"
+              onPress={goBackOrCancel}
+              hitSlop={12}
+              style={styles.chromeBack}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel and discard recipe"
+            >
+              <ChevronLeft size={22} color={colors.text} strokeWidth={2} />
+            </PressableScale>
+          }
+        />
+      ) : (
+        <View style={styles.topBar}>
+          <Pressable onPress={goBackOrCancel} hitSlop={12}>
+            <Text style={styles.backText}>Cancel</Text>
+          </Pressable>
+          <Text style={styles.topTitle}>New recipe</Text>
+          <View style={{ width: 50 }} />
+        </View>
+      )}
 
       <ScrollView
         style={{ flex: 1 }}
@@ -1195,23 +1215,19 @@ export default function CreateRecipeScreen() {
         {ingredients.length > 0 && (
           <View style={styles.totalsCard}>
             <Text style={[styles.label, { marginBottom: Spacing.sm }]}>Per serving ({srv} serving{srv !== 1 ? "s" : ""})</Text>
+            {/* Four identical readouts — one shape, one place to change it. */}
             <View style={styles.totalsRow}>
-              <View style={styles.totalItem}>
-                <Text style={redesignOn ? styles.totalValue : styles.totalValueLegacy}>{perServing.calories}</Text>
-                <Text style={styles.totalKey}>kcal</Text>
-              </View>
-              <View style={styles.totalItem}>
-                <Text style={[redesignOn ? styles.totalValue : styles.totalValueLegacy, { color: mc.protein }]}>{perServing.protein}g</Text>
-                <Text style={styles.totalKey}>protein</Text>
-              </View>
-              <View style={styles.totalItem}>
-                <Text style={[redesignOn ? styles.totalValue : styles.totalValueLegacy, { color: mc.carbs }]}>{perServing.carbs}g</Text>
-                <Text style={styles.totalKey}>carbs</Text>
-              </View>
-              <View style={styles.totalItem}>
-                <Text style={[redesignOn ? styles.totalValue : styles.totalValueLegacy, { color: mc.fat }]}>{perServing.fat}g</Text>
-                <Text style={styles.totalKey}>fat</Text>
-              </View>
+              {[
+                { key: "kcal", value: `${perServing.calories}`, tint: null },
+                { key: "protein", value: `${perServing.protein}g`, tint: mc.protein },
+                { key: "carbs", value: `${perServing.carbs}g`, tint: mc.carbs },
+                { key: "fat", value: `${perServing.fat}g`, tint: mc.fat },
+              ].map((t) => (
+                <View key={t.key} style={styles.totalItem}>
+                  <Text style={[redesignOn ? styles.totalValue : styles.totalValueLegacy, t.tint ? { color: t.tint } : null]}>{t.value}</Text>
+                  <Text style={styles.totalKey}>{t.key}</Text>
+                </View>
+              ))}
             </View>
           </View>
         )}
@@ -1298,30 +1314,13 @@ export default function CreateRecipeScreen() {
               placeholderTextColor={colors.textTertiary}
               multiline
             />
+            {/* Both were raw Pressables (beige `colors.card` fill / aubergine 1.5px
+                outline) — treatments the 2026-06-12 button system retired. Match is
+                this sheet's one filled CTA; Cancel is its ghost peer, named to match
+                the web paste dialog and the sibling recipe sheets (never "Close"). */}
             <View style={styles.modalActions}>
-              <Pressable
-                style={[styles.modalBtn, { backgroundColor: colors.card }]}
-                onPress={() => !bulkMatching && setPasteModalOpen(false)}
-                disabled={bulkMatching}
-              >
-                <Text style={{ fontWeight: "600", color: colors.text }}>Close</Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.modalBtn,
-                  // Aubergine OUTLINE (treatment §1) — primary paste-match
-                  // action, not a filled slab.
-                  { backgroundColor: "transparent", borderWidth: 1.5, borderColor: accentInk },
-                ]}
-                onPress={() => void matchPastedIngredients()}
-                disabled={bulkMatching}
-              >
-                {bulkMatching ? (
-                  <ActivityIndicator color={accentInk} />
-                ) : (
-                  <Text style={{ fontWeight: "700", color: accentInk }}>Match</Text>
-                )}
-              </Pressable>
+              <SupprButton variant="ghost" label="Cancel" disabled={bulkMatching} onPress={() => setPasteModalOpen(false)} />
+              <SupprButton variant="primary" label="Match to database" loading={bulkMatching} onPress={() => void matchPastedIngredients()} />
             </View>
           </Pressable>
         </Pressable>

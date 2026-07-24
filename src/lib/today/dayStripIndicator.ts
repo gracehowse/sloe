@@ -13,112 +13,216 @@
  *      a SOFT-TINT pill (accent primarySoft wash) behind the selected number.
  *    - 2026-06-24 (ENG-1247, v3 prototype is canonical): conform to the
  *      prototype `.day-cell.is-sel` — a FULL plum-filled cell with WHITE
- *      day-letter / date / dot. This supersedes the soft-tint pill: the
- *      prototype's filled cell is plum + white (a clean inversion), NOT the
- *      clay-on-tint solid pill rejected in 2026-06-03, and the prototype is
- *      now the source of truth (Grace 2026-06-24, Figma retired).
+ *      day-letter / date / dot.
+ *    - 2026-07-24 (Grace): the full-fill cell reverted — too heavy. Selection
+ *      fell back to ink weight alone.
+ *    - 2026-07-24 (design_consistency_v1): ink weight alone was a glance fail —
+ *      selection is the strip's entire job and nothing contained it. Restored a
+ *      QUIET containment affordance: a 1px plum RING around the cell (the same
+ *      rounded-outline idiom `ProgressWeekSection` and `PlanWeekStripV3`
+ *      already use for their marked day), never a fill. The border slot is
+ *      always occupied — `transparent` when unselected — so selecting a day
+ *      cannot shift layout.
  *
- *  Rules:
- *    - `selected`              → FULL accent-filled cell, white number, white
- *      dot only when the day is also logged (else no dot — the fill carries
- *      selection)
- *    - `today` (not selected)  → accent number, no fill, no dot
- *    - `logged` (not selected) → normal number + sage dot
- *    - plain day               → normal number + no dot
+ *  ## One meaning per channel (design_consistency_v1)
+ *  The dot used to encode BOTH "has data" and "is selected" (`onAccent` = the
+ *  selected-and-logged case), so neither read cleanly. Split:
+ *    - RING   → selection, and only selection.
+ *    - NUMBER → the day's temporal tone (selected ink / today accent / future
+ *               tint / default), and only that.
+ *    - DOT    → has data, and only that. One colour (sage). The `none` dot is
+ *               the faint hairline tone occupying the slot, not a signal.
+ *
+ *  ## The flag is a real kill switch
+ *  Everything above is `unifiedChrome` (`design_consistency_v1`) only. With the
+ *  flag OFF this module and both components reproduce the 2026-06-24 v3
+ *  treatment verbatim — plum-filled selected cell, inverted letter/number/dot,
+ *  full-ink plain days, no ring, no empty-slot dot — so killing the flag lands
+ *  on the surface that actually shipped, not a hybrid with no selection state.
+ *
+ *  ## Future days are "not yet", never "disabled"
+ *  Future days are navigable (the journal range runs 30 days ahead), so the
+ *  legacy blanket `opacity: .42` cell fade was a lie — it read as unavailable
+ *  and was indistinguishable from the genuinely out-of-range fade. Under the
+ *  flag a future day instead steps its NUMBER down to the tertiary ink tint and
+ *  keeps full cell opacity. There is deliberately no weekend-specific rule.
  */
+
+/** Which status dot sits under the number.
+ *  - `sage`     — the day has logged data.
+ *  - `none`     — no data; the caller renders the faint hairline placeholder so
+ *                 the slot keeps its height (never an omitted element).
+ *  - `onAccent` — LEGACY ONLY (`unifiedChrome: false`): the selected-and-logged
+ *                 ink dot from the pre-`design_consistency_v1` conflated
+ *                 semantics. Kept alive so the flag is a real kill switch. */
 export type DayStripDotKind = "sage" | "onAccent" | "none";
+
+/** Which ink tone the day NUMBER takes. The caller maps each to its own token
+ *  (`text` / `accent` / `tertiary` / `secondary`). */
+export type DayStripNumberTone = "selected" | "today" | "future" | "default";
 
 export type DayStripDayState = {
   isSelected: boolean;
   isToday: boolean;
   hasLogs: boolean;
+  /** Day falls after today but is still inside the journal range — navigable,
+   *  NOT disabled. Optional: callers that don't distinguish future days (or
+   *  that run with the flag off) can omit it. */
+  isFuture?: boolean;
+  /** `design_consistency_v1`. `true` → ring selection + single-meaning dot +
+   *  future tint. `false` → the legacy pre-flag treatment (no ring, conflated
+   *  `onAccent` dot, blanket future-cell opacity fade). */
+  unifiedChrome?: boolean;
 };
 
 /**
  * The resolved indicator treatment for one day tile. Platform-agnostic: the
- * caller maps `dotKind` / `isActive` / `selectedFill` to its own colour tokens
- * (mobile passes `Accent.*`; web maps to Tailwind classes).
+ * caller maps `numberTone` / `dotKind` / `selectedRing` to its own colour
+ * tokens (mobile passes `Accent.*` via `dayStripIndicatorStyle`; web maps to
+ * Tailwind classes).
  */
 export type DayStripIndicator = {
-  /** Which status dot (if any) sits under the number: `sage` = logged day,
-   *  `onAccent` = white dot on the selected plum fill, `none` = hidden. */
+  /** Which status dot (if any) sits under the number — see `DayStripDotKind`. */
   dotKind: DayStripDotKind;
-  /** Whether the number is the active (accent) treatment vs a neutral day.
-   *  Only true for today-when-not-selected — the selected cell uses the white
-   *  on-accent treatment instead, not the accent number. */
-  isActive: boolean;
-  /** Selected day fills the WHOLE cell with the solid accent (plum) and inverts
-   *  its text/dot to white (v3 prototype `.is-sel`, 2026-06-24). */
+  /** Draw the 1px plum containment ring around the whole cell. Only ever true
+   *  under `unifiedChrome`; the legacy path has no ring. */
+  selectedRing: boolean;
+  /** LEGACY ONLY (`unifiedChrome: false`): the 2026-06-24 v3 prototype
+   *  `.day-cell.is-sel` — the whole cell floods plum and the day letter /
+   *  number / dot invert to the on-accent tone. Always `false` under
+   *  `unifiedChrome` (the ring contains, it never floods). Kept live so
+   *  flipping the flag off restores exactly what shipped before it, instead of
+   *  a hybrid with NO selection affordance at all — a kill switch that lands
+   *  you somewhere the product has never been is not a kill switch. */
   selectedFill: boolean;
+  /** Ink tone for the day number — see `DayStripNumberTone`. Note `"default"`
+   *  resolves differently per path (legacy = full ink, `unifiedChrome` =
+   *  secondary); `dayStripIndicatorStyle` reads `state.unifiedChrome` to pick. */
+  numberTone: DayStripNumberTone;
+  /** LEGACY ONLY: drop the whole cell's opacity because the day is in the
+   *  future. Always `false` under `unifiedChrome` — a future day is "not yet",
+   *  carried by `numberTone: "future"`, not by a disabled-looking fade. */
+  dimFutureCell: boolean;
 };
 
-/** Resolve the indicator treatment for one day tile. Selected always wins over
- *  today and over logged. The selected cell is the FULL plum fill (white text)
- *  per the v3 prototype — callers must apply `cellBg` to the whole cell, not a
- *  number-only pill. */
+/** Resolve the indicator treatment for one day tile. Selection always wins over
+ *  today, and today over future; the dot is independent of all three under
+ *  `unifiedChrome`. */
 export function dayStripIndicator(state: DayStripDayState): DayStripIndicator {
-  const selectedFill = state.isSelected;
-  // The selected cell uses the white on-accent treatment, so the accent
-  // NUMBER treatment is reserved for today-when-not-selected.
-  const isActive = state.isToday && !state.isSelected;
-  const dotKind: DayStripDotKind = state.isSelected
-    ? state.hasLogs
-      ? "onAccent"
-      : "none"
-    : state.hasLogs
-      ? "sage"
-      : "none";
-  return { dotKind, isActive, selectedFill };
+  const unified = state.unifiedChrome ?? false;
+  const isFuture = state.isFuture ?? false;
+
+  const numberTone: DayStripNumberTone = state.isSelected
+    ? "selected"
+    : state.isToday
+      ? "today"
+      : unified && isFuture
+        ? "future"
+        : "default";
+
+  if (!unified) {
+    // Legacy (flag OFF): the dot carries BOTH "logged" and "selected", and a
+    // future day fades its whole cell.
+    return {
+      dotKind: state.isSelected
+        ? state.hasLogs
+          ? "onAccent"
+          : "none"
+        : state.hasLogs
+          ? "sage"
+          : "none",
+      selectedRing: false,
+      selectedFill: state.isSelected,
+      numberTone,
+      dimFutureCell: isFuture,
+    };
+  }
+
+  return {
+    // One meaning per channel: the dot is "has data", nothing else.
+    dotKind: state.hasLogs ? "sage" : "none",
+    selectedRing: state.isSelected,
+    selectedFill: false,
+    numberTone,
+    dimFutureCell: false,
+  };
 }
 
 /**
- * Convenience colour resolver for callers that want concrete colours (mobile).
- * Web prefers className mapping, so this is optional — kept here so the
- * colour→state mapping is also shared and testable.
+ * Concrete colour resolver for callers that style with values rather than
+ * utility classes (mobile). Web prefers className mapping, so this is optional
+ * — kept here so the tone→colour mapping is also shared and testable.
  */
 export type DayStripIndicatorColors = {
-  /** Plum accent (#3B2A4D) — the selected-cell fill + active day number. */
+  /** Plum accent (#5B3B6E) — the today-not-selected number AND the selected
+   *  containment ring. */
   accent: string;
-  /** Sage (#5E7C5A) — "logged" status dot for non-selected days. */
+  /** Sage (#5E7C5A) — the "has data" dot. */
   sage: string;
-  /** Neutral day-number colour (theme text colour) for inactive days. */
+  /** Full ink — the selected day's number. */
   text: string;
-  /** On-accent colour (white) — the day-letter / number / dot on the plum fill. */
-  onAccent: string;
+  /** Secondary ink — every past/present day that is neither selected nor
+   *  today. */
+  secondary: string;
+  /** Tertiary ink tint — a FUTURE day's number ("not yet", not "disabled"). */
+  tertiary: string;
+  /** Faint hairline tone for the no-data dot slot — never the mid-grey
+   *  tertiary, which read as a hard dot on all seven days. Callers on the
+   *  legacy path pass `"transparent"` (the pre-flag strip had no empty slot). */
+  emptyDot: string;
+  /** LEGACY ONLY: on-accent ink (white) for the filled cell's number and its
+   *  `onAccent` dot. Optional — callers that only ever run the `unifiedChrome`
+   *  path never need it, and it falls back to `text`. */
+  onAccent?: string;
 };
 
 export type DayStripIndicatorStyle = DayStripIndicator & {
-  /** Whole-cell background — accent (plum) when selected, "transparent" else. */
-  cellBg: string;
-  /** Day-number colour — onAccent (white) when selected, accent when today,
-   *  theme text otherwise. */
+  /** Day-number colour resolved from `numberTone`. */
   numberColor: string;
-  /** Resolved dot colour; "transparent" when `dotKind === "none"`. */
+  /** Resolved dot colour; the faint `emptyDot` tone when `dotKind === "none"`. */
   dotColor: string;
+  /** 1px cell ring colour — `accent` when selected, else `"transparent"`. The
+   *  border slot is always occupied so selection can't shift layout. */
+  ringColor: string;
+  /** LEGACY ONLY: whole-cell background — `accent` under `selectedFill`, else
+   *  `"transparent"`. Always `"transparent"` under `unifiedChrome`. */
+  cellBg: string;
 };
 
-/** Resolve the full styled indicator (cell fill + number colour + dot colour)
- *  for callers that style with concrete colours rather than utility classes. */
+/** Resolve the full styled indicator (ring + fill + number colour + dot colour). */
 export function dayStripIndicatorStyle(
   state: DayStripDayState,
   colors: DayStripIndicatorColors,
 ): DayStripIndicatorStyle {
   const base = dayStripIndicator(state);
+  const unified = state.unifiedChrome ?? false;
+  const onAccent = colors.onAccent ?? colors.text;
   const dotColor =
-    base.dotKind === "onAccent"
-      ? colors.onAccent
-      : base.dotKind === "sage"
-        ? colors.sage
-        : "transparent";
+    base.dotKind === "sage"
+      ? colors.sage
+      : base.dotKind === "onAccent"
+        ? onAccent
+        : colors.emptyDot;
+  // The filled legacy cell inverts its numeral; otherwise tone drives colour.
+  // `default` is the one tone that differs per path: the pre-flag strip drew
+  // every plain day in FULL ink, `unifiedChrome` steps it back to secondary so
+  // selection/today/future have somewhere to stand out from.
   const numberColor = base.selectedFill
-    ? colors.onAccent
-    : base.isActive
-      ? colors.accent
-      : colors.text;
+    ? onAccent
+    : base.numberTone === "selected"
+      ? colors.text
+      : base.numberTone === "today"
+        ? colors.accent
+        : base.numberTone === "future"
+          ? colors.tertiary
+          : unified
+            ? colors.secondary
+            : colors.text;
   return {
     ...base,
-    cellBg: base.selectedFill ? colors.accent : "transparent",
     numberColor,
     dotColor,
+    ringColor: base.selectedRing ? colors.accent : "transparent",
+    cellBg: base.selectedFill ? colors.accent : "transparent",
   };
 }

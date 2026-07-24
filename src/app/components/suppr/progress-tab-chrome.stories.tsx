@@ -11,7 +11,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "Sticky Progress mobile-web header — Your trends overline over Progress title.",
+          "The Progress header — a thin wrapper over `ScreenChrome` so Progress cannot fork its own chrome. It forwards `scope`: `\"all\"` serves desktop too, which is what lets ProgressDashboard retire the two hand-rolled desktop header twins it used to carry; `\"mobile\"` is the legacy md:hidden path and the `design_consistency_v1` kill switch.",
       },
     },
   },
@@ -31,4 +31,18 @@ export const WithSubtitle: Story = {
     overline: "Your trends",
     subtitle: "Last 30 days",
   },
+};
+
+/**
+ * `scope="all"` — the header serving desktop, static rather than sticky. This
+ * is the composition that replaces ProgressDashboard's hand-rolled desktop
+ * headers, so Progress reads as the same surface at every breakpoint.
+ */
+export const DesktopScope: Story = {
+  args: {
+    overline: "Your trends",
+    subtitle: "Last 30 days",
+    scope: "all",
+  },
+  parameters: { viewport: { defaultViewport: "responsive" } },
 };

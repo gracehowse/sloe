@@ -2,7 +2,13 @@
 
 Surfaces covered:
 
-- `app/(landing)/LandingPage.tsx` — public `/` home page.
+- `app/(landing)/LandingPage.tsx` — public `/` home page. Composes the hero,
+  the sections and the final CTA; its siblings in the same route group own the
+  rest: `LandingChrome.tsx` (nav, footer, theme toggle), `TrendingRail.tsx`
+  (the "Trending this week" recipe rail), `Pricing.tsx` (pricing cards) and
+  `landingLinks.ts` (hrefs + the single sign-up CTA label). The source-grep
+  guards scan the whole route group, not `LandingPage.tsx` alone — put new
+  landing markup anywhere in `app/(landing)/` and it stays covered.
 - `app/pricing/page.tsx` — public `/pricing` page.
 - `app/roadmap/page.tsx` — `/roadmap` page (high-level themes only).
 
@@ -59,15 +65,31 @@ nutrition engine before wiring it.
 ## Hero positioning — D-07 HYBRID (ENG-1204)
 
 **Decision D-07 (Grace, 2026-05-25): HYBRID.** The landing hero used to lead
-recipe-first ("Cook what you love. *Still* reach your goals."), which read as a
-recipe app and undersold the macro-tracker spine. MFP refugees search for a
-*tracker replacement* plus the "what to eat next" coaching gap. HYBRID means:
-**lead the hero with the tracker + coaching promise as the headline, and keep
+recipe-first, which read as a recipe app and undersold the macro-tracker spine.
+MFP refugees search for a *tracker replacement* plus the "what to eat next"
+coaching gap. HYBRID means: **lead with the tracker + coaching promise, and keep
 the Reel/TikTok-import hook as the differentiating supporting wedge line** — the
 import hook is demoted, not dropped.
 
 This is a re-ordering of *emphasis*, not a new product claim. Both variants
 assert only what the landing already promises (recipe import + macro tracking).
+
+### The headline is out of the experiment (design-consistency pass, 2026-07-24)
+
+D-07 originally swung the **headline**. It no longer does. "Cook what you love.
+*Still* reach your goals." is the ONE tagline at every front door — the
+onboarding welcome step (web + mobile), `/login`, `/pricing`'s hero, the landing
+final CTA and the landing hero — so the hybrid variant headlining "Know what to
+eat next. Hit your macros anyway." meant the same visitor met two different
+promises one click apart.
+
+Both `HERO_CURRENT` and `HERO_HYBRID` now headline the shared `SLOE_TAGLINE`
+record; `landing_hero_hybrid_v1` switches the **lead** only, which is where the
+tracker-first framing lives. The positioning test is intact — the emphasis
+re-order still happens, one layer down. `tests/unit/landingParity.test.tsx`
+(block: *"landing hero — settled tagline at both front doors"*) pins both
+variants to `SLOE_TAGLINE` and greps `onboarding/steps/welcome.tsx` for the
+verbatim line, so a future variant cannot re-fork it.
 
 ### Where the copy lives
 
@@ -93,9 +115,11 @@ copy signed off by Grace 2026-06-29.
 `tests/unit/landingParity.test.tsx` (block: *"hero positioning flag (ENG-1204,
 D-07 HYBRID)"*) mocks `isFeatureEnabled` and asserts:
 
-- flag OFF renders `HERO_CURRENT` (and not the hybrid headline);
-- flag ON renders `HERO_HYBRID` headline + the import wedge line (and not the
-  current headline);
+- flag OFF renders the `HERO_CURRENT` **lead** (and not the hybrid lead);
+- flag ON renders the `HERO_HYBRID` lead — tracker/coaching promise + the import
+  wedge line;
+- both variants headline the shared `SLOE_TAGLINE` (see the section above — the
+  headline is deliberately no longer variant-driven);
 - the gate reads exactly `landing_hero_hybrid_v1`;
 - neither variant introduces a forbidden new claim (guarding the emphasis-only
   intent of D-07).

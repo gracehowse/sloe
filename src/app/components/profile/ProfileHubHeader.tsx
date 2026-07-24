@@ -2,6 +2,9 @@
 
 import { memo } from "react";
 
+import { AvatarDisc } from "../ui/avatar-disc";
+import { isFeatureEnabled } from "../../../lib/analytics/track.ts";
+
 export interface ProfileHubHeaderProps {
   avatarInitial: string;
   displayName?: string | null;
@@ -29,6 +32,13 @@ function ProfileHubHeaderImpl({
   recipeCount,
   streakDays,
 }: ProfileHubHeaderProps) {
+  // Design-consistency pass (default-ON; the `else` of each branch is the kill
+  // switch). Two fixes here mirror the editorial block: ONE identity-avatar
+  // treatment (the damson `AvatarDisc` — the same fill the Today header chip
+  // uses — instead of two hand-rolled `bg-primary` discs), and the tier stated
+  // once, in an accent badge rather than the palette's most inert grey.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
+
   return (
     <>
       {/* Phone-top header — ACCOUNT overline + large "More" title + round
@@ -42,36 +52,56 @@ function ProfileHubHeaderImpl({
             More
           </h1>
         </div>
-        <button
-          type="button"
-          aria-label="Your profile"
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-[13px] font-bold text-primary-foreground"
-        >
-          {avatarInitial}
+        <button type="button" aria-label="Your profile" className="shrink-0">
+          {unifiedChrome ? (
+            <AvatarDisc initial={avatarInitial} size={36} />
+          ) : (
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-[13px] font-bold text-primary-foreground">
+              {avatarInitial}
+            </span>
+          )}
         </button>
       </div>
 
       {/* Profile card — 52×52 avatar + display-name + tier·joined subline +
           tier pill. */}
       <div className="mb-4 flex items-center gap-3.5 rounded-xl bg-card p-3.5 card-slab">
-        <div className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
-          {avatarInitial}
-        </div>
+        {unifiedChrome ? (
+          <AvatarDisc initial={avatarInitial} size={52} />
+        ) : (
+          <div className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
+            {avatarInitial}
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <p className="truncate font-[family-name:var(--font-headline)] text-lg font-medium leading-tight text-foreground">
             {displayName?.trim() ? displayName : "Your profile"}
           </p>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">
-            {tierLabel} tier &middot; {joinedLabel}
+            {unifiedChrome && isPro ? joinedLabel : `${tierLabel} tier · ${joinedLabel}`}
           </p>
         </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold tracking-wide ${
-            isPro ? "bg-primary/15 text-primary-solid" : "bg-muted text-muted-foreground"
-          }`}
-        >
-          {tierLabel}
-        </span>
+        {unifiedChrome ? (
+          // Damson is THE achievement/Pro slot. The fill is the scheme-CONSTANT
+          // `--avatar-identity` (the same damson the disc beside it uses), not
+          // the theme-resolved `--accent-win` — that lightens to #9A7BAA in dark
+          // and fails AA under white (3.63:1). Free renders no badge at all (the
+          // subline carries it) so it never reads as a penalty marker — same
+          // rule as the editorial block + mobile.
+          isPro ? (
+            <span className="shrink-0 rounded-full bg-[color:var(--avatar-identity)] px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] text-white">
+              {tierLabel}
+            </span>
+          ) : null
+        ) : (
+          <span
+            className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold tracking-wide ${
+              isPro ? "bg-primary/15 text-primary-solid" : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {tierLabel}
+          </span>
+        )}
       </div>
 
       {/* Recipes + Streak stat tiles. */}

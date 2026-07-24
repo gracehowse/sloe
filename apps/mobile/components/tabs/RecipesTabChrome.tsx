@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { usePathname, useRouter } from "expo-router";
 import { Link, Pencil } from "lucide-react-native";
 
+import { IconButton } from "@/components/ui/IconButton";
 import { PressableScale } from "@/components/ui/PressableScale";
 import { ScreenSectionChrome } from "@/components/suppr/screen-section-chrome";
 import { SegmentedTrack } from "@/components/ui/SegmentedTrack";
@@ -22,12 +23,25 @@ export type RecipesTab = "library" | "discover";
  * the 2026-06-08 generic "Recipes" no-overline treatment (Figma retired —
  * the prototype is canonical). Web parity:
  * `src/app/components/suppr/recipes-tab-chrome.tsx`.
+ *
+ * Design-consistency pass (2026-07-24), behind `design_consistency_v1`: the
+ * create/import actions route through the shared `IconButton` 40px muted chip
+ * (ENG-1662 anatomy owner) instead of restating the circle geometry inline.
+ * Recipes and Plan run the same class of header action — create/adjust
+ * utilities beside a serif page title — and were rendering them two different
+ * ways (bare outline glyph here, chip on Plan). `PlanHeaderV3` migrated to the
+ * same primitive in this pass, so the props here match it exactly: `size="lg"`,
+ * `variant="muted"`, `IconSize.base` glyph at 1.9 stroke. Same element, same
+ * treatment.
  */
 export function RecipesTabChrome() {
   const router = useRouter();
   const pathname = usePathname();
   const colors = useThemeColors();
   const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
+  // Legacy (kill-switch) chassis — the hand-rolled 40pt circle and its
+  // pre-consistency bare-glyph fork. Retired visually by `unifiedChrome`.
   const actionStyle = consistencyChrome
     ? { width: 40, height: 40, borderRadius: Radius.full, backgroundColor: colors.backgroundSecondary, alignItems: "center" as const, justifyContent: "center" as const }
     : { padding: 6 };
@@ -41,29 +55,56 @@ export function RecipesTabChrome() {
       title="Your kitchen"
       trailing={
         <View style={{ flexDirection: "row", gap: Spacing.xs }}>
-          <PressableScale
-            haptic="selection"
-            onPress={() => router.push("/create-recipe")}
-            accessibilityRole="button"
-            accessibilityLabel="Create recipe"
-            hitSlop={8}
-            style={actionStyle}
-          >
-            {/* Neutral ink (not plum) — these quiet utilities defer to the serif
-                title; matches web `text-foreground-secondary` + the prototype
-                `.icon-btn` neutral `var(--fg)`. (ENG-1247 S2) */}
-            <Pencil size={IconSize.lg} color={colors.textSecondary} strokeWidth={1.75} />
-          </PressableScale>
-          <PressableScale
-            haptic="selection"
-            onPress={() => router.push("/import-shared")}
-            accessibilityRole="button"
-            accessibilityLabel="Import recipe"
-            hitSlop={8}
-            style={actionStyle}
-          >
-            <Link size={IconSize.lg} color={colors.textSecondary} strokeWidth={1.75} />
-          </PressableScale>
+          {unifiedChrome ? (
+            <>
+              <IconButton
+                icon={Pencil}
+                size="lg"
+                variant="muted"
+                iconSize={IconSize.base}
+                iconStrokeWidth={1.9}
+                onPress={() => router.push("/create-recipe")}
+                accessibilityLabel="Create recipe"
+                testID="recipes-chrome-create"
+              />
+              <IconButton
+                icon={Link}
+                size="lg"
+                variant="muted"
+                iconSize={IconSize.base}
+                iconStrokeWidth={1.9}
+                onPress={() => router.push("/import-shared")}
+                accessibilityLabel="Import recipe"
+                testID="recipes-chrome-import"
+              />
+            </>
+          ) : (
+            <>
+              <PressableScale
+                haptic="selection"
+                onPress={() => router.push("/create-recipe")}
+                accessibilityRole="button"
+                accessibilityLabel="Create recipe"
+                hitSlop={8}
+                style={actionStyle}
+              >
+                {/* Neutral ink (not plum) — these quiet utilities defer to the serif
+                    title; matches web `text-foreground-secondary` + the prototype
+                    `.icon-btn` neutral `var(--fg)`. (ENG-1247 S2) */}
+                <Pencil size={IconSize.lg} color={colors.textSecondary} strokeWidth={1.75} />
+              </PressableScale>
+              <PressableScale
+                haptic="selection"
+                onPress={() => router.push("/import-shared")}
+                accessibilityRole="button"
+                accessibilityLabel="Import recipe"
+                hitSlop={8}
+                style={actionStyle}
+              >
+                <Link size={IconSize.lg} color={colors.textSecondary} strokeWidth={1.75} />
+              </PressableScale>
+            </>
+          )}
         </View>
       }
     >

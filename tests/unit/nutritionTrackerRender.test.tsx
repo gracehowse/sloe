@@ -182,18 +182,20 @@ describe("NutritionTracker render harness", { timeout: 20_000 }, () => {
     expect(screen.getByTestId("today-hero-desktop")).toBeInTheDocument();
   });
 
-  it("renders the v3 serif date hero (weekday name + short date), not a greeting", () => {
-    // ENG-1247 (2026-06-24): the Today hero is the serif DATE — a weekday name
-    // + a short-date subline — not a time-of-day "Afternoon, Grace" greeting.
+  it("renders the serif date hero (weekday name + short date on ONE line), not a greeting", () => {
+    // ENG-1247 (2026-06-24): the Today hero is the serif DATE, not a
+    // time-of-day "Afternoon, Grace" greeting. 2026-07-24 (Grace): on TODAY the
+    // weekday name and the short date merge onto ONE serif line (en-space
+    // joined), so the separate subline no longer renders for today.
     render(<NutritionTracker userTier="free" />);
     const hero = screen.getByTestId("today-hero-greeting");
     // every English weekday name ends in "day" (Wednesday/Tuesday/...)
-    expect(hero.textContent ?? "").toMatch(/day$/i);
+    expect(hero.textContent ?? "").toMatch(/day\b/i);
     expect(hero).not.toHaveTextContent("Afternoon");
-    // the short-date subline carries the day-of-month (27 May 2026 fixture)
-    expect(
-      screen.getByTestId("today-hero-greeting-subline").textContent ?? "",
-    ).toMatch(/May/);
+    // the merged line carries the day-of-month too (27 May 2026 fixture)
+    expect(hero.textContent ?? "").toMatch(/May/);
+    // …and the standalone subline is gone on today (it survives on past days).
+    expect(screen.queryByTestId("today-hero-greeting-subline")).toBeNull();
   });
 
   it("the date hero is name-independent (no greeting, so metadata name never shows)", () => {

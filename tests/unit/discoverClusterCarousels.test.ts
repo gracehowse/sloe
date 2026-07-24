@@ -5,8 +5,9 @@
  *
  * Web `DiscoverFeed.tsx` reads from the shared `seedRecipesV2` source,
  * groups entries by cluster, and renders a header above each horizontal
- * scroller. Mobile `(tabs)/discover.tsx` uses a single stacked-hero
- * layout for all filters (2026-05-03) — cluster carousels are web-only.
+ * scroller. Mobile has the same shelves in
+ * `components/discover/DiscoverClusterCarousels.tsx` (ENG-695) — the
+ * "web-only" note that used to sit here was stale.
  *
  * Structural test (reads source) — runs cheaply in the shared web
  * vitest run and applies to both platforms from one spec. Same
@@ -17,6 +18,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { SEED_CLUSTERS } from "../../src/lib/recipes/seedRecipesV2";
+import { MEDIA_SCRIM_COLOR, MEDIA_SCRIM_STOPS } from "../../src/lib/theme/mediaScrim";
 
 const ROOT = resolve(__dirname, "../..");
 const WEB_DISCOVER_PATH = resolve(ROOT, "src/app/components/DiscoverFeed.tsx");
@@ -90,6 +92,73 @@ describe("Discover cluster carousels (Sloe Kitchen v1)", () => {
     it("renders DiscoverClusterCarousels on the default unfiltered view", () => {
       expect(MOBILE_SRC).toMatch(/DiscoverClusterCarousels/);
       expect(MOBILE_SRC).toMatch(/showClusterCarousels/);
+    });
+  });
+
+  describe("on-photo title scrim is feathered, never a flat band", () => {
+    // The shipped bug: mobile painted an absolutely-positioned
+    // `height: "55%"` flat black rect over the bottom of the card. Its top
+    // edge landed at exactly 45% down the card — bright photo above, the
+    // SAME photo crushed by 55% black below — which read as one card
+    // printing its picture twice at two different crops. Web was already
+    // correct (full-bleed gradient); mobile was the divergent side.
+    it("the shared media-scrim token fades to fully transparent", () => {
+      expect(MEDIA_SCRIM_COLOR).toBe("#000000");
+      expect(MEDIA_SCRIM_STOPS.length).toBeGreaterThanOrEqual(3);
+      expect(MEDIA_SCRIM_STOPS[0].opacity).toBeGreaterThan(0);
+      expect(MEDIA_SCRIM_STOPS[MEDIA_SCRIM_STOPS.length - 1].opacity).toBe(0);
+    });
+
+    it("mobile renders the scrim as an svg gradient off the shared token", () => {
+      expect(MOBILE_CLUSTER_SRC).toMatch(/from "react-native-svg"/);
+      expect(MOBILE_CLUSTER_SRC).toMatch(/MEDIA_SCRIM_STOPS/);
+      expect(MOBILE_CLUSTER_SRC).toMatch(/stopColor=\{MEDIA_SCRIM_COLOR\}/);
+      // Full-bleed, not a bottom-anchored band.
+      expect(MOBILE_CLUSTER_SRC).toMatch(/StyleSheet\.absoluteFill/);
+    });
+
+    it("mobile keeps the flat 55% band only as the flag-off kill switch", () => {
+      // Real kill switch: flag OFF must reproduce the previously shipped
+      // surface exactly, so the old rect stays — but only in the else branch.
+      expect(MOBILE_CLUSTER_SRC).toMatch(/isFeatureEnabled\("design_consistency_v1"\)/);
+      const flatBands = MOBILE_CLUSTER_SRC.match(/height:\s*"55%"/g) ?? [];
+      expect(flatBands).toHaveLength(1);
+    });
+
+    it("web already ships the feathered gradient (parity reference)", () => {
+      expect(WEB_SRC).toMatch(/from-black\/70 via-black\/20 to-transparent/);
+    });
+  });
+
+  describe("one card size per shelf, and the shelf snaps", () => {
+    // Two shipped defects on the same rail: a 280pt/3:4 first card beside
+    // 200pt/4:5 siblings (a 123pt height step inside one row), and a free
+    // scroll with no snap, which parked the trailing card sliced mid-word.
+    // The size collapse is what makes a single snap interval legal.
+    it("mobile declares one card geometry as module constants", () => {
+      expect(MOBILE_CLUSTER_SRC).toMatch(/const CARD_WIDTH = \d+;/);
+      expect(MOBILE_CLUSTER_SRC).toMatch(/const CARD_ASPECT = /);
+      expect(MOBILE_CLUSTER_SRC).toMatch(/const CARD_GAP = /);
+    });
+
+    it("mobile snaps the shelf on that one interval and bleeds to the gutter", () => {
+      expect(MOBILE_CLUSTER_SRC).toMatch(/snapToInterval=\{consistent \? CARD_WIDTH \+ CARD_GAP/);
+      expect(MOBILE_CLUSTER_SRC).toMatch(/snapToAlignment=\{consistent \? "start"/);
+      expect(MOBILE_CLUSTER_SRC).toMatch(/decelerationRate=\{consistent \? "fast"/);
+      // Edge-bleed + re-pad, so cards scroll to the screen edge but rest on
+      // the page gutter (same treatment as the sibling EditorialShelf).
+      expect(MOBILE_CLUSTER_SRC).toMatch(/marginHorizontal: -Spacing\.lg/);
+      expect(MOBILE_CLUSTER_SRC).toMatch(/paddingHorizontal: Spacing\.lg/);
+    });
+
+    it("web collapses its hero size split behind the same flag", () => {
+      expect(WEB_SRC).toMatch(/const uniformClusterCards = isFeatureEnabled\("design_consistency_v1"\)/);
+      expect(WEB_SRC).toMatch(/const isHero = idx === 0 && !uniformClusterCards;/);
+    });
+
+    it("web keeps its snap-mandatory rail", () => {
+      expect(WEB_SRC).toMatch(/snap-x snap-mandatory/);
+      expect(WEB_SRC).toMatch(/snap-start/);
     });
   });
 

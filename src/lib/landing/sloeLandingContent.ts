@@ -115,15 +115,26 @@ export const LANDING_PRO_FEATURES = [
  *
  *   - `HERO_CURRENT` — the recipe-first hero (kill-switch / flag-off path).
  *   - `HERO_HYBRID` — resolves DECISION D-07 (Grace 2026-05-25: HYBRID).
- *     Leads with the macro-tracker + "what to eat next" coaching promise
- *     (the canon spine) as the headline, and keeps the Reel/TikTok import
- *     hook as the differentiating supporting wedge line. A re-ordering of
- *     emphasis, NOT a new product claim — both variants assert only what
- *     the landing already promises.
+ *     Keeps the macro-tracker + "what to eat next" coaching promise as the
+ *     LEAD, and keeps the Reel/TikTok import hook as the differentiating
+ *     supporting wedge line. A re-ordering of emphasis, NOT a new product
+ *     claim — both variants assert only what the landing already promises.
  *
  * NOTE: D-07 HYBRID copy signed off 2026-06-29 (Grace) — `landing_hero_hybrid_v1`
  * is default-ON on web; off → `HERO_CURRENT` kill switch.
+ *
+ * TAGLINE (Grace, design-consistency pass 2026-07-24): the HEADLINE is no
+ * longer part of the D-07 experiment. "Cook what you love. Still reach your
+ * goals." is the ONE line at every front door — the onboarding welcome step
+ * (`onboarding/steps/welcome.tsx`), `/login`, `/pricing`'s hero, the landing
+ * final CTA and now the landing hero. The hybrid variant previously headlined
+ * "Know what to eat next. Hit your macros anyway.", so the two front doors
+ * greeted the same visitor with two different promises. `landing_hero_hybrid_v1`
+ * still switches the LEAD (tracker-first vs recipe-first framing) — that is the
+ * live positioning test; the tagline is settled and shared by both variants via
+ * {@link SLOE_TAGLINE}.
  */
+
 export type HeroHeadline = {
   /** Leading H1 fragment, rendered before the emphasised `<em>`. */
   pre: string;
@@ -139,28 +150,34 @@ export type HeroCopy = {
   lead: string;
 };
 
+/**
+ * The product tagline, as an `<em>`-splittable headline. Shared by BOTH hero
+ * variants and by the landing final CTA. The other front doors (onboarding
+ * welcome, `/login`, `/pricing`) render the same words as static page copy in
+ * their own markup rather than importing this — they are not variant-driven.
+ */
+export const SLOE_TAGLINE: HeroHeadline = {
+  pre: "Cook what you love. ",
+  em: "Still",
+  post: " reach your goals.",
+} as const;
+
 /** Shipped recipe-first hero — the flag-OFF (current) path. Wording is
  *  the verbatim pre-ENG-1204 hero, just lifted out of JSX into the SSOT. */
 export const HERO_CURRENT: HeroCopy = {
   eyebrow: "For people who love food — and have goals",
-  headline: {
-    pre: "Cook what you love. ",
-    em: "Still",
-    post: " reach your goals.",
-  },
+  headline: SLOE_TAGLINE,
   lead:
     "Save any recipe from Instagram, TikTok or the web. Sloe works out the nutrition and helps it fit your day — no foods off-limits.",
 } as const;
 
-/** Hybrid hero (D-07) — the flag-ON path. Tracker + coaching headline,
- *  import hook demoted to the supporting wedge line. */
+/** Hybrid hero (D-07) — the flag-ON path. Same settled tagline headline as the
+ *  kill-switch path (see the TAGLINE note above); the tracker-first coaching
+ *  promise now lands in the LEAD, with the Reel/TikTok import hook alongside
+ *  it as the differentiating wedge. */
 export const HERO_HYBRID: HeroCopy = {
   eyebrow: "For people who love food — and have goals",
-  headline: {
-    pre: "Know what to eat next. ",
-    em: "Hit",
-    post: " your macros anyway.",
-  },
+  headline: SLOE_TAGLINE,
   lead:
     "The calorie & macro tracker that tells you what to eat next — and fits the food you love into your day. Paste a TikTok or Reel and get real macros in seconds.",
 } as const;

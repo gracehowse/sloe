@@ -13,6 +13,7 @@ import {
 import { parseDateKey } from "../../lib/nutrition/trackerDate.ts";
 import { dayStripIndicator } from "../../lib/today/dayStripIndicator.ts";
 import { weekdayInitials } from "../../lib/today/weekdayLabels.ts";
+import { isFeatureEnabled } from "../../lib/analytics/track.ts";
 
 /**
  * ENG-1291 — the TRUE horizontal stride of one week panel in the pager.
@@ -77,6 +78,16 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
   const weekStarts = useMemo(() => enumerateWeekStartsInJournalRange(weekStartDay), [weekStartDay]);
   const selectedDk = selectedDateKey;
   const todayDk = dateKeyFromDate(new Date());
+  // design_consistency_v1 — ring selection + single-meaning dot + future tint.
+  // Flag OFF restores the 2026-06-24 v3 filled-cell treatment VERBATIM, so the
+  // flag is a true kill switch rather than a hybrid with no selection
+  // affordance. Every visual delta below is gated. Mirror of mobile `DayStrip`.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
+  // Twin of mobile's `Type.statLabel` day letter — and byte-identical to the
+  // sibling week strip (`plan/PlanWeekStripV3`), which is the point of the pass.
+  const letterBase = unifiedChrome
+    ? "text-[11px] font-semibold uppercase tracking-[0.04em] leading-none"
+    : "text-[10px] font-semibold uppercase tracking-wide leading-none";
 
   // Sloe redesign (2026-06-08) — single-letter weekday labels to match the
   // canonical Figma `654:2` Today frame (`S M T W T F S`), replacing the
@@ -226,23 +237,54 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
                   const hasLogs = loggedDays.has(dk);
                   const isProtected = protectedDateKeys?.has(dk) ?? false;
                   const outOfRange = date.getTime() < min.getTime() || date.getTime() > max.getTime();
-                  // v3 prototype `.day-cell` treatment (ENG-1247, 2026-06-24):
-                  // the SELECTED day fills the whole cell with plum + white
-                  // letter/date/dot (the prototype `.is-sel` — supersedes the
-                  // 2026-06-10 soft-tint pill); today-not-selected = accent
-                  // number; logged = sage dot. Shared with mobile via
-                  // `dayStripIndicator` so the two surfaces can't drift.
-                  const { dotKind, isActive, selectedFill } = dayStripIndicator({
-                    isSelected,
-                    isToday,
-                    hasLogs,
-                  });
-                  const dotClass =
-                    dotKind === "onAccent"
+                  const isFuture = dk > todayDk;
+                  // Every visual channel resolves in the shared
+                  // `dayStripIndicator` so this component and mobile `DayStrip`
+                  // cannot drift. Under design_consistency_v1: RING = selection,
+                  // NUMBER tone = temporal state, DOT = has-data.
+                  const { dotKind, numberTone, selectedRing, selectedFill, dimFutureCell } =
+                    dayStripIndicator({
+                      isSelected,
+                      isToday,
+                      hasLogs,
+                      isFuture,
+                      unifiedChrome,
+                    });
+                  // Under the flag: empty dot = the FAINT border hairline tone,
+                  // never `foreground-tertiary` (a mid-grey that read as a hard
+                  // dot on all seven days). Legacy had no empty slot at all, and
+                  // inverted the logged dot to white on the plum fill.
+                  const dotClass = unifiedChrome
+                    ? dotKind === "sage"
+                      ? "bg-success"
+                      : "bg-border"
+                    : dotKind === "onAccent"
                       ? "bg-primary-foreground"
                       : dotKind === "sage"
                         ? "bg-success"
                         : "bg-transparent";
+                  // Twin of mobile's `Type.navTitle` numeral. Legacy carried
+                  // selection/today in WEIGHT + the fill, not a ring.
+                  const numberClass = unifiedChrome
+                    ? `text-[18px] font-medium ${
+                        numberTone === "selected"
+                          ? "text-foreground"
+                          : numberTone === "today"
+                            ? "text-primary"
+                            : numberTone === "future"
+                              ? // "Not yet", not "unavailable" — a future day
+                                // steps to the tertiary ink tint instead of
+                                // fading the whole cell.
+                                "text-foreground-tertiary"
+                              : "text-foreground-secondary"
+                      }`
+                    : `text-sm ${
+                        selectedFill
+                          ? "font-bold text-primary-foreground"
+                          : numberTone === "today"
+                            ? "font-semibold text-primary"
+                            : "font-normal text-foreground"
+                      }`;
                   return (
                     <button
                       key={dk}
@@ -250,28 +292,45 @@ export function DayStrip({ selectedDateKey, weekStartDay, loggedDays, protectedD
                       disabled={outOfRange}
                       onClick={() => onSelectDateKey(dateKeyFromDate(clampJournalDate(date)))}
                       aria-label={isProtected ? `Freeze used on ${dk}` : undefined}
+                      aria-current={isSelected ? "date" : undefined}
                       data-testid={`daystrip-dot-minimal-${dotKind}`}
-                      className={`flex-1 min-w-0 flex flex-col items-center gap-1.5 py-2 rounded-xl ${selectedFill ? "bg-primary" : ""} ${outOfRange ? "opacity-35" : ""}`}
+                      className={`flex-1 min-w-0 flex flex-col items-center gap-1.5 py-2 rounded-xl ${
+                        unifiedChrome
+                          ? "transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:hover:bg-transparent"
+                          : selectedFill
+                            ? "bg-primary"
+                            : ""
+                      } ${outOfRange ? "opacity-35" : dimFutureCell ? "opacity-[0.42]" : ""}`}
                     >
                       <span
-                        className={`text-[10px] font-semibold uppercase tracking-wide leading-none ${selectedFill ? "text-primary-foreground/70" : "text-foreground-tertiary"}`}
+                        className={`${letterBase} ${
+                          selectedFill ? "text-primary-foreground/70" : "text-foreground-tertiary"
+                        }`}
                       >
                         {label}
                       </span>
                       {/* min-w-6 (not 7): flex items default to min-width:auto, so the
                           28px circle set each cell's floor — 7 cells × 28 + chrome = 212px
                           overflowing the ~190px pager at 390vw and clipping Sunday.
-                          24px floor + min-w-0 cells lets the week genuinely fit. */}
-                      <div className="relative flex items-center justify-center min-w-6 h-7">
+                          24px floor + min-w-0 cells lets the week genuinely fit.
+                          Selection is a soft plum DISC behind the numeral, not a
+                          hairline rounded rectangle: a 1px grey rounded-rect around
+                          a number reads as a focused text input or a spreadsheet
+                          cell — an affordance, not a state — and carried no brand
+                          colour. The disc is circular, matching this app's
+                          signature geometry (hero ring, avatar chip, FAB, macro
+                          dots), and filled rather than stroked so selecting can
+                          never shift layout. Mirror of mobile `charts/DayStrip`. */}
+                      <div
+                        data-testid={selectedRing ? "daystrip-selected-ring" : undefined}
+                        className={`relative flex items-center justify-center min-w-6 h-7 ${
+                          unifiedChrome
+                            ? `rounded-full ${selectedRing ? "bg-primary-soft-strong" : ""}`
+                            : ""
+                        }`}
+                      >
                         <span
-                          className={[
-                            "font-[family-name:var(--font-headline)] text-sm tabular-nums leading-none",
-                            selectedFill
-                              ? "font-bold text-primary-foreground"
-                              : isActive
-                                ? "font-semibold text-primary"
-                                : "font-normal text-foreground",
-                          ].join(" ")}
+                          className={`font-[family-name:var(--font-headline)] tabular-nums leading-none ${numberClass}`}
                         >
                           {date.getDate()}
                         </span>

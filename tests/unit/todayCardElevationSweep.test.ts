@@ -143,11 +143,14 @@ describe("Today card fill — Sloe v3 white-ground elevation model", () => {
     // ENG-1497 (Grace 2026-07-10, Oura/NC references — decision:
     // docs/decisions/2026-07-10-card-grammar-rounder-flat.md) supersedes the
     // 2026-06-25 lift reversal: page-ground cards are FLAT + hairline; the
-    // border + card-vs-ground fill contrast carry the separation. The
-    // whisper-cool ground (#F7F6FA, ENG-1316) stays — it IS the bound
-    // separation mechanism, so this pin keeps guarding it.
+    // border + card-vs-ground fill contrast carry the separation. The ground
+    // IS that bound separation mechanism, so this pin keeps guarding it —
+    // only the value moves. 2026-07-24 (Grace): warm oat #FBFAF6, superseding
+    // the ENG-1316 whisper-cool plum-white #F7F6FA (and the brief 2026-07-23
+    // pure-white canvas). Still a tinted ground, so the flat+hairline card
+    // grammar it underwrites is unchanged.
     const theme = read("src/styles/theme.css");
-    expect(theme).toMatch(/:root[\s\S]*?--background:\s*#F7F6FA/i);
+    expect(theme).toMatch(/:root[\s\S]*?--background:\s*#FBFAF6/i);
     expect(theme).toMatch(/:root[\s\S]*?--card:\s*#FFFFFF/i);
     expect(theme).toMatch(/--background-grouped:\s*#F5F4F7/i);
     expect(theme).toMatch(/--background-marketing:\s*#FBF8F3/i);

@@ -71,12 +71,12 @@ export function ImportDetectedChip({ input }: { input: string }) {
             Detected: {result.label}
           </Text>
           {subline ? (
-            <Text style={{ ...Type.caption, color: colors.textSecondary, marginTop: 2 }}>
+            <Text style={{ ...Type.caption, color: colors.textSecondary }}>
               {subline}
             </Text>
           ) : null}
         </View>
-        <Check size={17} color={colors.success} />
+        <Check size={17} color={accent.success} />
       </View>
     );
   }

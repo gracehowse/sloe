@@ -70,6 +70,7 @@ import { getSupprApiBase } from "@/lib/supprWeb";
 import { track, isFeatureEnabled } from "@/lib/analytics";
 import { AnalyticsEvents } from "@suppr/shared/analytics/events";
 import { RecipeHeroFallback } from "@/components/RecipeHeroFallback";
+import { ScreenSectionChrome } from "@/components/suppr/screen-section-chrome";
 import { AddRowButton } from "@/components/ui/AddRowButton";
 import { CARD_CREAM } from "@suppr/shared/recipe/recipeHeroFallback";
 import { SupprButton } from "@/components/ui/SupprButton";
@@ -138,6 +139,8 @@ export default function CreateRecipeWizard() {
   // the memoised StyleSheet via the dep array below. Macros keep `MacroColors`;
   // destructive states keep `Accent.destructive`.
   const accent = useAccent();
+  // design_consistency_v1 — shared `ScreenSectionChrome`; flag OFF = the old top bar.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
   const cardElevation = useCardElevation();
   const { session } = useAuth();
   const userId = session?.user?.id;
@@ -695,6 +698,8 @@ export default function CreateRecipeWizard() {
           gap: Spacing.md,
         },
         backHit: { padding: Spacing.sm, marginLeft: -Spacing.sm },
+        // Matches the Settings chrome `leading` disc (and its web twin `SettingsPageChrome`).
+        chromeBack: { width: 40, height: 40, borderRadius: Radius.full, alignItems: "center", justifyContent: "center", backgroundColor: colors.backgroundSecondary },
         topMeta: { flex: 1, alignItems: "center" },
         topTitle: {
           // Gap 10: use Type.label tracking (0.88, ≈ 0.08em) instead of 2 (≈ 0.18em).
@@ -970,49 +975,65 @@ export default function CreateRecipeWizard() {
   // ---- Render ----------------------------------------------------------
   const stepIdx = stepIndex(step);
   const counter = stepCounterAnnouncement(step);
+  // One back control and one progress track, shared by both chrome paths.
+  const backControl = (
+    <PressableScale
+      haptic="selection"
+      onPress={goBack}
+      hitSlop={12}
+      style={unifiedChrome ? styles.chromeBack : styles.backHit}
+      accessibilityRole="button"
+      accessibilityLabel={stepIdx === 0 ? "Cancel and discard recipe" : "Back to previous step"}
+    >
+      <ChevronLeft size={unifiedChrome ? 22 : 24} color={colors.text} strokeWidth={2} />
+    </PressableScale>
+  );
+  const progressDots = (
+    <View style={styles.progressRow}>
+      {CREATE_RECIPE_STEP_IDS.map((id, i) => (
+        <View key={id} style={[styles.progressDot, i <= stepIdx && styles.progressDotActive]} />
+      ))}
+    </View>
+  );
 
   return (
     <KeyboardAvoidingView
       style={[styles.container, { paddingTop: insets.top }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={styles.topBar}>
-        <PressableScale
-          haptic="selection"
-          onPress={goBack}
-          hitSlop={12}
-          style={styles.backHit}
-          accessibilityLabel={
-            stepIdx === 0 ? "Cancel and discard recipe" : "Back to previous step"
-          }
+      {/* Chrome → `ScreenSectionChrome` (was chevron + centred "NEW RECIPE" + counter).
+          Subtitle keeps the plain "Step N of M": `counter` is a VoiceOver string
+          ("Step 5 of 5: Save") that would stutter against the step heading below. */}
+      {unifiedChrome ? (
+        <ScreenSectionChrome
+          overline="Recipes"
+          title="New recipe"
+          subtitle={`Step ${stepIdx + 1} of ${CREATE_RECIPE_TOTAL_STEPS}`}
+          leading={backControl}
+          testID="create-recipe-wizard-chrome"
         >
-          <ChevronLeft size={24} color={colors.text} />
-        </PressableScale>
-        <View
-          style={styles.topMeta}
-          accessible
-          accessibilityLabel={counter}
-          accessibilityRole="header"
-        >
-          <Text style={styles.topTitle}>NEW RECIPE</Text>
-          <Text style={styles.topStep}>
-            Step {stepIdx + 1} of {CREATE_RECIPE_TOTAL_STEPS}
-          </Text>
-        </View>
-        <View style={{ width: 28 }} />
-      </View>
-
-      <View style={styles.progressRow}>
-        {CREATE_RECIPE_STEP_IDS.map((id, i) => (
-          <View
-            key={id}
-            style={[
-              styles.progressDot,
-              i <= stepIdx && styles.progressDotActive,
-            ]}
-          />
-        ))}
-      </View>
+          {progressDots}
+        </ScreenSectionChrome>
+      ) : (
+        <>
+          <View style={styles.topBar}>
+            {backControl}
+            <View
+              style={styles.topMeta}
+              accessible
+              accessibilityLabel={counter}
+              accessibilityRole="header"
+            >
+              <Text style={styles.topTitle}>NEW RECIPE</Text>
+              <Text style={styles.topStep}>
+                Step {stepIdx + 1} of {CREATE_RECIPE_TOTAL_STEPS}
+              </Text>
+            </View>
+            <View style={{ width: 28 }} />
+          </View>
+          {progressDots}
+        </>
+      )}
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -1261,47 +1282,26 @@ export default function CreateRecipeWizard() {
                 readOnly
                 helperText={`Calculated from your ingredients · ${perServing.calories} kcal`}
               />
-              <MacroOverrideRow
-                label="Protein"
-                color={mc.protein}
-                suffix="g"
-                value={perServing.protein}
-                override={macroOverrides.protein}
-                onChange={(raw) => setOverride("protein", raw)}
-                styles={styles}
-                colors={colors}
-              />
-              <MacroOverrideRow
-                label="Carbs"
-                color={mc.carbs}
-                suffix="g"
-                value={perServing.carbs}
-                override={macroOverrides.carbs}
-                onChange={(raw) => setOverride("carbs", raw)}
-                styles={styles}
-                colors={colors}
-              />
-              <MacroOverrideRow
-                label="Fat"
-                color={mc.fat}
-                suffix="g"
-                value={perServing.fat}
-                override={macroOverrides.fat}
-                onChange={(raw) => setOverride("fat", raw)}
-                styles={styles}
-                colors={colors}
-              />
-              <MacroOverrideRow
-                label="Fiber"
-                color={mc.fiber}
-                suffix="g"
-                value={perServing.fiberG}
-                override={macroOverrides.fiberG}
-                onChange={(raw) => setOverride("fiberG", raw)}
-                styles={styles}
-                colors={colors}
-                last
-              />
+              {/* Four identical editable rows — one shape. Calories stays separate (read-only). */}
+              {[
+                { label: "Protein", color: mc.protein, value: perServing.protein, override: macroOverrides.protein, onChange: (raw: string) => setOverride("protein", raw) },
+                { label: "Carbs", color: mc.carbs, value: perServing.carbs, override: macroOverrides.carbs, onChange: (raw: string) => setOverride("carbs", raw) },
+                { label: "Fat", color: mc.fat, value: perServing.fat, override: macroOverrides.fat, onChange: (raw: string) => setOverride("fat", raw) },
+                { label: "Fiber", color: mc.fiber, value: perServing.fiberG, override: macroOverrides.fiberG, onChange: (raw: string) => setOverride("fiberG", raw) },
+              ].map((m, i, all) => (
+                <MacroOverrideRow
+                  key={m.label}
+                  label={m.label}
+                  color={m.color}
+                  suffix="g"
+                  value={m.value}
+                  override={m.override}
+                  onChange={m.onChange}
+                  styles={styles}
+                  colors={colors}
+                  last={i === all.length - 1}
+                />
+              ))}
             </View>
             {hasMacroOverrides({ macroOverrides }) && (
               <Text

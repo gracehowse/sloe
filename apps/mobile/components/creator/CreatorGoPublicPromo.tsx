@@ -48,7 +48,7 @@ export function CreatorGoPublicPromo() {
           Make a recipe public and it shows up here for your followers.
         </Text>
         <PressableScale
-          haptic="light"
+          haptic="selection"
           onPress={() => router.push("/create-recipe")}
           accessibilityRole="button"
           accessibilityLabel="Go public"

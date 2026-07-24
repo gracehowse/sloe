@@ -1714,14 +1714,14 @@ export const NutritionTracker = memo(function NutritionTracker({
           TodayScreen hero cluster. */}
       <div className={heroClusterOn ? "space-y-1" : todayColumnGap}>
       {viewMode === "day" ? (
-        // v3 serif date hero (ENG-1247, prototype `.t-greet`): eyebrow rule +
-        // Newsreader day name + date subline (parity with mobile). The "DAY N"
-        // chip is omitted (mock, no honest source); the eyebrow hides on a past
-        // day (the serif slot shows the date instead).
+        // v3 serif date hero (prototype `.t-greet`): eyebrow rule + Newsreader
+        // date line (parity with mobile `TodayGreetingHero`). "DAY N" omitted
+        // (mock, no honest source). 2026-07-24 (Grace): eyebrow = ink Inter
+        // 11/600/0.12em; day + date merge onto ONE 32/400 serif line. No bold.
         <div className="mt-1">
           {isTodayHero ? (
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary-solid">
+            <div className="flex items-center gap-3 mb-1.5">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground">
                 Today
               </span>
               <span className="flex-1 h-px bg-border" />
@@ -1729,15 +1729,13 @@ export const NutritionTracker = memo(function NutritionTracker({
           ) : null}
           <p
             data-testid="today-hero-greeting"
-            className="font-[family-name:var(--font-headline)] text-[36px] font-medium leading-[1.1] tracking-tight text-foreground"
+            className="font-[family-name:var(--font-headline)] text-[32px] font-normal leading-[1.05] tracking-[-0.01em] text-foreground"
           >
-            {sloceHeroGreeting.headline}
+            {/* \u2002 = en-space between day name and date; matches mobile. */}
+            {isTodayHero ? `${sloceHeroGreeting.headline}\u2002${sloceHeroGreeting.subline ?? ""}` : sloceHeroGreeting.headline}
           </p>
-          {sloceHeroGreeting.subline ? (
-            <p
-              data-testid="today-hero-greeting-subline"
-              className="mt-1 text-[13px] text-foreground-tertiary"
-            >
+          {!isTodayHero && sloceHeroGreeting.subline ? (
+            <p data-testid="today-hero-greeting-subline" className="mt-1 text-[13px] text-foreground-tertiary">
               {sloceHeroGreeting.subline}
             </p>
           ) : null}

@@ -39,6 +39,9 @@ beforeEach(() => {
   featureFlags.values.clear();
   featureFlags.values.set("sloe_v3_discover_editorial", true);
   featureFlags.values.set("discover_photographic_first_view_v1", true);
+  // Mirrors the real registry — `design_consistency_v1` is in
+  // REDESIGN_DEFAULT_ON (src/lib/analytics/track.ts).
+  featureFlags.values.set("design_consistency_v1", true);
   discoverRecipeImage.mockClear();
 });
 
@@ -61,7 +64,10 @@ describe("DiscoverQuickWeeknight (web)", () => {
       />,
     );
     expect(getByText("Quick weeknight")).toBeTruthy();
-    expect(getByText("360 kcal · 22g · 7 min")).toBeTruthy();
+    // `design_consistency_v1` (default-ON) labels the protein figure — it was
+    // the only unlabelled datum in a recipe meta line — so the card now reads
+    // the same shape as `RecipeCardWide` / `FeaturedHero`.
+    expect(getByText("360 kcal · 22g protein · 7 min")).toBeTruthy();
     expect(getByTestId("quick-weeknight-photo-Egg wrap")).toBeTruthy();
     expect(discoverRecipeImage).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -71,6 +77,42 @@ describe("DiscoverQuickWeeknight (web)", () => {
     );
     fireEvent.click(getByLabelText(/Egg wrap/));
     expect(onPressRecipe).toHaveBeenCalledTimes(1);
+  });
+
+  /**
+   * Design-consistency pass (2026-07-24): the cook time used to be printed
+   * twice on this card — a pill on the photo AND the meta line ~60px below —
+   * and the protein figure was the only unlabelled datum in any recipe meta
+   * line in the product. The pill is gone and the macro is labelled; the
+   * kill switch restores both.
+   */
+  it("prints the cook time once — the meta line, not a pill on the photo", () => {
+    const { queryByText, getByText } = render(
+      <DiscoverQuickWeeknight
+        recipes={[
+          rc("Egg wrap", { calories: 360, protein: 22, prepTimeMin: 3, cookTimeMin: 4 }),
+        ]}
+        onPressRecipe={() => {}}
+      />,
+    );
+    expect(getByText("360 kcal · 22g protein · 7 min")).toBeTruthy();
+    // The pill rendered "7 min" as its own text node; nothing else on the card
+    // does, so its absence is the assertion.
+    expect(queryByText("7 min")).toBeNull();
+  });
+
+  it("kill switch restores the duplicated time pill and the bare macro", () => {
+    featureFlags.values.set("design_consistency_v1", false);
+    const { getByText } = render(
+      <DiscoverQuickWeeknight
+        recipes={[
+          rc("Egg wrap", { calories: 360, protein: 22, prepTimeMin: 3, cookTimeMin: 4 }),
+        ]}
+        onPressRecipe={() => {}}
+      />,
+    );
+    expect(getByText("360 kcal · 22g · 7 min")).toBeTruthy();
+    expect(getByText("7 min"), "the photo pill is back").toBeTruthy();
   });
 
   it("restores the legacy tint card when the photographic flag is off", () => {

@@ -71,12 +71,12 @@ export function CreatorProfileHeader({ creator }: { creator: CreatorProfileModel
 
 const stylesLegacy = StyleSheet.create({
   header: { alignItems: "center", paddingVertical: Spacing.lg },
-  avatar: { width: 96, height: 96, borderRadius: 48, marginBottom: Spacing.sm },
+  avatar: { width: 96, height: 96, borderRadius: Radius.full, marginBottom: Spacing.sm },
   avatarFallback: { alignItems: "center", justifyContent: "center" },
   avatarFallbackText: { fontSize: 36, fontWeight: "700" },
-  headerNameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  headerNameRow: { flexDirection: "row", alignItems: "center", gap: Spacing.xs },
   displayName: { fontSize: 22, fontWeight: "700" },
-  handle: { fontSize: 14, marginTop: 2 },
+  handle: { fontSize: 14 },
   bio: {
     fontSize: 14,
     textAlign: "center",
@@ -92,8 +92,8 @@ const stylesV3 = StyleSheet.create({
   avatarFallback: { alignItems: "center", justifyContent: "center" },
   avatarInitial: { ...Type.title, fontWeight: "600" },
   body: { flex: 1, minWidth: 0 },
-  nameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: Spacing.xs },
   displayName: { ...Type.title, fontWeight: "600" },
-  handle: { ...Type.caption, marginTop: 2 },
+  handle: { ...Type.caption },
   bio: { ...Type.body, marginTop: Spacing.sm, lineHeight: 20 },
 });

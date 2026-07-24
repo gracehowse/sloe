@@ -180,35 +180,22 @@ function MacroWheel(props: {
         </div>
       </div>
 
+      {/* Four identical legend rows — one shape, one place to change it. */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-        <div className="flex items-center justify-between gap-2">
-          <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[var(--macro-protein)]" />
-            Protein
-          </span>
-          <span className="font-semibold tabular-nums">{Math.round(props.proteinG * 10) / 10}g</span>
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[var(--macro-carbs)]" />
-            Carbs
-          </span>
-          <span className="font-semibold tabular-nums">{Math.round(props.carbsG * 10) / 10}g</span>
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[var(--macro-fat)]" />
-            Fat
-          </span>
-          <span className="font-semibold tabular-nums">{Math.round(props.fatG * 10) / 10}g</span>
-        </div>
-        <div className="flex items-center justify-between gap-2">
-          <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-[var(--macro-fiber)]" />
-            Fiber
-          </span>
-          <span className="font-semibold tabular-nums">{Math.round((props.fiberG ?? 0) * 10) / 10}g</span>
-        </div>
+        {[
+          { label: "Protein", dot: "bg-[var(--macro-protein)]", grams: props.proteinG },
+          { label: "Carbs", dot: "bg-[var(--macro-carbs)]", grams: props.carbsG },
+          { label: "Fat", dot: "bg-[var(--macro-fat)]", grams: props.fatG },
+          { label: "Fiber", dot: "bg-[var(--macro-fiber)]", grams: props.fiberG ?? 0 },
+        ].map((m) => (
+          <div key={m.label} className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full ${m.dot}`} />
+              {m.label}
+            </span>
+            <span className="font-semibold tabular-nums">{Math.round(m.grams * 10) / 10}g</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -248,6 +235,11 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
   );
   // ENG-1283 — import review honesty (flag-off = today's silent-success render).
   const [importReviewHonesty] = useState(() => isFeatureEnabled("import_review_flagged_ingredients_v1"));
+  // design_consistency_v1 (2026-07-24) — unified app chrome. ON: canonical
+  // eyebrow + page title, ONE intro sentence, the duplicate compliance card
+  // retired, "Clear form" moved to the foot of the form. OFF (kill switch):
+  // the hand-rolled icon-badge header + long intro + "Not your original recipe?".
+  const [unifiedChrome] = useState(() => isFeatureEnabled("design_consistency_v1"));
   const importQueue = useImportQueue("web", track);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -1769,6 +1761,30 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
     }
   };
 
+  // The create↔import switch. Was a raw <button> with a hand-rolled outline in
+  // the header — a retired treatment (SupprButton is primary|ghost only), and
+  // one of three top-of-screen controls that all navigated AWAY from the form.
+  // ENG-1211: the header switch passes NO method hint (only the import method
+  // tiles do), so the click event is never read as a method.
+  const modeSwitch =
+    mode === "create" && onSwitchToImport ? (
+      <SupprButton variant="ghost" size="sm" type="button" onClick={onSwitchToImport}>
+        Import instead
+      </SupprButton>
+    ) : mode === "import" && onSwitchToCreate ? (
+      <SupprButton variant="ghost" size="sm" type="button" onClick={() => onSwitchToCreate()}>
+        Create instead
+      </SupprButton>
+    ) : null;
+
+  /** "Clear form" renders only once there IS something to clear — at the top of
+   *  an empty form it was a destructive control with navigation weight and
+   *  nothing to act on. Cheap enough to recompute per render (no memo). */
+  const formIsDirty =
+    title.trim() !== "" || description.trim() !== "" || instructions.trim() !== "" ||
+    coverImageUrl !== "" || importUrl.trim() !== "" || dietary.length > 0 ||
+    ingredients.some((i) => i.name.trim() !== "" || i.amount.trim() !== "");
+
   if (mode === "import" && importSuccess) {
     return (
       <div className="max-w-4xl mx-auto px-6 py-8">
@@ -1785,72 +1801,68 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary rounded-full">
-              {mode === "import" ? (
-                <Icons.import className="w-5 h-5 text-white" />
-              ) : (
-                <Icons.chef className="w-5 h-5 text-white" />
-              )}
-            </div>
-            <h1 className="font-[family-name:var(--font-headline)] text-3xl text-foreground-brand">
-              {mode === "import" ? "Import recipe" : "Create recipe"}
-            </h1>
+      {/* Header. Create led with a copyright lecture — a 5-line intro AND a card
+          restating it — while the three loudest controls all navigated AWAY to
+          Import and the first form field sat below the fold. Unified: canonical
+          eyebrow + page title, ONE 14px sentence, a quiet ghost mode-switch. In
+          flow, NOT `ScreenChrome`, for the reason `SettingsPageChrome` documents
+          (a full-bleed sticky bar would double this column's px-6). */}
+      {unifiedChrome ? (
+        <div className="mb-6">
+          <div className="mb-1 flex items-center gap-3">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground">
+              Recipes
+            </span>
+            <span className="flex-1 h-px bg-border" />
           </div>
-          <div className="flex flex-wrap gap-2">
-            {mode === "create" && onSwitchToImport ? (
-              <button
-                type="button"
-                onClick={onSwitchToImport}
-                className="px-4 py-2 text-sm font-medium rounded-xl border border-border text-foreground hover:bg-muted/60"
-              >
-                Import instead
-              </button>
-            ) : null}
-            {mode === "import" && onSwitchToCreate ? (
-              <button
-                type="button"
-                // ENG-1211 — the header "Create instead" switch lands on the
-                // plain create form (no method hint); only the method tiles
-                // pass a hint. Wrap so the click event isn't read as a method.
-                onClick={() => onSwitchToCreate()}
-                className="px-4 py-2 text-sm font-medium rounded-xl border border-border text-foreground hover:bg-muted/60"
-              >
-                Create instead
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={resetForm}
-              className="px-4 py-2 text-sm font-medium rounded-xl border border-border text-foreground hover:bg-muted/60"
-            >
-              Clear form
-            </button>
-          </div>
-        </div>
-        <p className="text-muted-foreground">
-          {mode === "import"
-            ? "Bring in recipes you have access to—cookbooks, blogs, or scans—for your private library. These stay personal copies; you don't publish them as your own work."
-            : "Build an original recipe (typed or from your own photo). Publishing is optional—say when it's your content. Scanning a cookbook page you bought belongs under Import, not here."}
-        </p>{mode === "import" ? <ImportCookbookPdfEntry /> : null}
-      </div>
-
-      {mode === "create" && onSwitchToImport ? (
-        <div className="backdrop-blur-xl bg-primary/10 border border-primary/30 rounded-2xl p-5 mb-6 text-sm text-foreground">
-          <p className="font-medium text-foreground mb-1">Not your original recipe?</p>
-          <p className="mb-3">
-            Use Import for URLs, cookbook scans, or anything you didn't write yourself—so your library stays honest and
-            imports aren't offered as your creations.
+          <h1 className="page-title text-foreground-brand">
+            {mode === "import" ? "Import recipe" : "Create recipe"}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {mode === "import"
+              ? "Bring in recipes you have access to — they stay private copies, never published as your own."
+              : "Original recipes only — a cookbook page you scanned belongs under Import."}
           </p>
-          <SupprButton variant="ghost" type="button" onClick={onSwitchToImport}>
-            <Icons.import className="w-4 h-4" />
-            Open Import recipe
-          </SupprButton>
+          {modeSwitch ? <div className="mt-2">{modeSwitch}</div> : null}
+          {mode === "import" ? <ImportCookbookPdfEntry /> : null}
         </div>
-      ) : null}
+      ) : (
+        <div className="mb-8">
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-2">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary rounded-full">
+                {mode === "import" ? <Icons.import className="w-5 h-5 text-white" /> : <Icons.chef className="w-5 h-5 text-white" />}
+              </div>
+              <h1 className="font-[family-name:var(--font-headline)] text-3xl text-foreground-brand">
+                {mode === "import" ? "Import recipe" : "Create recipe"}
+              </h1>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {modeSwitch}
+              <SupprButton variant="ghost" size="sm" type="button" onClick={resetForm}>
+                Clear form
+              </SupprButton>
+            </div>
+          </div>
+          <p className="text-muted-foreground">
+            {mode === "import"
+              ? "Bring in recipes you have access to—cookbooks, blogs, or scans—for your private library. These stay personal copies; you don't publish them as your own work."
+              : "Build an original recipe (typed or from your own photo). Publishing is optional—say when it's your content. Scanning a cookbook page you bought belongs under Import, not here."}
+          </p>{mode === "import" ? <ImportCookbookPdfEntry /> : null}
+          {mode === "create" && onSwitchToImport ? (
+            <div className="backdrop-blur-xl bg-primary/10 border border-primary/30 rounded-2xl p-5 mt-6 text-sm text-foreground">
+              <p className="font-medium text-foreground mb-1">Not your original recipe?</p>
+              <p className="mb-3">
+                Use Import for URLs, cookbook scans, or anything you didn't write yourself—so your library stays honest and imports aren't offered as your creations.
+              </p>
+              <SupprButton variant="ghost" type="button" onClick={onSwitchToImport}>
+                <Icons.import className="w-4 h-4" />
+                Open Import recipe
+              </SupprButton>
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {mode === "create" && recipeId && !loadedPublished ? (
         <div className="backdrop-blur-xl bg-card/70 border border-border/60 rounded-2xl p-6 mb-6">
@@ -2212,31 +2224,34 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                   if (f) applyImageFile(f);
                 }}
               />
-              <button
+              {/* Was a raw <button> in a filled ink slab — a SECOND filled CTA
+                  on a screen whose one primary is the Save/Publish commit. */}
+              <SupprButton
+                variant="ghost"
+                size="sm"
                 type="button"
-                disabled={ocrBusy}
+                loading={ocrBusy}
                 onClick={() => void runOcrFromImage()}
-                className="mt-4 w-full sm:w-auto px-4 py-2 rounded-xl bg-foreground text-background text-sm font-medium hover:opacity-90 disabled:opacity-40"
+                className="mt-4 w-full sm:w-auto"
               >
-                {ocrBusy ? "Extracting…" : "Extract from image"}
-              </button>
+                Extract from image
+              </SupprButton>
             </>
           )}
         </div>
-        {/* F-156-recipe-wave (2026-05-10) — gentle nudge so users with
-            an original URL keep the source link on the saved row.
-            The "Paste a recipe link" card above already collects the
-            URL; we just have to tell the user it works for image
-            imports too. */}
-        <p className="text-xs text-muted-foreground mt-3">
-          If you have the original recipe URL, paste it in &ldquo;Paste a recipe link&rdquo; above and we&apos;ll keep the source link on the saved recipe.
-        </p>
+        {/* F-156-recipe-wave (2026-05-10) — nudge so users with an original URL
+            keep the source link on the saved row. IMPORT ONLY: the "Paste a
+            recipe link" card it points at is import-only, so on Create it was
+            instructing users to use a card that isn't on the screen. */}
+        {mode === "import" ? (
+          <p className="text-xs text-muted-foreground mt-3">
+            If you have the original recipe URL, paste it in &ldquo;Paste a recipe link&rdquo; above and we&apos;ll keep the source link on the saved recipe.
+          </p>
+        ) : null}
       </div>
 
       {/* Basic Info */}
-      {/* Flat-card surfaces (2026-06-12, Withings grammar): resting form card
-          sits flat — `shadow-lg` lift retired, fill on the cream ground is the
-          separation. */}
+      {/* Flat-card surfaces — see the Recipe photo card above. */}
       <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6">
         <h3 className="font-[family-name:var(--font-headline)] text-xl text-foreground-brand mb-6">Basic information</h3>
         <div className="space-y-4">
@@ -2262,37 +2277,24 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
               className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
+          {/* Three identical numeric fields — same element, same treatment. */}
           <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label htmlFor="recipe-upload-servings" className="block mb-2 text-sm font-medium text-foreground">Servings</label>
-              <input
-                id="recipe-upload-servings"
-                type="number"
-                value={servings}
-                onChange={(e) => setServings(Number(e.target.value))}
-                className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-            </div>
-            <div>
-              <label htmlFor="recipe-upload-prep" className="block mb-2 text-sm font-medium text-foreground">Prep (min)</label>
-              <input
-                id="recipe-upload-prep"
-                type="number"
-                value={prepTime}
-                onChange={(e) => setPrepTime(Number(e.target.value))}
-                className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-            </div>
-            <div>
-              <label htmlFor="recipe-upload-cook" className="block mb-2 text-sm font-medium text-foreground">Cook (min)</label>
-              <input
-                id="recipe-upload-cook"
-                type="number"
-                value={cookTime}
-                onChange={(e) => setCookTime(Number(e.target.value))}
-                className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-            </div>
+            {[
+              { id: "recipe-upload-servings", label: "Servings", value: servings, set: setServings },
+              { id: "recipe-upload-prep", label: "Prep (min)", value: prepTime, set: setPrepTime },
+              { id: "recipe-upload-cook", label: "Cook (min)", value: cookTime, set: setCookTime },
+            ].map((f) => (
+              <div key={f.id}>
+                <label htmlFor={f.id} className="block mb-2 text-sm font-medium text-foreground">{f.label}</label>
+                <input
+                  id={f.id}
+                  type="number"
+                  value={f.value}
+                  onChange={(e) => f.set(Number(e.target.value))}
+                  className="w-full px-4 py-3 bg-card border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+            ))}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -2338,27 +2340,20 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       </div>
 
       {/* Ingredients */}
-      {/* Flat-card surfaces (2026-06-12, Withings grammar): resting form card
-          sits flat — `shadow-lg` lift retired, fill on the cream ground is the
-          separation. */}
+      {/* Flat-card surfaces — see the Recipe photo card above. */}
       <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between mb-6">
           <h3 className="font-[family-name:var(--font-headline)] text-xl text-foreground-brand">Ingredients</h3>
           <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={splitAllIngredientLines}
-              className="px-4 py-2 rounded-lg border border-primary/30 text-primary-solid text-sm font-medium hover:bg-primary/10"
-            >
+            {/* Three peers in one row that used to render three different ways
+                (plum outline / neutral outline / ghost). Ghost is the system's
+                secondary — the outline variant was retired 2026-06-12. */}
+            <SupprButton variant="ghost" type="button" onClick={splitAllIngredientLines}>
               Re-split lines
-            </button>
-            <button
-              type="button"
-              onClick={() => setPasteDialogOpen(true)}
-              className="px-4 py-2 rounded-lg border border-border text-foreground text-sm font-medium hover:bg-muted/80"
-            >
+            </SupprButton>
+            <SupprButton variant="ghost" type="button" onClick={() => setPasteDialogOpen(true)}>
               Paste ingredient list
-            </button>
+            </SupprButton>
             <SupprButton variant="ghost" type="button" onClick={addIngredient}>
               <Icons.add className="w-4 h-4" />
               Add Ingredient
@@ -2423,26 +2418,22 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
                     placeholder="Scan / paste barcode"
                     className="flex-1 px-4 py-3 rounded-xl border border-border bg-card text-foreground"
                   />
-                  <button
-                    type="button"
-                    disabled={barcodeLoading}
-                    onClick={() => void runBarcodeLookup()}
-                    className="px-4 py-3 rounded-xl bg-foreground text-background text-sm font-semibold disabled:opacity-50"
-                  >
-                    {barcodeLoading ? "…" : "Lookup"}
-                  </button>
+                  {/* Ghost — the one filled CTA is the Save/Publish commit. */}
+                  <SupprButton variant="ghost" type="button" loading={barcodeLoading} onClick={() => void runBarcodeLookup()}>
+                    Lookup
+                  </SupprButton>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <button
+                  {/* Ghost — this was the retired bordered pill, sitting directly
+                      under "Lookup": two treatments for two peer controls. */}
+                  <SupprButton
+                    variant="ghost"
+                    size="sm"
                     type="button"
-                    onClick={() => {
-                      setScannerOpen(true);
-                      setTimeout(() => void startScanner(), 0);
-                    }}
-                    className="px-3 py-2 rounded-lg text-xs font-semibold border border-border text-foreground hover:bg-muted/60"
+                    onClick={() => { setScannerOpen(true); setTimeout(() => void startScanner(), 0); }}
                   >
                     Scan with camera
-                  </button>
+                  </SupprButton>
                   {scannerError ? <span className="text-xs text-destructive">{scannerError}</span> : null}
                 </div>
                 {scannerOpen ? (
@@ -2939,9 +2930,7 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
       </div>
 
       {/* Instructions */}
-      {/* Flat-card surfaces (2026-06-12, Withings grammar): resting form card
-          sits flat — `shadow-lg` lift retired, fill on the cream ground is the
-          separation. */}
+      {/* Flat-card surfaces — see the Recipe photo card above. */}
       <div className="bg-card border border-border rounded-[var(--radius-card-lg)] p-6 mb-6">
         <h3 className="font-[family-name:var(--font-headline)] text-xl text-foreground-brand mb-4">Cooking instructions</h3>
         <textarea
@@ -3013,6 +3002,17 @@ export function RecipeUpload({ userTier, onUpgrade, mode, onSwitchToImport, onSw
           </div>
         </div>
       )}
+
+      {/* "Clear form" lives at the FOOT of the form under the unified chrome —
+          it is destructive, and at the top of an empty form it sat level with
+          navigation with nothing to clear. Flag OFF keeps it in the header. */}
+      {unifiedChrome && formIsDirty ? (
+        <div className="mt-6 flex justify-center">
+          <SupprButton variant="ghost" size="sm" type="button" onClick={resetForm}>
+            Clear form
+          </SupprButton>
+        </div>
+      ) : null}
 
       {/* import-progress-v2 — persistent, non-blocking queue drawer. Renders
           nothing until there's import activity; safe to always mount when the

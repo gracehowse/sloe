@@ -11,6 +11,14 @@ export interface ProgressTabChromeProps {
    *  overline + title, no subtitle). */
   subtitle?: string;
   trailing?: ReactNode;
+  /**
+   * Breakpoints this header serves — forwarded to `ScreenChrome`.
+   * `"all"` serves desktop too, which is what lets `ProgressDashboard` retire
+   * its two hand-rolled desktop header twins (design-consistency pass,
+   * 2026-07-24). `"mobile"` keeps the legacy `md:hidden` behaviour and is the
+   * `design_consistency_v1` kill-switch path.
+   */
+  scope?: "mobile" | "all";
   className?: string;
 }
 
@@ -22,13 +30,20 @@ export interface ProgressTabChromeProps {
  * `ScreenChrome` since S6 (2026-07-10, ENG-1375) — which also moved the
  * title from its forked 28px down to the ONE serif-24 tab-title size.
  */
-export function ProgressTabChrome({ overline, subtitle, trailing, className }: ProgressTabChromeProps) {
+export function ProgressTabChrome({
+  overline,
+  subtitle,
+  trailing,
+  scope,
+  className,
+}: ProgressTabChromeProps) {
   return (
     <ScreenChrome
       overline={overline}
       title="Progress"
       subtitle={subtitle}
       trailing={trailing}
+      scope={scope}
       className={className}
       testID="progress-tab-chrome"
       overlineTestID="progress-overline"

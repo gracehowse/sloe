@@ -34,6 +34,18 @@ export function DiscoverQuickWeeknight({
   const photographicFirstViewEnabled = isFeatureEnabled(
     "discover_photographic_first_view_v1",
   );
+  // Design-consistency pass (2026-07-24), two fixes on this card:
+  //  1. The cook time was printed TWICE — once as a white pill on the photo
+  //     and again in the meta line ~60px below. The meta line is the shared
+  //     recipe-card treatment (`library/RecipeCardWide`, `library/FeaturedHero`
+  //     and the mobile twin all read "{kcal} kcal · {protein}g protein ·
+  //     {mins} min"), so the pill is the redundant one — and it was the only
+  //     raw `rgba()` colour on the card, painted over unpredictable photo
+  //     content. Drop it; the meta line does the work.
+  //  2. The protein figure rendered bare ("40g"), the only unlabelled datum
+  //     in any recipe meta line in the product. Label it, matching the two
+  //     sibling cards above.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
   const quick = React.useMemo(() => deriveQuickWeeknight(recipes), [recipes]);
   if (
     !enabled ||
@@ -72,7 +84,9 @@ export function DiscoverQuickWeeknight({
           const mins = totalRecipeDurationMin(r.prepTimeMin, r.cookTimeMin);
           const meta = [
             r.calories > 0 ? `${Math.round(r.calories)} kcal` : null,
-            r.protein > 0 ? `${Math.round(r.protein)}g` : null,
+            r.protein > 0
+              ? `${Math.round(r.protein)}g${unifiedChrome ? " protein" : ""}`
+              : null,
             mins != null ? `${mins} min` : null,
           ]
             .filter(Boolean)
@@ -110,7 +124,7 @@ export function DiscoverQuickWeeknight({
                 ) : (
                   <UtensilsCrossed className="h-5 w-5 text-white opacity-50" />
                 )}
-                {mins != null ? (
+                {!unifiedChrome && mins != null ? (
                   <span
                     className="absolute left-2 top-2 rounded-full px-[9px] py-1 text-[10px] font-semibold"
                     style={{ backgroundColor: "rgba(255,255,255,0.92)", color: "rgba(28,22,32,1)" }}

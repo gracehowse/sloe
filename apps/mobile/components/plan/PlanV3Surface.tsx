@@ -30,6 +30,7 @@ import {
 } from "./PlanMealFilterChipsV3";
 import { PlanMealSectionV3 } from "./PlanMealSectionV3";
 import { PlanToolsV3 } from "./PlanToolsV3";
+import { PlanGhostWeekGrid } from "./PlanGhostWeekGrid";
 
 const WEEKDAY_LETTER = ["S", "M", "T", "W", "T", "F", "S"] as const;
 const WEEKDAY_LONG = [
@@ -180,6 +181,21 @@ export function PlanV3Surface({
   const [emptyWeekCardDismissed, setEmptyWeekCardDismissed] = useState(false);
   const showEmptyWeekCard = weekIsEmpty && !emptyWeekCardDismissed;
 
+  // Design-consistency pass 2026-07-24. Two changes ride this flag:
+  //   1. The empty week no longer ends at the invitation card — a ghosted week
+  //      draws the shape of what "Generate this week" produces, so the promise
+  //      is visible instead of abstract.
+  //   2. The header's Sparkles chip stands down while that card is up: the
+  //      card's filled CTA fires the SAME `onGenerate`, and one action should
+  //      have one control.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
+  // The slots the generator will actually fill — the plan's own slot count,
+  // not a hard-coded three.
+  const ghostSlots = useMemo(
+    () => ALL_MEAL_SLOTS.slice(0, Math.max(1, plan?.[0]?.meals.length ?? 3)),
+    [plan],
+  );
+
   const selectedDay = plan?.[safeIndex] ?? null;
   const selectedDate = weekDates[safeIndex];
   const dayLabel = selectedDate
@@ -211,12 +227,18 @@ export function PlanV3Surface({
         onGenerate={onGenerate}
         onAdjust={onAdjust}
         onTemplates={onTemplates}
+        showGenerate={!(unifiedChrome && showEmptyWeekCard)}
       />
       {showEmptyWeekCard ? (
-        <PlanEmptyWeekCard
-          onGenerate={onGenerate}
-          onAddMealsAsYouGo={() => setEmptyWeekCardDismissed(true)}
-        />
+        <>
+          <PlanEmptyWeekCard
+            onGenerate={onGenerate}
+            onAddMealsAsYouGo={() => setEmptyWeekCardDismissed(true)}
+          />
+          {unifiedChrome ? (
+            <PlanGhostWeekGrid weekDates={weekDates} slots={ghostSlots} />
+          ) : null}
+        </>
       ) : (
         <>
           <PlanWeekStripV3

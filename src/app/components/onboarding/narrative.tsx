@@ -138,6 +138,78 @@ export const NARRATIVE: Partial<Record<StepId, NarrativeBlock>> = {
   },
 };
 
+/**
+ * The narrative column's CONTENT — eyebrow → serif headline → body → optional
+ * extras. Extracted from `web-flow.tsx` (2026-07-24) so that screen keeps
+ * shrinking toward the 400-line target rather than growing; the copy it renders
+ * already lives in this file, so this is where the markup belongs too.
+ *
+ * `web-flow.tsx` keeps the surrounding LAYOUT (grid column, brand gradient,
+ * per-step fade, the `hidden md:flex` breakpoint) — this component is purely
+ * the typographic block inside it, and renders nothing for a step with no
+ * narrative entry.
+ */
+export function NarrativeBody({
+  stepId,
+  state,
+  targets,
+}: {
+  stepId: StepId;
+  state: OnboardingState;
+  targets: V2Targets | null;
+}) {
+  const narrative = NARRATIVE[stepId];
+  // Design-consistency pass (2026-07-24) — the narrative eyebrow was
+  // 11/600/0.14em in `--foreground-tertiary`, a fourth spelling of the app's
+  // section label. Onboarding is a front door: the visitor meets this eyebrow
+  // minutes before the in-app one, so it now uses the canonical treatment
+  // (11/600/0.12em full ink + a hairline rule running to the margin) that
+  // `ScreenChrome` and `ScreenSectionChrome` ship. Flag-off keeps the old
+  // tertiary label as the kill switch.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
+  if (!narrative) return null;
+  return (
+    <div>
+      {unifiedChrome ? (
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground">
+            {narrative.eyebrow}
+          </span>
+          <span className="flex-1 h-px bg-border" />
+        </div>
+      ) : (
+        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-foreground-tertiary mb-4">
+          {narrative.eyebrow}
+        </div>
+      )}
+      {/* Sloe reskin (Figma onboarding parity 2026-06-07): the narrative
+          headline reads in plum Newsreader serif to match the editorial
+          warm-coaching direction. */}
+      <h1
+        className="font-[family-name:var(--font-headline)] text-[44px] font-normal tracking-tight text-foreground-brand m-0 mb-4 leading-[1.08] max-w-[520px]"
+        style={{
+          letterSpacing: "-0.02em",
+          textWrap: "balance",
+          whiteSpace: "pre-line",
+        } as React.CSSProperties}
+      >
+        {narrative.head}
+      </h1>
+      {narrative.body && (
+        <p
+          className="text-base text-muted-foreground m-0 leading-relaxed max-w-[440px]"
+          style={{ textWrap: "pretty" } as React.CSSProperties}
+        >
+          {narrative.body}
+        </p>
+      )}
+      {narrative.extra && (
+        <div className="mt-8">{narrative.extra({ state, targets })}</div>
+      )}
+    </div>
+  );
+}
+
 function NarrativeStat({
   label,
   value,

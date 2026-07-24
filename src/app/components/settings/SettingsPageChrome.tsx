@@ -8,12 +8,28 @@ interface SettingsPageChromeProps {
   onBack?: () => void;
 }
 
-/** Shared Settings page identity for the single- and two-pane layouts. */
+/**
+ * Shared Settings page identity for the single- and two-pane layouts.
+ *
+ * NOT a `ScreenChrome` call site, deliberately (design-consistency pass,
+ * 2026-07-24): `ScreenChrome` is a full-bleed sticky app bar with its own
+ * `px-6` and a bottom hairline. Both Settings layouts mount this block
+ * *in-flow* inside `product-shell py-8` (`Settings.tsx` and
+ * `SettingsTwoPaneShell.tsx` each wrap it in `mb-8`), so routing it through
+ * `ScreenChrome` would double the horizontal padding and draw a bordered bar
+ * across the middle of a padded page. What it DOES share is the piece that was
+ * actually drifting — the eyebrow: under `design_consistency_v1` this renders
+ * the canonical treatment byte-for-byte (11/600/0.12em FULL-ink caps + a
+ * hairline `border` rule to the margin), matching `ScreenChrome` on web and
+ * `ScreenSectionChrome`/`Type.eyebrow` on mobile Settings. The old
+ * tertiary-ink 0.1em eyebrow stays as the kill switch.
+ */
 export function SettingsPageChrome({
   legacyRadius = "full",
   onBack,
 }: SettingsPageChromeProps) {
   const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
 
   return (
     <div
@@ -34,9 +50,18 @@ export function SettingsPageChrome({
       <div className="min-w-0 flex-1">
         {consistencyChrome ? (
           <div className="mb-2">
-            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
-              Your account
-            </p>
+            {unifiedChrome ? (
+              <div className="mb-1 flex items-center gap-3">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground">
+                  Your account
+                </span>
+                <span className="flex-1 h-px bg-border" />
+              </div>
+            ) : (
+              <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.1em] text-foreground-tertiary">
+                Your account
+              </p>
+            )}
             <h1 className="page-title text-foreground-brand">Settings</h1>
           </div>
         ) : (

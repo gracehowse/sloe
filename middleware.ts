@@ -60,7 +60,7 @@ const PUBLIC_ROUTES = new Set([
  *  NODE_ENV blocks the validation harnesses Playwright needs.
  *  VERCEL_ENV=production is only ever set on the suppr.club deployment.
  */
-const DEV_PREVIEW_PREFIXES = ["/dev/"];
+const DEV_PREVIEW_PREFIXES = ["/dev/", "/redesign/"];
 function isDevPreview(pathname: string): boolean {
   if (process.env.VERCEL_ENV === "production") return false;
   return DEV_PREVIEW_PREFIXES.some(

@@ -1,4 +1,4 @@
-import { Alert, View, Text, type TextStyle, type ViewStyle } from "react-native";
+import { Alert, StyleSheet, View, Text, type TextStyle, type ViewStyle } from "react-native";
 import { Check, Package, Trash2 } from "lucide-react-native";
 import { Swipeable } from "react-native-gesture-handler";
 import {
@@ -12,12 +12,18 @@ import {
   shoppingRecipeTitlesFromItems,
 } from "@suppr/shared/planning/shoppingScanLabel";
 import {
+  composeShoppingRowLabel,
+  formatShoppingProvenanceCaption,
+  toPurchasableShoppingQuantity,
+} from "@suppr/shared/planning/shoppingListDisplay";
+import {
   householdMemberAccent,
   householdMemberFirstName,
   householdMemberInitials,
 } from "@suppr/shared/household/memberAccents";
 import { Accent, Radius, Spacing, Type } from "@/constants/theme";
 import { PressableScale } from "@/components/ui/PressableScale";
+import { isFeatureEnabled } from "@/lib/analytics";
 
 type ShoppingItemLike = {
   id: string;
@@ -81,20 +87,35 @@ export function ShoppingListGroupRow({
   onRemove,
   onMarkStaple,
 }: ShoppingListGroupRowProps) {
+  // Design-consistency pass (2026-07-24) — shop-unit quantities + always-on
+  // recipe provenance, shared with web via `shoppingListDisplay`. Scoped to the
+  // scan-density layout exactly as web scopes it (`ShoppingListRow` only swaps
+  // in `ShoppingScanRow` when `densityV1` is on), so the ENG-1669 flag-off card
+  // row stays byte-identical on both platforms.
+  const unified = isFeatureEnabled("design_consistency_v1") && densityV1;
+
   const allChecked = isShoppingGroupFullyChecked(group);
-  const rowLabel = formatShoppingGroupLabel(group, {
-    forShoppingScan: densityV1,
-  });
   const parts = formatShoppingGroupParts(group, {
     forShoppingScan: densityV1,
   });
+  // Display-only rounding: the stored grams are untouched, but a list that
+  // says "1 g ground coriander" is not a list anyone can shop from.
+  const quantity = toPurchasableShoppingQuantity(parts.quantity);
+  const rowLabel = unified
+    ? composeShoppingRowLabel(quantity, parts.name)
+    : formatShoppingGroupLabel(group, { forShoppingScan: densityV1 });
   const recipeTitles = shoppingRecipeTitlesFromItems(group.items);
   const fromLabel = recipeTitles.join(", ");
-  const recipeCountCaption = densityV1
-    ? formatShoppingRecipeCountCaption(recipeTitles.length)
-    : null;
+  // Always show provenance under the unified pass — a caption that appears on
+  // some rows and not others reads as missing data, not as "one recipe".
+  const recipeCountCaption = !densityV1
+    ? null
+    : unified
+      ? formatShoppingProvenanceCaption(recipeTitles.length)
+      : formatShoppingRecipeCountCaption(recipeTitles.length);
   const showFromParagraph = !densityV1 && Boolean(fromLabel);
-  const showRecipeCount = densityV1 && !allChecked && recipeCountCaption != null;
+  const showRecipeCount =
+    densityV1 && recipeCountCaption != null && (unified || !allChecked);
 
   const checkedByEntries = group.items
     .map((i) => (i as ShoppingItemLike).checkedBy ?? null)
@@ -150,10 +171,26 @@ export function ShoppingListGroupRow({
           }}
           numberOfLines={2}
         >
-          {parts.quantity ? (
-            <Text style={{ fontWeight: "700" }}>{parts.quantity} </Text>
-          ) : null}
-          <Text style={{ fontWeight: "400" }}>{parts.name}</Text>
+          {unified ? (
+            <>
+              {quantity.kind === "amount" ? (
+                <Text style={{ fontWeight: "700" }}>{quantity.text} </Text>
+              ) : null}
+              <Text style={{ fontWeight: "400" }}>{parts.name}</Text>
+              {quantity.kind === "qualitative" ? (
+                <Text style={{ fontWeight: "400", color: colors.textSecondary }}>
+                  {` · ${quantity.text}`}
+                </Text>
+              ) : null}
+            </>
+          ) : (
+            <>
+              {parts.quantity ? (
+                <Text style={{ fontWeight: "700" }}>{parts.quantity} </Text>
+              ) : null}
+              <Text style={{ fontWeight: "400" }}>{parts.name}</Text>
+            </>
+          )}
         </Text>
       ) : (
         <Text style={[styles.itemName, allChecked && styles.itemChecked]}>
@@ -268,7 +305,13 @@ export function ShoppingListGroupRow({
                 flexDirection: "row",
                 alignItems: "center",
                 paddingVertical: Spacing.sm,
-                minHeight: 40,
+                // 44pt touch floor (DS §10.1) — the whole row is the toggle.
+                minHeight: unified ? 44 : 40,
+                // The hairline is load-bearing, not decoration: with the
+                // checkbox pinned right, a short label ("Salt") leaves a wide
+                // gap and the rule carries the eye across it. Web matches.
+                borderBottomWidth: unified ? StyleSheet.hairlineWidth : 0,
+                borderBottomColor: colors.border,
               }
             : styles.itemRow
         }

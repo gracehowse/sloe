@@ -29,7 +29,7 @@ export function CreatorProfileHeader({ creator }: { creator: CreatorProfileHeade
             {creator.display_name.slice(0, 1).toUpperCase()}
           </div>
         )}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <h1 className="text-[22px] font-bold text-foreground -tracking-[0.01em]">
             {creator.display_name}
           </h1>
@@ -37,7 +37,7 @@ export function CreatorProfileHeader({ creator }: { creator: CreatorProfileHeade
             <CircleCheck className="size-5 text-primary" aria-label="Verified creator" />
           ) : null}
         </div>
-        <p className="text-sm text-muted-foreground mt-0.5">@{creator.handle}</p>
+        <p className="text-sm text-muted-foreground">@{creator.handle}</p>
         {creator.bio ? (
           <p className="text-sm text-foreground mt-3 max-w-md leading-relaxed">{creator.bio}</p>
         ) : null}
@@ -60,13 +60,13 @@ export function CreatorProfileHeader({ creator }: { creator: CreatorProfileHeade
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <h1 className="text-lg font-semibold text-foreground">{creator.display_name}</h1>
           {creator.is_verified ? (
             <CircleCheck className="size-[18px] text-primary" aria-label="Verified creator" />
           ) : null}
         </div>
-        <p className="text-sm text-muted-foreground mt-0.5">@{creator.handle}</p>
+        <p className="text-sm text-muted-foreground">@{creator.handle}</p>
         {creator.bio ? (
           <p className="text-sm text-foreground mt-3 leading-relaxed">{creator.bio}</p>
         ) : null}

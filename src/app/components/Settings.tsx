@@ -816,25 +816,17 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     runFullExport,
   );
 
-  // PR-01 (audit 2026-04-28): Base tier excised from user-facing
-  // surfaces. Internal `userTier === "base"` rows still exist as a
-  // safety branch for any legacy Stripe webhook events; they render
-  // as "Free" since the user has no active paid entitlement.
-  const tierLabels: Record<string, { name: string; color: string }> = {
-    free: { name: "Free", color: "bg-muted text-muted-foreground" },
-    base: { name: "Free", color: "bg-muted text-muted-foreground" },
-    pro: { name: "Pro", color: "bg-primary/10 text-primary-solid" },
-  };
-  const currentTier = tierLabels[userTier] ?? tierLabels.free;
-
   // Group G IA Batch C (2026-04-29): Profile sidebar entry collapsed
-  // into a header card on Settings. Avatar uses the same brand
-  // gradient as Profile.tsx + mobile so the two surfaces read as one
-  // paint system. /profile remains the full editor route — tap the
-  // "Edit profile" affordance to drill in.
+  // into a header card on Settings. The avatar is the shared `AvatarDisc`
+  // identity chip (same as Today / sidebar / Profile). /profile remains the
+  // full editor route — tap the "Edit profile" affordance to drill in.
   const profileAvatarInitial = (
     profileDisplayName?.trim()?.[0] ?? authEmail?.[0] ?? "S"
   ).toUpperCase();
+  // THE tier string for this screen (2026-07-24 — replaces a second,
+  // independently-computed `tierLabels` map). PR-01 (audit 2026-04-28): base
+  // tier is excised from user-facing surfaces — legacy `userTier === "base"`
+  // rows survive as a webhook safety branch and read "Free" (no entitlement).
   const profileTierLabel = userTier === "pro" ? "Pro" : "Free";
   const profileDisplayLabel =
     // Prefer the name the user set (profileDisplayName, then the resolved
@@ -874,11 +866,24 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
     />
   );
 
-  // Sloe Pro banner — see settings-sloe-pro-banner.tsx (ENG-1615).
-  const proBanner = <SettingsSloeProBanner isPro={userTier === "pro"} />;
+  // Design-consistency pass (2026-07-24). Pre-pass this screen stated plan
+  // status FOUR times above the fold (account-card pill · Sloe Pro banner ·
+  // "Your plan" pill · SubscriptionCard) and printed the email twice. ON keeps
+  // ONE plan statement (the account card's subline) and ONE plan action per
+  // tier — the "Your plan" card duplicated both, so it drops out entirely.
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
 
-  // Current plan card.
-  const planCard = (
+  // Sloe Pro banner (ENG-1615) — drops only where redundant: base/pro get
+  // `subscriptionCard` as their plan action (for pro it was a bare "Active"
+  // slab restating the subline). SURVIVES on free, where `subscriptionCard`
+  // is null and this row is Settings' only path to /pricing — the web mirror
+  // of mobile's Membership upgrade row, which survives its own banner drop.
+  const proBanner = unifiedChrome && userTier !== "free" ? null : (
+    <SettingsSloeProBanner isPro={userTier === "pro"} />
+  );
+
+  // "Your plan" card — kill switch only since that pass.
+  const planCard = unifiedChrome ? null : (
       <SupprCard padding="lg" radius="xl" className="mb-6">
         <div className="flex items-center gap-2 mb-4">
           <Icons.sparkles className="w-5 h-5 text-muted-foreground" />
@@ -886,8 +891,8 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${currentTier.color}`}>
-              {currentTier.name}
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${userTier === "pro" ? "bg-primary/10 text-primary-solid" : "bg-muted text-muted-foreground"}`}>
+              {profileTierLabel}
             </span>
             {authEmail && (
               <span className="text-sm text-muted-foreground">{authEmail}</span>
@@ -901,13 +906,8 @@ export const Settings = memo(function Settings({ userTier, authEmail, scrollToPr
               View plans
             </Link>
           )}
-          {/* ENG-748 #11: the "Manage subscription" control moved into
-              the dedicated SubscriptionCard below (which renders the
-              full billing state + the cancel/manage CTA). Keeping a
-              second manage button here would give two competing cancel
-              paths; the at-a-glance "Your plan" pill stays, the action
-              lives in one place. The cancel-export-prompt → portal
-              flow itself is unchanged. */}
+          {/* ENG-748 #11: "Manage subscription" lives only in
+              SubscriptionCard — two competing cancel paths is a legal P0. */}
         </div>
       </SupprCard>
   );

@@ -164,13 +164,13 @@ export function CreatorRecipeList({
           })}
         </div>
         {hasMore ? (
-          <div className="mt-3 flex flex-col items-center gap-1.5">
+          <div className="mt-3 flex flex-col items-center gap-1">
             <button
               type="button"
               onClick={loadMore}
               disabled={loading}
               className={[
-                "inline-flex items-center justify-center min-w-[140px] px-6 py-2.5 rounded-full text-sm font-bold transition-colors",
+                "inline-flex items-center justify-center min-w-[140px] px-6 py-2 rounded-full text-sm font-bold transition-colors",
                 "bg-transparent border border-border text-foreground hover:bg-muted/40",
                 loading ? "opacity-60 cursor-not-allowed" : "",
               ]
@@ -252,13 +252,16 @@ export function CreatorRecipeList({
       </SupprCard>
 
       {hasMore ? (
-        <div className="mt-3 flex flex-col items-center gap-1.5">
+        // Same "Load more" control as the v3 branch above — identical metrics
+        // (gap 4 / py 8) so the button does not change height with an
+        // unrelated flag. Both were off the spacing scale (6px / 10px).
+        <div className="mt-3 flex flex-col items-center gap-1">
           <button
             type="button"
             onClick={loadMore}
             disabled={loading}
             className={[
-              "inline-flex items-center justify-center min-w-[140px] px-6 py-2.5 rounded-full text-sm font-bold transition-colors",
+              "inline-flex items-center justify-center min-w-[140px] px-6 py-2 rounded-full text-sm font-bold transition-colors",
               "bg-transparent border border-border text-foreground hover:bg-muted/40",
               loading ? "opacity-60 cursor-not-allowed" : "",
             ]

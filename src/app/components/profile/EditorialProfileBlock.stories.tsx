@@ -47,8 +47,16 @@ const sampleRecipes = [
 const meta = {
   title: "Suppr/Profile/EditorialProfileBlock",
   component: EditorialProfileBlock,
-  tags: ["ai-generated"],
-  parameters: { layout: "padded" },
+  tags: ["ai-generated", "autodocs"],
+  parameters: {
+    layout: "padded",
+    docs: {
+      description: {
+        component:
+          "The Profile block: identity → labelled streak pips → milestones → saved-recipe grid. Under `design_consistency_v1` the tier is stated once with an accent Pro badge, the streak row gains weekday letters so the pips are readable rather than decorative, milestones lead with the actionable one, and the empty saved-recipes copy ships a real ghost 'Browse Discover' CTA via `onBrowseDiscover` instead of telling the user to go somewhere with no way to get there. Ghost, because the screen's one filled CTA is Upgrade. Mobile twin: apps/mobile/components/profile/EditorialProfileBlock.tsx.",
+      },
+    },
+  },
   args: {
     displayName: "Grace",
     joinedLabel: "Joined 2mo ago",
@@ -76,7 +84,9 @@ type Story = StoryObj<typeof meta>;
 /** Populated Pro account — full streak dots, freezes in hand, milestones, grid. */
 export const Populated: Story = {};
 
-/** Fresh free account — no streak, no saved recipes; the block reads calmly at zero. */
+/** Fresh free account — no streak, no saved recipes; the block reads calmly at
+ *  zero, and the empty grid ships the ghost "Browse Discover" escape hatch the
+ *  copy promises. */
 export const EmptyFreeAccount: Story = {
   args: {
     displayName: "",
@@ -87,7 +97,20 @@ export const EmptyFreeAccount: Story = {
     model: emptyModel,
     recipes: [],
     recipeCount: 0,
+    onBrowseDiscover: () => {},
     onUpgrade: () => {},
+  },
+};
+
+/**
+ * The same empty state with `onBrowseDiscover` omitted — the pre-consistency
+ * dead end, where the copy said "Browse Discover" and offered no way there.
+ * Kept as the visible contrast for the kill-switch path.
+ */
+export const EmptyWithoutDiscoverCta: Story = {
+  args: {
+    ...EmptyFreeAccount.args,
+    onBrowseDiscover: undefined,
   },
 };
 

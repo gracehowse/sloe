@@ -11,8 +11,15 @@ export interface ScreenSectionChromeProps {
   /** Eyebrow above the title. Pass an empty string / null to hide it
    *  entirely — useful on tabs where the tab bar already carries the
    *  surface name (Plan / Progress) and the overline reads as
-   *  redundant shouting. (Grace 2026-05-22 continuity sweep.) */
+   *  redundant shouting. (Grace 2026-05-22 continuity sweep.)
+   *
+   *  Under `design_consistency_v1` this renders the canonical treatment:
+   *  `Type.eyebrow` ink caps + a faint hairline rule to the margin. */
   overline?: string | null;
+  /** Opt out of the eyebrow hairline rule (e.g. when a `trailing` control sits
+   *  on the same optical line and the rule would collide). On by default — one
+   *  eyebrow treatment across the app is the point. */
+  overlineRule?: boolean;
   title: string;
   /** Optional line under the title (e.g. week range on Plan). */
   subtitle?: string;
@@ -37,6 +44,7 @@ export interface ScreenSectionChromeProps {
  */
 export function ScreenSectionChrome({
   overline,
+  overlineRule = true,
   title,
   subtitle,
   showBrand = false,
@@ -52,6 +60,7 @@ export function ScreenSectionChrome({
 }: ScreenSectionChromeProps) {
   const colors = useThemeColors();
   const consistencyChrome = isFeatureEnabled("primary_screen_chrome_v1");
+  const unifiedChrome = isFeatureEnabled("design_consistency_v1");
 
   const styles = useMemo(
     () =>
@@ -76,7 +85,20 @@ export function ScreenSectionChrome({
         titleCol: { flex: 1, gap: Layout.chromeTitleGap },
         // headers census 2026-06-10 — eyebrow plumbing → Type.label
         // (11/700/0.88/uppercase). Was 11/700/ls1.2 hand-rolled.
-        overline: { ...Type.label, color: colors.textTertiary },
+        // Design-consistency pass 2026-07-24 — the unified path uses the shared
+        // `Type.eyebrow` ink caps promoted from the Today hero; the tertiary
+        // `Type.label` treatment stays as the kill switch.
+        overline: unifiedChrome
+          ? { ...Type.eyebrow, color: colors.text }
+          : { ...Type.label, color: colors.textTertiary },
+        overlineRow: {
+          flexDirection: "row" as const,
+          alignItems: "center" as const,
+          gap: Spacing.dense,
+        },
+        // The FAINT `border` hairline, never the mid-grey `textTertiary` — the
+        // latter reads as a hard rule and fights the title for attention.
+        overlineRule: { flex: 1, height: 1, backgroundColor: colors.border },
         // ENG-1577 — the consistency path converges primary screens on the
         // 33px page-title token; the former 24px treatment is the kill switch.
         title: {
@@ -86,7 +108,7 @@ export function ScreenSectionChrome({
         // headers census 2026-06-10 — tokenised 13/600 chrome subtitle.
         subtitle: { ...Type.captionStrong, color: colors.textSecondary, marginTop: 2 },
       }),
-    [colors, consistencyChrome, subtitle],
+    [colors, consistencyChrome, unifiedChrome, subtitle],
   );
 
   return (
@@ -97,9 +119,18 @@ export function ScreenSectionChrome({
           {leading ?? null}
           <View style={styles.titleCol}>
             {overline ? (
-              <Text style={styles.overline} testID={overlineTestID}>
-                {overline}
-              </Text>
+              unifiedChrome && overlineRule ? (
+                <View style={styles.overlineRow}>
+                  <Text style={styles.overline} testID={overlineTestID}>
+                    {overline}
+                  </Text>
+                  <View style={styles.overlineRule} />
+                </View>
+              ) : (
+                <Text style={styles.overline} testID={overlineTestID}>
+                  {overline}
+                </Text>
+              )
             ) : null}
             <Text style={styles.title} accessibilityRole="header" testID={titleTestID}>
               {title}
